@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>GIGAMAIL</title>
+<link rel="stylesheet" href="style_v2.css"/>
+</head>
+<body>
+<div id="ade-toast-container"></div>
+<div class="app" id="appShell">
+  <div class="titlebar" id="appTitlebar">
+    <div style="flex:1;-webkit-app-region:drag"></div>
+    <div class="win-buttons">
+      <button class="win-btn minimize" id="btnWinMin"   data-i18n-title="hide" title="Nascondi"       onclick="window.electronAPI?.minimizeWindow()">▽</button>
+      <button class="win-btn maximize" id="btnWinMax"   data-i18n-title="fullscreen" title="Tutto schermo"  onclick="window.electronAPI?.maximizeWindow()">□</button>
+      <button class="win-btn close"    id="btnWinClose" data-i18n-title="close" title="Chiudi"         onclick="window.electronAPI?.closeWindow()">✕</button>
+    </div>
+  </div>
+  <div class="sidebar">
+
+    <div class="s-item active" id="btnShowInbox"     data-label="Posta in arrivo" data-i18n-label="inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></div>
+    <div class="s-item"        id="btnShowSent"      data-label="Inviati" data-i18n-label="sent_items"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+    <div class="s-item"        id="btnShowDrafts"    data-label="Bozze" data-i18n-label="drafts"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+    <div class="s-item"        id="btnShowCalendar"  data-label="Calendario" data-i18n-label="calendar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+    <div class="s-item"        id="btnShowMarketing" data-label="Marketing" data-i18n-label="marketing"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+    <div class="s-item" id="btnRefreshCustomFolders" data-label="Aggiorna cartelle" data-i18n-label="refresh_folders"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+    <div class="s-item" id="btnVoiceCommand" data-label="Comando vocale" data-i18n-label="voice_command"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+    <div class="s-div"></div>
+    <div class="s-item"        id="btnShowSpam"      data-label="Spam" data-i18n-label="spam"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>
+    <div class="s-item"        id="btnShowDeleted"   data-label="Cestino" data-i18n-label="trash"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+    <div class="s-item" id="btnCompact" data-label="Modalità compatta" data-i18n-label="compact_mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></div>
+    <div class="s-item" id="btnShowAsk" data-label="Chiedi alle mail" data-i18n-label="ask_title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="0.5" fill="currentColor"/><circle cx="12" cy="10" r="0.5" fill="currentColor"/><circle cx="15" cy="10" r="0.5" fill="currentColor"/></svg></div>
+    <div class="s-item" id="btnAiSetup" data-label="Configura AI" data-i18n-label="ai_config"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+    <div class="s-item" id="langSwitch" data-i18n-title="lang_switch_title" title="Lingua / Language" style="cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px;text-align:center;line-height:1;color:rgba(0,0,0,0.6)" onclick="window.i18n&&window.i18n.toggleLang()">IT</div>
+    <div class="s-avatar"      id="sidebarAvatar"  >S</div>
+  </div>
+  <div class="views-wrap">
+    <!-- MAIL -->
+    <div class="view active" id="view-mail">
+      <div class="mail-list-panel">
+        <div class="panel-header">
+          <div class="panel-title"><span id="currentFolderLabel" data-i18n="inbox">Posta in arrivo</span><span id="statMail"></span></div>
+          <div class="account-row">
+            <select id="accountSelect" class="account-select"></select>
+            <button class="icon-btn-sm" id="btnIdentityAccount"><span class="btn-icon">👤</span></button>
+            <button class="icon-btn-sm" id="btnRefreshMail" data-i18n-title="refresh_mail_title" title="Aggiorna mail + Refresh identity"><span class="btn-icon">↻</span></button>
+          </div>
+          <div class="account-row" style="margin-bottom:8px">
+            <button class="chip-btn" id="btnAddAccount" data-i18n="add_account_btn">+ Account</button>
+            <button class="chip-btn" id="btnAddFolder" data-i18n="add_folder_btn">+ Cartella</button>
+          </div>
+          <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="mailSearch" data-i18n-ph="search_mail_ph" placeholder="Cerca mail…"/>
+            <button id="btnSearchMail" class="search-go">→</button>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab" id="btnShowSnoozed" data-i18n-title="snoozed" title="Snoozed">💤</div>
+        </div>
+        <div id="customFoldersList" class="custom-folders"></div>
+        <div class="mail-list" id="mailList"></div>
+        <button class="compose-btn" id="btnNewMail">✏  <span data-i18n="new_mail">Nuova mail</span></button>
+      </div>
+      <div class="main-area" id="mailDetail"></div>
+    </div>
+    <!-- CALENDARIO -->
+    <div class="view" id="view-calendar">
+      <div class="cal-wrap">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span data-i18n="calendar">Calendario</span>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="calDays" class="account-select" style="width:90px">
+                <option value="7">7 giorni</option><option value="14">14 giorni</option><option value="30">30 giorni</option>
+              </select>
+              <button class="chip-btn" id="btnRefreshCal">↻</button>
+              <button class="chip-btn" id="btnSpeakToday">🔊</button>
+              <button class="chip-btn" id="btnClearEvent">+ Evento</button>
+            </div>
+          </div>
+        </div>
+        <div class="cal-body" id="eventsList"></div>
+      </div>
+    </div>
+    <!-- MARKETING -->
+    <div class="view" id="view-marketing">
+      <div class="mkt-layout">
+        <div class="mkt-left">
+          <div class="panel-header"><div class="panel-title"><span data-i18n="marketing_mail">Marketing Mail</span></div></div>
+          <div class="mkt-section">
+            <label class="field-label">1. DESTINATARI</label>
+            <input type="file" id="bulkFileInput" accept=".csv,.xlsx,.xls" style="display:none"/>
+            <button class="chip-btn w100" id="btnBulkUpload">📂 CARICA CSV / EXCEL</button>
+            <div id="bulkFileInfo" class="hint"></div>
+          </div>
+          <div class="mkt-section">
+            <label class="field-label">2. OGGETTO</label>
+            <input type="text" id="bulkSubject" class="field-input" placeholder="Oggetto…"/>
+          </div>
+          <div class="mkt-section">
+            <label class="field-label">3. FORMATO</label>
+            <div style="display:flex;gap:4px">
+              <button class="tab active" id="btnBulkHtml">HTML</button>
+              <button class="tab" id="btnBulkPlain">PLAIN</button>
+            </div>
+          </div>
+          <div class="mkt-section">
+            <label class="field-label">PAUSA (sec)</label>
+            <div style="display:flex;gap:6px">
+              <div style="flex:1"><div class="hint">MIN</div><input type="number" id="bulkSleepMin" class="field-input" value="20" min="5"/></div>
+              <div style="flex:1"><div class="hint">MAX</div><input type="number" id="bulkSleepMax" class="field-input" value="40" min="5"/></div>
+            </div>
+          </div>
+          <div class="mkt-section"><div id="bulkVarsHint" class="hint" style="color:rgba(26,108,245,0.7)">Variabili: {nome}, {email}</div></div>
+          <div class="mkt-section">
+            <button class="chip-btn w100" id="btnBulkPreview">👁 PREVIEW</button>
+            <button class="compose-btn" id="btnBulkStart" disabled>▶ AVVIA INVIO</button>
+            <button class="chip-btn w100 danger" id="btnBulkStop" style="display:none">⏹ FERMA</button>
+          </div>
+        </div>
+        <div class="mkt-right">
+          <div class="mkt-ai-row">
+            <textarea id="bulkInstruction" class="field-input" style="resize:none;flex:1" rows="2" placeholder="Descrivi la mail da generare con AI…"></textarea>
+            <button class="compose-btn" style="margin:0;width:auto;padding:8px 14px" id="btnBulkGenerate">⚡ <span data-i18n="generate">GENERA</span></button>
+          </div>
+          <div id="bulkGenerateStatus" class="hint" style="padding:3px 0"></div>
+          <div id="bulkEditorHtml" style="flex:1;display:flex"><textarea id="bulkBodyHtml" class="code-editor" placeholder="<html>…"></textarea></div>
+          <div id="bulkEditorPlain" style="flex:1;display:none"><textarea id="bulkBodyPlain" class="code-editor" placeholder="Testo semplice…"></textarea></div>
+          <div id="bulkProgress" style="display:none" class="bulk-progress">
+            <div class="progress-wrap"><div id="bulkProgressBar" class="progress-fill"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <span id="bulkProgressLabel" class="hint">In attesa…</span>
+              <span id="bulkProgressCount" class="hint">0/0</span>
+            </div>
+            <div id="bulkLog" class="bulk-log"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP MAIL draggable -->
+<div class="mail-popup hidden" id="mailPopupWindow">
+  <div class="popup-titlebar" id="mailPopupDragHandle">
+    <div class="popup-tb-dots">
+      <div class="popup-tb-dot red"    id="btnCloseMailPopup"></div>
+      <div class="popup-tb-dot yellow"></div>
+      <div class="popup-tb-dot green"></div>
+    </div>
+    <div class="popup-tb-title" id="mailPopupTitle">ADE Mail</div>
+    <div class="popup-tb-spacer"></div>
+  </div>
+  <div id="mailPopupContent" class="popup-scroll"></div>
+</div>
+
+<!-- POPUP RISPOSTA draggable -->
+<div class="reply-popup hidden" id="replyModal">
+  <div class="popup-titlebar" id="replyDragHandle">
+    <div class="popup-tb-dots">
+      <div class="popup-tb-dot red"    id="btnCloseReply"></div>
+      <div class="popup-tb-dot yellow"></div>
+      <div class="popup-tb-dot green"></div>
+    </div>
+    <div class="popup-tb-title" data-i18n="new_reply">Nuova risposta</div>
+    <div class="popup-tb-spacer"></div>
+  </div>
+  <div class="reply-header">
+    <div class="reply-row">
+      <span class="reply-label" data-i18n="to_label">A:</span>
+      <input type="text" id="replyToInput" class="reply-field" placeholder="destinatario@email.it" autocomplete="off"/>
+      <div id="replyToAutocomplete" class="autocomplete-box hidden"></div>
+    </div>
+    <div class="reply-row">
+      <span class="reply-label" data-i18n="cc_label">CC:</span>
+      <input type="text" id="replyCcInput" class="reply-field" placeholder="(opzionale)"/>
+    </div>
+    <div class="reply-row">
+      <span class="reply-label" data-i18n="subject_label">Oggetto:</span>
+      <input type="text" id="replySubjectInput" class="reply-field"/>
+    </div>
+  </div>
+  <div id="replyDropZone" class="reply-drop-zone">
+    <textarea id="replyText" class="reply-textarea" data-i18n-ph="reply_text_ph" placeholder="Scrivi la tua risposta…"></textarea>
+    <div class="drop-overlay" id="replyDropOverlay"><span>📎 Rilascia per allegare</span></div>
+  </div>
+  <div id="replyAttachmentsBox" class="reply-attachments"></div>
+  <input type="file" id="replyFileInput" multiple style="display:none"/>
+  <div id="pendingAttachmentsBox" style="display:none"></div>
+  <div class="reply-toolbar">
+    <div class="reply-tools">
+      <button class="tool-btn" id="btnReplyAttach">📎</button>
+      <button class="tool-btn" id="btnReplyVoice">🎙</button>
+    </div>
+    <input type="text" id="replyInstruction" class="instruction-input" data-i18n-ph="ai_instruction_ph" placeholder="Istruzione AI…"/>
+    <button class="tool-btn ai-btn" id="btnGenerateReply">⚡ <span data-i18n="generate">GENERA</span></button>
+    <button class="reply-send-btn"  id="btnSendReply" data-i18n="send">Invia ↑</button>
+  </div>
+</div>
+
+<!-- MODAL NUOVA MAIL -->
+<div class="overlay hidden" id="newMailPanel">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" data-i18n="new_mail">Nuova mail</span><button class="icon-btn" id="btnCloseNewMail">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="field-label" data-i18n="to_word">A</label><input type="text" id="newMailTo" class="field-input" placeholder="destinatario@email.it" autocomplete="off"/></div>
+      <div class="field-row"><label class="field-label">CC</label><input type="text" id="newMailCc" class="field-input" placeholder="(opzionale)"/></div>
+      <div class="field-row"><label class="field-label">BCC</label><input type="text" id="newMailBcc" class="field-input" placeholder="(opzionale)"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="subject_word">Oggetto</label><input type="text" id="newMailSubject" class="field-input" placeholder="Oggetto…"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="ai_instruction_word">Istruzione AI</label><input type="text" id="newMailInstruction" class="field-input" placeholder="(opzionale)…"/></div>
+      <textarea id="newMailBody" class="field-input" style="resize:vertical;min-height:160px;line-height:1.65" placeholder="Scrivi la mail…"></textarea>
+      <div id="newMailAttachmentsBox" class="reply-attachments"></div>
+      <input type="file" id="newMailFileInput" multiple style="display:none"/>
+    </div>
+    <div class="modal-ftr">
+      <button class="chip-btn" id="btnAttachFile">📎 Allega</button>
+      <button class="chip-btn" id="btnGenerateNewMail">⚡ AI</button>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="chip-btn" id="btnCancelNewMail" data-i18n="cancel">Annulla</button>
+        <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnSendNewMail" data-i18n="send">Invia ↑</button>
+      </div>
+    </div>
+    <div id="newMailStatus" class="hint" style="padding:4px 16px 8px"></div>
+  </div>
+</div>
+
+<!-- MODAL ACCOUNT IMAP -->
+<div class="overlay hidden" id="imapOverlay">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" data-i18n="add_account">Aggiungi account</span><button class="icon-btn" id="btnCloseImap">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="field-label" data-i18n="name_label">Nome</label><input type="text" id="imapName" class="field-input" placeholder="Es: Lavoro"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="email_label">Email</label><input type="email" id="imapEmail" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="password_label">Password</label><input type="password" id="imapPassword" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="provider_label">Provider</label>
+        <select id="imapProvider" class="field-input">
+          <option value="aruba">Aruba</option><option value="gmail">Gmail</option>
+          <option value="outlook">Outlook</option><option value="libero">Libero</option>
+          <option value="custom" data-i18n="custom">Personalizzato</option>
+        </select>
+      </div>
+      <div id="imapCustomFields" style="display:none;flex-direction:column;gap:8px">
+        <div class="field-row"><label class="field-label">IMAP Host</label><input type="text" id="imapHost" class="field-input"/></div>
+        <div class="field-row"><label class="field-label">IMAP Port</label><input type="number" id="imapPort" class="field-input" value="993"/></div>
+        <div class="field-row"><label class="field-label">SMTP Host</label><input type="text" id="smtpHost" class="field-input"/></div>
+        <div class="field-row"><label class="field-label">SMTP Port</label><input type="number" id="smtpPort" class="field-input" value="465"/></div>
+      </div>
+      <div id="imapStatus" class="hint"></div>
+      <div id="loginUrl" style="display:none"><a href="https://microsoft.com/devicelogin" id="loginUrlLink" style="color:var(--accent);font-size:12px">Apri pagina login Microsoft</a></div>
+    </div>
+    <div class="modal-ftr" style="flex-direction:column;gap:8px;align-items:stretch">
+      <!-- OAuth buttons -->
+      <div style="display:flex;gap:8px">
+        <button style="flex:1;padding:9px;background:rgba(26,108,245,0.08);border:1px solid rgba(26,108,245,0.25);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font);color:var(--accent);cursor:pointer" id="btnAddMicrosoft">⚡ Microsoft 365</button>
+        <button style="flex:1;padding:9px;background:rgba(234,67,53,0.07);border:1px solid rgba(234,67,53,0.22);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font);color:rgba(200,50,40,0.85);cursor:pointer" id="btnAddGmail">G Gmail / Google</button>
+      </div>
+      <div style="height:1px;background:rgba(0,0,0,0.08)"></div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="chip-btn" id="btnCloseLogin" data-i18n="cancel">Annulla</button>
+        <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnSaveImap" data-i18n="connect_imap">Connetti IMAP</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MICROSOFT OVERLAY -->
+<div class="overlay hidden" id="loginOverlay">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr">
+      <span class="modal-title">Microsoft 365 — Login</span>
+      <button class="icon-btn" onclick="document.getElementById('loginOverlay').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="loginStep1">
+        <p style="font-size:13px;color:rgba(0,0,0,0.55);margin-bottom:14px">Clicca per avviare l'autenticazione Microsoft 365 via browser.</p>
+        <button class="compose-btn" style="margin:0;width:100%" id="btnStartLogin">⚡ AVVIA LOGIN</button>
+      </div>
+      <div id="loginStep2" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+        <p style="font-size:13px;color:rgba(0,0,0,0.55)">Vai su questo indirizzo nel browser:</p>
+        <a href="https://microsoft.com/devicelogin" id="loginUrl"
+           style="color:var(--accent);font-size:13px;font-weight:600;word-break:break-all;cursor:pointer">https://microsoft.com/devicelogin</a>
+        <p style="font-size:13px;color:rgba(0,0,0,0.55)">Inserisci il codice:</p>
+        <div id="loginCode" style="font-size:26px;font-weight:700;letter-spacing:6px;color:rgba(0,0,0,0.82);text-align:center;padding:14px;background:rgba(26,108,245,0.08);border-radius:var(--radius-sm);border:1px solid rgba(26,108,245,0.2);font-family:monospace"></div>
+        <p style="font-size:11px;color:rgba(0,0,0,0.35)">Dopo aver inserito il codice nel browser, clicca qui:</p>
+        <button class="compose-btn" style="margin:0;width:100%" id="btnCompleteLogin">✓ HO INSERITO IL CODICE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARTELLA -->
+<div class="overlay hidden" id="folderPanel">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><span class="modal-title" data-i18n="new_folder">Nuova cartella</span><button class="icon-btn" id="btnCloseFolderPanel">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="field-label">Nome</label><input type="text" id="folderNameInput" class="field-input" placeholder="Es: Clienti"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="keywords_label">Parole chiave</label><input type="text" id="folderKeywordsInput" class="field-input" placeholder="Es: fattura, cliente"/></div>
+      <div id="folderStatus" class="hint"></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="chip-btn" id="btnCloseMoveMailPanel" data-i18n="cancel">Annulla</button>
+      <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnSaveFolder" data-i18n="create">Crea</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SPOSTA -->
+<div class="overlay hidden" id="moveMailPanel">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hdr"><span class="modal-title" data-i18n="move_mail">Sposta mail</span><button class="icon-btn" id="btnCloseMoveMailPanel2">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row"><label class="field-label" data-i18n="folder_label">Cartella</label><select id="moveFolderSelect" class="field-input"></select></div>
+      <div id="moveMailStatus" class="hint"></div>
+    </div>
+    <div class="modal-ftr"><button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnConfirmMoveMail" data-i18n="move">Sposta</button></div>
+  </div>
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="overlay hidden" id="eventOverlay">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr"><span class="modal-title" data-i18n="cal_event">Evento</span><button class="icon-btn" id="btnCloseEvent">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="eventId"/>
+      <div class="field-row"><label class="field-label" data-i18n="title_label">Titolo</label><input type="text" id="eventSubject" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="start_label">Inizio</label><input type="datetime-local" id="eventStart" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="end_label">Fine</label><input type="datetime-local" id="eventEnd" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="place_label">Luogo</label><input type="text" id="eventLocation" class="field-input"/></div>
+      <div class="field-row"><label class="field-label" data-i18n="notes_label">Note</label><textarea id="eventBody" class="field-input" rows="3" style="resize:vertical"></textarea></div>
+      <div class="field-row"><label class="field-label" data-i18n="attendees_label">Partecipanti</label><input type="text" id="eventAttendees" class="field-input" placeholder="email1, email2…"/></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="chip-btn danger" id="btnDeleteEvent" style="display:none">🗑 Elimina</button>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="chip-btn" id="btnCancelEvent" data-i18n="cancel">Annulla</button>
+        <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnSaveEvent" data-i18n="save">Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU MAIL -->
+<div class="ade-context-menu hidden" id="mailContextMenu">
+  <button class="ctx-item" data-action="open-popup">📨 Apri in popup</button>
+  <div class="ctx-item ctx-has-submenu" data-action="snooze">
+    💤 Snooze
+    <span class="ctx-arrow">›</span>
+    <div class="ctx-submenu">
+      <button class="ctx-item" data-snooze="1h">1 ora</button>
+      <button class="ctx-item" data-snooze="3h">3 ore</button>
+      <button class="ctx-item" data-snooze="tonight" data-i18n="snooze_tonight">Stasera 18:00</button>
+      <button class="ctx-item" data-snooze="tomorrow" data-i18n="snooze_tomorrow">Domani mattina</button>
+      <button class="ctx-item" data-snooze="monday" data-i18n="snooze_monday">Lunedì prossimo</button>
+      <button class="ctx-item" data-snooze="nextweek" data-i18n="snooze_nextweek">Settimana prossima</button>
+      <div class="ctx-divider"></div>
+      <button class="ctx-item" data-snooze="custom">📅 Personalizzato…</button>
+    </div>
+  </div>
+  <button class="ctx-item" data-action="mark-read">✓ Segna come letta</button>
+  <button class="ctx-item" data-action="mark-unread">○ Segna come non letta</button>
+  <div class="ctx-divider"></div>
+  <button class="ctx-item danger" data-action="delete">🗑 Elimina</button>
+</div>
+
+<!-- SNOOZE CUSTOM DATETIME PICKER -->
+<div class="overlay hidden" id="snoozeCustomOverlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <span class="modal-title" data-i18n="snooze_custom">Snooze personalizzato</span>
+      <button class="icon-btn" id="snoozeCustomClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <label class="field-label">Data e ora</label>
+        <input type="datetime-local" id="snoozeCustomDt" class="field-input"/>
+      </div>
+      <div class="hint" id="snoozeCustomHint"></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="chip-btn" id="snoozeCustomCancel" data-i18n="cancel">Annulla</button>
+      <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="snoozeCustomConfirm" data-i18n="snooze">Snooze</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI SETUP MODAL -->
+<div class="overlay hidden" id="aiSetupOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hdr">
+      <span class="modal-title" data-i18n="ai_config">Configurazione AI</span>
+      <button class="icon-btn" id="aiSetupClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px">Scegli come ADE Mail genera le bozze:</p>
+
+      <div class="ai-card" id="aiOptCodex">
+        <div class="ai-card-head">
+          <span class="ai-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11a8.5 8.5 0 0 0-15.6-4.7 4.5 4.5 0 0 0-1.4 8.2 8.5 8.5 0 0 0 14.6 4.7 4.5 4.5 0 0 0 2.4-8.2z"/><path d="M12 7v10M8 9.5l4-2.5 4 2.5M8 14.5l4 2.5 4-2.5"/></svg></span>
+          <div class="ai-card-titles">
+            <div class="ai-card-title"><span data-i18n="ai_login_chatgpt">Login con ChatGPT</span> <span class="ai-tag">consigliato</span></div>
+            <div class="ai-card-sub">Usa il tuo abbonamento ChatGPT Plus. Nessuna API key.</div>
+          </div>
+        </div>
+        <div class="ai-card-row">
+          <span class="ai-card-status" id="aiCodexStatus">Verifica stato…</span>
+          <button class="compose-btn" style="margin:0;width:auto;padding:7px 16px" id="aiBtnCodex">Login</button>
+        </div>
+      </div>
+
+      <div class="ai-card" id="aiOptApiKey">
+        <div class="ai-card-head">
+          <span class="ai-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2"/><path d="M16.5 6.5l3 3"/><path d="M14 9l2 2"/></svg></span>
+          <div class="ai-card-titles">
+            <div class="ai-card-title">API Key OpenAI</div>
+            <div class="ai-card-sub">Per utenti avanzati. Richiede account OpenAI con credito.</div>
+          </div>
+        </div>
+        <div class="ai-card-row">
+          <input type="password" id="aiApiKeyInput" class="field-input" placeholder="sk-..." autocomplete="off" style="flex:1"/>
+          <button class="chip-btn" id="aiBtnApiKey" data-i18n="save">Salva</button>
+        </div>
+      </div>
+
+      <div id="aiSetupStatus" class="hint" style="padding-top:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- hidden compat -->
+<audio id="mailAudio" style="display:none"></audio>
+<div id="authDot" style="display:none"></div><div id="authLabel" style="display:none"></div>
+<button id="btnCompleteLogin" style="display:none"></button>
+<button id="btnLogin" style="display:none"></button><button id="btnLogout" style="display:none"></button>
+<div id="officeFileInput" style="display:none"></div><div id="uploadFileName" style="display:none"></div>
+<div id="uploadStatus" style="display:none"></div><div id="xlData" style="display:none"></div>
+<div id="xlInstruction" style="display:none"></div><div id="xlFilename" style="display:none"></div>
+<div id="xlResult" style="display:none"></div><div id="xlStatus" style="display:none"></div>
+<div id="wordTitle" style="display:none"></div><div id="wordInstruction" style="display:none"></div>
+<div id="wordSource" style="display:none"></div><div id="wordFilename" style="display:none"></div>
+<div id="wordResult" style="display:none"></div><div id="wordStatus" style="display:none"></div>
+<button id="btnPickFile" style="display:none"></button><button id="btnCreateExcel" style="display:none"></button>
+<button id="btnCreateWord" style="display:none"></button><button id="btnExtractToExcel" style="display:none"></button>
+<button id="btnExtractToWord" style="display:none"></button><button id="btnVoice" style="display:none"></button>
+<button id="btnCreateFolder" style="display:none"></button><button id="btnRefreshFolders" style="display:none"></button>
+
+<script src="voice_mail.js"        defer></script>
+<script src="renderer_utils.js"    defer></script>
+<script src="renderer_bulk.js"     defer></script>
+<script src="renderer_identity.js" defer></script>
+<script src="renderer.js"          defer></script>
+<script src="renderer_sender_history.js" defer></script>
+<script src="popup_bridge.js"      defer></script>
+<script>
+function makeDraggable(el,handle){
+  let drag=false,sx,sy,ox,oy;
+  handle.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('popup-tb-dot'))return;
+    drag=true; el.style.transform='none';
+    const r=el.getBoundingClientRect();
+    sx=e.clientX;sy=e.clientY;ox=r.left;oy=r.top;
+    el.classList.add('dragging');e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    el.style.left=(ox+e.clientX-sx)+'px';
+    el.style.top=(oy+e.clientY-sy)+'px';
+  });
+  document.addEventListener('mouseup',()=>{drag=false;el.classList.remove('dragging');});
+}
+// Tooltip sidebar
+const sTooltip = document.createElement('div');
+sTooltip.className = 's-tooltip';
+document.body.appendChild(sTooltip);
+
+document.querySelectorAll('.s-item[data-label]').forEach(item => {
+  item.addEventListener('mouseenter', e => {
+    const r = item.getBoundingClientRect();
+    sTooltip.textContent = item.getAttribute('data-label');
+    sTooltip.style.left = (r.right + 10) + 'px';
+    sTooltip.style.top  = (r.top + r.height/2) + 'px';
+    sTooltip.style.transform = 'translateY(-50%)';
+    sTooltip.classList.add('visible');
+  });
+  item.addEventListener('mouseleave', () => {
+    sTooltip.classList.remove('visible');
+  });
+});
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const mp=document.getElementById('mailPopupWindow');
+  const mh=document.getElementById('mailPopupDragHandle');
+  if(mp&&mh)makeDraggable(mp,mh);
+  const rp=document.getElementById('replyModal');
+  const rh=document.getElementById('replyDragHandle');
+  if(rp&&rh)makeDraggable(rp,rh);
+  document.getElementById('btnCloseMailPopup')?.addEventListener('click',()=>mp?.classList.add('hidden'));
+  document.getElementById('btnCloseReply')?.addEventListener('click',()=>rp?.classList.add('hidden'));
+  document.getElementById('btnCompact')?.addEventListener('click', async () => {
+    await window.electronAPI?.toggleCompact();
+  });
+  // Drag & drop allegati
+  const dz=document.getElementById('replyDropZone');
+  const ov=document.getElementById('replyDropOverlay');
+  if(dz){
+    dz.addEventListener('dragover',e=>{e.preventDefault();ov?.classList.add('visible');});
+    dz.addEventListener('dragleave',e=>{if(!dz.contains(e.relatedTarget))ov?.classList.remove('visible');});
+    dz.addEventListener('drop',async e=>{
+      e.preventDefault();ov?.classList.remove('visible');
+      for(const file of Array.from(e.dataTransfer.files||[])){
+        const reader=new FileReader();
+        reader.onload=ev=>{
+          const b64=ev.target.result.split(',')[1];
+          if(typeof replyAttachments!=='undefined'){
+            replyAttachments.push({name:file.name,data_b64:b64,type:file.type||'application/octet-stream',size:file.size});
+            if(typeof renderReplyAttachments==='function')renderReplyAttachments();
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+});
+// AI SETUP MODAL
+(function(){
+  const overlay = document.getElementById('aiSetupOverlay');
+  const btnOpen = document.getElementById('btnAiSetup');
+  const btnClose = document.getElementById('aiSetupClose');
+  const btnCodex = document.getElementById('aiBtnCodex');
+  const btnApiKey = document.getElementById('aiBtnApiKey');
+  const apiKeyInput = document.getElementById('aiApiKeyInput');
+  const codexStatus = document.getElementById('aiCodexStatus');
+  const setupStatus = document.getElementById('aiSetupStatus');
+
+  function setStatus(msg, type){
+    if(!setupStatus) return;
+    setupStatus.textContent = msg || '';
+    setupStatus.style.color = type === 'ok' ? '#16a34a'
+                            : type === 'err' ? 'rgba(200,50,40,0.85)'
+                            : 'rgba(0,0,0,0.5)';
+  }
+
+  async function checkCodexStatus(){
+    try {
+      const r = await fetch('http://localhost:8002/ai_setup/codex_status');
+      const d = await r.json();
+      if (d.installed && d.logged_in) {
+        codexStatus.textContent = '✓ Attivo';
+        codexStatus.className = 'ai-card-status ok';
+        btnCodex.textContent = 'Rifai login';
+      } else if (d.installed) {
+        codexStatus.textContent = 'Installato — non autenticato';
+        codexStatus.className = 'ai-card-status err';
+        btnCodex.textContent = 'Login';
+      } else {
+        codexStatus.textContent = 'Non installato';
+        codexStatus.className = 'ai-card-status err';
+        btnCodex.textContent = 'Installa';
+      }
+    } catch(e) {
+      codexStatus.textContent = 'Errore verifica';
+      codexStatus.className = 'ai-card-status err';
+    }
+  }
+
+  btnOpen?.addEventListener('click', () => {
+    overlay.classList.remove('hidden');
+    setStatus('');
+    checkCodexStatus();
+  });
+  btnClose?.addEventListener('click', () => overlay.classList.add('hidden'));
+  overlay?.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+
+  btnCodex?.addEventListener('click', async () => {
+    btnCodex.disabled = true;
+    const original = btnCodex.textContent;
+    btnCodex.textContent = '…';
+    try {
+      const r = await fetch('http://localhost:8002/ai_setup/codex_login', { method:'POST' });
+      const d = await r.json();
+      if (d.success) setStatus('Browser aperto. Completa il login.', 'ok');
+      else setStatus(d.error || 'Login fallito', 'err');
+    } catch(e) {
+      setStatus('Errore: ' + e.message, 'err');
+    }
+    btnCodex.disabled = false;
+    btnCodex.textContent = original;
+    setTimeout(checkCodexStatus, 1500);
+  });
+
+  btnApiKey?.addEventListener('click', async () => {
+    const key = apiKeyInput.value.trim();
+    if (!key.startsWith('sk-')) {
+      setStatus('API key non valida (deve iniziare con sk-)', 'err');
+      return;
+    }
+    btnApiKey.disabled = true;
+    try {
+      const r = await fetch('http://localhost:8002/ai_setup/save_api_key', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ api_key: key })
+      });
+      const d = await r.json();
+      if (d.success) {
+        apiKeyInput.value = '';
+        setStatus('✓ API key salvata', 'ok');
+      } else {
+        setStatus(d.error || 'Errore salvataggio', 'err');
+      }
+    } catch(e) {
+      setStatus('Errore: ' + e.message, 'err');
+    }
+    btnApiKey.disabled = false;
+  });
+})();
+// ══ SNOOZE + CONTEXT MENU ══════════════════════════════════════
+(function(){
+  const ctxMenu = document.getElementById('mailContextMenu');
+  const snoozeCustomOverlay = document.getElementById('snoozeCustomOverlay');
+  const snoozeCustomDt = document.getElementById('snoozeCustomDt');
+  const snoozeCustomConfirm = document.getElementById('snoozeCustomConfirm');
+  const snoozeCustomCancel = document.getElementById('snoozeCustomCancel');
+  const snoozeCustomClose = document.getElementById('snoozeCustomClose');
+
+  let ctxTarget = null; // { accountId, uid, folder, subject, sender, element }
+  let snoozedUids = new Set();
+  let viewingSnoozed = false;
+
+  function getActiveAccountId(){
+    const sel = document.getElementById('accountSelect');
+    return sel ? parseInt(sel.value) : null;
+  }
+  function getActiveFolder(){
+    return window.currentFolder || 'INBOX';
+  }
+
+  // Preset snooze → timestamp Unix
+  function snoozePresetTs(preset){
+    const d = new Date();
+    switch(preset){
+      case '1h':       d.setHours(d.getHours()+1); break;
+      case '3h':       d.setHours(d.getHours()+3); break;
+      case 'tonight':  d.setHours(18,0,0,0); if(d < new Date()) d.setDate(d.getDate()+1); break;
+      case 'tomorrow': d.setDate(d.getDate()+1); d.setHours(8,0,0,0); break;
+      case 'monday': {
+        const day = d.getDay();
+        const diff = (8 - day) % 7 || 7;
+        d.setDate(d.getDate()+diff); d.setHours(8,0,0,0); break;
+      }
+      case 'nextweek': d.setDate(d.getDate()+7); d.setHours(8,0,0,0); break;
+    }
+    return Math.floor(d.getTime()/1000);
+  }
+
+  async function applySnooze(wakeAtTs){
+    if(!ctxTarget) return;
+    try {
+      const r = await fetch('http://localhost:8002/snooze', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          account_id: ctxTarget.accountId,
+          mail_uid: ctxTarget.uid,
+          folder: ctxTarget.folder,
+          subject: ctxTarget.subject,
+          sender: ctxTarget.sender,
+          wake_at: wakeAtTs
+        })
+      });
+      const d = await r.json();
+      if(d.success){
+        const wakeStr = new Date(wakeAtTs*1000).toLocaleString('it-IT', {
+          day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
+        });
+        // toast
+        if(window.showToast) window.showToast(`💤 Snoozed fino a ${wakeStr}`, 'success');
+        // ricarica lista
+        snoozedUids.add(String(ctxTarget.uid));
+        if(ctxTarget.element) ctxTarget.element.style.display = 'none';
+      } else {
+        alert('Errore snooze: ' + (d.error||'sconosciuto'));
+      }
+    } catch(e) {
+      alert('Errore snooze: ' + e.message);
+    }
+    hideMenu();
+  }
+
+  async function refreshSnoozedUids(){
+    const accId = getActiveAccountId();
+    const folder = getActiveFolder();
+    if(!accId) return;
+    try {
+      const r = await fetch(`http://localhost:8002/snooze/snoozed_uids?account_id=${accId}&folder=${encodeURIComponent(folder)}`);
+      const d = await r.json();
+      snoozedUids = new Set((d.uids||[]).map(String));
+      applySnoozedFilterToList();
+    } catch(e){}
+  }
+
+  function applySnoozedFilterToList(){
+    document.querySelectorAll('.mail-item').forEach(item => {
+      const uid = item.getAttribute('data-id');
+      if(!uid) return;
+      if(viewingSnoozed){
+        item.style.display = snoozedUids.has(uid) ? '' : 'none';
+      } else {
+        item.style.display = snoozedUids.has(uid) ? 'none' : '';
+      }
+    });
+  }
+
+  // Click destro su mail item
+  document.addEventListener('contextmenu', (e) => {
+    const item = e.target.closest('.mail-item');
+    if(!item) return;
+    e.preventDefault();
+    const uid = item.getAttribute('data-id');
+    const folder = item.getAttribute('data-folder') || getActiveFolder();
+    const accountId = parseInt(item.getAttribute('data-account-id')) || getActiveAccountId();
+    const subject = item.querySelector('.mail-subject')?.textContent || '';
+    const sender = item.querySelector('.mail-sender')?.textContent || '';
+    ctxTarget = {
+      accountId: accountId,
+      uid: uid,
+      folder: folder,
+      subject, sender,
+      element: item
+    };
+    ctxMenu.style.left = e.clientX + 'px';
+    ctxMenu.style.top = e.clientY + 'px';
+    ctxMenu.classList.remove('hidden');
+    // chiudi submenu
+    ctxMenu.querySelectorAll('.ctx-submenu').forEach(s => s.style.display = '');
+  });
+
+  // Chiudi context menu
+  function hideMenu(){ ctxMenu.classList.add('hidden'); }
+  document.addEventListener('click', e => {
+    if(!ctxMenu.contains(e.target)) hideMenu();
+  });
+  document.addEventListener('scroll', hideMenu, true);
+
+  // Click su voce menu
+  ctxMenu.addEventListener('click', async e => {
+    const btn = e.target.closest('.ctx-item');
+    if(!btn) return;
+    const snooze = btn.getAttribute('data-snooze');
+    const action = btn.getAttribute('data-action');
+
+    if(snooze){
+      if(snooze === 'custom'){
+        const now = new Date(Date.now() + 3600*1000); // default +1h
+        snoozeCustomDt.value = now.toISOString().slice(0,16);
+        snoozeCustomOverlay.classList.remove('hidden');
+      } else {
+        applySnooze(snoozePresetTs(snooze));
+      }
+      return;
+    }
+
+    if(action === 'open-popup'){
+      if(ctxTarget?.element){
+        // simula doppio click
+        const evt = new MouseEvent('dblclick', { bubbles: true, cancelable: true, view: window });
+        ctxTarget.element.dispatchEvent(evt);
+      }
+      hideMenu();
+    }else if(action === 'mark-read' || action === 'mark-unread'){
+      const id = ctxTarget?.uid;
+      const folder = ctxTarget?.folder || 'inbox';
+      const accId = ctxTarget?.accountId;
+      if(id){
+        const endpoint = action === 'mark-read' ? 'read' : 'unread';
+        let url = `http://127.0.0.1:8002/mail/${encodeURIComponent(id)}/${endpoint}`;
+        const params = [];
+        if(accId) params.push(`account_id=${accId}`);
+        if(folder) params.push(`folder=${encodeURIComponent(folder)}`);
+        if(params.length) url += '?' + params.join('&');
+        fetch(url, { method:'POST' })
+          .then(r => r.json())
+          .then(() => {
+            if(ctxTarget?.element){
+              ctxTarget.element.classList.toggle('unread', action === 'mark-unread');
+            }
+          })
+          .catch(e => console.error('[MARK READ/UNREAD]', e));
+      }
+      hideMenu();
+    } else if(action === 'delete'){
+      if(ctxTarget?.element) ctxTarget.element.querySelector('.mail-delete-btn')?.click();
+      hideMenu();
+    }
+  });
+
+  // Custom datetime picker
+  snoozeCustomClose?.addEventListener('click', () => snoozeCustomOverlay.classList.add('hidden'));
+  snoozeCustomCancel?.addEventListener('click', () => snoozeCustomOverlay.classList.add('hidden'));
+  snoozeCustomConfirm?.addEventListener('click', () => {
+    const dt = snoozeCustomDt.value;
+    if(!dt){ alert('Seleziona data e ora'); return; }
+    const ts = Math.floor(new Date(dt).getTime()/1000);
+    if(ts <= Math.floor(Date.now()/1000)){ alert('Data nel passato'); return; }
+    snoozeCustomOverlay.classList.add('hidden');
+    applySnooze(ts);
+  });
+
+  // Tab "Snoozed" (💤)
+  document.getElementById('btnShowSnoozed')?.addEventListener('click', async () => {
+    viewingSnoozed = !viewingSnoozed;
+    document.getElementById('btnShowSnoozed').classList.toggle('active', viewingSnoozed);
+    document.getElementById('btnShowInboxTab')?.classList.toggle('active', !viewingSnoozed);
+    await refreshSnoozedUids();
+  });
+
+  // Refresh snoozed UIDs ogni volta che la lista mail cambia
+  // Hook: osserva mailList per cambiamenti
+  const mailList = document.getElementById('mailList');
+  if(mailList){
+    const obs = new MutationObserver(() => refreshSnoozedUids());
+    obs.observe(mailList, { childList: true });
+  }
+  // E al boot
+  setTimeout(refreshSnoozedUids, 2000);
+  // E ogni minuto (per vedere mail risvegliate)
+  setInterval(refreshSnoozedUids, 60000);
+})();
+// ══ ASK / CHAT MAIL — apre finestra esterna ════════════════════
+(function(){
+  const btn = document.getElementById('btnShowAsk');
+  btn?.addEventListener('click', () => {
+    const sel = document.getElementById('accountSelect');
+    window.electronAPI?.openAskWindow?.({ account_id: sel ? parseInt(sel.value) : null });
+  });
+})();
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>

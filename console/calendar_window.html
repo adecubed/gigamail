@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>GIGA Calendario</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent: #eeb9dd;
+    --accent-l: #b0c7f4;
+    --font: 'Saira','Segoe UI',-apple-system,sans-serif;
+    --pink: #eeb9dd;
+    --blue: #b0c7f4;
+  }
+  *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font);
+    background: linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    width:100vw; height:100vh;
+    overflow:hidden; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    border-radius:8px;
+  }
+
+  /* ── TITLEBAR ── */
+  .titlebar {
+    height:34px; flex-shrink:0;
+    display:flex; align-items:center; padding:0 14px; gap:8px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    -webkit-app-region:drag; user-select:none;
+  }
+  .tb-title { font-size:11px; color:rgba(0,0,0,0.75); font-weight:600; flex:1; }
+  .tb-buttons { display:flex; gap:6px; align-items:center; -webkit-app-region:no-drag; }
+  .tb-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; cursor:pointer;
+    color:rgba(0,0,0,0.6); transition:all 0.15s; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tb-btn:hover { box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .tb-btn.close:hover { background:rgba(220,38,38,0.15); color:#dc2626; }
+  .tb-btn.minimize:hover { background:rgba(245,158,11,0.15); color:#d97706; }
+  .tb-btn.maximize:hover { background:rgba(34,197,94,0.15); color:#16a34a; }
+
+  /* ── BODY ── */
+  .cal-body {
+    flex:1; display:flex; flex-direction:column; overflow:hidden;
+    background:rgba(245,247,250,0.98); border-radius:0 0 7px 7px;
+  }
+
+  /* ── PROSSIMI APPUNTAMENTI ── */
+  .upcoming-section {
+    padding:12px 14px 8px; flex-shrink:0;
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    background:rgba(255,255,255,0.95);
+  }
+  .section-title {
+    font-size:9.5px; font-weight:700; letter-spacing:1.5px;
+    color:rgba(0,0,0,0.5); text-transform:uppercase; margin-bottom:8px;
+  }
+  .upcoming-list {
+    display:flex; flex-direction:column; gap:6px;
+    max-height:230px; overflow-y:auto;
+    padding-right:4px;
+  }
+  .upcoming-list::-webkit-scrollbar { width:5px; }
+  .upcoming-list::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  .upcoming-item {
+    display:flex; align-items:flex-start; gap:10px;
+    background:white; border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:8px; padding:8px 12px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.15);
+    cursor:pointer; transition:all 0.15s;
+  }
+  .upcoming-item:hover { box-shadow:0 6px 20px rgba(0,0,0,0.25); transform:translateY(-1px); }
+  .upcoming-dot {
+    width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.5);
+  }
+  .upcoming-info { flex:1; min-width:0; }
+  .upcoming-title { font-size:12px; font-weight:600; color:rgba(0,0,0,0.82); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .upcoming-meta { font-size:10.5px; color:rgba(0,0,0,0.45); }
+  .upcoming-date {
+    font-size:10px; font-weight:600; color:rgba(0,0,0,0.5);
+    text-align:right; flex-shrink:0; white-space:nowrap;
+  }
+
+  /* ── TOOLBAR CALENDARIO ── */
+  .cal-toolbar {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px; background:white;
+    border-bottom:1px solid rgba(0,0,0,0.08); flex-shrink:0;
+  }
+  .cal-nav-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:rgba(255,255,255,0.95); border:1.5px solid rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .cal-nav-btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+  .cal-month-label { font-size:14px; font-weight:600; color:rgba(0,0,0,0.82); flex:1; }
+  .cal-today-btn {
+    padding:5px 12px; border-radius:7px;
+    background:rgba(255,255,255,0.95); border:1.5px solid rgba(0,0,0,0.75);
+    font-size:11px; font-weight:500; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s; box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .cal-today-btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+  .add-btn {
+    padding:5px 12px; border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4); border:1.5px solid rgba(0,0,0,0.75);
+    font-size:11px; font-weight:600; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s; box-shadow:0 4px 14px rgba(0,0,0,0.2);
+  }
+  .add-btn:hover { box-shadow:0 4px 18px rgba(0,0,0,0.35); }
+
+  /* ── GRIGLIA CALENDARIO ── */
+  .cal-grid-wrap { flex:1; overflow-y:auto; padding:0 14px 14px; }
+  .cal-grid {
+    display:grid; grid-template-columns:repeat(7,1fr);
+    gap:1px; background:rgba(0,0,0,0.1);
+    border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:8px; overflow:hidden;
+    box-shadow:0 4px 14px rgba(0,0,0,0.15);
+    margin-top:8px;
+  }
+  .cal-day-header {
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    padding:6px 4px; text-align:center;
+    font-size:10px; font-weight:700; color:rgba(0,0,0,0.7);
+    letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .cal-cell {
+    background:white; min-height:80px; padding:4px;
+    display:flex; flex-direction:column; gap:2px;
+    cursor:pointer; transition:background 0.1s;
+  }
+  .cal-cell:hover { background:rgba(238,185,221,0.08); }
+  .cal-cell.other-month { background:rgba(0,0,0,0.02); }
+  .cal-cell.other-month .cal-day-num { color:rgba(0,0,0,0.2); }
+  .cal-cell.today { background:rgba(238,185,221,0.15); }
+  .cal-day-num {
+    font-size:11px; font-weight:600; color:rgba(0,0,0,0.6);
+    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; flex-shrink:0;
+  }
+  .cal-cell.today .cal-day-num {
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75); color:rgba(0,0,0,0.8);
+    box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  }
+  .cal-event-chip {
+    font-size:9.5px; padding:1px 5px; border-radius:4px;
+    background:linear-gradient(135deg,rgba(238,185,221,0.7),rgba(176,199,244,0.7));
+    border:1px solid rgba(0,0,0,0.2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    cursor:pointer; color:rgba(0,0,0,0.7); font-weight:500;
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+  }
+  .cal-event-chip:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+  .cal-more { font-size:9px; color:rgba(0,0,0,0.4); padding:1px 4px; }
+
+  /* ── MODAL EVENTO ── */
+  .event-modal {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.25); display:none;
+    align-items:center; justify-content:center;
+  }
+  .event-modal.visible { display:flex; }
+  .event-box {
+    background:white; border-radius:12px;
+    border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 16px 48px rgba(0,0,0,0.35);
+    width:400px; display:flex; flex-direction:column; overflow:hidden;
+    max-height:90vh;
+  }
+  .event-hdr {
+    padding:12px 16px; background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; font-weight:600; flex-shrink:0;
+  }
+  .event-body { padding:16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+  .event-field { display:flex; flex-direction:column; gap:4px; }
+  .event-label { font-size:9.5px; font-weight:700; letter-spacing:1.5px; color:rgba(0,0,0,0.5); text-transform:uppercase; }
+  .event-input {
+    width:100%; background:rgba(255,255,255,0.95); border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:8px; padding:7px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .event-ftr {
+    padding:10px 16px; border-top:1px solid rgba(0,0,0,0.08);
+    display:flex; gap:8px; align-items:center; flex-shrink:0;
+  }
+  .btn {
+    padding:6px 14px; border-radius:8px; border:1.5px solid rgba(0,0,0,0.75);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+  .btn.primary {
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    font-weight:600;
+  }
+  .btn.danger { border-color:rgba(220,38,38,0.75); color:#dc2626; }
+  .btn.danger:hover { background:rgba(220,38,38,0.1); }
+  .loading { text-align:center; padding:20px; color:rgba(0,0,0,0.3); font-size:12px; }
+  .filter-btn {
+    padding:4px 10px; border-radius:7px; border:1.5px solid rgba(0,0,0,0.75);
+    background:rgba(255,255,255,0.95); font-size:10px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  }
+  .filter-btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+  .filter-btn.active { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); font-weight:700; }
+
+  /* ── ATTENDEES CHIPS ── */
+  .attendee-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(176,199,244,0.2); border:1px solid rgba(176,199,244,0.6);
+    color:rgba(26,80,180,0.85); font-size:11px; font-weight:500;
+    padding:2px 10px; border-radius:20px; font-family:var(--font);
+  }
+  .attendee-chip-x {
+    cursor:pointer; opacity:0.5; font-size:13px; line-height:1;
+    background:none; border:none; color:inherit; padding:0;
+  }
+  .attendee-chip-x:hover { opacity:1; color:#dc2626; }
+
+  /* ── Menu contesto (tasto destro) ── */
+  .ctx-menu {
+    position:fixed; z-index:9999; min-width:170px;
+    background:#ffffff;
+    border:1.5px solid rgba(0,0,0,0.75); border-radius:10px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.35);
+    padding:5px; display:none; font-family:var(--font);
+  }
+  .ctx-menu.visible { display:block; }
+  .ctx-item {
+    display:flex; align-items:center; gap:9px;
+    padding:8px 12px; border-radius:7px;
+    font-size:13px; color:rgba(0,0,0,0.8); cursor:pointer;
+    user-select:none; transition:background 0.12s;
+  }
+  .ctx-item:hover { background:linear-gradient(135deg,rgba(238,185,221,0.35),rgba(176,199,244,0.35)); }
+  .ctx-item.danger { color:#dc2626; }
+  .ctx-item.danger:hover { background:rgba(220,38,38,0.12); }
+  .ctx-ico { width:16px; text-align:center; flex-shrink:0; }
+  .ctx-sep { height:1px; background:rgba(0,0,0,0.1); margin:4px 6px; }
+</style>
+</head>
+<body>
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" data-action="edit"><span class="ctx-ico">✏️</span><span data-i18n="cal_edit">Modifica</span></div>
+  <div class="ctx-item" data-action="followup"><span class="ctx-ico">📌</span><span data-i18n="cal_followup">Follow up</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" data-action="delete"><span class="ctx-ico">🗑️</span><span data-i18n="cal_delete">Cancella</span></div>
+</div>
+<div class="titlebar">
+  <div class="tb-title">📅 GIGA Calendario</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin">▽</button>
+    <button class="tb-btn maximize" id="btnMax">□</button>
+    <button class="tb-btn close"   id="btnClose">✕</button>
+  </div>
+</div>
+
+<div class="cal-body">
+
+  <!-- PROSSIMI 5 APPUNTAMENTI -->
+  <div class="upcoming-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="section-title" style="margin-bottom:0" data-i18n="cal_upcoming">Prossimi appuntamenti</div>
+      <div style="display:flex;gap:5px;">
+        <button class="filter-btn active" id="btnFilterAll" data-i18n="cal_all">Tutti</button>
+        <button class="filter-btn" id="btnFilterToday" data-i18n="cal_today">Oggi</button>
+        <button class="filter-btn" id="btnFilterWeek" data-i18n="cal_next7">Prossimi 7 giorni</button>
+      </div>
+    </div>
+    <div class="upcoming-list" id="upcomingList">
+      <div class="loading">Caricamento…</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="cal-toolbar">
+    <button class="cal-nav-btn" id="btnPrevMonth">‹</button>
+    <button class="cal-nav-btn" id="btnNextMonth">›</button>
+    <div class="cal-month-label" id="calMonthLabel"></div>
+    <button class="cal-today-btn" id="btnToday" data-i18n="cal_today">Oggi</button>
+    <button class="cal-today-btn" id="btnRefreshCal" data-i18n-title="refresh" title="Aggiorna (Ctrl+R)">↻</button>
+    <button class="add-btn" id="btnAddEvent">+ Evento</button>
+  </div>
+
+  <!-- GRIGLIA -->
+  <div class="cal-grid-wrap">
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="event-modal" id="eventModal">
+  <div class="event-box">
+    <div class="event-hdr">
+      <span id="eventModalTitle" data-i18n="cal_new_event">Nuovo evento</span>
+      <button class="btn" id="btnModalClose" style="padding:3px 8px">✕</button>
+    </div>
+    <div class="event-body">
+      <input type="hidden" id="eventId"/>
+      <div class="event-field">
+        <div class="event-label" data-i18n="title_label">Titolo</div>
+        <input type="text" id="eventSubject" class="event-input" data-i18n-ph="event_title_ph" placeholder="Titolo evento…"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="start_label">Inizio</div>
+        <input type="datetime-local" id="eventStart" class="event-input"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="end_label">Fine</div>
+        <input type="datetime-local" id="eventEnd" class="event-input"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="place_label">Luogo</div>
+        <input type="text" id="eventLocation" class="event-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="notes_label">Note</div>
+        <input type="text" id="eventBody" class="event-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="invite_label">Invita</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="eventAttendeesInput" class="event-input" placeholder="email@esempio.com" style="flex:1"/>
+          <button class="btn" id="btnAddAttendee" style="padding:5px 12px;white-space:nowrap;flex-shrink:0;">+ Aggiungi</button>
+        </div>
+        <div id="eventAttendeesList" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;min-height:0;"></div>
+      </div>
+    </div>
+    <div class="event-ftr">
+      <button class="btn danger" id="btnDeleteEvent" style="display:none">🗑 Elimina</button>
+      <div style="flex:1"></div>
+      <button class="btn" id="btnCancelEvent" data-i18n="cancel">Annulla</button>
+      <button class="btn primary" id="btnSaveEvent" data-i18n="save">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8002';
+
+let _activeAccountId = null;
+
+async function _loadActiveAccount() {
+  try {
+    const r = await fetch(`${API}/calendar/primary`);
+    const data = await r.json();
+    _activeAccountId = data.account_id || null;
+  } catch(e) {}
+}
+_loadActiveAccount();
+
+window.addEventListener('error', (e) => {
+  console.error('[CAL ERROR]', e.message, e.filename, e.lineno);
+  const list = document.getElementById('upcomingList');
+  if (list && list.innerHTML.includes('Caricamento')) {
+    list.innerHTML = `<div class="loading" style="color:#dc2626">Errore JS: ${e.message} (linea ${e.lineno})</div>`;
+  }
+});
+
+let _events = [];
+let _currentYear  = new Date().getFullYear();
+let _currentMonth = new Date().getMonth(); // 0-based
+
+const DAYS_IT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+async function loadEvents() {
+  const list = document.getElementById('upcomingList');
+  if (list) list.innerHTML = '<div class="loading">Caricamento…</div>';
+  try {
+    const r = await fetch(`${API}/calendar?days=60`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    _events = Array.isArray(data) ? data : (data.value || data.items || []);
+  } catch(err) {
+    console.error('[CAL] loadEvents error:', err);
+    _events = [];
+    if (list) list.innerHTML = `<div class="loading">Errore caricamento: ${err.message}</div>`;
+  }
+  renderUpcoming();
+  renderCalendar();
+}
+
+function fmtDateTime(dt) {
+  if (!dt) return '';
+  try {
+    const d = new Date(dt);
+    return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}) + ' ' +
+           d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  } catch { return dt; }
+}
+
+function fmtDateLocal(dt) {
+  if (!dt) return '';
+  try {
+    const raw = String(dt);
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw) && !/[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+      return raw.slice(0, 16);
+    }
+    const d = new Date(raw);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return '';
+  }
+}
+
+// ── PROSSIMI APPUNTAMENTI con filtro ──
+let _upcomingFilter = 'all'; // 'all' | 'today' | 'week'
+
+function renderUpcoming() {
+  const now   = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd   = new Date(todayStart.getTime() + 24*60*60*1000);
+  const weekStart  = todayStart;
+  const weekEnd    = new Date(todayStart.getTime() + 7*24*60*60*1000);
+
+  let filtered = _events.filter(e => {
+    const dt = new Date(e.start?.dateTime || e.start?.date || 0);
+    if (_upcomingFilter === 'today') return dt >= todayStart && dt < todayEnd;
+    if (_upcomingFilter === 'week')  return dt >= weekStart  && dt < weekEnd;
+    return dt >= todayStart; // 'all': da inizio oggi in poi (oggi + futuri, niente passato)
+  });
+
+  filtered = filtered
+    .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date))
+    .slice(0, _upcomingFilter === 'all' ? 8 : 50);
+
+  const list = document.getElementById('upcomingList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="loading">${window.i18n?window.i18n.t("no_upcoming"):"Nessun appuntamento in arrivo"}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(e => {
+    const dt = e.start?.dateTime || e.start?.date || '';
+    const loc = e.location ? `📍 ${typeof e.location === 'object' ? e.location.displayName || '' : e.location}` : '';
+    return `<div class="upcoming-item" data-id="${e.id||''}">
+      <div class="upcoming-dot"></div>
+      <div class="upcoming-info">
+        <div class="upcoming-title">${esc(e.subject||e.title||'(senza titolo)')}</div>
+        <div class="upcoming-meta">${loc}</div>
+      </div>
+      <div class="upcoming-date">${fmtDateTime(dt)}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.upcoming-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const ev = _events.find(e => e.id === el.dataset.id);
+      if (ev) openEventModal(ev);
+    });
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      showCtxMenu(e.clientX, e.clientY, el.dataset.id);
+    });
+  });
+}
+
+// ── GRIGLIA CALENDARIO ──
+function renderCalendar() {
+  const label = document.getElementById('calMonthLabel');
+  label.textContent = `${MONTHS_IT[_currentMonth]} ${_currentYear}`;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  DAYS_IT.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-day-header';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstDay = new Date(_currentYear, _currentMonth, 1);
+  let startDow = firstDay.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+
+  const daysInMonth = new Date(_currentYear, _currentMonth + 1, 0).getDate();
+  const daysInPrev  = new Date(_currentYear, _currentMonth, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < startDow; i++) {
+    const day = daysInPrev - startDow + i + 1;
+    grid.appendChild(makeCell(day, _currentMonth - 1, true));
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today.getDate() && _currentMonth === today.getMonth() && _currentYear === today.getFullYear();
+    grid.appendChild(makeCell(d, _currentMonth, false, isToday));
+  }
+
+  const totalCells = startDow + daysInMonth;
+  const remaining  = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let d = 1; d <= remaining; d++) {
+    grid.appendChild(makeCell(d, _currentMonth + 1, true));
+  }
+}
+
+function makeCell(day, month, otherMonth, isToday = false) {
+  const realMonth = ((month % 12) + 12) % 12;
+  const realYear  = _currentYear + Math.floor(month / 12);
+  const cellDate  = new Date(realYear, realMonth, day);
+
+  const dayEvents = _events.filter(e => {
+    const dt = new Date(e.start?.dateTime || e.start?.date || 0);
+    return dt.getFullYear() === realYear && dt.getMonth() === realMonth && dt.getDate() === day;
+  });
+
+  const cell = document.createElement('div');
+  cell.className = 'cal-cell' + (otherMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+
+  const numEl = document.createElement('div');
+  numEl.className = 'cal-day-num';
+  numEl.textContent = day;
+  cell.appendChild(numEl);
+
+  dayEvents.slice(0, 3).forEach(ev => {
+    const chip = document.createElement('div');
+    chip.className = 'cal-event-chip';
+    const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '';
+    chip.textContent = (time ? time + ' ' : '') + (ev.subject||ev.title||'Evento');
+    chip.addEventListener('click', (e) => { e.stopPropagation(); openEventModal(ev); });
+    chip.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      showCtxMenu(e.clientX, e.clientY, ev.id);
+    });
+    cell.appendChild(chip);
+  });
+  if (dayEvents.length > 3) {
+    const more = document.createElement('div');
+    more.className = 'cal-more';
+    more.textContent = `+${dayEvents.length - 3} altri`;
+    cell.appendChild(more);
+  }
+
+  cell.addEventListener('click', () => {
+    const dt = new Date(realYear, realMonth, day, 9, 0);
+    openEventModal(null, dt);
+  });
+
+  return cell;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ATTENDEES ──
+let _attendees = [];
+
+function renderAttendees() {
+  const list = document.getElementById('eventAttendeesList');
+  if (!list) return;
+  if (!_attendees.length) { list.innerHTML = ''; return; }
+  list.innerHTML = _attendees.map(email =>
+    `<div class="attendee-chip">
+      ${esc(email)}
+      <button class="attendee-chip-x" onclick="removeAttendee('${esc(email)}')">✕</button>
+    </div>`
+  ).join('');
+}
+
+window.removeAttendee = (email) => {
+  _attendees = _attendees.filter(e => e !== email);
+  renderAttendees();
+};
+
+function addAttendeeFromInput() {
+  const input = document.getElementById('eventAttendeesInput');
+  const val = (input?.value || '').trim().toLowerCase();
+  if (!val || !val.includes('@')) return;
+  if (!_attendees.includes(val)) {
+    _attendees.push(val);
+    renderAttendees();
+  }
+  input.value = '';
+  input.focus();
+}
+
+document.getElementById('eventStart')?.addEventListener('change', () => {
+  const start = document.getElementById('eventStart').value;
+  if (!start) return;
+  const startDt = new Date(start);
+  const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  const endStr = `${endDt.getFullYear()}-${pad(endDt.getMonth()+1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`;
+  document.getElementById('eventEnd').value = endStr;
+});
+document.getElementById('btnAddAttendee')?.addEventListener('click', addAttendeeFromInput);
+document.getElementById('eventAttendeesInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addAttendeeFromInput();
+  }
+});
+
+// ── MODAL EVENTO ──
+function openEventModal(ev = null, defaultDate = null) {
+  const modal = document.getElementById('eventModal');
+  document.getElementById('eventModalTitle').textContent = ev ? (window.i18n?window.i18n.t('cal_edit_event'):'Modifica evento') : (window.i18n?window.i18n.t('cal_new_event'):'Nuovo evento');
+  document.getElementById('eventId').value        = ev?.id || '';
+  document.getElementById('eventSubject').value   = ev?.subject || ev?.title || '';
+  document.getElementById('eventLocation').value  = (typeof ev?.location === 'object' ? ev?.location?.displayName : ev?.location) || '';
+  const _rawBody = ev?.body?.content || ev?.notes || '';
+  document.getElementById('eventBody').value = _rawBody.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  document.getElementById('btnDeleteEvent').style.display = ev?.id ? 'block' : 'none';
+
+  if (ev) {
+    document.getElementById('eventStart').value = fmtDateLocal(ev.start?.dateTime || ev.start?.date);
+    document.getElementById('eventEnd').value   = fmtDateLocal(ev.end?.dateTime   || ev.end?.date);
+  } else if (defaultDate) {
+    const end = new Date(defaultDate.getTime() + 60*60*1000);
+    document.getElementById('eventStart').value = fmtDateLocal(defaultDate.toISOString());
+    document.getElementById('eventEnd').value   = fmtDateLocal(end.toISOString());
+  } else {
+    document.getElementById('eventStart').value = '';
+    document.getElementById('eventEnd').value   = '';
+  }
+
+  // Carica attendees esistenti
+  _attendees = (ev?.attendees || []).map(a => {
+    if (typeof a === 'string') return a;
+    return a?.emailAddress?.address || a?.email || '';
+  }).filter(Boolean);
+  renderAttendees();
+
+  modal.classList.add('visible');
+  document.getElementById('eventSubject').focus();
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').classList.remove('visible');
+  _attendees = [];
+  renderAttendees();
+}
+
+document.getElementById('btnModalClose')?.addEventListener('click', closeEventModal);
+document.getElementById('btnCancelEvent')?.addEventListener('click', closeEventModal);
+
+document.getElementById('btnSaveEvent')?.addEventListener('click', async () => {
+  const id       = document.getElementById('eventId').value;
+  const subject  = document.getElementById('eventSubject').value.trim();
+  const start    = document.getElementById('eventStart').value;
+  const end      = document.getElementById('eventEnd').value;
+  const location = document.getElementById('eventLocation').value.trim();
+  const body     = document.getElementById('eventBody').value.trim();
+
+  if (!subject) { alert('Inserisci il titolo'); return; }
+  if (!start)   { alert('Inserisci la data di inizio'); return; }
+
+  function toLocalISO(dtStr) {
+    if (!dtStr) return '';
+    const clean = dtStr.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
+    return clean.length === 16 ? clean + ':00' : clean;
+  }
+
+  const payload = {
+    subject,
+    start:     toLocalISO(start),
+    end:       toLocalISO(end || start),
+    location:  location || '',
+    body:      body || '',
+    attendees: _attendees,
+  };
+  console.log('[CAL] Payload:', JSON.stringify(payload));
+
+  try {
+    if (id) {
+      const url = `${API}/calendar/${encodeURIComponent(id)}` + (_activeAccountId ? `?account_id=${_activeAccountId}` : '');
+      const r = await fetch(url, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    } else {
+      const urlPost = `${API}/calendar` + (_activeAccountId ? `?account_id=${_activeAccountId}` : '');
+      const r = await fetch(urlPost, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    }
+    closeEventModal();
+    await loadEvents();
+  } catch(err) { alert('Errore salvataggio: ' + err.message); }
+});
+
+document.getElementById('btnDeleteEvent')?.addEventListener('click', async () => {
+  const id = document.getElementById('eventId').value;
+  if (!id || !confirm('Eliminare questo evento?')) return;
+  try {
+    const urlDel = `${API}/calendar/${encodeURIComponent(id)}` + (_activeAccountId ? `?account_id=${_activeAccountId}` : '');
+    await fetch(urlDel, { method:'DELETE' });
+    closeEventModal();
+    await loadEvents();
+  } catch(err) { alert('Errore: ' + err.message); }
+});
+
+// ── FILTRI UPCOMING ──
+['btnFilterAll','btnFilterToday','btnFilterWeek'].forEach(id => {
+  document.getElementById(id)?.addEventListener('click', () => {
+    _upcomingFilter = id === 'btnFilterAll' ? 'all' : id === 'btnFilterToday' ? 'today' : 'week';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id)?.classList.add('active');
+    if (_upcomingFilter !== 'all') {
+      _currentYear  = new Date().getFullYear();
+      _currentMonth = new Date().getMonth();
+      renderCalendar();
+    }
+    renderUpcoming();
+  });
+});
+
+// ── NAVIGAZIONE ──
+document.getElementById('btnPrevMonth')?.addEventListener('click', () => {
+  _currentMonth--;
+  if (_currentMonth < 0) { _currentMonth = 11; _currentYear--; }
+  renderCalendar();
+});
+document.getElementById('btnNextMonth')?.addEventListener('click', () => {
+  _currentMonth++;
+  if (_currentMonth > 11) { _currentMonth = 0; _currentYear++; }
+  renderCalendar();
+});
+document.getElementById('btnToday')?.addEventListener('click', () => {
+  _currentYear  = new Date().getFullYear();
+  _currentMonth = new Date().getMonth();
+  renderCalendar();
+});
+document.getElementById('btnAddEvent')?.addEventListener('click', () => openEventModal());
+document.getElementById('btnRefreshCal')?.addEventListener('click', () => loadEvents());
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault();
+    loadEvents();
+  }
+});
+
+// ── WINDOW CONTROLS ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnClose')?.addEventListener('click',   () => window.calendarWindowAPI?.close());
+  document.getElementById('btnMin')?.addEventListener('click',     () => window.calendarWindowAPI?.minimize());
+  document.getElementById('btnMax')?.addEventListener('click',     () => window.calendarWindowAPI?.maximize());
+  loadEvents();
+});
+
+// ── MENU CONTESTO (tasto destro su un evento) ──
+let _ctxEventId = null;
+
+function showCtxMenu(x, y, eventId) {
+  _ctxEventId = eventId;
+  const menu = document.getElementById('ctxMenu');
+  menu.classList.add('visible');
+  // Posiziona evitando di uscire dallo schermo
+  const rect = menu.getBoundingClientRect();
+  const px = (x + rect.width  > window.innerWidth)  ? x - rect.width  : x;
+  const py = (y + rect.height > window.innerHeight) ? y - rect.height : y;
+  menu.style.left = Math.max(4, px) + 'px';
+  menu.style.top  = Math.max(4, py) + 'px';
+}
+
+function hideCtxMenu() {
+  document.getElementById('ctxMenu').classList.remove('visible');
+  _ctxEventId = null;
+}
+
+async function deleteEventById(id) {
+  if (!id) return;
+  if (!confirm('Eliminare questo evento?')) return;
+  try {
+    const urlDel = `${API}/calendar/${encodeURIComponent(id)}` + (_activeAccountId ? `?account_id=${_activeAccountId}` : '');
+    await fetch(urlDel, { method:'DELETE' });
+    await loadEvents();
+  } catch(err) { alert('Errore eliminazione: ' + err.message); }
+}
+
+function followUpEvent(ev) {
+  if (!ev) return;
+  // Nuovo evento a +7 giorni rispetto all'originale, stessa ora
+  const baseStr = ev.start?.dateTime || ev.start?.date;
+  const base = baseStr ? new Date(baseStr) : new Date();
+  const followDate = new Date(base.getTime() + 7*24*60*60*1000);
+  openEventModal(null, followDate);
+  // Pre-compila titolo e partecipanti
+  const subj = ev.subject || ev.title || '';
+  document.getElementById('eventSubject').value = subj.startsWith('Follow up') ? subj : `Follow up: ${subj}`;
+  _attendees = (ev.attendees || []).map(a =>
+    typeof a === 'string' ? a : (a?.emailAddress?.address || a?.email || '')
+  ).filter(Boolean);
+  renderAttendees();
+}
+
+document.getElementById('ctxMenu').addEventListener('click', (e) => {
+  const item = e.target.closest('.ctx-item');
+  if (!item) return;
+  const action = item.dataset.action;
+  const id = _ctxEventId;                          // cattura prima di nascondere
+  const ev = _events.find(x => x.id === id);
+  hideCtxMenu();
+  if (action === 'edit')          { if (ev) openEventModal(ev); }
+  else if (action === 'delete')   { deleteEventById(id); }
+  else if (action === 'followup') { if (ev) followUpEvent(ev); }
+});
+
+// chiudi il menu su click fuori / scroll / esc
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#ctxMenu')) hideCtxMenu();
+});
+document.addEventListener('scroll', hideCtxMenu, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu(); });
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>

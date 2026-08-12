@@ -1,0 +1,15 @@
+{
+  "name": "ade-mail",
+  "version": "1.0.0",
+  "description": "ADE Mail — AI Email Assistant",
+  "main": "main.js",
+  "author": {
+    "name": "Adecubed",
+    "email": "info@adecubed.com"
+  },
+  "homepage": "https://adecubed.com",
+  "dependencies": {
+    "better-sqlite3": "^9.6.0",
+    "electron-updater": "^6.8.3"
+  }
+}

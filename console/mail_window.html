@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>ADE Mail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent: #eeb9dd;
+    --accent-l: #b0c7f4;
+    --font: 'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font);
+    background: linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    width:100vw; height:100vh;
+    overflow:hidden; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    border-radius:8px;
+  }
+
+  .titlebar{
+    height:34px;flex-shrink:0;
+    display:flex;align-items:center;padding:0 14px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    -webkit-app-region:drag;user-select:none;
+  }
+  .tb-title{font-size:11px;color:rgba(0,0,0,0.75);font-weight:500;flex:1;}
+  .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
+  .tb-btn{
+    width:28px;height:28px;border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;cursor:pointer;
+    color:rgba(0,0,0,0.6);
+    transition:all 0.15s;flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tb-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
+  .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
+  .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
+
+  .mail-header {
+    padding:16px 22px 12px;
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    background:rgba(255,255,255,0.95);
+    flex-shrink:0;
+  }
+  .mail-subject { font-size:18px; font-weight:600; color:rgba(0,0,0,0.82); letter-spacing:-0.3px; margin-bottom:5px; }
+  .mail-from    { font-size:12px; color:rgba(0,0,0,0.45); margin-bottom:8px; }
+  .mail-from strong { color:rgba(0,0,0,0.65); }
+
+  .mail-actions { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .btn {
+    padding:5px 11px; border-radius:8px;
+    font-size:11px; font-weight:500; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s;
+    background:rgba(255,255,255,0.95);
+    border:1.5px solid rgba(0,0,0,0.75);
+    color:rgba(0,0,0,0.7);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .btn-danger { background:rgba(255,255,255,0.95); border-color:rgba(220,38,38,0.75); color:#dc2626; box-shadow:0 4px 14px rgba(220,38,38,0.35); }
+  .btn-danger:hover { background:rgba(220,38,38,0.12); box-shadow:0 4px 16px rgba(220,38,38,0.6); border-color:rgba(220,38,38,0.9); }
+
+  .ai-summary {
+    margin:10px 22px 0; padding:9px 12px;
+    background:rgba(255,255,255,0.95); border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:10px; font-size:11px; color:rgba(0,0,0,0.75);
+    display:flex; gap:7px; align-items:flex-start; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+
+  .attachments { padding:6px 22px; display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0; }
+  .attach-chip {
+    display:inline-flex; align-items:center; gap:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:20px; padding:3px 10px;
+    font-size:10.5px; color:rgba(0,0,0,0.6);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    text-decoration:none; cursor:pointer; transition:all 0.15s;
+  }
+  .attach-chip:hover { box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .attach-chip { user-select:none; }
+
+  .attach-menu {
+    position:fixed; z-index:9999; min-width:160px;
+    background:#fff; border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,0.35);
+    padding:5px; font-family:inherit;
+  }
+  .attach-menu-item {
+    padding:8px 12px; border-radius:7px; font-size:13px;
+    color:rgba(0,0,0,0.8); cursor:pointer; user-select:none;
+    transition:background 0.12s; display:flex; align-items:center; gap:8px;
+  }
+  .attach-menu-item:hover { background:linear-gradient(135deg,rgba(238,185,221,0.35),rgba(176,199,244,0.35)); }
+
+  .mail-body { flex:1; overflow:hidden; position:relative; }
+  .mail-body iframe { width:100%; height:100%; border:none; display:block; background:white; }
+  .mail-body-text {
+    flex:1; overflow-y:auto; padding:18px 22px;
+    font-size:13.5px; line-height:1.75; color:rgba(0,0,0,0.65);
+  }
+  .mail-body-text p { margin-bottom:10px; }
+
+  .mail-footer {
+    flex-shrink:0; padding:10px 16px;
+    border-top:1px solid rgba(0,0,0,0.07);
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+  }
+  .reply-trigger {
+    width:100%; display:flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,0.5); border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:16px; padding:9px 14px;
+    color:rgba(0,0,0,0.6); font-size:12.5px; font-family:var(--font);
+    cursor:pointer; text-align:left; transition:all 0.18s;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .reply-trigger:hover { box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .reply-icon { font-size:14px; color:rgba(0,0,0,0.6); }
+
+  .loading { flex:1; display:flex; align-items:center; justify-content:center; opacity:0.3; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title" id="winTitle" data-i18n="mail_generic">ADE Mail</div>
+  <div class="tb-buttons">
+    <button class="tb-btn" id="btnDockBack" data-i18n-title="dock_back" title="Riporta nella console">⤢</button>
+    <button class="tb-btn minimize" id="btnMin" data-i18n-title="hide" title="Nascondi">▽</button>
+    <button class="tb-btn maximize" id="btnMax" data-i18n-title="fullscreen" title="Tutto schermo">□</button>
+    <button class="tb-btn close"   id="btnClose" data-i18n-title="close" title="Chiudi">✕</button>
+  </div>
+</div>
+
+<div id="app" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
+  <div class="loading" id="loading" data-i18n="loading">Caricamento…</div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8002';
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}) +
+           ', ' + dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  } catch { return d; }
+}
+
+async function apiJson(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// Ricevi dati dalla finestra principale
+window.addEventListener('message', async (e) => {
+  if (e.data?.type === 'load-mail') {
+    await loadMail(e.data.id, e.data.folder, e.data.account_id);
+  }
+});
+
+// Electron IPC via preload
+if (window.mailWindowAPI) {
+  window.mailWindowAPI.onLoadMail((data) => {
+    loadMail(data.id, data.folder, data.account_id);
+  });
+}
+
+async function loadMail(id, folder, accountId) {
+  // Salva per dockBack
+  window._mailId        = id;
+  window._mailFolder    = folder;
+  window._mailAccountId = accountId;
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="loading">${window.i18n?window.i18n.t("loading"):"Caricamento…"}</div>`;
+
+  try {
+    let url = `${API}/mail/${encodeURIComponent(id)}`;
+    const params = [];
+    if (accountId) params.push(`account_id=${accountId}`);
+    if (folder)    params.push(`folder=${encodeURIComponent(folder)}`);
+    if (params.length) url += '?' + params.join('&');
+
+    const msg = await apiJson(url);
+
+    const sender     = msg.from?.emailAddress?.address || '?';
+    const senderName = msg.from?.emailAddress?.name || sender;
+    const subject    = msg.subject || '(nessun oggetto)';
+    const rawHtml    = msg.body?.content || '';
+    const bodyType   = (msg.body?.contentType||'').toLowerCase();
+    const isHtml     = bodyType === 'html' || rawHtml.trimStart().startsWith('<');
+    const bodyText   = msg.body_text || msg.bodyPreview || '';
+    console.log('[DBG] isHtml:', isHtml, '| body_text len:', bodyText.length, '| rawHtml len:', rawHtml.length);
+    console.log('[DBG] body_text inizio:', bodyText.slice(0,200));
+    const attachments = msg.attachments || [];
+
+    // Titolo finestra
+    document.title = subject;
+    document.getElementById('winTitle').textContent = subject;
+
+    // Costruisci UI
+    let html = '';
+
+    // Header
+    html += `<div class="mail-header">
+      <div class="mail-subject">${esc(subject)}</div>
+      <div class="mail-from">${window.i18n?window.i18n.t("from_label"):"Da"}: <strong>${esc(senderName)}</strong> &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime||msg.sentDateTime))}</div>
+      <div class="mail-actions">
+        <button class="btn" id="btnAscolta">◉ <span data-i18n="listen_cap">Ascolta</span></button>
+        <button class="btn btn-reply" id="btnReply">↩ <span data-i18n="reply_cap">Rispondi</span></button>
+        <button class="btn" id="btnForward">↪ <span data-i18n="forward_cap">Inoltra</span></button>
+        <button class="btn" id="btnSummary">📋 <span data-i18n="summarize_cap">Riassumi</span></button>
+        <button class="btn" id="btnSpam">🚫 <span data-i18n="spam_cap">Spam</span></button>
+        <button class="btn btn-danger" id="btnDelete">🗑 <span data-i18n="delete_cap">Elimina</span></button>
+      </div>
+    </div>`;
+
+    // AI summary placeholder
+    html += `<div class="ai-summary" id="aiSummary" style="display:none">
+      <span style="font-size:13px;flex-shrink:0">✦</span>
+      <span id="aiSummaryText"></span>
+    </div>`;
+
+    // Allegati
+    if (attachments.length) {
+      const chips = attachments.map((a, idx) => {
+        return `<div class="attach-chip" data-att-index="${idx}" title="Click: apri • Tasto destro: opzioni">📎 ${esc(a.name)} (${Math.round((a.size||0)/1024)}KB)</div>`;
+      }).join('');
+      html += `<div class="attachments">${chips}</div>`;
+    }
+
+    // Corpo
+    html += `<div class="mail-body" id="mailBodyWrap"></div>`;
+
+    // Footer reply
+    html += `<div class="mail-footer">
+      <button class="reply-trigger" id="btnReplyTrigger">
+        <span class="reply-icon">↩</span>
+        <span>${window.i18n?window.i18n.t("reply_to"):"Rispondi a"} ${esc(senderName.split(' ')[0])}…</span>
+      </button>
+    </div>`;
+
+    app.innerHTML = html;
+    // i18n: i bottoni sono appena stati creati, applica la lingua corrente
+    if (window.i18n) window.i18n.applyLang();
+
+    // ── Allegati: click = apri, tasto destro = menu (apri / salva con nome) ──
+    async function fetchAttachmentBytes(att) {
+      let aUrl = `${API}/mail/${encodeURIComponent(id)}/attachment/${encodeURIComponent(att.name)}`;
+      const ps = [];
+      if (accountId) ps.push(`account_id=${accountId}`);
+      if (folder)    ps.push(`folder=${encodeURIComponent(folder)}`);
+      if (ps.length) aUrl += '?' + ps.join('&');
+      const r = await fetch(aUrl);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const buf = await r.arrayBuffer();
+      return new Uint8Array(buf);
+    }
+
+    async function openAttachment(att) {
+      try {
+        const bytes = await fetchAttachmentBytes(att);
+        const res = await window.mailWindowAPI?.openAttachment(att.name, bytes);
+        if (res && !res.ok && !res.canceled) alert('Impossibile aprire: ' + (res.error || 'errore'));
+      } catch (e) { alert('Errore apertura allegato: ' + e.message); }
+    }
+
+    async function saveAttachmentAs(att) {
+      try {
+        const bytes = await fetchAttachmentBytes(att);
+        const res = await window.mailWindowAPI?.saveAttachmentAs(att.name, bytes);
+        if (res && !res.ok && !res.canceled) alert('Impossibile salvare: ' + (res.error || 'errore'));
+      } catch (e) { alert('Errore salvataggio allegato: ' + e.message); }
+    }
+
+    document.querySelectorAll('.attach-chip[data-att-index]').forEach(chip => {
+      const att = attachments[parseInt(chip.dataset.attIndex, 10)];
+      if (!att) return;
+      chip.addEventListener('click', () => openAttachment(att));
+      chip.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showAttachMenu(e.clientX, e.clientY, att);
+      });
+    });
+
+    // Menu contesto allegato
+    function showAttachMenu(x, y, att) {
+      hideAttachMenu();
+      const menu = document.createElement('div');
+      menu.className = 'attach-menu';
+      menu.id = 'attachMenu';
+      menu.innerHTML = `
+        <div class="attach-menu-item" data-act="open">📂 Apri</div>
+        <div class="attach-menu-item" data-act="save">💾 Salva con nome…</div>`;
+      document.body.appendChild(menu);
+      const rect = menu.getBoundingClientRect();
+      const px = (x + rect.width  > window.innerWidth)  ? x - rect.width  : x;
+      const py = (y + rect.height > window.innerHeight) ? y - rect.height : y;
+      menu.style.left = Math.max(4, px) + 'px';
+      menu.style.top  = Math.max(4, py) + 'px';
+      menu.addEventListener('click', (ev) => {
+        const it = ev.target.closest('.attach-menu-item');
+        if (!it) return;
+        const act = it.dataset.act;
+        hideAttachMenu();
+        if (act === 'open') openAttachment(att);
+        else if (act === 'save') saveAttachmentAs(att);
+      });
+    }
+    function hideAttachMenu() {
+      document.getElementById('attachMenu')?.remove();
+    }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#attachMenu')) hideAttachMenu();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideAttachMenu(); });
+
+    // Popola corpo
+    const bodyWrap = document.getElementById('mailBodyWrap');
+    if (isHtml && rawHtml) {
+      const iframe = document.createElement('iframe');
+      iframe.sandbox = 'allow-same-origin allow-popups';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;background:white';
+      bodyWrap.appendChild(iframe);
+      const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      // Neutralizza le immagini inline "cid:" (loghi/firme non risolvibili dall'iframe):
+      // evita errori ERR_UNKNOWN_URL_SCHEME e i riquadri rotti.
+      const safeHtml = rawHtml.replace(
+        /(<img[^>]*?\ssrc=)(["'])\s*cid:[^"']*\2/gi,
+        '$1$2#$2 style="display:none"'
+      );
+      iDoc.open(); iDoc.write(safeHtml); iDoc.close();
+      // Intercetta link
+      setTimeout(() => {
+        try {
+          iDoc.querySelectorAll('a[href]').forEach(a => {
+            a.addEventListener('click', e => {
+              const href = a.getAttribute('href');
+              if (href && href.startsWith('http')) {
+                e.preventDefault();
+                if (window.mailWindowAPI?.openExternal) window.mailWindowAPI.openExternal(href);
+              }
+            });
+          });
+        } catch {}
+      }, 300);
+    } else {
+      const div = document.createElement('div');
+      div.className = 'mail-body-text';
+      div.innerHTML = (bodyText||'(messaggio vuoto)').replace(/\n/g,'<br>');
+      bodyWrap.appendChild(div);
+    }
+
+    // Bottoni azioni
+    document.getElementById('btnClose2')?.addEventListener('click', () => window.mailWindowAPI?.close());
+
+    // Ascolta TTS
+    const ttsUrl = `${API}/mail/${encodeURIComponent(id)}/tts${accountId ? '?account_id=' + accountId : ''}`;
+    const audio = new Audio(ttsUrl);
+    let isPlaying = false;
+    document.getElementById('btnAscolta')?.addEventListener('click', () => {
+      const btn = document.getElementById('btnAscolta');
+      if (isPlaying) {
+        audio.pause(); audio.currentTime = 0;
+        btn.textContent = '◉ ' + (window.i18n?window.i18n.t('listen_cap'):'Ascolta'); isPlaying = false;
+      } else {
+        audio.play(); btn.textContent = '◻ Stop'; isPlaying = true;
+      }
+    });
+    audio.onended = () => {
+      const btn = document.getElementById('btnAscolta');
+      if (btn) btn.textContent = '◉ ' + (window.i18n?window.i18n.t('listen_cap'):'Ascolta');
+      isPlaying = false;
+    };
+
+    document.getElementById('btnReply')?.addEventListener('click', openReply);
+    document.getElementById('btnReplyTrigger')?.addEventListener('click', openReply);
+    document.getElementById('btnForward')?.addEventListener('click', openForward);
+
+    document.getElementById('btnSummary')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btnSummary');
+      btn.textContent = '…';
+      try {
+        let sUrl = `${API}/mail/${encodeURIComponent(id)}/summary`;
+        if (accountId) sUrl += `?account_id=${accountId}`;
+        if (folder) sUrl += `${accountId?'&':'?'}folder=${encodeURIComponent(folder)}`;
+        const data = await apiJson(sUrl);
+        const summaryEl = document.getElementById('aiSummary');
+        const textEl    = document.getElementById('aiSummaryText');
+        if (summaryEl && textEl) {
+          textEl.textContent = data.summary || data.text || '';
+          summaryEl.style.display = 'flex';
+        }
+      } catch(e) { btn.textContent = 'Errore'; }
+      btn.textContent = '📋 ' + (window.i18n?window.i18n.t('summarize_cap'):'Riassumi');
+    });
+
+    document.getElementById('btnSpam')?.addEventListener('click', async () => {
+      if (!confirm(window.i18n?window.i18n.t('move_to_spam'):'Spostare in spam?')) return;
+      try {
+        await fetch(`${API}/mail/${encodeURIComponent(id)}/spam?account_id=${accountId}`, {method:'POST'});
+        window.mailWindowAPI?.close();
+      } catch {}
+    });
+
+    document.getElementById('btnDelete')?.addEventListener('click', async () => {
+      if (!confirm(window.i18n?window.i18n.t('delete_this_mail'):'Eliminare questa mail?')) return;
+      try {
+        await fetch(`${API}/mail/${encodeURIComponent(id)}?account_id=${accountId}`, {method:'DELETE'});
+        window.mailWindowAPI?.close();
+      } catch {}
+    });
+
+    function openReply() {
+      if (window.mailWindowAPI?.openReply) {
+        window.mailWindowAPI.openReply({
+          id, folder, account_id: accountId,
+          sender, senderName, subject,
+        });
+      }
+    }
+    function openForward() {
+      if (window.mailWindowAPI?.openForward) {
+        const fwdSubject = /^fwd:/i.test(subject) ? subject : `Fwd: ${subject || '(nessun oggetto)'}`;
+        const dateText = msg.receivedDateTime || msg.sentDateTime || '';
+        // Estrai testo leggibile: se la mail è HTML, strippa i tag; altrimenti usa il testo
+        let cleanBody = bodyText || '';
+        if (isHtml && rawHtml) {
+          const tmp = document.createElement('div');
+          tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:600px;';
+          tmp.innerHTML = rawHtml;
+          tmp.querySelectorAll('style, script, head, meta, link').forEach(el => el.remove());
+          document.body.appendChild(tmp);
+          cleanBody = (tmp.innerText || tmp.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+          document.body.removeChild(tmp);
+        }
+        const fwdBody = [
+          '', '',
+          '---------- Messaggio inoltrato ----------',
+          `Da: ${senderName}${sender ? ` <${sender}>` : ''}`,
+          `Data: ${dateText}`,
+          `Oggetto: ${subject || '(nessun oggetto)'}`,
+          '',
+          cleanBody
+        ].join('\n');
+        window.mailWindowAPI.openForward({
+          id, folder, account_id: accountId,
+          sender, senderName, subject,
+          mode: 'forward',
+          forward_to: '',
+          forward_subject: fwdSubject,
+          forward_body: fwdBody,
+          forward_attachments: (msg.attachments || []).map(a => a.name).filter(Boolean),
+          forward_src_id: id,
+          forward_src_folder: folder,
+          forward_src_account: accountId,
+        });
+      }
+    }
+
+  } catch(e) {
+    app.innerHTML = `<div class="loading">${window.i18n?window.i18n.t("error"):"Errore"}: ${esc(String(e))}</div>`;
+  }
+}
+
+// Bottoni finestra
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnClose')?.addEventListener('click', () => window.mailWindowAPI?.close());
+  document.getElementById('btnDockBack')?.addEventListener('click', () => {
+    if (window.mailWindowAPI?.dockBack) {
+      // Passa id, folder, account_id alla console
+      const id        = window._mailId;
+      const folder    = window._mailFolder;
+      const accountId = window._mailAccountId;
+      window.mailWindowAPI.dockBack({ id, folder, account_id: accountId });
+    }
+  });
+  document.getElementById('btnMin')?.addEventListener('click',   () => window.mailWindowAPI?.minimize());
+  document.getElementById('btnMax')?.addEventListener('click',   () => window.mailWindowAPI?.maximize());
+});
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>
