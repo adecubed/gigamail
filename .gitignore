@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 .env
+NOTES.dev.md
 *.db
 *.token*
 .token_cache.json
