@@ -19,6 +19,7 @@ import mail_memory
 import ms_calendar
 import observer
 import file_extractor
+import identity_reader
 from mcp.server import MCPServer
 
 from ade_mail_agent import policy
@@ -63,6 +64,35 @@ def get_identity(account_id: Optional[int] = None) -> dict:
     if not aid:
         return {}
     return core_accounts.get_identity(aid)
+
+
+def _identity_paths(account_id: Optional[int]) -> list[str]:
+    aid = account_id or (core_accounts.get_active_account() or {}).get("id")
+    if not aid:
+        return []
+    return core_accounts.get_identity(aid).get("file_paths") or []
+
+
+@mcp.tool()
+def list_knowledge_files(account_id: Optional[int] = None) -> list[dict]:
+    """File di conoscenza che l'utente ha collegato all'account (listini,
+    condizioni, schede prodotto...). Usali come fonte per rispondere alle
+    mail: le informazioni che ti servono spesso sono qui, non nel prompt."""
+    return identity_reader.list_all_files(_identity_paths(account_id))
+
+
+@mcp.tool()
+def read_knowledge_file(name: str, account_id: Optional[int] = None) -> dict:
+    """Legge il TESTO di un file di conoscenza per nome (match parziale).
+    Accede SOLO ai file/cartelle registrati dall'utente nell'identità
+    dell'account, mai al resto del filesystem."""
+    matches = identity_reader.find_files_by_names(_identity_paths(account_id), [name])
+    if not matches:
+        return {"error": f"Nessun file registrato corrisponde a '{name}'. "
+                         "Usa list_knowledge_files per l'elenco."}
+    f = matches[0]
+    text, kind = file_extractor.extract_text(f["path"], original_filename=f["name"])
+    return {"name": f["name"], "kind": kind, "text": text}
 
 
 @mcp.tool()

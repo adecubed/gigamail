@@ -101,6 +101,105 @@ def cmd_accounts_remove(args) -> int:
     return 0
 
 
+def _resolve_account_id(account_id):
+    import accounts as core_accounts
+    if account_id:
+        return account_id
+    active = core_accounts.get_active_account()
+    return active["id"] if active else None
+
+
+def cmd_identity_show(args) -> int:
+    import accounts as core_accounts
+    aid = _resolve_account_id(args.account_id)
+    if not aid:
+        print("Nessun account. Usa 'login' o 'accounts add-imap'.")
+        return 1
+    ident = core_accounts.get_identity(aid)
+    print(f"Identita account {aid}:")
+    for k in ("who_am_i", "what_i_do", "tone", "key_info"):
+        print(f"  {k}: {ident.get(k) or '(vuoto)'}")
+    paths = ident.get("file_paths") or []
+    print(f"  file di conoscenza ({len(paths)}):")
+    for p in paths:
+        print(f"    - {p}")
+    return 0
+
+
+def cmd_identity_set(args) -> int:
+    import accounts as core_accounts
+    aid = _resolve_account_id(args.account_id)
+    if not aid:
+        print("Nessun account.")
+        return 1
+    ident = core_accounts.get_identity(aid)
+    print("Invio vuoto = mantieni il valore attuale.\n")
+    fields = {}
+    for key, label in (
+        ("who_am_i", "Chi sono (es. 'Simone, titolare di ...')"),
+        ("what_i_do", "Cosa faccio (attivita, servizi)"),
+        ("tone", "Tono delle risposte (es. formale, diretto)"),
+        ("key_info", "Info chiave (orari, condizioni, note ricorrenti)"),
+    ):
+        current = ident.get(key) or ""
+        val = input(f"{label}\n  [{current[:60]}]: ").strip()
+        fields[key] = val or current
+    core_accounts.set_identity(aid, file_paths=ident.get("file_paths") or [], **fields)
+    print("Identita salvata.")
+    return 0
+
+
+def cmd_identity_add_file(args) -> int:
+    import os
+    import accounts as core_accounts
+    aid = _resolve_account_id(args.account_id)
+    if not aid:
+        print("Nessun account.")
+        return 1
+    path = os.path.abspath(args.path)
+    if not os.path.exists(path):
+        print(f"Percorso inesistente: {path}")
+        return 1
+    ident = core_accounts.get_identity(aid)
+    paths = ident.get("file_paths") or []
+    if path in paths:
+        print("Gia registrato.")
+        return 0
+    paths.append(path)
+    core_accounts.set_identity(
+        aid, who_am_i=ident.get("who_am_i") or "",
+        what_i_do=ident.get("what_i_do") or "", tone=ident.get("tone") or "",
+        key_info=ident.get("key_info") or "", file_paths=paths,
+    )
+    kind = "cartella" if os.path.isdir(path) else "file"
+    print(f"Registrato ({kind}): {path}")
+    print("L'agente ora puo leggerlo con list_knowledge_files / read_knowledge_file.")
+    return 0
+
+
+def cmd_identity_remove_file(args) -> int:
+    import os
+    import accounts as core_accounts
+    aid = _resolve_account_id(args.account_id)
+    if not aid:
+        print("Nessun account.")
+        return 1
+    ident = core_accounts.get_identity(aid)
+    paths = ident.get("file_paths") or []
+    target = os.path.abspath(args.path)
+    remaining = [p for p in paths if p != target and p != args.path]
+    if len(remaining) == len(paths):
+        print("Percorso non trovato tra quelli registrati (usa 'identity show').")
+        return 1
+    core_accounts.set_identity(
+        aid, who_am_i=ident.get("who_am_i") or "",
+        what_i_do=ident.get("what_i_do") or "", tone=ident.get("tone") or "",
+        key_info=ident.get("key_info") or "", file_paths=remaining,
+    )
+    print("Rimosso.")
+    return 0
+
+
 def cmd_index(args) -> int:
     import accounts as core_accounts
     import mail_memory
@@ -142,6 +241,23 @@ def main() -> int:
     p_rm = acc_sub.add_parser("remove")
     p_rm.add_argument("account_id", type=int)
     p_rm.set_defaults(fn=cmd_accounts_remove)
+
+    p_id = sub.add_parser("identity")
+    id_sub = p_id.add_subparsers(dest="subcommand", required=True)
+    p_show = id_sub.add_parser("show")
+    p_show.add_argument("account_id", type=int, nargs="?", default=None)
+    p_show.set_defaults(fn=cmd_identity_show)
+    p_set = id_sub.add_parser("set")
+    p_set.add_argument("account_id", type=int, nargs="?", default=None)
+    p_set.set_defaults(fn=cmd_identity_set)
+    p_addf = id_sub.add_parser("add-file")
+    p_addf.add_argument("path")
+    p_addf.add_argument("--account-id", type=int, default=None, dest="account_id")
+    p_addf.set_defaults(fn=cmd_identity_add_file)
+    p_rmf = id_sub.add_parser("remove-file")
+    p_rmf.add_argument("path")
+    p_rmf.add_argument("--account-id", type=int, default=None, dest="account_id")
+    p_rmf.set_defaults(fn=cmd_identity_remove_file)
 
     p_idx = sub.add_parser("index")
     p_idx.add_argument("account_id", type=int, nargs="?", default=None)

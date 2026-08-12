@@ -24,7 +24,10 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `GET /accounts/active` | — (incluso in `list_accounts`) | — | Flag `active` per account |
 | `POST /accounts/active/{id}` | — | — | Non serve: ogni tool accetta `account_id` opzionale |
 | `DELETE /accounts/{id}` | — | ADMIN | Solo CLI: `ade-mail-agent accounts remove` |
-| `GET/POST /accounts/{id}/identity` | `get_identity` | READ | Contesto "chi sono / cosa faccio" utile all'agente per scrivere bozze |
+| `GET /accounts/{id}/identity` | `get_identity` | READ | Contesto "chi sono / cosa faccio / tono" utile all'agente per scrivere bozze |
+| `POST /accounts/{id}/identity` | — | ADMIN | Solo CLI: `ade-mail-agent identity set` (l'agente legge l'identità, non la modifica: una mail ostile non può avvelenarla) |
+| `GET /accounts/{id}/identity/files` | `list_knowledge_files` | READ | File di conoscenza registrati dall'utente (listini, condizioni, schede) |
+| lettura file identity | `read_knowledge_file` | READ | Estrae il testo di un file registrato. Whitelist = SOLO i percorsi registrati via CLI (`identity add-file`), mai il resto del filesystem |
 | `POST /accounts/imap` | — | ADMIN | Solo CLI: `ade-mail-agent accounts add-imap` |
 | `GET /accounts/providers` | — | ADMIN | Preset provider dentro la CLI |
 | `GET /auth/status` | `auth_status` | READ | Stato token per account (valido/scaduto), mai il token stesso |
@@ -110,11 +113,13 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 
 ---
 
-## Riepilogo tool esposti (20)
+## Riepilogo tool esposti (23 implementati)
 
-**READ (13):** `list_accounts`, `auth_status`, `get_identity`, `search_contacts`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `list_followup_needed`, `memory_stats`, `observer_context`
+**READ (14):** `list_accounts`, `get_identity`, `list_knowledge_files`, `read_knowledge_file`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `observer_context`, `memory_stats`, `list_events`
 **WRITE_SAFE (3):** `mark_read`, `move_message`, `create_folder`
-**DANGEROUS (8, due fasi):** `send_mail`, `reply_mail`, `delete_message`, `mark_spam`, `delete_folder`, `create_event`, `update_event`, `delete_event`
+**DANGEROUS (6, due fasi):** `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`
+
+In mappa ma non ancora implementati: `auth_status`, `search_contacts`, `list_followup_needed` (READ), `mark_spam`, `update_event` (DANGEROUS).
 
 **Solo CLI (mai MCP):** login/logout Microsoft, add/remove account IMAP, setup CalDAV, indicizzazione, masking config, cancellazione dati.
 Razionale: le credenziali non transitano mai nel canale agente; un prompt injection in una mail non può aggiungere account, esfiltrare token o riconfigurare il sistema.
