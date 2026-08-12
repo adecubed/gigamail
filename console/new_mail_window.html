@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>Nuova mail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent:#eeb9dd; --accent-l:#b0c7f4;
+    --font:'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:var(--font);
+    background:rgba(255,255,255,0.97);
+    width:100vw;height:100vh;
+    overflow:hidden;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    border-radius:8px;
+  }
+  .titlebar{
+    height:34px;flex-shrink:0;
+    display:flex;align-items:center;padding:0 14px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1.5px solid rgba(0,0,0,0.75);
+    -webkit-app-region:drag;user-select:none;
+  }
+  .tb-title{font-size:11px;color:rgba(0,0,0,0.6);font-weight:600;flex:1;}
+  .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
+  .tb-btn{
+    width:28px;height:28px;border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;cursor:pointer;
+    color:rgba(0,0,0,0.6);transition:all 0.15s;flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tb-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
+  .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
+  .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
+  .fields{
+    display:flex;flex-direction:column;
+    border-bottom:1.5px solid rgba(0,0,0,0.75);
+    background:rgba(255,255,255,0.95);flex-shrink:0;
+  }
+  .field-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(0,0,0,0.06);}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-size:11px;font-weight:700;color:rgba(0,0,0,0.75);width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
+  .field-input{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
+  .field-input::placeholder{color:rgba(0,0,0,0.28);}
+
+  /* ── BODY con drop zone ── */
+  .body-area{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
+  .body-textarea{
+    flex:1;background:rgba(255,255,255,0.95);border:none;outline:none;resize:none;
+    padding:14px 16px;font-size:12.5px;font-family:var(--font);
+    color:rgba(0,0,0,0.82);line-height:1.65;
+  }
+  .body-textarea::placeholder{color:rgba(0,0,0,0.28);}
+  .drop-overlay{
+    display:none;position:absolute;inset:0;
+    background:rgba(176,199,244,0.35);
+    border:2.5px dashed rgba(0,0,0,0.4);
+    border-radius:6px;z-index:10;
+    align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;color:rgba(0,0,0,0.55);
+    pointer-events:none;
+  }
+  .drop-overlay.visible{display:flex;}
+
+  .attachments{padding:0 14px 4px;display:flex;flex-wrap:wrap;gap:5px;}
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:20px;
+    padding:3px 9px;font-size:10.5px;color:rgba(0,0,0,0.6);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.3);font-size:12px;}
+  .attach-chip-rm:hover{color:#dc2626;}
+
+  .toolbar{
+    padding:8px 12px;flex-shrink:0;
+    border-top:1.5px solid rgba(0,0,0,0.75);
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    display:flex;align-items:center;gap:6px;
+    box-shadow:0 -4px 14px rgba(0,0,0,0.15);
+  }
+  .tool-btn{
+    padding:5px 10px;border-radius:8px;
+    background:rgba(255,255,255,0.8);border:1.5px solid rgba(0,0,0,0.75);
+    color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
+    cursor:pointer;transition:all 0.15s;box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tool-btn:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tool-btn.active{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
+
+  /* ── INSTRUCTION con drop zone ── */
+  .instruction-wrap{flex:1;min-width:0;position:relative;}
+  .instruction{
+    width:100%;background:rgba(255,255,255,0.7);
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
+    box-sizing:border-box;
+  }
+  .instruction::placeholder{color:rgba(0,0,0,0.3);}
+  .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
+  .ctx-badge{
+    display:none;position:absolute;top:-8px;right:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1px solid rgba(0,0,0,0.5);border-radius:10px;
+    padding:1px 7px;font-size:9px;color:rgba(0,0,0,0.6);
+    white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+  }
+  .ctx-badge.visible{display:block;}
+
+  .status{font-size:10.5px;color:rgba(0,0,0,0.4);font-family:monospace;padding:2px 4px;}
+  .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:160px;overflow-y:auto;}
+  .autocomplete-box.hidden{display:none;}
+  .autocomplete-item{padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .autocomplete-item:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);}
+  .fu-dropdown{
+    position:absolute;bottom:42px;left:0;background:white;
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:100;overflow:hidden;min-width:90px;display:none;
+  }
+  .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .fu-opt:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);}
+  .send-btn{
+    position:relative;padding:7px 18px;border-radius:20px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    color:rgba(0,0,0,0.7);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);white-space:nowrap;overflow:hidden;
+  }
+  .send-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .send-btn .btn-label{position:relative;z-index:1;}
+  .send-btn .circle-progress{
+    position:absolute;inset:0;border-radius:20px;
+    background:conic-gradient(rgba(0,0,0,0.18) var(--pct,0%), transparent 0%);
+  }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title" data-i18n="new_mail">Nuova mail</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin">▽</button>
+    <button class="tb-btn maximize" id="btnMax">□</button>
+    <button class="tb-btn close"   id="btnClose">✕</button>
+  </div>
+</div>
+
+<div class="fields">
+  <div class="field-row" style="position:relative;">
+    <span class="field-label" data-i18n="to_label">A:</span>
+    <input type="text" id="mailTo" class="field-input" data-i18n-ph="recipient_ph" placeholder="destinatario@email.it" autocomplete="off"/>
+    <div id="mailToAutocomplete" class="autocomplete-box hidden"></div>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="cc_label">CC:</span>
+    <input type="text" id="mailCc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="bcc_label">BCC:</span>
+    <input type="text" id="mailBcc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="subject_label">Oggetto:</span>
+    <input type="text" id="mailSubject" class="field-input" data-i18n-ph="subject_ph" placeholder="Oggetto…"/>
+  </div>
+</div>
+
+<div class="body-area" id="bodyAreaWrap">
+  <textarea id="mailBody" class="body-textarea" data-i18n-ph="new_mail_body_ph" placeholder="Scrivi la mail… (trascina file o immagini qui)"></textarea>
+  <div class="drop-overlay" id="bodyDropOverlay">📎 Rilascia per allegare</div>
+  <div class="attachments" id="attachmentsBox"></div>
+</div>
+
+<div class="toolbar">
+  <button class="tool-btn" id="btnAttach">📎</button>
+  <input type="file" id="fileInput" multiple style="display:none"/>
+  <div style="position:relative;">
+    <button class="tool-btn" id="btnFollowup" data-i18n-title="followup" title="Follow-up">📌</button>
+    <div class="fu-dropdown" id="followupDropdown">
+      <div class="fu-opt" data-h="0">✕ Nessuno</div>
+      <div class="fu-opt" data-h="24">24h</div>
+      <div class="fu-opt" data-h="48">48h</div>
+      <div class="fu-opt" data-h="72">72h</div>
+    </div>
+  </div>
+  <div class="instruction-wrap">
+    <span class="ctx-badge" id="ctxBadge"></span>
+    <input type="text" id="instruction" class="instruction" data-i18n-ph="ai_instruction_drag_ph" placeholder="Istruzione AI — trascina file per contesto…"/>
+  </div>
+  <button class="tool-btn" id="btnMask" data-i18n-title="mask_title" title="Maschera dati sensibili (CF, IBAN, email…)">🔒</button>
+  <button class="tool-btn" id="btnGenerate">⚡ <span data-i18n="generate">GENERA</span></button>
+  <span class="status" id="status"></span>
+  <button class="send-btn" id="btnSend">
+    <div class="circle-progress" id="sendCircle"></div>
+    <span class="btn-label" id="sendLabel" data-i18n="send">Invia ↑</span>
+  </button>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8002';
+const SEND_DELAY = 5000;
+let accountId = null;
+let attachments = [];
+let followupHours = 0;
+let sendTimer = null;
+let sendRafId = null;
+let instructionContext = '';
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+if (window.newMailWindowAPI) {
+  window.newMailWindowAPI.onLoadNewMail((data) => {
+    accountId = data.account_id || null;
+    if (data.to)      document.getElementById('mailTo').value      = data.to;
+    if (data.subject) document.getElementById('mailSubject').value = data.subject;
+    if (data.body)    document.getElementById('mailBody').value    = data.body;
+    document.getElementById('mailTo').focus();
+  });
+}
+
+document.getElementById('btnClose').addEventListener('click', () => window.newMailWindowAPI?.close());
+document.getElementById('btnMin').addEventListener('click',   () => window.newMailWindowAPI?.minimize());
+document.getElementById('btnMax').addEventListener('click',   () => window.newMailWindowAPI?.maximize());
+
+// ── ALLEGATI ──────────────────────────────────────────────────────────────────
+document.getElementById('btnAttach').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  for (const file of Array.from(e.target.files||[])) addFileAsAttachment(file);
+  e.target.value = '';
+});
+
+function isImage(file) { return file.type.startsWith('image/'); }
+
+function addFileAsAttachment(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    attachments.push({
+      name: file.name,
+      data_b64: ev.target.result.split(',')[1],
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      isImage: isImage(file),
+      dataUrl: isImage(file) ? ev.target.result : null,
+    });
+    renderAttachments();
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderAttachments() {
+  const box = document.getElementById('attachmentsBox');
+  box.innerHTML = attachments.map((a,i) => {
+    const preview = a.isImage && a.dataUrl
+      ? `<img src="${a.dataUrl}" alt="${esc(a.name)}"/>`
+      : '📎';
+    return `<span class="attach-chip">
+      ${preview} ${esc(a.name)} (${Math.round(a.size/1024)}KB)
+      <button class="attach-chip-rm" onclick="attachments.splice(${i},1);renderAttachments()">✕</button>
+    </span>`;
+  }).join('');
+}
+
+// ── DRAG & DROP SUL CORPO ──────────────────────────────────────────────────────
+const bodyWrap = document.getElementById('bodyAreaWrap');
+const bodyOverlay = document.getElementById('bodyDropOverlay');
+
+bodyWrap.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  bodyOverlay.classList.add('visible');
+});
+bodyWrap.addEventListener('dragleave', (e) => {
+  if (!bodyWrap.contains(e.relatedTarget)) bodyOverlay.classList.remove('visible');
+});
+bodyWrap.addEventListener('drop', (e) => {
+  e.preventDefault();
+  bodyOverlay.classList.remove('visible');
+  for (const file of Array.from(e.dataTransfer.files || [])) addFileAsAttachment(file);
+});
+
+// ── CTRL+V — INCOLLA IMMAGINI DAGLI APPUNTI ───────────────────────────────────
+document.getElementById('mailBody').addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        const ext = item.type.split('/')[1] || 'png';
+        const named = new File([file], `screenshot_${Date.now()}.${ext}`, { type: item.type });
+        addFileAsAttachment(named);
+      }
+    }
+  }
+});
+
+// ── DRAG & DROP SULL'ISTRUZIONE AI ────────────────────────────────────────────
+const instrEl  = document.getElementById('instruction');
+const ctxBadge = document.getElementById('ctxBadge');
+
+instrEl.addEventListener('dragover', (e) => { e.preventDefault(); instrEl.classList.add('drag-over'); });
+instrEl.addEventListener('dragleave', () => instrEl.classList.remove('drag-over'));
+instrEl.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  instrEl.classList.remove('drag-over');
+  const file = e.dataTransfer.files?.[0];
+  if (!file) return;
+  instrEl.placeholder = 'Estrazione testo…';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const r = await fetch(`${API}/office/upload`, { method: 'POST', body: formData });
+    const data = await r.json();
+    instructionContext = data.text || '';
+    ctxBadge.textContent = `📄 ${file.name}`;
+    ctxBadge.classList.add('visible');
+    instrEl.placeholder = 'Istruzione AI — trascina file per contesto…';
+  } catch(err) {
+    instrEl.placeholder = 'Errore estrazione — riprova';
+  }
+});
+ctxBadge.addEventListener('click', () => {
+  instructionContext = '';
+  ctxBadge.classList.remove('visible');
+  ctxBadge.textContent = '';
+});
+
+// ── FOLLOW-UP ─────────────────────────────────────────────────────────────────
+const btnFollowup      = document.getElementById('btnFollowup');
+const followupDropdown = document.getElementById('followupDropdown');
+btnFollowup.addEventListener('click', (e) => {
+  e.stopPropagation();
+  followupDropdown.style.display = followupDropdown.style.display === 'none' ? 'block' : 'none';
+});
+document.querySelectorAll('.fu-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    followupHours = parseInt(opt.dataset.h);
+    followupDropdown.style.display = 'none';
+    if (followupHours > 0) { btnFollowup.textContent = `📌 ${followupHours}h`; btnFollowup.classList.add('active'); }
+    else { btnFollowup.textContent = '📌'; btnFollowup.classList.remove('active'); }
+  });
+});
+document.addEventListener('click', () => { followupDropdown.style.display = 'none'; });
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
+const mailToInput = document.getElementById('mailTo');
+const mailToBox   = document.getElementById('mailToAutocomplete');
+async function fetchAddresses(q) {
+  try { return await (await fetch(`${API}/addresses?q=${encodeURIComponent(q)}`)).json(); } catch { return []; }
+}
+function currentToken(input) {
+  const parts = (input.value||'').split(/[;,]/);
+  return (parts[parts.length-1]||'').trim();
+}
+function applyAddress(email) {
+  const parts = (mailToInput.value||'').split(/[;,]/);
+  parts[parts.length-1] = ' '+email;
+  mailToInput.value = parts.map(p=>p.trim()).filter(Boolean).join('; ');
+  mailToBox.classList.add('hidden'); mailToBox.innerHTML = ''; mailToInput.focus();
+}
+mailToInput.addEventListener('input', async () => {
+  const q = currentToken(mailToInput);
+  if (!q.length) { mailToBox.classList.add('hidden'); return; }
+  const results = await fetchAddresses(q);
+  if (!results.length) { mailToBox.classList.add('hidden'); return; }
+  mailToBox.innerHTML = results.map(r =>
+    `<div class="autocomplete-item" data-email="${esc(r.email)}">${esc(r.name?r.name+' — ':'')}${esc(r.email)}</div>`
+  ).join('');
+  mailToBox.classList.remove('hidden');
+  mailToBox.querySelectorAll('.autocomplete-item').forEach(item => {
+    item.addEventListener('mousedown', (e) => { e.preventDefault(); applyAddress(item.dataset.email); });
+  });
+});
+mailToInput.addEventListener('focus', () => { if (currentToken(mailToInput).length) mailToInput.dispatchEvent(new Event('input')); });
+document.addEventListener('click', (e) => {
+  if (!mailToBox.contains(e.target) && e.target !== mailToInput) mailToBox.classList.add('hidden');
+});
+
+// ── GENERA ────────────────────────────────────────────────────────────────────
+document.getElementById('btnGenerate').addEventListener('click', async () => {
+  const btn = document.getElementById('btnGenerate');
+  const ta  = document.getElementById('mailBody');
+  const st  = document.getElementById('status');
+  btn.disabled = true; btn.textContent = '…'; ta.value = 'Generazione…'; st.textContent = '';
+  try {
+    const baseInstruction = instrEl.value.trim();
+    const instruction = instructionContext
+      ? `${baseInstruction}\n\n[CONTESTO FILE]\n${instructionContext.slice(0, 3000)}`
+      : baseInstruction;
+    const to      = document.getElementById('mailTo').value.trim();
+    const subject = document.getElementById('mailSubject').value.trim();
+    let url = `${API}/mail/generate_draft`;
+    if (accountId) url += `?account_id=${accountId}`;
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject}) });
+    const data = await r.json();
+    ta.value = data.draft || data.text || '';
+  } catch(e) { ta.value = ''; st.textContent = 'Errore generazione'; }
+  btn.textContent = '⚡ ' + (window.i18n?window.i18n.t('generate'):'GENERA'); btn.disabled = false;
+});
+
+// ── INVIA con delay 5s ────────────────────────────────────────────────────────
+function resetSendBtn() {
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  const btn    = document.getElementById('btnSend');
+  if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
+  if (sendRafId) { cancelAnimationFrame(sendRafId); sendRafId = null; }
+  btn.disabled = false; label.textContent = 'Invia ↑';
+  circle.style.setProperty('--pct', '0%');
+}
+
+async function execSend() {
+  const btn    = document.getElementById('btnSend');
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  const st     = document.getElementById('status');
+  const to      = document.getElementById('mailTo').value.trim();
+  const subject = document.getElementById('mailSubject').value.trim();
+  const body    = document.getElementById('mailBody').value;
+  const cc      = document.getElementById('mailCc').value.trim();
+  const bcc     = document.getElementById('mailBcc').value.trim();
+  btn.disabled = true; label.textContent = 'Invio…';
+  circle.style.setProperty('--pct', '100%');
+  try {
+    let url = `${API}/mail/send`;
+    if (accountId) url += `?account_id=${accountId}`;
+    const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
+    await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean})
+    });
+    if (followupHours > 0) {
+      await window.newMailWindowAPI?.followupSave({ message_id:null, account_id:accountId, subject, to_addr:to, hours:followupHours });
+    }
+    st.textContent = 'Inviata ✓';
+    setTimeout(() => window.newMailWindowAPI?.close(), 800);
+  } catch(e) {
+    st.textContent = 'Errore invio';
+    resetSendBtn();
+  }
+}
+
+document.getElementById('btnSend').addEventListener('click', () => {
+  const to   = document.getElementById('mailTo').value.trim();
+  const body = document.getElementById('mailBody').value;
+  const st   = document.getElementById('status');
+  if (sendTimer) { resetSendBtn(); st.textContent = 'Invio annullato'; return; }
+  if (!to || !body) { st.textContent = 'Compila A e il testo'; return; }
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  label.textContent = '✕ Annulla';
+  circle.style.setProperty('--pct', '0%');
+  st.textContent = '';
+  const startTs = performance.now();
+  function tick() {
+    const pct = Math.min(((performance.now() - startTs) / SEND_DELAY) * 100, 100);
+    circle.style.setProperty('--pct', pct.toFixed(1) + '%');
+    if (pct < 100) sendRafId = requestAnimationFrame(tick);
+  }
+  sendRafId = requestAnimationFrame(tick);
+  sendTimer = setTimeout(() => { sendTimer = null; execSend(); }, SEND_DELAY);
+});
+
+// ══════════════════════════════════════════════════════════════
+// MASKER — privacy dati sensibili
+// ══════════════════════════════════════════════════════════════
+let maskMapping = {};
+
+async function maskAll() {
+  const ta = document.getElementById('mailBody');
+  const text = ta.value;
+  if (!text.trim()) return;
+  try {
+    const r = await fetch(`${API}/mask`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, account_id: accountId })
+    });
+    const d = await r.json();
+    if (!d.mapping || Object.keys(d.mapping).length === 0) {
+      showMaskToast('Nessun dato sensibile rilevato.');
+      return;
+    }
+    ta.value = d.masked;
+    Object.assign(maskMapping, d.mapping);
+    const n = Object.keys(d.mapping).length;
+    showMaskToast(`Mascherati ${n} element${n===1?'o':'i'}.`);
+  } catch (e) {
+    alert('Errore mascheramento: ' + e.message);
+  }
+}
+
+// Dialog custom per l'etichetta (Electron blocca prompt())
+function askLabel(selected, suggested) {
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+      <div style="background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
+        <div style="font-size:13px;margin-bottom:4px">Maschera <b>${escMaskNM(selected)}</b></div>
+        <div style="font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px">Etichetta (modificabile):</div>
+        <input id="maskLabelInput" type="text" value="${escMaskNM(suggested)}" style="width:100%;padding:8px 10px;border:1.5px solid rgba(0,0,0,0.4);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"/>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="maskLabelCancel" style="padding:7px 14px;border:1px solid rgba(0,0,0,0.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px">Annulla</button>
+          <button id="maskLabelOk" style="padding:7px 14px;border:none;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Maschera</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const input = ov.querySelector('#maskLabelInput');
+    input.focus(); input.select();
+    const done = (val) => { ov.remove(); resolve(val); };
+    ov.querySelector('#maskLabelOk').addEventListener('click', () => done(input.value));
+    ov.querySelector('#maskLabelCancel').addEventListener('click', () => done(null));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') done(input.value);
+      if (e.key === 'Escape') done(null);
+    });
+    ov.addEventListener('click', (e) => { if (e.target === ov) done(null); });
+  });
+}
+function escMaskNM(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function maskSelection() {
+  const ta = document.getElementById('mailBody');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  if (s === e) { showMaskToast('Seleziona prima il testo da mascherare.'); return; }
+  const selected = ta.value.substring(s, e).trim();
+  if (!selected) return;
+
+  let suggested = 'MASK';
+  try {
+    const r = await fetch(`${API}/mask/suggest?selection=${encodeURIComponent(selected)}`);
+    const d = await r.json();
+    suggested = d.label_type || 'MASK';
+  } catch {}
+
+  const label = await askLabel(selected, suggested);
+  if (label === null) return;
+  const labelClean = (label.trim() || 'MASK').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+
+  try {
+    await fetch(`${API}/masks`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId, value: selected, label_type: labelClean })
+    });
+  } catch (err) {
+    console.warn('[MASK] salvataggio regola fallito:', err);
+  }
+
+  const existing = Object.keys(maskMapping).filter(p => p.startsWith(`[${labelClean}_`)).length;
+  const ph = `[${labelClean}_${existing + 1}]`;
+  maskMapping[ph] = selected;
+  ta.value = ta.value.split(selected).join(ph);
+  showMaskToast(`"${selected}" → ${ph} (regola salvata)`);
+}
+
+let _maskToastT = null;
+function showMaskToast(msg) {
+  let t = document.getElementById('maskToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'maskToast';
+    t.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.82);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;z-index:99999;pointer-events:none;transition:opacity 0.2s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(_maskToastT);
+  _maskToastT = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+function showMaskCtxMenu(x, y) {
+  hideMaskCtxMenu();
+  // Rileva se la selezione è un placeholder [X_N] già mascherato
+  const ta = document.getElementById('mailBody');
+  const selTxt = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+  const isPlaceholder = /^\[[A-Z0-9_]+\]$/.test(selTxt) && maskMapping[selTxt] !== undefined;
+
+  const m = document.createElement('div');
+  m.id = 'maskCtxMenu';
+  m.style.cssText = 'position:fixed;z-index:99999;min-width:190px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;font-family:inherit;';
+  if (isPlaceholder) {
+    m.innerHTML =
+      '<div class="mask-ctx-item" data-act="unmask" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">↩️ Rimuovi maschera (ripristina)</div>' +
+      '<div class="mask-ctx-item" data-act="delrule" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer;color:#dc2626">🗑 Elimina regola salvata</div>';
+  } else {
+    m.innerHTML =
+      '<div class="mask-ctx-item" data-act="sel" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">🔒 Maschera selezione</div>' +
+      '<div class="mask-ctx-item" data-act="all" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">🛡️ Maschera tutto</div>';
+  }
+  document.body.appendChild(m);
+  const rect = m.getBoundingClientRect();
+  m.style.left = Math.max(4, (x+rect.width>window.innerWidth)?x-rect.width:x) + 'px';
+  m.style.top  = Math.max(4, (y+rect.height>window.innerHeight)?y-rect.height:y) + 'px';
+  m.querySelectorAll('.mask-ctx-item').forEach(it => {
+    it.addEventListener('mouseenter', () => it.style.background = 'rgba(176,199,244,0.3)');
+    it.addEventListener('mouseleave', () => it.style.background = 'transparent');
+  });
+  m.addEventListener('click', async (ev) => {
+    const it = ev.target.closest('.mask-ctx-item'); if (!it) return;
+    const act = it.dataset.act; hideMaskCtxMenu();
+    if (act === 'sel') maskSelection();
+    else if (act === 'all') maskAll();
+    else if (act === 'unmask') unmaskPlaceholder(selTxt);
+    else if (act === 'delrule') deleteRuleByValue(maskMapping[selTxt], selTxt);
+  });
+}
+function hideMaskCtxMenu() { document.getElementById('maskCtxMenu')?.remove(); }
+
+// Smaschera: rimette il valore originale al posto del placeholder
+function unmaskPlaceholder(ph) {
+  const orig = maskMapping[ph];
+  if (orig === undefined) return;
+  const ta = document.getElementById('mailBody');
+  ta.value = ta.value.split(ph).join(orig);
+  delete maskMapping[ph];
+  showMaskToast(`Maschera rimossa: ${ph} → testo originale`);
+}
+
+// Elimina la regola salvata dal DB (cerca per valore) + smaschera nel testo
+async function deleteRuleByValue(value, ph) {
+  if (!value) return;
+  if (!confirm('Eliminare questa regola salvata? Non verrà più mascherata in automatico.')) return;
+  try {
+    const aid = accountId;
+    const r = await fetch(`${API}/masks` + (aid ? `?account_id=${aid}` : ''));
+    const d = await r.json();
+    const rule = (d.masks || []).find(mk => mk.value === value);
+    if (rule && rule.id != null) {
+      await fetch(`${API}/masks/${rule.id}` + (aid ? `?account_id=${aid}` : ''), { method: 'DELETE' });
+    }
+  } catch (e) { console.warn('[MASK] delete rule fail', e); }
+  if (ph) unmaskPlaceholder(ph);
+  showMaskToast('Regola eliminata');
+}
+
+document.getElementById('btnMask')?.addEventListener('click', maskAll);
+document.getElementById('mailBody')?.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showMaskCtxMenu(e.clientX, e.clientY);
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('#maskCtxMenu')) hideMaskCtxMenu(); });
+</script>
+<!-- RESIZE HANDLE -->
+<div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
+<script>
+(function(){
+  const handle = document.getElementById('resizeHandle');
+  let startX,startY,startW,startH,dragging=false;
+  handle.addEventListener('mousedown',(e)=>{dragging=true;startX=e.screenX;startY=e.screenY;startW=window.outerWidth;startH=window.outerHeight;e.preventDefault();});
+  document.addEventListener('mousemove',(e)=>{if(!dragging)return;const w=Math.max(480,startW+(e.screenX-startX));const h=Math.max(500,startH+(e.screenY-startY));window.newMailWindowAPI?.resizeTo(Math.round(w),Math.round(h));});
+  document.addEventListener('mouseup',()=>{dragging=false;});
+})();
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>

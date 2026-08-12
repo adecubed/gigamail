@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>Nuova risposta</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent:#eeb9dd; --accent-l:#b0c7f4;
+    --font:'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:var(--font);
+    background:rgba(235,242,250,0.97);
+    width:100vw;height:100vh;
+    overflow:hidden;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:2px solid rgba(0,0,0,0.85);
+    border-radius:8px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  }
+  .titlebar{
+    height:34px;flex-shrink:0;
+    display:flex;align-items:center;padding:0 14px;
+    background:l#
+    border-bottom:1.5px solid rgba(0,0,0,0.75);
+    -webkit-app-region:drag;user-select:none;
+    border-radius:6px 6px 0 0;
+  }
+  .tb-title{font-size:11px;color:rgba(0,0,0,0.6);font-weight:600;flex:1;}
+  .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
+  .tb-btn{
+    width:28px;height:28px;border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;cursor:pointer;
+    color:rgba(0,0,0,0.6);transition:all 0.15s;flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tb-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
+  .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
+  .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
+  .reply-header{
+    padding:12px 16px 10px;border-bottom:1px solid rgba(0,0,0,0.07);
+    background:rgba(255,255,255,0.95);display:flex;flex-direction:column;gap:7px;flex-shrink:0;
+  }
+  .reply-row{display:flex;align-items:center;gap:8px;}
+  .reply-label{font-size:11px;color:rgba(0,0,0,0.75);font-weight:700;width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
+  .reply-field{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
+  .reply-field::placeholder{color:rgba(0,0,0,0.28);}
+  .field-sep{height:1px;background:rgba(0,0,0,0.06);margin:0;}
+
+  /* ── BODY con drop zone ── */
+  .reply-body{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
+  .reply-textarea{
+    flex:1;background:rgba(255,255,255,0.95);border:none;outline:none;resize:none;
+    padding:14px 16px;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);line-height:1.65;
+  }
+  .reply-textarea::placeholder{color:rgba(0,0,0,0.28);}
+  .drop-overlay{
+    display:none;position:absolute;inset:0;
+    background:rgba(176,199,244,0.35);
+    border:2.5px dashed rgba(0,0,0,0.4);
+    border-radius:6px;z-index:10;
+    align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;color:rgba(0,0,0,0.55);
+    pointer-events:none;
+  }
+  .drop-overlay.visible{display:flex;}
+
+  .attachments{padding:0 14px 4px;display:flex;flex-wrap:wrap;gap:5px;}
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:20px;
+    padding:3px 9px;font-size:10.5px;color:rgba(0,0,0,0.6);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.3);font-size:12px;}
+  .attach-chip-rm:hover{color:#dc2626;}
+  #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 4px 14px rgba(0,0,0,0.35);}
+
+  .toolbar{
+    padding:8px 12px;flex-shrink:0;border-top:1.5px solid rgba(0,0,0,0.75);
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    display:flex;align-items:center;gap:6px;border-radius:0 0 6px 6px;
+  }
+  .tool-btn{
+    padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.8);
+    border:1.5px solid rgba(0,0,0,0.75);color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
+    cursor:pointer;transition:all 0.15s;box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tool-btn:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tool-btn.ai{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);box-shadow:0 4px 14px rgba(0,0,0,0.35);}
+  .tool-btn.active{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
+
+  /* ── INSTRUCTION con drop zone ── */
+  .instruction-wrap{flex:1;min-width:0;position:relative;}
+  .instruction{
+    width:100%;background:rgba(255,255,255,0.7);
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
+    box-sizing:border-box;
+  }
+  .instruction::placeholder{color:rgba(0,0,0,0.3);}
+  .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
+  .ctx-badge{
+    display:none;position:absolute;top:-8px;right:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1px solid rgba(0,0,0,0.5);border-radius:10px;
+    padding:1px 7px;font-size:9px;color:rgba(0,0,0,0.6);
+    white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .ctx-badge.visible{display:block;}
+
+  .fu-dropdown{
+    position:absolute;bottom:42px;left:0;background:white;
+    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:100;overflow:hidden;min-width:90px;display:none;
+  }
+  .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .fu-opt:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);}
+
+  .send-btn{
+    position:relative;padding:7px 18px;border-radius:20px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    color:rgba(0,0,0,0.7);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);white-space:nowrap;overflow:hidden;
+  }
+  .send-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .send-btn .btn-label{position:relative;z-index:1;}
+  .send-btn .circle-progress{
+    position:absolute;inset:0;border-radius:20px;
+    background:conic-gradient(rgba(0,0,0,0.18) var(--pct,0%), transparent 0%);
+  }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title" data-i18n="new_reply">Nuova risposta</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin" data-i18n-title="hide" title="Nascondi">▽</button>
+    <button class="tb-btn maximize" id="btnMax" data-i18n-title="fullscreen" title="Tutto schermo">□</button>
+    <button class="tb-btn close"   id="btnClose" data-i18n-title="close" title="Chiudi">✕</button>
+  </div>
+</div>
+
+<div class="reply-header">
+  <div class="reply-row" style="position:relative;">
+    <span class="reply-label" data-i18n="to_label">A:</span>
+    <input type="text" id="replyTo" class="reply-field" data-i18n-ph="recipient_ph" placeholder="destinatario@email.it" autocomplete="off"/>
+    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
+  </div>
+  <div class="field-sep"></div>
+  <div class="reply-row">
+    <span class="reply-label" data-i18n="cc_label">CC:</span>
+    <input type="text" id="replyCc" class="reply-field" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-sep"></div>
+  <div class="reply-row">
+    <span class="reply-label" data-i18n="subject_label">Oggetto:</span>
+    <input type="text" id="replySubject" class="reply-field"/>
+  </div>
+</div>
+
+<div class="reply-body" id="replyBodyWrap">
+  <textarea id="replyText" class="reply-textarea" data-i18n-ph="reply_text_drag_ph" placeholder="Scrivi la tua risposta… (trascina file o immagini qui)"></textarea>
+  <div class="drop-overlay" id="bodyDropOverlay">📎 Rilascia per allegare</div>
+  <div class="attachments" id="attachmentsBox"></div>
+  <div id="suggestedBanner"></div>
+</div>
+
+<div class="toolbar">
+  <button class="tool-btn" id="btnAttach" data-i18n-title="attach_file" title="Allega file">📎</button>
+  <input type="file" id="fileInput" multiple style="display:none"/>
+  <div style="position:relative;">
+    <button class="tool-btn" id="btnFollowup" data-i18n-title="followup" title="Follow-up">📌</button>
+    <div class="fu-dropdown" id="followupDropdown">
+      <div class="fu-opt" data-h="0">✕ Nessuno</div>
+      <div class="fu-opt" data-h="24">24h</div>
+      <div class="fu-opt" data-h="48">48h</div>
+      <div class="fu-opt" data-h="72">72h</div>
+    </div>
+  </div>
+  <div class="instruction-wrap">
+    <span class="ctx-badge" id="ctxBadge"></span>
+    <input type="text" id="instruction" class="instruction" data-i18n-ph="ai_instruction_drag_ph" placeholder="Istruzione AI — trascina file per contesto…"/>
+  </div>
+  <button class="tool-btn" id="btnMask" data-i18n-title="mask_title" title="Maschera dati sensibili (CF, IBAN, email…)">🔒</button>
+  <button class="tool-btn ai" id="btnGenerate">⚡ <span data-i18n="generate">GENERA</span></button>
+  <button class="send-btn" id="btnSend">
+    <div class="circle-progress" id="sendCircle"></div>
+    <span class="btn-label" id="sendLabel" data-i18n="send">Invia ↑</span>
+  </button>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8002';
+const SEND_DELAY = 5000;
+let mailData = null;
+let attachments = [];
+let followupHours = 0;
+let sendTimer = null;
+let sendRafId = null;
+let instructionContext = ''; // testo estratto da file droppato su instruction
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── AUTOCOMPLETE replyTo ──────────────────────────────────────────────────────
+const replyToInput = document.getElementById('replyTo');
+const replyToBox   = document.getElementById('replyToAutocomplete');
+
+replyToInput.addEventListener('input', () => fetchAddressSuggestions(replyToInput.value.trim()));
+replyToInput.addEventListener('focus', () => fetchAddressSuggestions(replyToInput.value.trim()));
+document.addEventListener('click', (e) => {
+  if (!replyToBox.contains(e.target) && e.target !== replyToInput) {
+    replyToBox.style.display = 'none';
+  }
+});
+
+async function fetchAddressSuggestions(q) {
+  if (!q || q.length < 1) { replyToBox.style.display = 'none'; return; }
+  try {
+    const accountId = mailData?.account_id || null;
+    const params = new URLSearchParams({ q });
+    if (accountId) params.append('account_id', accountId);
+    const results = await fetch(`${API}/addresses/search?${params}`).then(r => r.json());
+    if (!Array.isArray(results) || !results.length) { replyToBox.style.display = 'none'; return; }
+    replyToBox.innerHTML = results.map(r => `
+      <div data-email="${esc(r.email)}" style="padding:7px 12px;font-size:11.5px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.75);border-bottom:1px solid rgba(0,0,0,0.05);">
+        ${r.name ? `<span style="font-weight:600">${esc(r.name)}</span> — ` : ''}${esc(r.email)}
+      </div>`).join('');
+    replyToBox.style.display = 'block';
+    replyToBox.querySelectorAll('[data-email]').forEach(item => {
+      item.addEventListener('mouseenter', () => item.style.background = 'linear-gradient(135deg,#eeb9dd,#b0c7f4)');
+      item.addEventListener('mouseleave', () => item.style.background = '');
+      item.addEventListener('click', () => {
+        replyToInput.value = item.dataset.email;
+        replyToBox.style.display = 'none';
+      });
+    });
+  } catch(e) { console.error('autocomplete:', e); }
+}
+
+async function applyMailData(data) {
+  mailData = data;
+
+  // ── OPZIONE B: rileva i dati sensibili nella mail originale ──
+  // NON maschera subito: rileva e salva i candidati. L'utente apre il pannello
+  // (click sul badge 🔒), controlla, conferma/toglie, poi GENERA usa il testo
+  // mascherato solo per i candidati confermati.
+  maskOriginalText = data.body_text || data.bodyPreview || '';
+  maskCandidates = [];
+  if (maskOriginalText.trim()) {
+    try {
+      const r = await fetch(`${API}/mask/detect`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: maskOriginalText, account_id: data.account_id || null })
+      });
+      const d = await r.json();
+      // ogni candidato parte CONFERMATO (active=true)
+      maskCandidates = (d.candidates || []).map((c, i) => ({
+        ...c, index: i, active: true,
+      }));
+      applyMaskToBody();          // calcola mailData.body_text mascherato
+      showMaskBadge(maskCandidates.filter(c => c.active).length);
+    } catch (e) {
+      console.warn('[MASK] detect fallito:', e);
+    }
+  }
+
+  // ── MODALITÀ INOLTRO ──────────────────────────────────────
+  if (data.mode === 'forward') {
+    document.getElementById('replyTo').value      = '';
+    document.getElementById('replySubject').value = data.forward_subject || (data.subject ? `Fwd: ${data.subject}` : 'Fwd:');
+    document.getElementById('replyText').value    = data.forward_body || '';
+    const titleEl = document.querySelector('.tb-title') || document.querySelector('.popup-tb-title');
+    if (titleEl) titleEl.textContent = 'Inoltra';
+
+    // Scarica e ri-allega gli allegati della mail originale
+    const fwdNames = data.forward_attachments || [];
+    const srcId = data.forward_src_id, srcAcc = data.forward_src_account, srcFolder = data.forward_src_folder || '';
+    if (fwdNames.length && srcId) {
+      fwdNames.forEach(async (name) => {
+        try {
+          const qs = new URLSearchParams({ account_id: srcAcc || '', folder: srcFolder || '' });
+          const r = await fetch(`${API}/mail/${encodeURIComponent(srcId)}/attachment/${encodeURIComponent(name)}?${qs}`);
+          if (!r.ok) { console.warn('[FORWARD] allegato non scaricato:', name, r.status); return; }
+          const blob = await r.blob();
+          const b64 = await new Promise((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(String(fr.result).split(',')[1]);
+            fr.onerror = rej;
+            fr.readAsDataURL(blob);
+          });
+          attachments.push({
+            name,
+            data_b64: b64,
+            type: blob.type || 'application/octet-stream',
+            size: blob.size,
+            isImage: (blob.type || '').startsWith('image/'),
+            dataUrl: null,
+          });
+          renderAttachments();
+        } catch (e) { console.warn('[FORWARD] errore allegato', name, e); }
+      });
+    }
+
+    mailData.id = null;  // non agganciare il thread originale
+    document.getElementById('replyTo').focus();
+    return;
+  }
+
+  // ── MODALITÀ RISPOSTA (default) ───────────────────────────
+  document.getElementById('replyTo').value      = data.sender  || '';
+  document.getElementById('replySubject').value = data.subject
+    ? (/^re:/i.test(data.subject) ? data.subject : `Re: ${data.subject}`)
+    : '';
+  // Popola CC per reply-all
+  if (data.replyAll && Array.isArray(data.ccAddrs) && data.ccAddrs.length) {
+    document.getElementById('replyCc').value = data.ccAddrs.join(', ');
+  }
+  if (data.instruction) {
+    document.getElementById('instruction').value = data.instruction;
+    setTimeout(() => document.getElementById('btnGenerate').click(), 300);
+  } else {
+    document.getElementById('replyText').focus();
+  }
+}
+
+if (window.replyWindowAPI) {
+  window.replyWindowAPI.onLoadReply((data) => applyMailData(data));
+  window.replyWindowAPI.ready?.();
+}
+
+document.getElementById('btnClose').addEventListener('click', () => window.replyWindowAPI?.close());
+document.getElementById('btnMin').addEventListener('click',   () => window.replyWindowAPI?.minimize());
+document.getElementById('btnMax').addEventListener('click',   () => window.replyWindowAPI?.maximize());
+
+// ── ALLEGATI ──────────────────────────────────────────────────────────────────
+document.getElementById('btnAttach').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  for (const file of Array.from(e.target.files||[])) addFileAsAttachment(file);
+  e.target.value = '';
+});
+
+function isImage(file) {
+  return file.type.startsWith('image/');
+}
+
+function addFileAsAttachment(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data_b64 = ev.target.result.split(',')[1];
+    attachments.push({
+      name: file.name,
+      data_b64,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      isImage: isImage(file),
+      dataUrl: isImage(file) ? ev.target.result : null,
+    });
+    renderAttachments();
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderAttachments() {
+  const box = document.getElementById('attachmentsBox');
+  box.innerHTML = attachments.map((a,i) => {
+    const preview = a.isImage && a.dataUrl
+      ? `<img src="${a.dataUrl}" alt="${esc(a.name)}"/>`
+      : '📎';
+    return `<span class="attach-chip">
+      ${preview} ${esc(a.name)} (${Math.round(a.size/1024)}KB)
+      <button class="attach-chip-rm" onclick="attachments.splice(${i},1);renderAttachments()">✕</button>
+    </span>`;
+  }).join('');
+}
+
+// ── DRAG & DROP SUL CORPO ──────────────────────────────────────────────────────
+const bodyWrap = document.getElementById('replyBodyWrap');
+const bodyOverlay = document.getElementById('bodyDropOverlay');
+
+bodyWrap.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  bodyOverlay.classList.add('visible');
+});
+bodyWrap.addEventListener('dragleave', (e) => {
+  if (!bodyWrap.contains(e.relatedTarget)) bodyOverlay.classList.remove('visible');
+});
+bodyWrap.addEventListener('drop', (e) => {
+  e.preventDefault();
+  bodyOverlay.classList.remove('visible');
+  for (const file of Array.from(e.dataTransfer.files || [])) {
+    addFileAsAttachment(file);
+  }
+});
+
+// ── CTRL+V — INCOLLA IMMAGINI DAGLI APPUNTI ───────────────────────────────────
+document.getElementById('replyText').addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        // Dai un nome sensato
+        const ext = item.type.split('/')[1] || 'png';
+        const named = new File([file], `screenshot_${Date.now()}.${ext}`, { type: item.type });
+        addFileAsAttachment(named);
+      }
+    }
+  }
+});
+
+// ── DRAG & DROP SULL'ISTRUZIONE AI ────────────────────────────────────────────
+const instrEl = document.getElementById('instruction');
+const ctxBadge = document.getElementById('ctxBadge');
+
+instrEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  instrEl.classList.add('drag-over');
+});
+instrEl.addEventListener('dragleave', () => instrEl.classList.remove('drag-over'));
+instrEl.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  instrEl.classList.remove('drag-over');
+  const file = e.dataTransfer.files?.[0];
+  if (!file) return;
+  instrEl.placeholder = 'Estrazione testo…';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const r = await fetch(`${API}/office/upload`, { method: 'POST', body: formData });
+    const data = await r.json();
+    instructionContext = data.text || '';
+    ctxBadge.textContent = `📄 ${file.name}`;
+    ctxBadge.classList.add('visible');
+    instrEl.placeholder = 'Istruzione AI (opz.)…';
+  } catch(err) {
+    instrEl.placeholder = 'Errore estrazione — riprova';
+    console.error(err);
+  }
+});
+
+// Click su badge → rimuovi contesto
+ctxBadge.addEventListener('click', () => {
+  instructionContext = '';
+  ctxBadge.classList.remove('visible');
+  ctxBadge.textContent = '';
+});
+
+// ── FOLLOW-UP ─────────────────────────────────────────────────────────────────
+const btnFollowup      = document.getElementById('btnFollowup');
+const followupDropdown = document.getElementById('followupDropdown');
+btnFollowup.addEventListener('click', (e) => {
+  e.stopPropagation();
+  followupDropdown.style.display = followupDropdown.style.display === 'none' ? 'block' : 'none';
+});
+document.querySelectorAll('.fu-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    followupHours = parseInt(opt.dataset.h);
+    followupDropdown.style.display = 'none';
+    if (followupHours > 0) { btnFollowup.textContent = `📌 ${followupHours}h`; btnFollowup.classList.add('active'); }
+    else { btnFollowup.textContent = '📌'; btnFollowup.classList.remove('active'); }
+  });
+});
+document.addEventListener('click', () => { followupDropdown.style.display = 'none'; });
+
+// Enter su instruction triggera GENERA
+instrEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnGenerate').click(); }
+});
+
+// ── GENERA ────────────────────────────────────────────────────────────────────
+document.getElementById('btnGenerate').addEventListener('click', async () => {
+  if (!mailData) { document.getElementById('replyText').value = 'Errore: dati mail non caricati.'; return; }
+  const btn = document.getElementById('btnGenerate');
+  const ta  = document.getElementById('replyText');
+  btn.textContent = '…'; btn.disabled = true; ta.value = 'Generazione bozza…';
+  try {
+    const baseInstruction = instrEl.value.trim();
+    // Se c'è contesto da file, appendilo all'istruzione
+    const instruction = instructionContext
+      ? `${baseInstruction}\n\n[CONTESTO FILE]\n${instructionContext.slice(0, 3000)}`
+      : baseInstruction;
+
+    let url = `${API}/mail/${encodeURIComponent(mailData.id)}/smart_draft`;
+    const params = [];
+    if (mailData.account_id) params.push(`account_id=${mailData.account_id}`);
+    if (mailData.folder)     params.push(`folder=${encodeURIComponent(mailData.folder)}`);
+    if (params.length) url += '?' + params.join('&');
+    const r = await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ instruction, body_text:mailData.body_text||mailData.bodyPreview||'', subject:mailData.subject||'', sender:mailData.sender||'' })
+    });
+    const data = await r.json();
+    ta.value = data.draft || data.text || '';
+    window._lastGeneratedDraft = ta.value;
+    if (data.suggested_attachments?.length) {
+      const banner = document.getElementById('suggestedBanner');
+      const items = data.suggested_attachments.map((a,i) =>
+        `<label style="display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer">
+          <input type="checkbox" data-path="${esc(a.path)}" data-name="${esc(a.name)}" checked/>
+          <span style="font-size:11px;font-family:monospace">${esc(a.name)}</span>
+         </label>`).join('');
+      banner.innerHTML = `<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(26,80,180,0.8);margin-bottom:3px">📎 ALLEGATI SUGGERITI</div>${items}
+        <button onclick="addSuggestedAttachments()" style="margin-top:6px;padding:4px 10px;border-radius:6px;background:rgba(26,108,245,0.1);border:1px solid rgba(26,108,245,0.2);color:var(--accent);font-size:10px;cursor:pointer">+ AGGIUNGI SELEZIONATI</button>`;
+      banner.style.display = 'block';
+    }
+  } catch(e) { ta.value = `Errore: ${e}`; }
+  btn.textContent = '⚡ ' + (window.i18n?window.i18n.t('generate'):'GENERA'); btn.disabled = false;
+});
+
+async function addSuggestedAttachments() {
+  const checks = document.querySelectorAll('#suggestedBanner input[type=checkbox]:checked');
+  for (const cb of checks) {
+    try {
+      const r = await fetch(`${API}/files/local?path=${encodeURIComponent(cb.dataset.path)}`);
+      const f = await r.json();
+      attachments.push({ name:f.name, data_b64:f.data_b64, type:f.type||'application/octet-stream', size:f.size, isImage:false });
+    } catch {}
+  }
+  renderAttachments();
+  document.getElementById('suggestedBanner').style.display = 'none';
+}
+
+// ── INVIA con delay 5s ────────────────────────────────────────────────────────
+function resetSendBtn() {
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  const btn    = document.getElementById('btnSend');
+  if (sendTimer) { clearTimeout(sendTimer); sendTimer = null; }
+  if (sendRafId) { cancelAnimationFrame(sendRafId); sendRafId = null; }
+  btn.disabled = false;
+  label.textContent = 'Invia ↑';
+  circle.style.setProperty('--pct', '0%');
+}
+
+async function execSend() {
+  const btn    = document.getElementById('btnSend');
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  const to      = document.getElementById('replyTo').value.trim();
+  const subject = document.getElementById('replySubject').value.trim();
+  const body    = document.getElementById('replyText').value;
+  const cc      = document.getElementById('replyCc').value.trim();
+
+  btn.disabled = true; label.textContent = 'Invio…';
+  circle.style.setProperty('--pct', '100%');
+  try {
+    let url = `${API}/mail/send`;
+    if (mailData.account_id) url += `?account_id=${mailData.account_id}`;
+    // Manda attachments senza il campo dataUrl (non serve al backend)
+    const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
+    await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        to,
+        subject,
+        body,
+        reply_to_id:    mailData.id,
+        cc:             cc ? [cc] : [],
+        attachments:    attachmentsClean,
+        original_draft: window._lastGeneratedDraft || '',
+        instruction:    document.getElementById('instruction')?.value?.trim() || '',
+      })
+    });
+    if (followupHours > 0) {
+      await window.replyWindowAPI?.followupSave({ message_id:mailData.id||null, account_id:mailData.account_id||0, subject, to_addr:to, hours:followupHours });
+    }
+    window.replyWindowAPI?.close();
+  } catch(e) {
+    alert('Errore invio: ' + e);
+    resetSendBtn();
+  }
+}
+
+document.getElementById('btnSend').addEventListener('click', () => {
+  if (!mailData) return;
+  if (sendTimer) { resetSendBtn(); return; }
+  const to   = document.getElementById('replyTo').value.trim();
+  const body = document.getElementById('replyText').value;
+  if (!to || !body) { alert('Compila A e il testo'); return; }
+  const label  = document.getElementById('sendLabel');
+  const circle = document.getElementById('sendCircle');
+  label.textContent = '✕ Annulla';
+  circle.style.setProperty('--pct', '0%');
+  const startTs = performance.now();
+  function tick() {
+    const pct = Math.min(((performance.now() - startTs) / SEND_DELAY) * 100, 100);
+    circle.style.setProperty('--pct', pct.toFixed(1) + '%');
+    if (pct < 100) sendRafId = requestAnimationFrame(tick);
+  }
+  sendRafId = requestAnimationFrame(tick);
+  sendTimer = setTimeout(() => { sendTimer = null; execSend(); }, SEND_DELAY);
+});
+
+// ══════════════════════════════════════════════════════════════
+// MASKER — privacy dati sensibili (Opzione B: pannello di controllo)
+// ══════════════════════════════════════════════════════════════
+let maskOriginalText = '';   // corpo originale in chiaro (mai inviato così)
+let maskCandidates = [];     // [{type,label_prefix,value,start,end,active,index}]
+let maskMapping = {};        // placeholder -> valore (per unmask bozza)
+
+function _maskAccountId() {
+  return (mailData && mailData.account_id) || null;
+}
+
+// Ricostruisce mailData.body_text mascherando SOLO i candidati attivi.
+// Questo è ciò che GENERA invierà all'LLM.
+function applyMaskToBody() {
+  let text = maskOriginalText;
+  maskMapping = {};
+  const counters = {};
+  // ordina per lunghezza valore desc per evitare sostituzioni parziali
+  const active = maskCandidates.filter(c => c.active)
+    .sort((a, b) => b.value.length - a.value.length);
+  const valToPh = {};
+  for (const c of active) {
+    if (valToPh[c.value]) continue;
+    const p = c.label_prefix || 'MASK';
+    counters[p] = (counters[p] || 0) + 1;
+    const ph = `[${p}_${counters[p]}]`;
+    valToPh[c.value] = ph;
+    maskMapping[ph] = c.value;
+  }
+  for (const val of Object.keys(valToPh).sort((a, b) => b.length - a.length)) {
+    text = text.split(val).join(valToPh[val]);
+  }
+  if (mailData) mailData.body_text = text;
+}
+
+function showMaskBadge(n) {
+  const btn = document.getElementById('btnMask');
+  if (!btn) return;
+  btn.textContent = n > 0 ? `🔒 ${n}` : '🔒';
+  btn.title = n > 0
+    ? `${n} dati sensibili mascherati. Click per controllare.`
+    : 'Nessun dato sensibile rilevato. Click per gestire.';
+  btn.style.background = n > 0 ? 'rgba(46,160,67,0.18)' : '';
+}
+
+// ── Pannello di controllo dati mascherati ──
+function openMaskPanel() {
+  closeMaskPanel();
+  const panel = document.createElement('div');
+  panel.id = 'maskPanel';
+  panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;width:min(560px,94vw);max-height:82vh;display:flex;flex-direction:column;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.4);font-family:inherit;overflow:hidden;';
+
+  panel.innerHTML = `
+    <div style="padding:12px 16px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <strong style="font-size:13px">🔒 Controlla i dati prima di generare</strong>
+      <button id="maskPanelClose" style="border:none;background:rgba(255,255,255,0.4);border-radius:6px;width:24px;height:24px;cursor:pointer;font-weight:700">✕</button>
+    </div>
+    <div style="font-size:11px;color:rgba(0,0,0,0.5);padding:8px 14px 4px;flex-shrink:0">Mail originale (i dati mascherati appaiono come <b>[ETICHETTA_N]</b>). Seleziona altro testo qui sotto e usa il tasto destro per mascherarlo.</div>
+    <div id="maskOrigBox" style="margin:0 14px;padding:10px 12px;background:rgba(248,250,252,0.9);border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow:auto;flex:1;min-height:120px;user-select:text;"></div>
+    <div style="font-size:11px;color:rgba(0,0,0,0.5);padding:8px 14px 4px;flex-shrink:0">Spunta = mascherato (non esce). Togli per lasciare in chiaro.</div>
+    <div id="maskList" style="margin:0 14px 12px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;overflow:auto;max-height:160px;flex-shrink:0"></div>
+  `;
+  document.body.appendChild(panel);
+  panel.querySelector('#maskPanelClose').addEventListener('click', closeMaskPanel);
+
+  renderMaskPanel();
+
+  // selezione + tasto destro nel testo originale
+  const box = panel.querySelector('#maskOrigBox');
+  box.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const sel = (window.getSelection().toString() || '').trim();
+    if (sel) showMaskCtxMenu(e.clientX, e.clientY, sel);
+  });
+}
+
+// Decodifica entità HTML per la visualizzazione
+function decodeEntities(s) {
+  const t = document.createElement('textarea');
+  t.innerHTML = s || '';
+  return t.value;
+}
+
+// Testo originale con i placeholder dei candidati ATTIVI (per il riquadro)
+function maskedDisplayText() {
+  let text = decodeEntities(maskOriginalText);
+  const counters = {};
+  const active = maskCandidates.filter(c => c.active)
+    .sort((a, b) => b.value.length - a.value.length);
+  const valToPh = {};
+  for (const c of active) {
+    if (valToPh[c.value]) continue;
+    const p = c.label_prefix || 'MASK';
+    counters[p] = (counters[p] || 0) + 1;
+    valToPh[c.value] = `[${p}_${counters[p]}]`;
+  }
+  for (const val of Object.keys(valToPh).sort((a, b) => b.length - a.length)) {
+    text = text.split(decodeEntities(val)).join(valToPh[val]);
+  }
+  return text;
+}
+
+function renderMaskPanel() {
+  const box = document.getElementById('maskOrigBox');
+  const list = document.getElementById('maskList');
+  if (box) box.textContent = maskedDisplayText();
+  if (list) {
+    list.innerHTML = maskCandidates.map(c => {
+      const checked = c.active ? 'checked' : '';
+      const trash = (c.source === 'user' && c.mask_id)
+        ? `<button data-del-mask="${c.mask_id}" title="Elimina regola salvata (non maschera più in futuro)" style="border:none;background:none;cursor:pointer;font-size:13px;opacity:0.55;flex-shrink:0">🗑</button>`
+        : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.06);font-size:12.5px">
+        <input type="checkbox" data-mask-idx="${c.index}" ${checked} style="width:16px;height:16px;flex-shrink:0;cursor:pointer"/>
+        <span style="font-weight:700;color:#2ea043;flex-shrink:0;min-width:78px">[${c.label_prefix}_]</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escMask(c.value)}</span>
+        <span style="font-size:10px;color:rgba(0,0,0,0.4)">${c.source==='user'?'tua regola':'auto'}</span>
+        ${trash}
+      </div>`;
+    }).join('') || '<div style="padding:14px;color:rgba(0,0,0,0.4);font-size:12px;text-align:center">Nessun dato rilevato. Seleziona testo sopra e tasto destro per mascherare.</div>';
+    list.querySelectorAll('input[data-mask-idx]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const idx = parseInt(cb.dataset.maskIdx, 10);
+        const cand = maskCandidates.find(c => c.index === idx);
+        if (cand) cand.active = cb.checked;
+        applyMaskToBody();
+        showMaskBadge(maskCandidates.filter(c => c.active).length);
+        renderMaskPanel();
+      });
+    });
+    // Cestino: elimina la regola salvata dal DB + toglie il candidato
+    list.querySelectorAll('button[data-del-mask]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const mid = btn.dataset.delMask;
+        if (!confirm('Eliminare questa regola? Non verrà più mascherata in automatico.')) return;
+        try {
+          const aid = _maskAccountId();
+          await fetch(`${API}/masks/${mid}` + (aid ? `?account_id=${aid}` : ''), { method: 'DELETE' });
+        } catch (e) { console.warn('[MASK] delete fail', e); }
+        // rimuovi dai candidati e ricalcola
+        maskCandidates = maskCandidates.filter(c => String(c.mask_id) !== String(mid));
+        applyMaskToBody();
+        showMaskBadge(maskCandidates.filter(c => c.active).length);
+        renderMaskPanel();
+      });
+    });
+  }
+}
+
+function closeMaskPanel() { document.getElementById('maskPanel')?.remove(); }
+function escMask(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Dialog custom per l'etichetta (Electron blocca prompt())
+function askLabel(selected, suggested) {
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+      <div style="background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
+        <div style="font-size:13px;margin-bottom:4px">Maschera <b>${escMask(selected)}</b></div>
+        <div style="font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px">Etichetta (modificabile):</div>
+        <input id="maskLabelInput" type="text" value="${escMask(suggested)}" style="width:100%;padding:8px 10px;border:1.5px solid rgba(0,0,0,0.4);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"/>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="maskLabelCancel" style="padding:7px 14px;border:1px solid rgba(0,0,0,0.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px">Annulla</button>
+          <button id="maskLabelOk" style="padding:7px 14px;border:none;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Maschera</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const input = ov.querySelector('#maskLabelInput');
+    input.focus(); input.select();
+    const done = (val) => { ov.remove(); resolve(val); };
+    ov.querySelector('#maskLabelOk').addEventListener('click', () => done(input.value));
+    ov.querySelector('#maskLabelCancel').addEventListener('click', () => done(null));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') done(input.value);
+      if (e.key === 'Escape') done(null);
+    });
+    ov.addEventListener('click', (e) => { if (e.target === ov) done(null); });
+  });
+}
+
+// Maschera una selezione del testo ORIGINALE (dal pannello) + salva regola
+async function maskSelection(selectedText) {
+  const selected = (selectedText || '').trim();
+  if (!selected) return;
+  let suggested = 'MASK';
+  try {
+    const r = await fetch(`${API}/mask/suggest?selection=${encodeURIComponent(selected)}`);
+    suggested = (await r.json()).label_type || 'MASK';
+  } catch {}
+  const label = await askLabel(selected, suggested);
+  if (label === null) return;
+  const lab = (label.trim() || 'MASK').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  try {
+    await fetch(`${API}/masks`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ account_id:_maskAccountId(), value:selected, label_type:lab })
+    });
+  } catch(err){ console.warn('[MASK] save rule fail', err); }
+  // aggiungi come candidato attivo (così entra nella lista e nel body)
+  const newIdx = (maskCandidates.reduce((m,c)=>Math.max(m,c.index),-1)) + 1;
+  maskCandidates.push({ type:lab, label_prefix:lab, value:selected, active:true, index:newIdx, source:'user' });
+  applyMaskToBody();
+  showMaskBadge(maskCandidates.filter(c=>c.active).length);
+  renderMaskPanel();
+}
+
+function showMaskCtxMenu(x, y, selectedText) {
+  hideMaskCtxMenu();
+  const m = document.createElement('div');
+  m.id = 'maskCtxMenu';
+  m.style.cssText = 'position:fixed;z-index:100000;min-width:180px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;';
+  m.innerHTML = '<div class="mask-ctx-item" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">🔒 Maschera selezione</div>';
+  document.body.appendChild(m);
+  const rect = m.getBoundingClientRect();
+  m.style.left = Math.max(4,(x+rect.width>window.innerWidth)?x-rect.width:x)+'px';
+  m.style.top  = Math.max(4,(y+rect.height>window.innerHeight)?y-rect.height:y)+'px';
+  m.querySelector('.mask-ctx-item').addEventListener('click', () => { hideMaskCtxMenu(); maskSelection(selectedText); });
+}
+function hideMaskCtxMenu(){ document.getElementById('maskCtxMenu')?.remove(); }
+
+document.getElementById('btnMask')?.addEventListener('click', openMaskPanel);
+document.addEventListener('click', (e) => { if (!e.target.closest('#maskCtxMenu')) hideMaskCtxMenu(); });
+
+</script>
+<!-- RESIZE HANDLE -->
+<div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
+<script>
+(function(){
+  const handle = document.getElementById('resizeHandle');
+  let startX,startY,startW,startH,dragging=false;
+  handle.addEventListener('mousedown',(e)=>{dragging=true;startX=e.screenX;startY=e.screenY;startW=window.outerWidth;startH=window.outerHeight;e.preventDefault();});
+  document.addEventListener('mousemove',(e)=>{if(!dragging)return;const w=Math.max(420,startW+(e.screenX-startX));const h=Math.max(400,startH+(e.screenY-startY));window.replyWindowAPI?.resizeTo(Math.round(w),Math.round(h));});
+  document.addEventListener('mouseup',()=>{dragging=false;});
+})();
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>
