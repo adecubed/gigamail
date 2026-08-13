@@ -27,6 +27,7 @@ import ms_calendar
 import observer
 import ade_masker
 import identity_reader
+from ade_mail_agent import agent_bridge
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -600,6 +601,131 @@ def delete_mask(mask_id: int, account_id: Optional[int] = None):
     return {"success": ade_masker.delete_user_mask(
         account_id or _active_id() or 0, mask_id
     )}
+
+
+# ── AGENTE (cio' che prima faceva l'LLM interno ora lo fa l'agente) ──
+
+def _identity_context(aid: Optional[int]) -> str:
+    if not aid:
+        return ""
+    ident = core_accounts.get_identity(aid)
+    parts = []
+    if ident.get("who_am_i"):
+        parts.append(f"Chi sono: {ident['who_am_i']}")
+    if ident.get("what_i_do"):
+        parts.append(f"Cosa faccio: {ident['what_i_do']}")
+    if ident.get("tone"):
+        parts.append(f"Tono richiesto: {ident['tone']}")
+    if ident.get("key_info"):
+        parts.append(f"Info chiave: {ident['key_info']}")
+    return "\n".join(parts)
+
+
+def _run_agent(prompt: str) -> dict:
+    try:
+        return {"draft": agent_bridge.run(prompt), "engine": "agent"}
+    except agent_bridge.AgentUnavailable as e:
+        raise HTTPException(503, str(e))
+
+
+@app.get("/agent/status")
+def agent_status():
+    return agent_bridge.status()
+
+
+class GenerateDraftRequest(BaseModel):
+    instruction: str
+    to: str = ""
+    subject: str = ""
+
+
+@app.post("/mail/generate_draft")
+def generate_draft(req: GenerateDraftRequest, account_id: Optional[int] = None):
+    aid = account_id or _active_id()
+    prompt = (
+        "Scrivi il TESTO di una email in italiano (solo il corpo, niente oggetto, "
+        "nessun commento) seguendo l'istruzione dell'utente.\n"
+        f"{_identity_context(aid)}\n"
+        f"Destinatario: {req.to or 'non specificato'}\n"
+        f"Oggetto: {req.subject or 'non specificato'}\n"
+        f"Istruzione: {req.instruction}"
+    )
+    return _run_agent(prompt)
+
+
+class SmartDraftRequest(BaseModel):
+    instruction: str = ""
+    body_text: str = ""
+    subject: str = ""
+    sender: str = ""
+
+
+@app.post("/mail/{message_id}/smart_draft")
+def smart_draft(message_id: str, req: SmartDraftRequest,
+                account_id: Optional[int] = None, folder: str = ""):
+    aid = account_id or _active_id()
+    body = req.body_text
+    if not body:
+        try:
+            msg = mail_router.get_message(aid, message_id=message_id, folder=folder) or {}
+            body = (msg.get("body", {}) or {}).get("content") or msg.get("bodyPreview") or ""
+            req.subject = req.subject or msg.get("subject") or ""
+        except Exception:
+            pass
+    obs = ""
+    try:
+        obs = observer.get_context_for_prompt(aid or 0, sender=req.sender, subject=req.subject)
+    except Exception:
+        pass
+    prompt = (
+        "Scrivi la RISPOSTA a questa email in italiano (solo il corpo, nessun "
+        "commento). Rispetta il tono e le correzioni abituali dell'utente.\n"
+        f"{_identity_context(aid)}\n"
+        f"{obs}\n"
+        f"Mittente: {req.sender}\nOggetto: {req.subject}\n"
+        f"--- EMAIL RICEVUTA ---\n{body[:6000]}\n--- FINE EMAIL ---\n"
+        f"Istruzione dell'utente: {req.instruction or 'rispondi in modo appropriato'}"
+    )
+    return _run_agent(prompt)
+
+
+class MailAskRequest(BaseModel):
+    question: str
+    account_id: Optional[int] = None
+
+
+@app.post("/mail_ask")
+def mail_ask(req: MailAskRequest):
+    """La domanda va all'agente, che usa i suoi tool MCP ade-mail per
+    cercare e leggere la posta prima di rispondere."""
+    prompt = (
+        "Domanda dell'utente sulla sua posta (usa i tool ade-mail per cercare "
+        "e leggere le mail rilevanti prima di rispondere; rispondi in "
+        f"italiano, conciso): {req.question}"
+    )
+    try:
+        return {"answer": agent_bridge.run(prompt), "engine": "agent"}
+    except agent_bridge.AgentUnavailable as e:
+        raise HTTPException(503, str(e))
+
+
+class SenderSummaryRequest(BaseModel):
+    sender: str
+    account_id: Optional[int] = None
+
+
+@app.post("/mail/sender_summary")
+def sender_summary(req: SenderSummaryRequest):
+    profile = mail_memory.get_sender_profile(req.sender) or {}
+    prompt = (
+        f"Riassumi in 3-4 frasi il rapporto con questo mittente ({req.sender}) "
+        "usando i tool ade-mail (sender_history, search_mail) per recuperare "
+        f"lo storico. Profilo noto: {json.dumps(profile, ensure_ascii=False)[:800]}"
+    )
+    try:
+        return {"summary": agent_bridge.run(prompt), "engine": "agent"}
+    except agent_bridge.AgentUnavailable as e:
+        raise HTTPException(503, str(e))
 
 
 # ── OBSERVER + AUDIT ─────────────────────────────────────────────────
