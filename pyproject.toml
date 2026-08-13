@@ -17,11 +17,14 @@ dependencies = [
     "caldav>=1.3",
     "icalendar>=5.0",
     "numpy>=1.26",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 
 [project.scripts]
 ade-mail-agent = "ade_mail_agent.cli:main"
 ade-mail-agent-server = "ade_mail_agent.server:main"
+gigamail-console-api = "ade_mail_agent.http_api:main"
 
 [build-system]
 requires = ["hatchling"]
