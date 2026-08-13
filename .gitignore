@@ -9,3 +9,4 @@ NOTES.dev.md
 *.db
 *.token*
 .token_cache.json
+node_modules/

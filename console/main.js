@@ -280,8 +280,31 @@ function createWindow() {
   }
 }
 
+// Attende che il backend risponda a /health prima di aprire la finestra:
+// il processo Python impiega qualche secondo a partire e la UI non fa retry
+// sul primo caricamento account.
+function waitForBackend(maxMs = 20000) {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const tryOnce = () => {
+      const req = http.get(`${API}/health`, { timeout: 1000, headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
+        if (res.statusCode === 200) { resolve(true); return; }
+        res.resume();
+        retry();
+      });
+      req.on('error', retry);
+      req.on('timeout', () => { req.destroy(); retry(); });
+    };
+    const retry = () => {
+      if (Date.now() - started > maxMs) { resolve(false); return; }
+      setTimeout(tryOnce, 500);
+    };
+    tryOnce();
+  });
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   startPythonServer();
 
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -309,6 +332,8 @@ app.whenReady().then(() => {
     });
   });
 
+  const backendReady = await waitForBackend();
+  if (!backendReady) console.error('[GIGAMAIL] Backend non raggiungibile entro 20s — apro comunque la finestra');
   createWindow();
   startPolling();
 
