@@ -1,0 +1,90 @@
+"""Ponte console → agente.
+
+Quello che nella vecchia app era delegato all'LLM interno (llm.py) qui viene
+delegato all'AGENTE dell'utente: la console inoltra l'istruzione ("scrivi la
+bozza", "trova le mail di...") a un agente headless — di default Claude Code
+in modalita' -p — che ha gia' i tool MCP ade-mail e quindi puo' cercare,
+leggere e ragionare sulla posta con la conoscenza dell'account.
+
+Configurazione (in ordine di precedenza):
+1. env ADE_AGENT_CMD — JSON array, es. ["claude","-p","{prompt}"]
+2. %APPDATA%/ADE/agent.json — {"command": [...], "timeout": 180}
+3. default: ["claude", "-p", "{prompt}", "--allowedTools", "mcp__ade-mail__*"]
+
+Il placeholder {prompt} viene sostituito con l'istruzione; se assente, il
+prompt viene appeso come ultimo argomento.
+"""
+import json
+import os
+import shutil
+import subprocess
+
+DEFAULT_COMMAND = ["claude", "-p", "{prompt}", "--allowedTools", "mcp__ade-mail__*"]
+DEFAULT_TIMEOUT = 180
+
+
+class AgentUnavailable(Exception):
+    pass
+
+
+def _config_path() -> str:
+    root = os.environ.get("ADE_ROOT") or os.path.join(
+        os.environ.get("APPDATA", os.path.expanduser("~")), "ADE"
+    )
+    return os.path.join(root, "agent.json")
+
+
+def get_config() -> dict:
+    env_cmd = os.environ.get("ADE_AGENT_CMD", "")
+    if env_cmd:
+        try:
+            return {"command": json.loads(env_cmd), "timeout": DEFAULT_TIMEOUT}
+        except Exception:
+            pass
+    try:
+        with open(_config_path(), encoding="utf-8") as f:
+            cfg = json.load(f)
+        if isinstance(cfg.get("command"), list) and cfg["command"]:
+            cfg.setdefault("timeout", DEFAULT_TIMEOUT)
+            return cfg
+    except Exception:
+        pass
+    return {"command": list(DEFAULT_COMMAND), "timeout": DEFAULT_TIMEOUT}
+
+
+def status() -> dict:
+    cfg = get_config()
+    exe = cfg["command"][0]
+    found = shutil.which(exe) is not None or os.path.exists(exe)
+    return {"available": found, "command": cfg["command"][0], "timeout": cfg["timeout"]}
+
+
+def run(prompt: str, timeout: int | None = None) -> str:
+    """Esegue l'agente headless con il prompt e restituisce il testo prodotto."""
+    cfg = get_config()
+    cmd = list(cfg["command"])
+    if any("{prompt}" in a for a in cmd):
+        cmd = [a.replace("{prompt}", prompt) for a in cmd]
+    else:
+        cmd.append(prompt)
+    exe = cmd[0]
+    if shutil.which(exe) is None and not os.path.exists(exe):
+        raise AgentUnavailable(
+            f"Agente non trovato ('{exe}'). Installa Claude Code oppure configura "
+            f"il comando in {_config_path()} "
+            '(es. {"command": ["claude", "-p", "{prompt}"]}).'
+        )
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=timeout or cfg["timeout"],
+            shell=False,
+        )
+    except subprocess.TimeoutExpired:
+        raise AgentUnavailable("L'agente non ha risposto entro il timeout.")
+    out = (proc.stdout or b"").decode("utf-8", errors="replace").strip()
+    if proc.returncode != 0 and not out:
+        err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
+        raise AgentUnavailable(f"Agente terminato con errore: {err[:400]}")
+    return out

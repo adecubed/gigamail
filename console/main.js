@@ -4,6 +4,7 @@ const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const http = require('http');
+const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
 let mainWindow;
@@ -12,7 +13,26 @@ let notifPoller = null;
 let lastUnreadCounts = {};
 let lastFollowupCheck = 0;
 
-const API = 'http://127.0.0.1:8002';
+// Token di sessione per il backend console: generato qui, passato al processo
+// Python via env, allegato a OGNI richiesta verso il backend (sia dal main
+// che dalle finestre, via onBeforeSendHeaders). Persistito in %APPDATA%/ADE
+// così un backend già attivo da un avvio precedente resta raggiungibile.
+const API_PORT = parseInt(process.env.ADE_CONSOLE_PORT || '8002', 10);
+const API = `http://127.0.0.1:${API_PORT}`;
+
+function loadOrCreateToken() {
+  const dir = path.join(process.env.APPDATA || require('os').homedir(), 'ADE');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const tokenPath = path.join(dir, '.console_token');
+  try {
+    const existing = fs.readFileSync(tokenPath, 'utf-8').trim();
+    if (existing) return existing;
+  } catch (e) {}
+  const token = crypto.randomBytes(24).toString('hex');
+  fs.writeFileSync(tokenPath, token, { mode: 0o600 });
+  return token;
+}
+const API_TOKEN = loadOrCreateToken();
 
 // ── Menu contesto copia/taglia/incolla per tutti i campi di testo ──
 // Si applica a ogni finestra (presente e futura). Dove un HTML ha già un
@@ -71,7 +91,7 @@ function getFollowupDb() {
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 function apiGet(urlPath) {
   return new Promise((resolve, reject) => {
-    const req = http.get(`${API}${urlPath}`, { timeout: 8000 }, (res) => {
+    const req = http.get(`${API}${urlPath}`, { timeout: 8000, headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
       let data = '';
       res.on('data', d => data += d);
       res.on('end', () => {
@@ -188,25 +208,31 @@ function getResourcesPath() {
 
 function startPythonServer() {
   const resourcesPath = getResourcesPath();
+  // Packaged: python embedded in resources. Dev: venv del repo gigamail
+  // (console/ sta accanto a src/ e .venv/).
   const pythonPath = app.isPackaged
     ? path.join(resourcesPath, 'python', 'python.exe')
-    : 'python';
-  const serverDir = app.isPackaged
-    ? path.join(resourcesPath, 'ade_mail')
-    : path.join(resourcesPath, 'ade_mail');
+    : path.join(__dirname, '..', '.venv', 'Scripts', 'python.exe');
+  const srcDir = app.isPackaged
+    ? path.join(resourcesPath, 'gigamail', 'src')
+    : path.join(__dirname, '..', 'src');
 
-  const req = http.get('http://127.0.0.1:8002/health', (res) => {
-    console.log('[ADE MAIL] Server già attivo su porta 8002');
+  const req = http.get(`${API}/health`, { headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
+    console.log(`[GIGAMAIL] Backend console già attivo su porta ${API_PORT}`);
   });
-req.on('error', () => {
-    console.log('[ADE MAIL] Avvio server Python...');
+  req.on('error', () => {
+    console.log('[GIGAMAIL] Avvio backend console...');
     serverProcess = spawn(pythonPath, [
-      'server.py',
+      '-X', 'utf8', '-c', 'from ade_mail_agent.http_api import main; main()',
     ], {
-      cwd: serverDir,
       windowsHide: true,
       detached: true,   // il backend sopravvive alla chiusura dell'app
-      env: { ...process.env, PYTHONPATH: serverDir },
+      env: {
+        ...process.env,
+        PYTHONPATH: srcDir,
+        ADE_CONSOLE_TOKEN: API_TOKEN,
+        ADE_CONSOLE_PORT: String(API_PORT),
+      },
     });
     serverProcess.stdout?.on('data', (d) => console.log('[SERVER]', d.toString().trim()));
     serverProcess.stderr?.on('data', (d) => console.error('[SERVER ERR]', d.toString().trim()));
@@ -260,6 +286,16 @@ app.whenReady().then(() => {
 
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(true);
+  });
+
+  // Header token su OGNI richiesta delle finestre verso il backend console:
+  // nessuna modifica necessaria alle fetch dei renderer.
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const u = details.url;
+    if (u.startsWith(`http://127.0.0.1:${API_PORT}/`) || u.startsWith(`http://localhost:${API_PORT}/`)) {
+      details.requestHeaders['X-ADE-Token'] = API_TOKEN;
+    }
+    callback({ requestHeaders: details.requestHeaders });
   });
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -559,32 +595,11 @@ ipcMain.on('calendar-window-maximize', (event) => {
   if (w?.isMaximized()) w.unmaximize(); else w?.maximize();
 });
 
-// ── FINESTRA MARKETING ───────────────────────────────────────────────────────
-let marketingWindow = null;
-ipcMain.on('open-marketing-window', () => {
-  if (marketingWindow && !marketingWindow.isDestroyed()) { marketingWindow.focus(); return; }
-  marketingWindow = new BrowserWindow({
-    width: 1000, height: 680, minWidth: 700, minHeight: 500,
-    frame: false, transparent: true, backgroundColor: '#00000000',
-    title: 'ADE Marketing',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload_marketing.js'),
-      contextIsolation: true, nodeIntegration: false,
-      webSecurity: false,
-    },
-  });
-  marketingWindow.loadFile(path.join(__dirname, 'marketing_window.html'));
-  marketingWindow.on('closed', () => { marketingWindow = null; });
-});
-ipcMain.on('marketing-window-close',    (event) => { BrowserWindow.fromWebContents(event.sender)?.close(); });
-ipcMain.on('marketing-window-minimize', (event) => { BrowserWindow.fromWebContents(event.sender)?.minimize(); });
-ipcMain.on('marketing-window-maximize', (event) => {
-  const w = BrowserWindow.fromWebContents(event.sender);
-  if (w?.isMaximized()) w.unmaximize(); else w?.maximize();
-});
+// Marketing bulk rimosso dalla v1 (candidato a tier pro). "Chiedi alle mail"
+// resta: la domanda ora va all'AGENTE (endpoint /mail_ask → agent_bridge),
+// non piu' all'LLM interno.
 
-// ------ ASK MAIL --------------------------------------------------------
-
+// ------ ASK MAIL (delegato all'agente) ----------------------------------
 let askWindow = null;
 ipcMain.on('open-ask-window', (event, data) => {
   if (askWindow && !askWindow.isDestroyed()) { askWindow.focus(); return; }
