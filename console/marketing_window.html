@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>GIGAMAIL Marketing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent: #eeb9dd;
+    --accent-l: #b0c7f4;
+    --font: 'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font);
+    background: linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    width:100vw; height:100vh;
+    overflow:hidden; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    border-radius:8px;
+  }
+
+  /* ── TITLEBAR ── */
+  .titlebar {
+    height:34px; flex-shrink:0;
+    display:flex; align-items:center; padding:0 14px; gap:8px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    -webkit-app-region:drag; user-select:none;
+  }
+  .tb-title { font-size:11px; color:rgba(0,0,0,0.75); font-weight:600; flex:1; letter-spacing:0.3px; }
+  .tb-buttons { display:flex; gap:6px; align-items:center; -webkit-app-region:no-drag; }
+  .tb-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1.5px solid rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; cursor:pointer;
+    color:rgba(0,0,0,0.6); transition:all 0.15s; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .tb-btn:hover { box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .tb-btn.close:hover { background:rgba(220,38,38,0.15); color:#dc2626; }
+  .tb-btn.minimize:hover { background:rgba(245,158,11,0.15); color:#d97706; }
+  .tb-btn.maximize:hover { background:rgba(34,197,94,0.15); color:#16a34a; }
+
+  /* ── LAYOUT ── */
+  .mkt-body {
+    flex:1; display:flex; overflow:hidden; min-height:0;
+    background:rgba(255,255,255,0.97);
+    border-radius:0 0 7px 7px;
+  }
+
+  /* Colonna sinistra */
+  .mkt-left {
+    width:260px; flex-shrink:0;
+    border-right:1px solid rgba(0,0,0,0.08);
+    display:flex; flex-direction:column; overflow-y:auto;
+    background:rgba(255,255,255,0.98);
+  }
+  .mkt-section {
+    padding:12px 14px;
+    border-bottom:1px solid rgba(0,0,0,0.06);
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .field-label {
+    font-size:9.5px; font-weight:700; letter-spacing:1.5px;
+    color:rgba(0,0,0,0.75); text-transform:uppercase;
+  }
+  .field-input {
+    width:100%; background:rgba(255,255,255,0.95);
+    border:1.5px solid rgba(0,0,0,0.75); border-radius:8px;
+    padding:7px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .field-input:focus { box-shadow:0 2px 12px rgba(0,0,0,0.2); }
+
+  .btn {
+    padding:6px 12px; border-radius:8px;
+    font-size:11px; font-weight:500; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s;
+    background:rgba(255,255,255,0.95);
+    border:1.5px solid rgba(0,0,0,0.75);
+    color:rgba(0,0,0,0.7);
+    box-shadow:0 4px 14px rgba(0,0,0,0.2);
+  }
+  .btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); box-shadow:0 4px 16px rgba(0,0,0,0.35); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn.w100 { width:100%; justify-content:center; }
+  .btn.danger { border-color:rgba(220,38,38,0.75); color:#dc2626; }
+  .btn.danger:hover { background:rgba(220,38,38,0.1); }
+
+  .compose-btn {
+    width:100%; padding:8px; border-radius:8px; border:1.5px solid black;
+    background:linear-gradient(135deg,var(--accent),var(--accent-l));
+    font-size:12px; font-weight:600; font-family:var(--font);
+    cursor:pointer; transition:all 0.2s;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+  }
+  .compose-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,0.4); }
+  .compose-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+  .tab-row { display:flex; gap:4px; }
+  .fmt-tab {
+    flex:1; padding:5px; border-radius:7px; border:1.5px solid rgba(0,0,0,0.75);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; text-align:center; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .fmt-tab.active { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+
+  .hint { font-size:10px; color:rgba(0,0,0,0.4); font-family:monospace; }
+  .hint.ok { color:#1A7F4B; }
+  .hint.err { color:#C0392B; }
+  .hint.blue { color:rgba(26,108,245,0.8); }
+
+  /* Colonna destra */
+  .mkt-right {
+    flex:1; display:flex; flex-direction:column;
+    padding:12px; gap:8px; overflow:hidden; min-width:0;
+  }
+  .ai-row {
+    display:flex; gap:8px; align-items:flex-end; flex-shrink:0;
+  }
+  .ai-input {
+    flex:1; resize:none; background:rgba(255,255,255,0.95);
+    border:1.5px solid rgba(0,0,0,0.75); border-radius:8px;
+    padding:8px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .gen-btn {
+    padding:8px 14px; border-radius:8px; border:1.5px solid black;
+    background:linear-gradient(135deg,var(--accent),var(--accent-l));
+    font-size:12px; font-weight:600; font-family:var(--font);
+    cursor:pointer; white-space:nowrap; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25); transition:all 0.15s;
+  }
+  .gen-btn:hover { box-shadow:0 4px 18px rgba(0,0,0,0.4); }
+  .gen-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+  .code-editor {
+    flex:1; width:100%; resize:none;
+    background:rgba(255,255,255,0.95);
+    border:1.5px solid rgba(0,0,0,0.75); border-radius:8px;
+    padding:10px 12px; font-size:12px;
+    font-family:'SF Mono','Fira Code','Cascadia Code',monospace;
+    color:rgba(0,0,0,0.82); outline:none; line-height:1.6;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .progress-wrap {
+    background:rgba(0,0,0,0.08); border-radius:4px; height:6px; overflow:hidden;
+    border:1px solid rgba(0,0,0,0.1);
+  }
+  .progress-fill {
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-l));
+    border-radius:4px; width:0%; transition:width 0.3s;
+  }
+  .bulk-log {
+    height:70px; overflow-y:auto; font-size:10px;
+    font-family:monospace; color:rgba(0,0,0,0.4);
+    background:rgba(0,0,0,0.03); border-radius:6px; padding:6px 8px;
+    border:1px solid rgba(0,0,0,0.08);
+  }
+  .progress-box {
+    background:rgba(255,255,255,0.95); border:1.5px solid rgba(0,0,0,0.75);
+    border-radius:10px; padding:10px 12px;
+    display:flex; flex-direction:column; gap:6px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.15);
+    flex-shrink:0;
+  }
+  .editor-wrap { flex:1; display:flex; min-height:0; position:relative; }
+
+  /* Drag & drop overlay */
+  .drop-overlay {
+    position:absolute; inset:0; z-index:10;
+    background:linear-gradient(135deg,rgba(238,185,221,0.85),rgba(176,199,244,0.85));
+    border:2.5px dashed rgba(0,0,0,0.5); border-radius:8px;
+    display:none; align-items:center; justify-content:center;
+    font-size:14px; font-weight:600; color:rgba(0,0,0,0.7);
+    pointer-events:none;
+  }
+  .drop-overlay.visible { display:flex; }
+
+  /* Image toolbar */
+  .img-toolbar {
+    display:flex; gap:6px; align-items:center; flex-shrink:0;
+    padding:6px 0 2px;
+  }
+  .img-btn {
+    padding:5px 10px; border-radius:7px; border:1.5px solid rgba(0,0,0,0.75);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .img-btn:hover { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
+
+  /* Image picker modal */
+  .img-picker {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.3); display:none;
+    align-items:center; justify-content:center;
+  }
+  .img-picker.visible { display:flex; }
+  .img-picker-box {
+    background:white; border-radius:12px; border:1.5px solid rgba(0,0,0,0.75);
+    box-shadow:0 16px 48px rgba(0,0,0,0.35);
+    width:560px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  .img-picker-hdr {
+    padding:12px 16px; background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; font-weight:600;
+  }
+  .img-grid {
+    flex:1; overflow-y:auto; padding:12px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+  }
+  .img-thumb {
+    aspect-ratio:1; border-radius:8px; overflow:hidden;
+    border:2px solid transparent; cursor:pointer; transition:all 0.15s;
+    position:relative;
+  }
+  .img-thumb:hover { border-color:rgba(0,0,0,0.5); }
+  .img-thumb.selected { border-color:black; box-shadow:0 0 0 2px #eeb9dd; }
+  .img-thumb img { width:100%; height:100%; object-fit:cover; }
+  .img-thumb .img-name {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(0,0,0,0.6); color:white; font-size:9px;
+    padding:2px 4px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;
+  }
+  .img-thumb .ai-badge {
+    position:absolute; top:4px; right:4px;
+    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    border:1px solid rgba(0,0,0,0.5); border-radius:4px;
+    font-size:9px; padding:1px 5px; font-weight:700;
+  }
+  .img-picker-ftr {
+    padding:10px 16px; border-top:1px solid rgba(0,0,0,0.08);
+    display:flex; gap:8px; align-items:center;
+  }
+  .ai-status { flex:1; font-size:11px; color:rgba(0,0,0,0.5); font-family:monospace; }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title">✉ GIGA Marketing Mail</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin">▽</button>
+    <button class="tb-btn maximize" id="btnMax">□</button>
+    <button class="tb-btn close"   id="btnClose">✕</button>
+  </div>
+</div>
+
+<div class="mkt-body">
+  <!-- SINISTRA -->
+  <div class="mkt-left">
+
+    <div class="mkt-section">
+      <div class="field-label">1. <span data-i18n="recipients">Destinatari</span></div>
+      <input type="file" id="bulkFileInput" accept=".csv,.xlsx,.xls" style="display:none"/>
+      <button class="btn w100" id="btnBulkUpload">📂 <span data-i18n="load_csv">Carica CSV / Excel</span></button>
+      <div id="bulkFileInfo" class="hint"></div>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label">2. <span data-i18n="subject_word">Oggetto</span></div>
+      <input type="text" id="bulkSubject" class="field-input" data-i18n-ph="subject_mail_ph" placeholder="Oggetto della mail…"/>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label">3. <span data-i18n="format_word">Formato</span></div>
+      <div class="tab-row">
+        <button class="fmt-tab active" id="btnBulkHtml">HTML</button>
+        <button class="fmt-tab" id="btnBulkPlain">PLAIN</button>
+      </div>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label" data-i18n="pause_between">Pausa tra invii (sec)</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <div class="hint">MIN</div>
+          <input type="number" id="bulkSleepMin" class="field-input" value="20" min="5"/>
+        </div>
+        <div style="flex:1">
+          <div class="hint">MAX</div>
+          <input type="number" id="bulkSleepMax" class="field-input" value="40" min="5"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="mkt-section">
+      <div id="bulkVarsHint" class="hint blue" data-i18n="vars_hint">Variabili: {nome}, {email}</div>
+    </div>
+
+    <div class="mkt-section" style="gap:8px;margin-top:auto">
+      <button class="btn w100" id="btnBulkPreview">👁 <span data-i18n="preview">Preview</span></button>
+      <button class="compose-btn" id="btnBulkStart" disabled>▶ <span data-i18n="start_send">Avvia invio</span></button>
+      <button class="btn w100 danger" id="btnBulkStop" style="display:none">⏹ <span data-i18n="stop_send">Ferma invio</span></button>
+    </div>
+
+  </div>
+
+  <!-- DESTRA -->
+  <div class="mkt-right">
+    <div class="ai-row">
+      <textarea id="bulkInstruction" class="ai-input" rows="2" data-i18n-ph="bulk_instruction_ph" placeholder="Descrivi la mail da generare con AI…"></textarea>
+      <button class="gen-btn" id="btnBulkGenerate">⚡ Genera</button>
+    </div>
+    <div id="bulkGenerateStatus" class="hint" style="flex-shrink:0"></div>
+
+    <div class="img-toolbar" id="imgToolbar">
+      <span style="font-size:11px;color:rgba(0,0,0,0.4);font-weight:500;" data-i18n="images_label">IMMAGINI:</span>
+      <button class="img-btn" id="btnDropInfo">📎 <span data-i18n="drag_image">Trascina immagine qui</span></button>
+      <button class="img-btn" id="btnLoadFolder">📁 <span data-i18n="load_folder">Carica cartella</span></button>
+    </div>
+    <div id="bulkEditorHtml" class="editor-wrap">
+      <div class="drop-overlay" id="dropOverlay">📎 Rilascia per inserire</div>
+      <textarea id="bulkBodyHtml" class="code-editor" placeholder="<html>…"></textarea>
+    </div>
+    <div id="bulkEditorPlain" class="editor-wrap" style="display:none">
+      <textarea id="bulkBodyPlain" class="code-editor" data-i18n-ph="plain_text_ph" placeholder="Testo semplice…"></textarea>
+    </div>
+
+    <div id="bulkProgress" class="progress-box" style="display:none">
+      <div class="progress-wrap"><div id="bulkProgressBar" class="progress-fill"></div></div>
+      <div style="display:flex;justify-content:space-between">
+        <span id="bulkProgressLabel" class="hint" data-i18n="waiting">In attesa…</span>
+        <span id="bulkProgressCount" class="hint">0/0</span>
+      </div>
+      <div id="bulkLog" class="bulk-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE PICKER MODAL -->
+<div class="img-picker" id="imgPicker">
+  <div class="img-picker-box">
+    <div class="img-picker-hdr">
+      <span>📁 Scegli immagine</span>
+      <button class="img-btn" id="btnPickerClose" style="padding:3px 8px">✕</button>
+    </div>
+    <div class="img-grid" id="imgGrid"></div>
+    <div class="img-picker-ftr">
+      <div class="ai-status" id="aiImgStatus"></div>
+      <button class="img-btn" id="btnAiPick">✦ AI sceglie</button>
+      <button class="compose-btn" id="btnInsertImg" style="width:auto;padding:6px 14px" data-i18n="insert" disabled>Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="folderInput" webkitdirectory multiple accept="image/*" style="display:none"/>
+
+<script>
+const API = 'http://127.0.0.1:8002';
+let _bulkRecipients = [];
+let _bulkPollingInterval = null;
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── FORMATO TAB ──
+document.getElementById('btnBulkHtml')?.addEventListener('click', () => {
+  document.getElementById('bulkEditorHtml').style.display = 'flex';
+  document.getElementById('bulkEditorPlain').style.display = 'none';
+  document.getElementById('btnBulkHtml').classList.add('active');
+  document.getElementById('btnBulkPlain').classList.remove('active');
+});
+document.getElementById('btnBulkPlain')?.addEventListener('click', () => {
+  document.getElementById('bulkEditorHtml').style.display = 'none';
+  document.getElementById('bulkEditorPlain').style.display = 'flex';
+  document.getElementById('btnBulkHtml').classList.remove('active');
+  document.getElementById('btnBulkPlain').classList.add('active');
+});
+
+// ── UPLOAD FILE ──
+document.getElementById('btnBulkUpload')?.addEventListener('click', () => document.getElementById('bulkFileInput')?.click());
+document.getElementById('bulkFileInput')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const info = document.getElementById('bulkFileInfo');
+  if (info) info.textContent = 'Caricamento...';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`${API}/mail/bulk/upload`, { method:'POST', body:fd });
+    const result = await r.json();
+    _bulkRecipients = result.recipients || [];
+    if (info) info.innerHTML = `<span style="color:#1A7F4B">✓ ${result.count} destinatari caricati</span><br>Colonne: ${result.columns.join(', ')}`;
+    const hint = document.getElementById('bulkVarsHint');
+    if (hint) hint.textContent = 'Variabili: ' + result.columns.map(c => '{'+c+'}').join(', ');
+    document.getElementById('btnBulkStart').disabled = false;
+  } catch(err) {
+    if (info) info.innerHTML = `<span style="color:#C0392B">✗ Errore: ${err.message}</span>`;
+  }
+  e.target.value = '';
+});
+
+// ── GENERA AI ──
+document.getElementById('btnBulkGenerate')?.addEventListener('click', async () => {
+  const instruction = document.getElementById('bulkInstruction')?.value?.trim();
+  if (!instruction) { alert('Scrivi prima le istruzioni per il LLM'); return; }
+  const status = document.getElementById('bulkGenerateStatus');
+  const btn = document.getElementById('btnBulkGenerate');
+  if (status) status.textContent = 'Generazione in corso...';
+  if (btn) btn.disabled = true;
+  try {
+    const subjectHint = document.getElementById('bulkSubject')?.value?.trim() || '';
+    const r = await fetch(`${API}/mail/bulk/generate`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ instruction, subject_hint: subjectHint })
+    });
+    const result = await r.json();
+    if (result.subject) {
+      const curr = document.getElementById('bulkSubject')?.value?.trim();
+      if (!curr || confirm(`Sostituire oggetto con:\n"${result.subject}"?`)) {
+        document.getElementById('bulkSubject').value = result.subject;
+      }
+    }
+    if (result.html) document.getElementById('bulkBodyHtml').value = result.html;
+    if (result.plain) document.getElementById('bulkBodyPlain').value = result.plain;
+    if (status) status.textContent = '✓ Generato — controlla prima di inviare';
+  } catch(err) {
+    if (status) status.textContent = '✗ Errore: ' + err.message;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+
+// ── PREVIEW ──
+document.getElementById('btnBulkPreview')?.addEventListener('click', () => {
+  if (!_bulkRecipients.length) { alert(window.i18n?window.i18n.t('load_recipients_first'):'Carica prima un file con i destinatari'); return; }
+  const first = _bulkRecipients[0];
+  const subject = document.getElementById('bulkSubject')?.value || '(nessun oggetto)';
+  const html = document.getElementById('bulkBodyHtml')?.value || '';
+  const plain = document.getElementById('bulkBodyPlain')?.value || '';
+  const applyVars = (t) => {
+    let r = t;
+    for (const [k, v] of Object.entries(first)) r = r.replaceAll(`{${k}}`, v || '');
+    return r;
+  };
+  const previewHtml = html ? applyVars(html) : `<pre style="white-space:pre-wrap">${esc(applyVars(plain))}</pre>`;
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Preview</title></head><body>
+    <div style="padding:16px;background:#eee;font-family:sans-serif;font-size:12px">
+      <b>Oggetto:</b> ${esc(applyVars(subject))} &nbsp;|&nbsp; <b>A:</b> ${esc(first.email||'')} &nbsp;|&nbsp; ${_bulkRecipients.length} destinatari
+    </div>${previewHtml}</body></html>`;
+  const blob = new Blob([fullHtml], { type:'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank', 'width=800,height=640,scrollbars=yes');
+});
+
+// ── AVVIA INVIO ──
+document.getElementById('btnBulkStart')?.addEventListener('click', async () => {
+  if (!_bulkRecipients.length) { alert('Carica prima un file'); return; }
+  const subject = document.getElementById('bulkSubject')?.value?.trim();
+  if (!subject) { alert('Inserisci l\'oggetto'); return; }
+  const bodyHtml = document.getElementById('bulkBodyHtml')?.value?.trim() || '';
+  const bodyPlain = document.getElementById('bulkBodyPlain')?.value?.trim() || '';
+  if (!bodyHtml && !bodyPlain) { alert('Scrivi il corpo della mail'); return; }
+  if (!confirm(`Avviare invio a ${_bulkRecipients.length} destinatari?\n\nOggetto: ${subject}`)) return;
+  try {
+    const r = await fetch(`${API}/mail/bulk/start`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        subject, body_html: bodyHtml, body_plain: bodyPlain,
+        sleep_min: parseInt(document.getElementById('bulkSleepMin')?.value||'20'),
+        sleep_max: parseInt(document.getElementById('bulkSleepMax')?.value||'40'),
+        batch_size:50, batch_pause:300, recipients:_bulkRecipients
+      })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    setBulkSendingUI(true);
+    startBulkPolling();
+  } catch(err) { alert('Errore avvio: ' + err.message); }
+});
+
+// ── FERMA INVIO ──
+document.getElementById('btnBulkStop')?.addEventListener('click', async () => {
+  try {
+    await fetch(`${API}/mail/bulk/stop`, { method:'POST' });
+  } catch(err) { alert('Errore stop: ' + err.message); }
+});
+
+function setBulkSendingUI(sending) {
+  const btnStart = document.getElementById('btnBulkStart');
+  const btnStop  = document.getElementById('btnBulkStop');
+  const progress = document.getElementById('bulkProgress');
+  if (btnStart) { btnStart.style.display = sending ? 'none' : 'block'; btnStart.disabled = sending; }
+  if (btnStop)  btnStop.style.display = sending ? 'block' : 'none';
+  if (progress) progress.style.display = sending ? 'flex' : 'none';
+}
+
+function startBulkPolling() {
+  if (_bulkPollingInterval) clearInterval(_bulkPollingInterval);
+  _bulkPollingInterval = setInterval(refreshBulkStatus, 3000);
+}
+
+async function refreshBulkStatus() {
+  try {
+    const r = await fetch(`${API}/mail/bulk/status`);
+    const data = await r.json();
+    if (!data || data.status === 'idle') {
+      if (_bulkPollingInterval) { clearInterval(_bulkPollingInterval); _bulkPollingInterval = null; }
+      setBulkSendingUI(false);
+      return;
+    }
+    setBulkSendingUI(true);
+    const total = data.total || 0;
+    const sent  = data.sent  || 0;
+    const pct   = total ? Math.round(sent/total*100) : 0;
+    const bar   = document.getElementById('bulkProgressBar');
+    const label = document.getElementById('bulkProgressLabel');
+    const count = document.getElementById('bulkProgressCount');
+    const log   = document.getElementById('bulkLog');
+    if (bar)   bar.style.width = pct + '%';
+    if (label) label.textContent = data.status === 'running' ? `Invio in corso… ${pct}%` : `Completato`;
+    if (count) count.textContent = `${sent}/${total}`;
+    if (log && data.log) { log.textContent = (data.log||[]).slice(-20).join('\n'); log.scrollTop = log.scrollHeight; }
+  } catch {}
+}
+
+// ── IMAGE UTILITIES ──────────────────────────────────────────────────────────
+
+let _loadedImages = []; // [{name, dataUrl, mimeType}]
+let _selectedImgIdx = null;
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result); // data URL
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+}
+
+function insertImgAtCursor(dataUrl, name) {
+  const ta = document.getElementById('bulkBodyHtml');
+  if (!ta) return;
+  const tag = `<img src="${dataUrl}" alt="${name}" style="max-width:100%;height:auto;display:block;margin:8px auto"/>`;
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + tag + ta.value.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + tag.length;
+  ta.focus();
+}
+
+// ── DRAG & DROP sull'editor HTML ──
+const editorHtml = document.getElementById('bulkEditorHtml');
+const dropOverlay = document.getElementById('dropOverlay');
+const bulkBodyHtml = document.getElementById('bulkBodyHtml');
+
+editorHtml?.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const hasImg = Array.from(e.dataTransfer.items).some(i => i.type.startsWith('image/'));
+  if (hasImg) dropOverlay?.classList.add('visible');
+});
+editorHtml?.addEventListener('dragleave', (e) => {
+  if (!editorHtml.contains(e.relatedTarget)) dropOverlay?.classList.remove('visible');
+});
+editorHtml?.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropOverlay?.classList.remove('visible');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  for (const file of files) {
+    const dataUrl = await fileToBase64(file);
+    insertImgAtCursor(dataUrl, file.name);
+  }
+});
+
+// ── CARICA CARTELLA → IMAGE PICKER ──
+document.getElementById('btnLoadFolder')?.addEventListener('click', () => {
+  document.getElementById('folderInput')?.click();
+});
+
+document.getElementById('folderInput')?.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  _loadedImages = [];
+  _selectedImgIdx = null;
+  const grid = document.getElementById('imgGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:rgba(0,0,0,0.4)">Caricamento immagini…</div>';
+  document.getElementById('imgPicker').classList.add('visible');
+  document.getElementById('aiImgStatus').textContent = '';
+  document.getElementById('btnInsertImg').disabled = true;
+
+  for (const file of files.slice(0, 30)) { // max 30
+    const dataUrl = await fileToBase64(file);
+    _loadedImages.push({ name: file.name, dataUrl, mimeType: file.type });
+  }
+  renderImgGrid();
+  e.target.value = '';
+});
+
+function renderImgGrid(aiPickedIdx = null) {
+  const grid = document.getElementById('imgGrid');
+  grid.innerHTML = '';
+  _loadedImages.forEach((img, idx) => {
+    const div = document.createElement('div');
+    div.className = 'img-thumb' + (idx === _selectedImgIdx ? ' selected' : '');
+    div.innerHTML = `<img src="${img.dataUrl}" loading="lazy"/><div class="img-name">${img.name}</div>${idx === aiPickedIdx ? '<div class="ai-badge">✦ AI</div>' : ''}`;
+    div.addEventListener('click', () => {
+      _selectedImgIdx = idx;
+      grid.querySelectorAll('.img-thumb').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      document.getElementById('btnInsertImg').disabled = false;
+    });
+    grid.appendChild(div);
+  });
+}
+
+// ── AI SCEGLIE ──
+document.getElementById('btnAiPick')?.addEventListener('click', async () => {
+  if (!_loadedImages.length) return;
+  const mailText = document.getElementById('bulkBodyHtml')?.value || document.getElementById('bulkBodyPlain')?.value || '';
+  const subject  = document.getElementById('bulkSubject')?.value || '';
+  const status   = document.getElementById('aiImgStatus');
+  const btn      = document.getElementById('btnAiPick');
+
+  if (!mailText && !subject) { status.textContent = '⚠ Scrivi prima il testo della mail'; return; }
+
+  btn.disabled = true;
+  status.textContent = '✦ AI sta analizzando le immagini…';
+
+  try {
+    // Prepara messaggio con immagini (max 10 per token limit)
+    const sample = _loadedImages.slice(0, 10);
+    const imageBlocks = sample.map((img, i) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mimeType, data: img.dataUrl.split(',')[1] }
+    }));
+
+    const textBlock = {
+      type: 'text',
+      text: `Hai ${sample.length} immagini numerate da 0 a ${sample.length-1}.
+Oggetto mail: "${subject}"
+Testo/HTML mail: "${mailText.slice(0, 800)}"
+
+Scegli l'immagine più adatta per questa mail di marketing. Rispondi SOLO con il numero dell'immagine scelta (es: 2). Nient'altro.`
+    };
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: [...imageBlocks, textBlock] }]
+      })
+    });
+
+    const data = await response.json();
+    const answer = data.content?.[0]?.text?.trim() || '';
+    const picked = parseInt(answer);
+
+    if (!isNaN(picked) && picked >= 0 && picked < _loadedImages.length) {
+      _selectedImgIdx = picked;
+      renderImgGrid(picked);
+      document.getElementById('btnInsertImg').disabled = false;
+      status.textContent = `✦ AI ha scelto: ${_loadedImages[picked].name}`;
+    } else {
+      status.textContent = '⚠ Risposta AI non valida — scegli manualmente';
+    }
+  } catch(err) {
+    status.textContent = '✗ Errore AI: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── INSERISCI IMMAGINE SCELTA ──
+document.getElementById('btnInsertImg')?.addEventListener('click', () => {
+  if (_selectedImgIdx === null) return;
+  const img = _loadedImages[_selectedImgIdx];
+  insertImgAtCursor(img.dataUrl, img.name);
+  document.getElementById('imgPicker').classList.remove('visible');
+  _selectedImgIdx = null;
+});
+
+// ── CHIUDI PICKER ──
+document.getElementById('btnPickerClose')?.addEventListener('click', () => {
+  document.getElementById('imgPicker').classList.remove('visible');
+});
+
+// ── WINDOW CONTROLS ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnClose')?.addEventListener('click',   () => window.marketingWindowAPI?.close());
+  document.getElementById('btnMin')?.addEventListener('click',     () => window.marketingWindowAPI?.minimize());
+  document.getElementById('btnMax')?.addEventListener('click',     () => window.marketingWindowAPI?.maximize());
+  refreshBulkStatus();
+});
+</script>
+  <script src="i18n.js"></script>
+</body>
+</html>
