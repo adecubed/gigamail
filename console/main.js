@@ -620,9 +620,33 @@ ipcMain.on('calendar-window-maximize', (event) => {
   if (w?.isMaximized()) w.unmaximize(); else w?.maximize();
 });
 
-// Marketing bulk rimosso dalla v1 (candidato a tier pro). "Chiedi alle mail"
-// resta: la domanda ora va all'AGENTE (endpoint /mail_ask → agent_bridge),
-// non piu' all'LLM interno.
+// ── FINESTRA MARKETING ───────────────────────────────────────────────────────
+// (la personalizzazione AI del bulk verra' delegata all'agente)
+let marketingWindow = null;
+ipcMain.on('open-marketing-window', () => {
+  if (marketingWindow && !marketingWindow.isDestroyed()) { marketingWindow.focus(); return; }
+  marketingWindow = new BrowserWindow({
+    width: 1000, height: 680, minWidth: 700, minHeight: 500,
+    frame: false, transparent: true, backgroundColor: '#00000000',
+    title: 'ADE Marketing',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload_marketing.js'),
+      contextIsolation: true, nodeIntegration: false,
+      webSecurity: false,
+    },
+  });
+  marketingWindow.loadFile(path.join(__dirname, 'marketing_window.html'));
+  marketingWindow.on('closed', () => { marketingWindow = null; });
+});
+ipcMain.on('marketing-window-close',    (event) => { BrowserWindow.fromWebContents(event.sender)?.close(); });
+ipcMain.on('marketing-window-minimize', (event) => { BrowserWindow.fromWebContents(event.sender)?.minimize(); });
+ipcMain.on('marketing-window-maximize', (event) => {
+  const w = BrowserWindow.fromWebContents(event.sender);
+  if (w?.isMaximized()) w.unmaximize(); else w?.maximize();
+});
+
+// "Chiedi alle mail": la domanda ora va all'AGENTE (endpoint /mail_ask →
+// agent_bridge), non piu' all'LLM interno.
 
 // ------ ASK MAIL (delegato all'agente) ----------------------------------
 let askWindow = null;
