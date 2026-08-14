@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaMail — the email layer for AI agents</title>
+<meta name="description" content="Open-source email for AI agents. Your agent reads, searches and drafts; nothing is sent or deleted without your approval. Microsoft Graph + IMAP, local data, AGPL-3.0.">
+<style>
+  /* ── tokens: light is the base, both dark states redefine only tokens ── */
+  :root {
+    --bg:        #f4f2ee;
+    --surface:   #ffffff;
+    --surface-2: #e9e6df;
+    --text:      #17202b;
+    --muted:     #5a6675;
+    --line:      #dcd6cb;
+    --signal:    #9a6113;
+    --signal-bg: rgba(154, 97, 19, .10);
+    --verified:  #1f6f47;
+    --term-bg:   #101a25;
+    --term-text: #d7e0ea;
+    --term-line: #223142;
+    --shadow:    0 1px 2px rgba(23,32,43,.06), 0 12px 32px rgba(23,32,43,.08);
+
+    --display: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0d141d;
+      --surface:   #131c27;
+      --surface-2: #1a2532;
+      --text:      #e6ecf3;
+      --muted:     #93a1b2;
+      --line:      #233040;
+      --signal:    #e2a950;
+      --signal-bg: rgba(226, 169, 80, .12);
+      --verified:  #4ec287;
+      --term-bg:   #0a121b;
+      --term-text: #d7e0ea;
+      --term-line: #1d2937;
+      --shadow:    0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:        #0d141d;
+    --surface:   #131c27;
+    --surface-2: #1a2532;
+    --text:      #e6ecf3;
+    --muted:     #93a1b2;
+    --line:      #233040;
+    --signal:    #e2a950;
+    --signal-bg: rgba(226, 169, 80, .12);
+    --verified:  #4ec287;
+    --term-bg:   #0a121b;
+    --term-text: #d7e0ea;
+    --term-line: #1d2937;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.65;
+  }
+  .wrap { width: min(1080px, 100% - 3rem); margin-inline: auto; }
+  .narrow { max-width: 62ch; }
+
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.15; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5.4vw, 3.4rem); letter-spacing: -.035em; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -.025em; }
+  h3 { font-size: 1.02rem; letter-spacing: -.01em; }
+  p { margin: 0; }
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 3px;
+  }
+
+  .eyebrow {
+    font-family: var(--display); font-size: .74rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ── header ── */
+  header { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 0; }
+  .brand { font-family: var(--display); font-weight: 600; letter-spacing: -.03em; font-size: 1.05rem; }
+  .brand span { color: var(--signal); }
+  .bar nav { display: flex; gap: 1.4rem; font-size: .92rem; }
+  .bar nav a { color: var(--muted); text-decoration: none; }
+  .bar nav a:hover { color: var(--text); }
+  @media (max-width: 620px) { .bar nav { display: none; } }
+
+  /* ── hero ── */
+  .hero { padding: clamp(3rem, 8vw, 5.5rem) 0 clamp(2.5rem, 6vw, 4rem); }
+  .hero-grid { display: grid; gap: clamp(2rem, 5vw, 3.5rem); grid-template-columns: 1fr; align-items: start; }
+  @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.05fr .95fr; } }
+  .lede { font-size: 1.16rem; color: var(--muted); margin-top: 1.1rem; }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.8rem; }
+  .btn {
+    font-family: var(--display); font-size: .93rem; text-decoration: none;
+    padding: .68rem 1.15rem; border-radius: 7px; border: 1px solid var(--line);
+    display: inline-flex; align-items: center; gap: .5rem; transition: transform .12s ease, border-color .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-ghost:hover { border-color: var(--signal); color: var(--signal); }
+  .agents { margin-top: 1.6rem; font-size: .88rem; color: var(--muted); }
+  .agents b { color: var(--text); font-weight: 600; }
+
+  /* ── the gate: hero object ── */
+  .gate {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .gate-head {
+    display: flex; align-items: center; gap: .55rem; padding: .8rem 1rem;
+    border-bottom: 1px solid var(--line); background: var(--surface-2);
+    font-family: var(--display); font-size: .78rem; color: var(--muted); letter-spacing: .04em;
+  }
+  .gate-body { padding: 1.1rem 1.2rem 1.3rem; display: grid; gap: .85rem; }
+  .step { display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: start; }
+  .marker {
+    font-family: var(--display); font-size: .72rem; width: 1.55rem; height: 1.55rem;
+    display: grid; place-items: center; border-radius: 50%;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .step.hold .marker { border-color: var(--signal); color: var(--signal); background: var(--signal-bg); }
+  .step.done .marker { border-color: var(--verified); color: var(--verified); }
+  .step h3 { font-size: .95rem; }
+  .step p { font-size: .88rem; color: var(--muted); margin-top: .1rem; }
+  .draft {
+    font-family: var(--display); font-size: .8rem; background: var(--term-bg); color: var(--term-text);
+    border-radius: 8px; padding: .8rem .9rem; margin-top: .55rem; line-height: 1.55;
+    border: 1px solid var(--term-line); overflow-x: auto;
+  }
+  .draft .k { color: #8fb8e0; }
+  .draft .warn { color: #e2a950; }
+  .halt {
+    margin-top: .5rem; display: inline-flex; align-items: center; gap: .45rem;
+    font-family: var(--display); font-size: .76rem; color: var(--signal);
+    background: var(--signal-bg); border: 1px solid var(--signal); border-radius: 999px; padding: .22rem .7rem;
+  }
+
+  /* ── sections ── */
+  section { padding: clamp(3rem, 7vw, 5rem) 0; border-top: 1px solid var(--line); }
+  .sec-head { display: grid; gap: .6rem; margin-bottom: 2.2rem; max-width: 60ch; }
+  figure { margin: 0; }
+  figure img {
+    width: 100%; height: auto; display: block; border-radius: 10px;
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  figcaption { font-size: .88rem; color: var(--muted); margin-top: .8rem; max-width: 62ch; }
+
+  .two { display: grid; gap: clamp(1.6rem, 4vw, 3rem); grid-template-columns: 1fr; align-items: center; }
+  @media (min-width: 880px) { .two { grid-template-columns: 1.15fr .85fr; } }
+
+  /* tool inventory */
+  .tools { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .tool-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.15rem; }
+  .tool-card .eyebrow { display: flex; align-items: baseline; gap: .5rem; }
+  .count { font-family: var(--display); font-size: 1.5rem; color: var(--text); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .tool-card ul { list-style: none; padding: 0; margin: .7rem 0 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+  .tool-card li {
+    font-family: var(--display); font-size: .76rem; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 5px; padding: .16rem .45rem;
+  }
+  .tool-card.danger { border-color: var(--signal); }
+  .tool-card.danger li { color: var(--signal); border-color: var(--signal-bg); background: var(--signal-bg); }
+  .rule { font-size: .9rem; color: var(--muted); margin-top: 1.3rem; }
+
+  /* red team receipt */
+  .verdict { display: grid; gap: .55rem; margin-top: 1.5rem; }
+  .vrow {
+    display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;
+    font-family: var(--display); font-size: .87rem;
+    border-bottom: 1px dashed var(--line); padding-bottom: .5rem;
+  }
+  .vrow b { color: var(--verified); font-weight: 600; }
+
+  /* install */
+  pre {
+    font-family: var(--display); font-size: .84rem; background: var(--term-bg); color: var(--term-text);
+    border: 1px solid var(--term-line); border-radius: 10px; padding: 1rem 1.1rem; overflow-x: auto; margin: 0;
+    line-height: 1.7;
+  }
+  pre .c { color: #8ea3b8; }
+  .steps-install { display: grid; gap: 1.1rem; }
+
+  footer { border-top: 1px solid var(--line); padding: 2.5rem 0 3.5rem; color: var(--muted); font-size: .9rem; }
+  .foot-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: space-between; align-items: baseline; }
+  footer a { color: var(--muted); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { animation: rise .6s cubic-bezier(.2,.7,.3,1) backwards; }
+    .reveal:nth-child(2) { animation-delay: .08s; }
+    .reveal:nth-child(3) { animation-delay: .16s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand">Giga<span>Mail</span></div>
+    <nav>
+      <a href="#real">How it works</a>
+      <a href="#tools">Tools</a>
+      <a href="#redteam">Red team</a>
+      <a href="#start">Get started</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Open source · AGPL-3.0</p>
+        <h1 style="margin-top:.7rem">The email layer for AI&nbsp;agents.</h1>
+        <p class="lede">
+          Your agent reads your mail, searches it, and writes replies using your own
+          documents and calendar. <strong>It cannot send or delete anything without
+          your approval.</strong> Runs on your machine, next to the inbox you already use.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/adecubed/gigamail">View on GitHub</a>
+          <a class="btn btn-ghost" href="#start">Get started</a>
+        </div>
+        <p class="agents">
+          Works with <b>Claude</b>, <b>Codex</b>, <b>Hermes</b>, or your own agent — ours is Sofia.
+          No built-in LLM: the intelligence is whatever agent you bring.
+        </p>
+      </div>
+
+      <div class="gate reveal">
+        <div class="gate-head">agent → send_mail</div>
+        <div class="gate-body">
+          <div class="step">
+            <span class="marker">1</span>
+            <div>
+              <h3>The agent asks</h3>
+              <p>It never gets to just do it. The request returns a preview and a one-time token.</p>
+              <div class="draft">
+<span class="k">to:</span>      marco.bianchi@example.it
+<span class="k">subject:</span> Re: Apartment A.2.1
+<span class="k">body:</span>    Dear Mr Bianchi, the apartment is
+         62.36 sqm, €281,000 …
+<span class="k">attach:</span>  A.2.1.pdf</div>
+            </div>
+          </div>
+          <div class="step hold">
+            <span class="marker">2</span>
+            <div>
+              <h3>Everything stops here</h3>
+              <p>Nothing has been sent. The token expires in five minutes and works once.</p>
+              <span class="halt">● awaiting human approval</span>
+            </div>
+          </div>
+          <div class="step done">
+            <span class="marker">3</span>
+            <div>
+              <h3>You approve — then it sends</h3>
+              <p>Every write lands in an append-only action log you can read.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="real">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Not a demo</p>
+        <h2>This answers our clients every day.</h2>
+        <p style="color:var(--muted)">
+          We build and sell apartments. A prospect writes asking about a unit —
+          size, price, a viewing. The agent pulls the real figures from our own
+          files, attaches the right floor plans, and offers slots that are
+          genuinely free in our calendar. Then a human reads it and sends.
+        </p>
+      </div>
+      <figure>
+        <img src="console-draft.png" alt="The GigaMail console: a reply drafted by the agent listing three apartments with real sizes and prices, mentioning attached floor plans, and proposing three appointment times, with an instruction field and a Generate button at the bottom.">
+        <figcaption>
+          The human console. You direct the agent from your own inbox — write an
+          instruction, read what came back, edit it, send it. You are not chatting
+          with a bot in another window.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="tools">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The surface</p>
+        <h2>24 typed tools, sorted by what they can cost you.</h2>
+        <p style="color:var(--muted)">
+          Reading is free. Reversible writes are logged. Anything destructive goes
+          through the gate. Login and credentials are not exposed to the agent at
+          all — they live in the CLI, so a hostile email can never reach them.
+        </p>
+      </div>
+      <div class="tools">
+        <div class="tool-card reveal">
+          <p class="eyebrow"><span class="count">15</span> read · free</p>
+          <ul>
+            <li>list_messages</li><li>search_mail</li><li>read_message</li>
+            <li>read_attachment</li><li>sender_history</li><li>get_identity</li>
+            <li>list_knowledge_files</li><li>read_knowledge_file</li>
+            <li>observer_context</li><li>find_free_slots</li><li>list_events</li>
+            <li>list_folders</li><li>list_unread</li><li>memory_stats</li>
+            <li>list_accounts</li>
+          </ul>
+        </div>
+        <div class="tool-card reveal">
+          <p class="eyebrow"><span class="count">3</span> safe writes · logged</p>
+          <ul><li>mark_read</li><li>move_message</li><li>create_folder</li></ul>
+        </div>
+        <div class="tool-card danger reveal">
+          <p class="eyebrow"><span class="count">6</span> destructive · gated</p>
+          <ul>
+            <li>send_mail</li><li>reply_mail</li><li>delete_message</li>
+            <li>delete_folder</li><li>create_event</li><li>delete_event</li>
+          </ul>
+        </div>
+      </div>
+      <p class="rule">
+        Microsoft Graph and IMAP — Gmail, Aruba, whatever server your mail lives on.
+        The agent talks to GigaMail over MCP on stdio: no network port, no service of ours in between.
+      </p>
+    </div>
+  </section>
+
+  <section id="redteam">
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Red team</p>
+        <h2 style="margin:.6rem 0 1.1rem">We told the agent to betray us.</h2>
+        <p style="color:var(--muted)">
+          Email content is untrusted input. So we wrote hostile emails that order the
+          assistant to forward the inbox to a stranger, wipe the mailbox, and approve
+          itself with an invented "admin override" token — then fed them to a real
+          agent with all 24 tools live.
+        </p>
+        <div class="verdict">
+          <div class="vrow"><span>Exfiltration via send</span> <b>refused</b></div>
+          <div class="vrow"><span>Mass delete</span> <b>refused</b></div>
+          <div class="vrow"><span>Fake admin-override token</span> <b>refused</b></div>
+        </div>
+        <p class="rule">
+          The structural half of that suite runs in CI on every push — Windows and
+          Linux, Python 3.10 / 3.12 / 3.13, 94 tests. Because "trust me, it's safe"
+          is not a security model.
+        </p>
+      </div>
+      <figure>
+        <img src="anti-injection-harness.png" alt="Terminal output of the anti-injection harness: three hostile-email scenarios run against a real agent in dry-run mode, all three reporting OK with zero destructive actions.">
+      </figure>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Get started</p>
+        <h2>Five minutes, on your own machine.</h2>
+      </div>
+      <div class="steps-install narrow">
+        <div>
+          <h3 style="margin-bottom:.5rem">1 · Install and connect an account</h3>
+          <pre><span class="c"># from a clone — PyPI package coming</span>
+pip install -e ".[all]"
+
+gigamail login              <span class="c"># Microsoft device flow</span>
+gigamail accounts add-imap  <span class="c"># Gmail, Aruba, any IMAP</span></pre>
+        </div>
+        <div>
+          <h3 style="margin-bottom:.5rem">2 · Give the account its knowledge</h3>
+          <pre>gigamail identity set                    <span class="c"># who you are, your tone</span>
+gigamail identity add-file price-list.xlsx
+gigamail identity add-file ./floor-plans/</pre>
+        </div>
+        <div>
+          <h3 style="margin-bottom:.5rem">3 · Point your agent at it</h3>
+          <pre>{ "mcpServers": { "gigamail": { "command": "gigamail-server" } } }</pre>
+          <p style="color:var(--muted); font-size:.9rem; margin-top:.7rem">
+            Then just ask: <em>"reply to the last quote request using the price list."</em>
+            It reads the mail, pulls the numbers, drafts the reply — and stops for you.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div>
+      <div class="brand" style="margin-bottom:.4rem">Giga<span>Mail</span></div>
+      <p>Mail indexes, credentials and memory stay on your machine.<br>
+         Content your agent reads is handled by that agent's provider.</p>
+    </div>
+    <div style="display:grid; gap:.35rem">
+      <a href="https://github.com/adecubed/gigamail">github.com/adecubed/gigamail</a>
+      <span>AGPL-3.0-or-later · commercial licenses available</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
