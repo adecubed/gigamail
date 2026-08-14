@@ -13,13 +13,43 @@ _ADE_DATA = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'AD
 os.makedirs(_ADE_DATA, exist_ok=True)
 DB_PATH  = os.path.join(_ADE_DATA, '.accounts.db')
 KEY_PATH = os.path.join(_ADE_DATA, '.accounts.key')
+KEY_PATH_DPAPI = KEY_PATH + '.dpapi'
+
+try:
+    import win_dpapi as _dpapi
+except ImportError:
+    _dpapi = None
+
+
+def _dpapi_ok() -> bool:
+    return _dpapi is not None and _dpapi.available()
+
+
 def _get_key() -> bytes:
+    """Chiave Fernet degli account. Su Windows la chiave su disco è protetta
+    con DPAPI (legata all'utente): copiare i file non basta a decifrarla.
+    La chiave legacy in chiaro viene migrata al primo accesso."""
+    # 1. formato protetto
+    if _dpapi_ok() and os.path.exists(KEY_PATH_DPAPI):
+        with open(KEY_PATH_DPAPI, 'rb') as f:
+            return _dpapi.unprotect(f.read())
+    # 2. legacy in chiaro -> migra se possibile
     if os.path.exists(KEY_PATH):
         with open(KEY_PATH, 'rb') as f:
-            return f.read()
+            key = f.read()
+        if _dpapi_ok():
+            with open(KEY_PATH_DPAPI, 'wb') as f:
+                f.write(_dpapi.protect(key))
+            os.remove(KEY_PATH)
+        return key
+    # 3. prima esecuzione
     key = Fernet.generate_key()
-    with open(KEY_PATH, 'wb') as f:
-        f.write(key)
+    if _dpapi_ok():
+        with open(KEY_PATH_DPAPI, 'wb') as f:
+            f.write(_dpapi.protect(key))
+    else:
+        with open(KEY_PATH, 'wb') as f:
+            f.write(key)
     return key
 def _encrypt(text: str) -> str:
     f = Fernet(_get_key())

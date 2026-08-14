@@ -59,12 +59,34 @@ SCOPES = [
 AUTHORITY = f'https://login.microsoftonline.com/{TENANT_ID}'
 
 
-def _get_app() -> msal.PublicClientApplication:
-    cache = msal.SerializableTokenCache()
-    if os.path.exists(TOKEN_PATH):
-        with open(TOKEN_PATH, 'r') as f:
-            cache.deserialize(f.read())
+class AuthRequired(Exception):
+    """Nessun token valido per l'account richiesto: serve un login esplicito
+    (CLI `ade-mail-agent login` o console). get_token NON avvia mai flussi
+    interattivi da solo: dentro un server bloccherebbe la richiesta."""
 
+
+# Contesto account corrente: impostato da mail_router quando l'account
+# risolto e' Microsoft. email seleziona l'identita' msal giusta nella cache
+# (fix multi-account: prima si prendeva sempre accounts[0], "l'ultimo login
+# vince"); seed e' il token_cache serializzato salvato nel DB account, usato
+# se l'identita' non e' (piu') nella cache globale.
+_current = {'email': None, 'account_id': None, 'seed': None}
+
+
+def set_current_account(email: str, account_id=None, token_cache_json: str = None):
+    _current['email'] = (email or '').strip().lower() or None
+    _current['account_id'] = account_id
+    _current['seed'] = token_cache_json or None
+
+
+def clear_current_account():
+    set_current_account('', None, None)
+
+
+def _build_app(cache_json: str = ''):
+    cache = msal.SerializableTokenCache()
+    if cache_json:
+        cache.deserialize(cache_json)
     app = msal.PublicClientApplication(
         CLIENT_ID,
         authority=AUTHORITY,
@@ -73,39 +95,71 @@ def _get_app() -> msal.PublicClientApplication:
     return app, cache
 
 
+def _get_app():
+    cache_json = ''
+    if os.path.exists(TOKEN_PATH):
+        with open(TOKEN_PATH, 'r') as f:
+            cache_json = f.read()
+    return _build_app(cache_json)
+
+
 def _save_cache(cache: msal.SerializableTokenCache):
     if cache.has_state_changed:
         with open(TOKEN_PATH, 'w') as f:
             f.write(cache.serialize())
 
 
-def get_token() -> str:
-    """Ritorna access token valido. Usa cache se disponibile."""
-    app, cache = _get_app()
-
+def _match_account(app):
+    """Seleziona l'identita' msal del contesto corrente. Con un'email
+    impostata NON si ripiega mai su un'altra identita'."""
     accounts = app.get_accounts()
-    if accounts:
-        result = app.acquire_token_silent(SCOPES, account=accounts[0])
-        _save_cache(cache)
+    email = _current['email']
+    if email:
+        for a in accounts:
+            if str(a.get('username', '')).strip().lower() == email:
+                return a
+        return None
+    return accounts[0] if accounts else None
+
+
+def _persist_seed(cache):
+    """Riporta nel DB account il token cache aggiornato (refresh compresi)."""
+    if _current['account_id'] is None or not cache.has_state_changed:
+        return
+    try:
+        import accounts as _acc
+        _acc.update_microsoft_token(_current['account_id'], cache.serialize())
+    except Exception as e:
+        print(f'[AUTH] persistenza token account {_current["account_id"]}: {e}')
+
+
+def get_token() -> str:
+    """Access token valido per l'account del contesto corrente (o l'unico
+    disponibile). Solo acquisizione silenziosa: mai flussi interattivi."""
+    app, cache = _get_app()
+    acct = _match_account(app)
+    from_seed = False
+
+    if acct is None and _current['seed']:
+        # l'identita' non e' nella cache globale: usa la copia per-account
+        app, cache = _build_app(_current['seed'])
+        acct = _match_account(app)
+        from_seed = True
+
+    if acct is not None:
+        result = app.acquire_token_silent(SCOPES, account=acct)
+        if from_seed:
+            _persist_seed(cache)
+        else:
+            _save_cache(cache)
         if result and 'access_token' in result:
             return result['access_token']
 
-    # Nessun token in cache — device flow login
-    flow = app.initiate_device_flow(scopes=SCOPES)
-    if 'user_code' not in flow:
-        raise Exception(f'[AUTH] Device flow fallito: {flow}')
-
-    print(f'\n[AUTH] Vai su: {flow["verification_uri"]}')
-    print(f'[AUTH] Inserisci il codice: {flow["user_code"]}\n')
-
-    result = app.acquire_token_by_device_flow(flow)
-    _save_cache(cache)
-
-    if 'access_token' not in result:
-        raise Exception(f'[AUTH] Login fallito: {result.get("error_description")}')
-
-    print('[AUTH] Login completato.')
-    return result['access_token']
+    who = _current['email'] or 'account Microsoft'
+    raise AuthRequired(
+        f"Nessun token valido per {who}: esegui il login "
+        f"(CLI: ade-mail-agent login, oppure dalla console)."
+    )
 
 
 def get_login_url() -> dict:
@@ -154,7 +208,12 @@ def complete_login(flow: dict) -> bool:
     if 'access_token' not in result:
         print(f"[AUTH] complete_login: token non ancora pronto — "
               f"{result.get('error')} — {result.get('error_description')}")
-    return 'access_token' in result
+        return False
+    # Restituisce il risultato msal (truthy): contiene access_token e
+    # id_token_claims dell'account APPENA loggato — il chiamante li usa
+    # direttamente invece di ripescare un token senza contesto (che con
+    # piu' account potrebbe appartenere a un'identita' diversa).
+    return result
 
 
 def is_logged_in() -> bool:
