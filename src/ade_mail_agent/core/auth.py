@@ -8,11 +8,11 @@ import json
 import msal
 from dotenv import load_dotenv
 
-from data_paths import token_path as _token_path
+from .data_paths import token_path as _token_path
 
 load_dotenv()
 try:
-    from data_paths import env_path as _user_env_path
+    from .data_paths import env_path as _user_env_path
     load_dotenv(str(_user_env_path()))
 except Exception:
     pass
@@ -127,7 +127,7 @@ def _persist_seed(cache):
     if _current['account_id'] is None or not cache.has_state_changed:
         return
     try:
-        import accounts as _acc
+        from . import accounts as _acc
         _acc.update_microsoft_token(_current['account_id'], cache.serialize())
     except Exception as e:
         print(f'[AUTH] persistenza token account {_current["account_id"]}: {e}')

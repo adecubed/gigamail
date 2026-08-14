@@ -17,16 +17,16 @@ import sqlite3
 import threading
 from typing import Optional, List
 
-import ade_mail_agent  # noqa: F401 — shim sys.path per core/
-
-import accounts as core_accounts
-import auth as core_auth
-import mail_router
-import mail_memory
-import ms_calendar
-import observer
-import ade_masker
-import identity_reader
+from ade_mail_agent.core import accounts as core_accounts
+from ade_mail_agent.core import auth as core_auth
+from ade_mail_agent.core import (
+    mail_router,
+    mail_memory,
+    ms_calendar,
+    observer,
+    ade_masker,
+    identity_reader,
+)
 from ade_mail_agent import agent_bridge
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

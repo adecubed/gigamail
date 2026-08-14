@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from data_paths import cache_dir as _resolve_cache_dir
+from .data_paths import cache_dir as _resolve_cache_dir
 
 # ── CONFIG ──────────────────────────────────────────────────────────
 CACHE_DIR        = _resolve_cache_dir()

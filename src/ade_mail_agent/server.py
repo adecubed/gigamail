@@ -11,15 +11,15 @@ import os
 import tempfile
 from typing import Optional
 
-import ade_mail_agent  # noqa: F401 — attiva lo shim sys.path per core/
-
-import accounts as core_accounts
-import mail_router
-import mail_memory
-import ms_calendar
-import observer
-import file_extractor
-import identity_reader
+from ade_mail_agent.core import accounts as core_accounts
+from ade_mail_agent.core import (
+    mail_router,
+    mail_memory,
+    ms_calendar,
+    observer,
+    file_extractor,
+    identity_reader,
+)
 from mcp.server import MCPServer
 
 from ade_mail_agent import policy

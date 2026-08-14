@@ -2,7 +2,7 @@
 mail.py — Lettura, invio e gestione mail via Microsoft Graph API.
 """
 import requests
-from auth import get_token
+from .auth import get_token
 from typing import Optional, List, Dict
 GRAPH_URL = 'https://graph.microsoft.com/v1.0'
 def _headers() -> dict:

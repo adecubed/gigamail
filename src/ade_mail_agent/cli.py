@@ -17,13 +17,13 @@ import argparse
 import getpass
 import sys
 
-import ade_mail_agent  # noqa: F401 — shim sys.path per core/
+from ade_mail_agent.core import accounts as _core_accounts  # noqa: F401
 
 
 def cmd_login(_args) -> int:
     import requests as _requests
-    import auth
-    import accounts as core_accounts
+    from ade_mail_agent.core import auth
+    from ade_mail_agent.core import accounts as core_accounts
 
     data = auth.get_login_url()
     print(f"\nApri: {data['verification_uri']}")
@@ -51,14 +51,14 @@ def cmd_login(_args) -> int:
 
 
 def cmd_logout(_args) -> int:
-    import auth
+    from ade_mail_agent.core import auth
     auth.logout()
     print("Logout eseguito.")
     return 0
 
 
 def cmd_accounts_list(_args) -> int:
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     rows = core_accounts.get_accounts()
     if not rows:
         print("Nessun account configurato. Usa 'login' o 'accounts add-imap'.")
@@ -70,7 +70,7 @@ def cmd_accounts_list(_args) -> int:
 
 
 def cmd_accounts_add_imap(_args) -> int:
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     print("Configurazione account IMAP/SMTP")
     name = input("Nome visualizzato: ").strip()
     email_addr = input("Email: ").strip()
@@ -89,7 +89,7 @@ def cmd_accounts_add_imap(_args) -> int:
 
 
 def cmd_accounts_remove(args) -> int:
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     a = core_accounts.get_account_by_id(args.account_id)
     if not a:
         print(f"Account {args.account_id} inesistente.")
@@ -104,7 +104,7 @@ def cmd_accounts_remove(args) -> int:
 
 
 def _resolve_account_id(account_id):
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     if account_id:
         return account_id
     active = core_accounts.get_active_account()
@@ -112,7 +112,7 @@ def _resolve_account_id(account_id):
 
 
 def cmd_identity_show(args) -> int:
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
         print("Nessun account. Usa 'login' o 'accounts add-imap'.")
@@ -129,7 +129,7 @@ def cmd_identity_show(args) -> int:
 
 
 def cmd_identity_set(args) -> int:
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
         print("Nessun account.")
@@ -153,7 +153,7 @@ def cmd_identity_set(args) -> int:
 
 def cmd_identity_add_file(args) -> int:
     import os
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
         print("Nessun account.")
@@ -181,7 +181,7 @@ def cmd_identity_add_file(args) -> int:
 
 def cmd_identity_remove_file(args) -> int:
     import os
-    import accounts as core_accounts
+    from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
         print("Nessun account.")
@@ -203,9 +203,9 @@ def cmd_identity_remove_file(args) -> int:
 
 
 def cmd_index(args) -> int:
-    import accounts as core_accounts
-    import mail_memory
-    import mail_router
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import mail_memory
+    from ade_mail_agent.core import mail_router
     mail_memory.init_db()
     if args.account_id:
         result = mail_memory.run_indexer(args.account_id, mail_router)
@@ -218,7 +218,7 @@ def cmd_index(args) -> int:
 
 
 def cmd_purge(args) -> int:
-    import mail_memory
+    from ade_mail_agent.core import mail_memory
     confirm = input(
         f"Cancellare TUTTI i dati locali dell'account {args.account_id}? [y/N] "
     ).strip().lower()

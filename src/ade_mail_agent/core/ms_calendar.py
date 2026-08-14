@@ -3,7 +3,7 @@ calendar.py — Gestione calendario via Microsoft Graph API.
 """
 
 import requests
-from auth import get_token
+from .auth import get_token
 from typing import Optional, List, Dict
 from datetime import datetime, timedelta
 
