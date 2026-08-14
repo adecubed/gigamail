@@ -233,12 +233,17 @@ def find_relevant_files(file_paths: List[str], query: str, max_files: int = 5) -
     if not file_paths or not query:
         return []
 
-    # Estrai token dalla query (nomi appartamenti, tipologie...)
+    # Due famiglie di token:
+    # - CODICI: sigle tipo "A.2.1", "B08", "a-12" — peso alto, confronto con
+    #   separatori normalizzati (a.2.1 == a21 == a_2_1)
+    # - PAROLE: >= 4 char, per evitare che "al"/"la" matchino dentro
+    #   "balcone" o simili
     query_lower = query.lower()
-    # Token: parole >= 2 char, include lettere+numeri (es: "a12", "b08", "trilocale")
     import re as _re
-    tokens = _re.findall(r'[a-z0-9]{2,}', query_lower)
-    if not tokens:
+    codes = _re.findall(r'\b[a-z]{1,3}[\s._\-]?\d+(?:[._\-]\d+)*\b', query_lower)
+    words = _re.findall(r'[a-z]{4,}', query_lower)
+    tokens = {'codes': [_norm_code(c) for c in codes], 'words': words}
+    if not tokens['codes'] and not tokens['words']:
         return []
 
     candidates = []
@@ -285,26 +290,29 @@ def find_relevant_files(file_paths: List[str], query: str, max_files: int = 5) -
     return candidates[:max_files]
 
 
-def _score_file(filename: str, tokens: List[str]) -> float:
+def _norm_code(s: str) -> str:
+    """Normalizza un codice rimuovendo i separatori: 'a.2.1' -> 'a21'."""
+    import re as _re
+    return _re.sub(r'[^a-z0-9]', '', s.lower())
+
+
+def _score_file(filename: str, tokens) -> float:
     """
-    Calcola score di rilevanza tra un nome file e i token della query.
-    Score più alto = più rilevante.
+    Score di rilevanza nome-file vs token della query.
+    tokens = {'codes': [codici normalizzati], 'words': [parole >=4 char]}
     """
-    name_lower = filename.lower()
-    # Rimuovi estensione per il matching
-    name_no_ext = os.path.splitext(name_lower)[0]
-    
+    name_lower = os.path.splitext(filename.lower())[0]
+    name_norm = _norm_code(name_lower)
+
     score = 0.0
-    for token in tokens:
-        if token in name_no_ext:
-            # Match esatto nel nome — peso alto
-            if name_no_ext == token:
-                score += 3.0
-            # Match come parte del nome (es. "a12" in "scheda_a12")
-            elif f'_{token}' in name_no_ext or f'-{token}' in name_no_ext:
-                score += 2.0
-            else:
-                score += 1.0
+    for code in tokens.get('codes', []):
+        # confronto con separatori normalizzati: 'a21' trova 'A.2.1.pdf',
+        # 'a_2_1.pdf', 'a-2-1 no balcone.pdf'
+        if code and code in name_norm:
+            score += 5.0
+    for word in tokens.get('words', []):
+        if word in name_lower:
+            score += 1.0
     return score
 
 
