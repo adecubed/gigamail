@@ -101,6 +101,7 @@ def run(prompt: str, timeout: int | None = None) -> str:
         proc = subprocess.run(
             cmd,
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             timeout=timeout or cfg["timeout"],
             shell=False,
         )
