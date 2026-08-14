@@ -26,6 +26,7 @@ from ade_mail_agent.core import (
     observer,
     ade_masker,
     identity_reader,
+    availability,
 )
 from ade_mail_agent import agent_bridge
 from fastapi import FastAPI, HTTPException, Request
@@ -504,6 +505,17 @@ def calendar_today():
     return ms_calendar.get_events(days_ahead=1, days_back=0)
 
 
+@app.get("/calendar/free_slots")
+def calendar_free_slots(days_ahead: int = 7, duration_minutes: int = 60,
+                        max_slots: int = 4):
+    events = ms_calendar.get_events(days_ahead=days_ahead + 1)
+    slots = availability.find_free_slots(
+        events, days_ahead=days_ahead,
+        duration_minutes=duration_minutes, max_slots=max_slots,
+    )
+    return {"count": len(slots), "slots": slots}
+
+
 class EventRequest(BaseModel):
     subject: str
     start: str
@@ -630,6 +642,31 @@ def _run_agent(prompt: str) -> dict:
         raise HTTPException(503, str(e))
 
 
+_APPUNTAMENTO_KW = (
+    "appuntament", "visita", "visitare", "vedere l", "sopralluogo", "incontr",
+    "disponibil", "quando poss", "fissare", "calendario", "vederci",
+)
+
+
+def _slots_context(text: str, max_slots: int = 3) -> str:
+    """Se il testo parla di appuntamenti, calcola gli slot liberi e li mette
+    nel prompt: l'agente propone orari VERI, non inventati."""
+    low = (text or "").lower()
+    if not any(k in low for k in _APPUNTAMENTO_KW):
+        return ""
+    try:
+        events = ms_calendar.get_events(days_ahead=8)
+        slots = availability.find_free_slots(events, days_ahead=7,
+                                             max_slots=max_slots)
+    except Exception:
+        return ""
+    if not slots:
+        return ""
+    righe = "; ".join(s["label"] for s in slots)
+    return ("\nDISPONIBILITA' REALE dal calendario (proponi SOLO questi "
+            f"orari, senza inventarne altri): {righe}")
+
+
 def _suggest_attachments(aid: Optional[int], text: str) -> list:
     """Propone allegati dai file di conoscenza dell'account in base al testo
     dell'istruzione/oggetto (es. 'manda la planimetria A.2.1'). La UI mostra
@@ -667,11 +704,15 @@ def generate_draft(req: GenerateDraftRequest, account_id: Optional[int] = None):
         f"{_identity_context(aid)}\n"
         f"Destinatario: {req.to or 'non specificato'}\n"
         f"Oggetto: {req.subject or 'non specificato'}\n"
+        f"{_slots_context(req.instruction + ' ' + req.subject)}\n"
         f"Istruzione: {req.instruction}"
     )
     out = _run_agent(prompt)
+    # Gli allegati seguono ciò che l'agente ha SCRITTO (può aver cambiato
+    # riferimento: es. immobile richiesto non disponibile -> ne propone un
+    # altro), non solo l'istruzione iniziale.
     out["suggested_attachments"] = _suggest_attachments(
-        aid, f"{req.instruction} {req.subject}"
+        aid, f"{out.get('draft', '')} {req.instruction} {req.subject}"
     )
     return out
 
@@ -707,11 +748,12 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
         f"{obs}\n"
         f"Mittente: {req.sender}\nOggetto: {req.subject}\n"
         f"--- EMAIL RICEVUTA ---\n{body[:6000]}\n--- FINE EMAIL ---\n"
+        f"{_slots_context(req.instruction + ' ' + req.subject + ' ' + body[:2000])}\n"
         f"Istruzione dell'utente: {req.instruction or 'rispondi in modo appropriato'}"
     )
     out = _run_agent(prompt)
     out["suggested_attachments"] = _suggest_attachments(
-        aid, f"{req.instruction} {req.subject} {body[:1000]}"
+        aid, f"{out.get('draft', '')} {req.instruction} {req.subject} {body[:1000]}"
     )
     return out
 

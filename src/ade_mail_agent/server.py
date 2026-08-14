@@ -19,6 +19,7 @@ from ade_mail_agent.core import (
     observer,
     file_extractor,
     identity_reader,
+    availability,
 )
 from mcp.server import MCPServer
 
@@ -213,6 +214,37 @@ def memory_stats() -> dict:
 def list_events(days_ahead: int = 7, days_back: int = 0) -> list[dict]:
     """Eventi di calendario nell'intervallo richiesto (account Microsoft)."""
     return ms_calendar.get_events(days_ahead=days_ahead, days_back=days_back)
+
+
+@mcp.tool()
+def find_free_slots(
+    days_ahead: int = 7,
+    duration_minutes: int = 60,
+    work_start: str = "09:30",
+    work_end: str = "18:30",
+    skip_weekends: bool = True,
+    min_notice_hours: int = 24,
+    max_slots: int = 4,
+) -> dict:
+    """Slot liberi del calendario, gia' calcolati e pronti da proporre in una
+    mail (es. appuntamenti con clienti). Usa questo tool invece di dedurre la
+    disponibilita' da list_events: qui fusi, weekend, orari di lavoro,
+    preavviso minimo e margini tra impegni sono gia' gestiti.
+    Ogni slot ha 'label' in italiano pronta da inserire nel testo."""
+    events = ms_calendar.get_events(days_ahead=days_ahead + 1)
+    slots = availability.find_free_slots(
+        events,
+        days_ahead=days_ahead,
+        duration_minutes=duration_minutes,
+        work_start=work_start,
+        work_end=work_end,
+        skip_weekends=skip_weekends,
+        min_notice_hours=min_notice_hours,
+        max_slots=max_slots,
+    )
+    return {"count": len(slots), "slots": slots,
+            "nota": "Proponi questi orari all'utente/cliente; l'evento va "
+                    "creato solo con create_event (che richiede conferma)."}
 
 
 # ---------------------------------------------------------- WRITE_SAFE

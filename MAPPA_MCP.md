@@ -114,9 +114,9 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 ---
 
 <!-- TOOLMAP:BEGIN (generato da gen_toolmap — non editare a mano) -->
-## Riepilogo tool esposti (23 — generato dal server)
+## Riepilogo tool esposti (24 — generato dal server)
 
-**READ (14):** `list_accounts`, `get_identity`, `list_knowledge_files`, `read_knowledge_file`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `observer_context`, `memory_stats`, `list_events`
+**READ (15):** `list_accounts`, `get_identity`, `list_knowledge_files`, `read_knowledge_file`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `observer_context`, `memory_stats`, `list_events`, `find_free_slots`
 **WRITE_SAFE (3):** `mark_read`, `move_message`, `create_folder`
 **DANGEROUS (6, due fasi):** `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`
 <!-- TOOLMAP:END -->
