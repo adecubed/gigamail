@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install
+        run: pip install -e ".[all,dev]"
+      - name: Test suite
+        run: pytest -q
+        # I test DPAPI si auto-skippano su Linux; tutto il resto gira
+        # su entrambi gli OS senza rete ne' credenziali.
+      - name: Tool map allineata al server
+        run: python -m ade_mail_agent.gen_toolmap --check
