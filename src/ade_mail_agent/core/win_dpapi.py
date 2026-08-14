@@ -2,41 +2,42 @@
 
 Protegge byte legandoli all'utente Windows corrente: un file protetto
 copiato su un'altra macchina (o letto da un altro utente) non è
-decifrabile. Su piattaforme non-Windows available() è False e il
-chiamante usa il proprio fallback.
+decifrabile. Su piattaforme non-Windows available() è False, protect/
+unprotect sollevano OSError e il chiamante usa il proprio fallback.
+Il modulo è importabile ovunque (niente ctypes.wintypes fuori da Windows).
 """
-import ctypes
-import ctypes.wintypes
 import sys
 
+_WIN = sys.platform == "win32"
 _ENTROPY = b"gigamail-accounts-v1"
 
+if _WIN:
+    import ctypes
+    import ctypes.wintypes
 
-class _DATA_BLOB(ctypes.Structure):
-    _fields_ = [
-        ("cbData", ctypes.wintypes.DWORD),
-        ("pbData", ctypes.POINTER(ctypes.c_char)),
-    ]
+    class _DATA_BLOB(ctypes.Structure):
+        _fields_ = [
+            ("cbData", ctypes.wintypes.DWORD),
+            ("pbData", ctypes.POINTER(ctypes.c_char)),
+        ]
+
+    def _blob(data: bytes) -> "_DATA_BLOB":
+        buf = ctypes.create_string_buffer(data, len(data))
+        return _DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
+
+    def _from_blob(blob: "_DATA_BLOB") -> bytes:
+        try:
+            return ctypes.string_at(blob.pbData, blob.cbData)
+        finally:
+            ctypes.windll.kernel32.LocalFree(blob.pbData)
 
 
 def available() -> bool:
-    return sys.platform == "win32"
-
-
-def _blob(data: bytes) -> "_DATA_BLOB":
-    buf = ctypes.create_string_buffer(data, len(data))
-    return _DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
-
-
-def _from_blob(blob: "_DATA_BLOB") -> bytes:
-    try:
-        return ctypes.string_at(blob.pbData, blob.cbData)
-    finally:
-        ctypes.windll.kernel32.LocalFree(blob.pbData)
+    return _WIN
 
 
 def protect(data: bytes) -> bytes:
-    if not available():
+    if not _WIN:
         raise OSError("DPAPI disponibile solo su Windows")
     inp = _blob(data)
     entropy = _blob(_ENTROPY)
@@ -50,7 +51,7 @@ def protect(data: bytes) -> bytes:
 
 
 def unprotect(data: bytes) -> bytes:
-    if not available():
+    if not _WIN:
         raise OSError("DPAPI disponibile solo su Windows")
     inp = _blob(data)
     entropy = _blob(_ENTROPY)
