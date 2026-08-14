@@ -36,9 +36,13 @@ all = [
 ]
 
 [project.scripts]
+# Nomi ufficiali (GigaMail)
+gigamail = "ade_mail_agent.cli:main"
+gigamail-server = "ade_mail_agent.server:main"
+gigamail-console-api = "ade_mail_agent.http_api:main"
+# Alias storici: non rompono installazioni e config MCP esistenti
 ade-mail-agent = "ade_mail_agent.cli:main"
 ade-mail-agent-server = "ade_mail_agent.server:main"
-gigamail-console-api = "ade_mail_agent.http_api:main"
 
 [build-system]
 requires = ["hatchling"]
