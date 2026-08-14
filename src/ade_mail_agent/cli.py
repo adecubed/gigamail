@@ -29,17 +29,19 @@ def cmd_login(_args) -> int:
     print(f"\nApri: {data['verification_uri']}")
     print(f"Codice: {data['user_code']}")
     input("\nPremi INVIO dopo aver completato il login nel browser... ")
-    if not auth.complete_login(data["flow"]):
+    result = auth.complete_login(data["flow"])
+    if not result:
         print("Login non riuscito.")
         return 1
-    token = auth.get_token()
     me = _requests.get(
         "https://graph.microsoft.com/v1.0/me",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {result['access_token']}"},
         timeout=15,
     ).json()
-    email_addr = me.get("mail") or me.get("userPrincipalName", "microsoft_user")
-    name = me.get("displayName", "Account Microsoft")
+    claims = result.get("id_token_claims", {})
+    email_addr = (me.get("mail") or me.get("userPrincipalName")
+                  or claims.get("preferred_username") or "microsoft_user")
+    name = me.get("displayName") or claims.get("name") or "Account Microsoft"
     with open(auth.TOKEN_PATH, "r", encoding="utf-8") as f:
         token_cache = f.read()
     acc_id = core_accounts.add_microsoft_account(name, email_addr, token_cache)

@@ -230,22 +230,24 @@ def auth_complete():
     global _login_flow
     if not _login_flow:
         raise HTTPException(400, "Nessun login flow attivo")
-    ok = core_auth.complete_login(_login_flow)
+    result = core_auth.complete_login(_login_flow)
     _login_flow = {}
-    if ok:
+    if result:
+        # usa token e claims dell'account APPENA loggato (multi-account safe)
+        claims = result.get("id_token_claims", {}) if isinstance(result, dict) else {}
         import requests as _rq
-        token = core_auth.get_token()
         me = _rq.get(
             "https://graph.microsoft.com/v1.0/me",
-            headers={"Authorization": f"Bearer {token}"}, timeout=15,
+            headers={"Authorization": f"Bearer {result['access_token']}"}, timeout=15,
         ).json()
-        email_addr = me.get("mail") or me.get("userPrincipalName", "microsoft_user")
-        name = me.get("displayName", "Account Microsoft")
+        email_addr = (me.get("mail") or me.get("userPrincipalName")
+                      or claims.get("preferred_username") or "microsoft_user")
+        name = me.get("displayName") or claims.get("name") or "Account Microsoft"
         with open(core_auth.TOKEN_PATH, "r", encoding="utf-8") as f:
             token_cache = f.read()
         acc_id = core_accounts.add_microsoft_account(name, email_addr, token_cache)
         core_accounts.set_active_account(acc_id)
-    return {"success": ok}
+    return {"success": bool(result)}
 
 
 @app.post("/auth/logout")

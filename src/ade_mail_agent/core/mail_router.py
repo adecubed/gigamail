@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 import accounts as acc
+import auth as ms_auth
 import mail as ms_mail
 import imap_client as imap
 try:
@@ -33,8 +34,20 @@ def _account(account_id=None):
         # Id esplicito: se non esiste NON ripiegare sull'account attivo —
         # un chiamante (specie un agente) che chiede l'account X non deve
         # mai ricevere silenziosamente i dati di un altro account.
-        return acc.get_account_by_id(aid)
-    return acc.get_active_account()
+        return _with_ms_context(acc.get_account_by_id(aid))
+    return _with_ms_context(acc.get_active_account())
+
+
+def _with_ms_context(a):
+    """Per gli account Microsoft imposta il contesto auth (email + copia del
+    token cache dal DB) cosi' get_token() seleziona l'identita' GIUSTA anche
+    con piu' account Microsoft configurati."""
+    if a and a.get('type', 'microsoft') == 'microsoft':
+        data = a.get('data') or {}
+        ms_auth.set_current_account(
+            a.get('email', ''), a.get('id'), data.get('token_cache')
+        )
+    return a
 def _is_microsoft(account_id=None) -> bool:
     a = _account(account_id)
     if not a:
