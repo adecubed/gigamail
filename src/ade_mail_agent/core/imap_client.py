@@ -126,8 +126,21 @@ def _safe_decode(data: bytes, charset: str = "utf-8") -> str:
     return data.decode("latin-1", errors="replace")
 
 
-def _decode_header(value: str) -> str:
-    parts = email.header.decode_header(value or "")
+def _hdr_str(value) -> str:
+    """Coerce un valore header a str: msg.get() puo' restituire
+    email.header.Header per header malformati/non-ASCII grezzi."""
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    try:
+        return str(value)
+    except Exception:
+        return ""
+
+
+def _decode_header(value) -> str:
+    parts = email.header.decode_header(_hdr_str(value))
     decoded = []
     for part, charset in parts:
         if isinstance(part, bytes):
@@ -465,7 +478,7 @@ def fetch_messages_by_uids(
                     continue
                 raw = msg_data[0][1]
                 msg = email.message_from_bytes(raw)
-                from_raw = msg.get("From", "")
+                from_raw = _hdr_str(msg.get("From", ""))
                 name = _decode_header(from_raw.split("<")[0].strip())
                 addr = (
                     from_raw.split("<")[1].rstrip(">").strip()
@@ -962,7 +975,7 @@ def get_messages(
                     ct = msg.get("Content-Type", "")
                     has_att = "multipart" in ct.lower()
                     is_read = "\\Seen" in meta or "\\SEEN" in meta.upper()
-                    from_raw = msg.get("From", "")
+                    from_raw = _hdr_str(msg.get("From", ""))
                     name_part = from_raw.split("<")[0].strip()
                     addr_part = from_raw.split("<")[-1].strip(">") if "<" in from_raw else from_raw.strip()
                     messages.append(
@@ -1095,7 +1108,7 @@ def get_message(
                                 "type": ct,
                             }
                         )
-            from_raw = msg.get("From", "")
+            from_raw = _hdr_str(msg.get("From", ""))
             name = _decode_header(from_raw.split("<")[0].strip())
             addr = from_raw.split("<")[-1].strip(">") if "<" in from_raw else from_raw.strip()
             if body_type == "html":
@@ -1507,7 +1520,7 @@ def search_messages(
                     if not _matches_query_local(msg, q):
                         continue
 
-                    from_raw = msg.get("From", "")
+                    from_raw = _hdr_str(msg.get("From", ""))
                     name = _decode_header(from_raw.split("<")[0].strip())
                     addr = (
                         from_raw.split("<")[1].rstrip(">").strip()

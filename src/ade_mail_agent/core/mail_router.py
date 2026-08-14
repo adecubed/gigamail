@@ -30,9 +30,10 @@ def _account(account_id=None):
             aid = int(account_id)
         except (TypeError, ValueError):
             return acc.get_active_account()
-        a = acc.get_account_by_id(aid)
-        if a:
-            return a
+        # Id esplicito: se non esiste NON ripiegare sull'account attivo —
+        # un chiamante (specie un agente) che chiede l'account X non deve
+        # mai ricevere silenziosamente i dati di un altro account.
+        return acc.get_account_by_id(aid)
     return acc.get_active_account()
 def _is_microsoft(account_id=None) -> bool:
     a = _account(account_id)
@@ -110,7 +111,7 @@ def get_messages(
     # Normalizza nomi cartella stile Graph → alias IMAP usati da imap_client._resolve_folder
     if f in ('inbox',):
         target = 'INBOX'
-    elif f in ('deleteditems', 'trash', 'cestino'):
+    elif f in ('deleteditems', 'trash', 'cestino', 'deleted'):
         target = 'trash'
     elif f in ('junkemail', 'spam', 'postaindesiderata', 'posta_indesiderata'):
         target = 'junk'
