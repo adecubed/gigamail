@@ -18,7 +18,7 @@ Ogni tool ha una **classe di rischio** che determina la policy:
 |---|---|---|
 | `READ` | libera | lettura, ricerca, elenchi |
 | `WRITE_SAFE` | libera + audit log | segna letto, sposta in cartella |
-| `DANGEROUS` | conferma a due fasi + audit log | invio, cancellazione, spam |
+| `DANGEROUS` | conferma a due fasi + audit log | invio, risposta, cancellazione, eventi calendario |
 | `ADMIN` | **solo CLI, mai esposta all'agente** | login, credenziali, gestione account |
 
 La conferma a due fasi funziona così: la prima chiamata (senza token) NON esegue e
@@ -41,10 +41,10 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | lettura file identity | `read_knowledge_file` | READ | Estrae il testo di un file registrato. Whitelist = SOLO i percorsi registrati via CLI (`identity add-file`), mai il resto del filesystem |
 | `POST /accounts/imap` | — | ADMIN | Solo CLI: `ade-mail-agent accounts add-imap` |
 | `GET /accounts/providers` | — | ADMIN | Preset provider dentro la CLI |
-| `GET /auth/status` | `auth_status` | READ | Stato token per account (valido/scaduto), mai il token stesso |
+| `GET /auth/status` | — *(pianificato: `auth_status`)* | READ | Stato token per account (valido/scaduto), mai il token stesso |
 | `GET /auth/login`, `POST /auth/complete` | — | ADMIN | Solo CLI: `ade-mail-agent login` (device flow Microsoft) |
 | `POST /auth/logout` | — | ADMIN | Solo CLI |
-| `GET /addresses`, `GET /addresses/search` | `search_contacts` | READ | Rubrica derivata dallo storico |
+| `GET /addresses`, `GET /addresses/search` | — *(pianificato: `search_contacts`)* | READ | Rubrica derivata dallo storico |
 
 ## 2. Lettura posta
 
@@ -64,7 +64,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `GET /mail/memory/search` | — (confluisce in `search_mail`) | — | |
 | `GET /mail/sender_history` | `sender_history` | READ | Storico + profilo mittente da mail_memory |
 | `GET /mail/memory/sender/{email}` | — (confluisce in `sender_history`) | — | |
-| `GET /mail/followup_needed` | `list_followup_needed` | READ | Euristica non-LLM: mail inviate senza risposta |
+| `GET /mail/followup_needed` | — *(pianificato: `list_followup_needed`)* | READ | Euristica non-LLM: mail inviate senza risposta |
 | allegati (parte di `GET /mail/{id}`) | `read_attachment` | READ | Estrae testo (pdfplumber/docx/openpyxl); binario mai passato all'agente |
 | `GET /mail/memory/stats` | `memory_stats` | READ | Stato dell'indice locale |
 | `GET /observer/stats` | `observer_context` | READ | Pattern di correzione dell'utente per mittente/argomento — contesto prezioso per bozze dell'agente |
@@ -81,7 +81,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `POST /mail/send` | `send_mail` | DANGEROUS | Due fasi: anteprima (to/cc/subject/body/allegati) → token → invio |
 | `POST /mail/reply_direct` | `reply_mail` | DANGEROUS | Due fasi; quota il messaggio originale |
 | `DELETE /mail/{id}` | `delete_message` | DANGEROUS | Due fasi |
-| `POST /mail/{id}/spam` / `not_spam` | `mark_spam` | DANGEROUS | Due fasi (sposta cartella, può far perdere mail) |
+| `POST /mail/{id}/spam` / `not_spam` | — *(pianificato: `mark_spam`)* | DANGEROUS | Due fasi (sposta cartella, può far perdere mail) |
 | `POST /snooze`, `GET /snooze/list`, … | — | — | Fuori v1 (feature UI); l'agente può usare il proprio scheduler |
 
 ## 4. Calendario
@@ -90,7 +90,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 |---|---|---|---|
 | `GET /calendar`, `GET /calendar/today` | `list_events` | READ | Range date come parametri |
 | `POST /calendar` | `create_event` | DANGEROUS | Due fasi (può generare inviti ad altri) |
-| `PATCH /calendar/{id}` | `update_event` | DANGEROUS | Due fasi |
+| `PATCH /calendar/{id}` | — *(pianificato: `update_event`)* | DANGEROUS | Due fasi |
 | `DELETE /calendar/{id}` | `delete_event` | DANGEROUS | Due fasi |
 | `POST /calendar/caldav/test|setup`, `DELETE …` | — | ADMIN | Solo CLI: `ade-mail-agent caldav setup` |
 | `GET /calendar/caldav/status`, `GET /calendar/primary` | — (campo di `list_accounts`) | — | |
@@ -100,7 +100,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 
 | Endpoint attuale | Tool MCP | Classe | Note |
 |---|---|---|---|
-| `POST /mask/detect`, `/mask`, `/unmask`, `GET/POST /masks` | — (interno) | — | Non tool: **filtro trasparente**. Se il masking è attivo (config), ogni output READ passa da `ade_masker` prima di arrivare all'agente; `send_mail` smaschera in uscita. Configurazione via CLI |
+| `POST /mask/detect`, `/mask`, `/unmask`, `GET/POST /masks` | — (interno) | — | **Oggi**: masking manuale dalla console — selezioni il testo, lo mascheri prima di passarlo all'agente; maschere personali per account salvate nel DB. **Pianificato**: filtro trasparente sul lato MCP (ogni output READ passa da `ade_masker`, `send_mail` smaschera in uscita) con attivazione per account via CLI |
 
 ## 6. Indice locale
 
@@ -137,7 +137,7 @@ Regola generale: **l'agente riceve capacità, non scorciatoie cognitive.**
 **DANGEROUS (6, due fasi):** `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`
 <!-- TOOLMAP:END -->
 
-In mappa ma non ancora implementati: `auth_status`, `search_contacts`, `list_followup_needed` (READ), `mark_spam`, `update_event` (DANGEROUS).
+Le righe marcate *(pianificato)* nelle tabelle sopra descrivono il disegno, non il codice: quei tool non esistono ancora. Il riquadro qui sopra e' generato dal server vivo, quindi elenca esattamente cio' che l'agente puo' chiamare oggi.
 
 **Solo CLI (mai MCP):** login/logout Microsoft, add/remove account IMAP, setup CalDAV, indicizzazione, masking config, cancellazione dati.
 Razionale: le credenziali non transitano mai nel canale agente; un prompt injection in una mail non può aggiungere account, esfiltrare token o riconfigurare il sistema.
@@ -148,4 +148,4 @@ Razionale: le credenziali non transitano mai nel canale agente; un prompt inject
 2. **`account_id` opzionale ovunque** (default: tutti gli account o l'attivo): niente stato "account attivo" mutabile dall'agente.
 3. **Registro azioni** append-only in `%APPDATA%\ADE\agent_audit.jsonl`: ogni chiamata WRITE_SAFE/DANGEROUS con timestamp, tool, parametri, esito. Nota di onestà: append-only significa che GigaMail non modifica le entry passate, NON che il file sia tamper-proof — chi ha accesso al filesystem può alterarlo. Una catena di integrità (hash chaining) avrà senso solo quando esisterà un ancoraggio esterno per l'hash di testa.
 4. **Anti prompt-injection**: il contenuto delle mail è dato non fidato. I tool DANGEROUS non sono mai auto-confermabili: il token di conferma va mostrato all'umano dal client MCP (Claude chiede conferma prima di eseguire tool distruttivi — il two-phase lo rende strutturale).
-5. **PyMuPDF assente** → licenza libera (MIT/Apache) possibile: l'estrazione PDF usa pdfplumber.
+5. **PyMuPDF non richiesto**: l'estrazione PDF usa pdfplumber.
