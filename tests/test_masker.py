@@ -1,5 +1,5 @@
 """ade_masker: detect / mask / unmask round-trip."""
-import ade_masker
+from ade_mail_agent.core import ade_masker
 
 
 TESTO = (

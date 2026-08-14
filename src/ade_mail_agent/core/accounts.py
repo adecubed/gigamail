@@ -16,7 +16,7 @@ KEY_PATH = os.path.join(_ADE_DATA, '.accounts.key')
 KEY_PATH_DPAPI = KEY_PATH + '.dpapi'
 
 try:
-    import win_dpapi as _dpapi
+    from . import win_dpapi as _dpapi
 except ImportError:
     _dpapi = None
 

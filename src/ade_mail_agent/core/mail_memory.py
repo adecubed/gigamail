@@ -17,14 +17,17 @@ import json
 import struct
 import sqlite3
 import threading
-import numpy as np
+try:
+    import numpy as np  # opzionale: solo per ricerca semantica (embeddings)
+except ImportError:
+    np = None
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
 # Path del DB in una cartella scrivibile utente, non nella directory app.
 try:
-    from data_paths import db_path as _db_path
+    from .data_paths import db_path as _db_path
     _DB_PATH = str(_db_path('.mail_memory.db'))
 except Exception:
     _fallback_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ADE', 'mail')
