@@ -114,6 +114,14 @@ def consume_confirmation(tool: str, token: str) -> Dict[str, Any]:
     return args
 
 
+def dry_run_active() -> bool:
+    """ADE_MAIL_DRYRUN=1: le azioni DANGEROUS confermate NON vengono eseguite
+    (niente invii/cancellazioni reali) ma percorrono tutta la policy e
+    finiscono nell'audit con esito 'dryrun_executed'. Usata dall'harness
+    anti-injection per testare l'agente reale senza effetti collaterali."""
+    return os.environ.get("ADE_MAIL_DRYRUN", "") not in ("", "0", "false")
+
+
 def execute_dangerous(
     tool: str,
     args: Dict[str, Any],
@@ -125,6 +133,10 @@ def execute_dangerous(
     if not confirm_token:
         return request_confirmation(tool, args, preview_fn())
     original_args = consume_confirmation(tool, confirm_token)
+    if dry_run_active():
+        audit(tool, original_args, "dryrun_executed")
+        return {"dryrun": True, "tool": tool,
+                "note": "ADE_MAIL_DRYRUN attivo: azione NON eseguita"}
     try:
         result = execute_fn(original_args)
         audit(tool, original_args, "executed")
