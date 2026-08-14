@@ -1,3 +1,6 @@
+# GigaMail — mail for your AI agent
+# Copyright (C) 2026 Adecubed
+# Licensed under the GNU AGPL v3 or later. See LICENSE.
 """ADE Mail Agent — server MCP (trasporto stdio).
 
 Espone la posta e il calendario come tool tipizzati per un agente AI,

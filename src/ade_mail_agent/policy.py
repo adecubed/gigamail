@@ -1,3 +1,6 @@
+# GigaMail — mail for your AI agent
+# Copyright (C) 2026 Adecubed
+# Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Policy dei tool: classi di rischio, conferma a due fasi, audit log.
 
 Classi:

@@ -1,3 +1,13 @@
+<!--
+GigaMail — mail for your AI agent
+Copyright (C) 2026 Adecubed
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. See the LICENSE file for details.
+-->
+
 # GigaMail — Mail for your AI agent
 
 **MCP server that gives Claude (or any MCP-compatible agent) safe, controlled
@@ -78,7 +88,11 @@ filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`.
 
 ## License
 
-MIT
+**AGPL-3.0-or-later.** Free to use, study, modify and share. If you
+distribute a modified version — or run one as a network service — you must
+make your source available under the same license. Commercial licensing
+(for closed-source use) available on request: it's our code, so we can
+grant exceptions.
 
 ---
 
@@ -167,4 +181,8 @@ azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl`.
 
 ## Licenza
 
-MIT
+**AGPL-3.0-or-later.** Libero di usarlo, studiarlo, modificarlo e
+condividerlo. Se distribuisci una versione modificata — o la offri come
+servizio in rete — devi rendere disponibile il sorgente con la stessa
+licenza. Licenza commerciale (per usi closed-source) disponibile su
+richiesta: il codice è nostro, quindi possiamo concedere eccezioni.

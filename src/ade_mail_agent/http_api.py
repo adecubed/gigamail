@@ -1,3 +1,6 @@
+# GigaMail — mail for your AI agent
+# Copyright (C) 2026 Adecubed
+# Licensed under the GNU AGPL v3 or later. See LICENSE.
 """GigaMail Console API — backend HTTP sottile per la UI umana.
 
 Stessi moduli core del server MCP, ZERO endpoint LLM/voce/bulk: nella
