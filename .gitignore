@@ -10,3 +10,4 @@ NOTES.dev.md
 *.token*
 .token_cache.json
 node_modules/
+POST_DRAFTS.md
