@@ -113,11 +113,13 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 
 ---
 
-## Riepilogo tool esposti (23 implementati)
+<!-- TOOLMAP:BEGIN (generato da gen_toolmap — non editare a mano) -->
+## Riepilogo tool esposti (23 — generato dal server)
 
 **READ (14):** `list_accounts`, `get_identity`, `list_knowledge_files`, `read_knowledge_file`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `observer_context`, `memory_stats`, `list_events`
 **WRITE_SAFE (3):** `mark_read`, `move_message`, `create_folder`
 **DANGEROUS (6, due fasi):** `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`
+<!-- TOOLMAP:END -->
 
 In mappa ma non ancora implementati: `auth_status`, `search_contacts`, `list_followup_needed` (READ), `mark_spam`, `update_event` (DANGEROUS).
 
@@ -128,6 +130,6 @@ Razionale: le credenziali non transitano mai nel canale agente; un prompt inject
 
 1. **stdio, non HTTP**: il problema "porta 8002 senza auth" cessa di esistere.
 2. **`account_id` opzionale ovunque** (default: tutti gli account o l'attivo): niente stato "account attivo" mutabile dall'agente.
-3. **Audit log** append-only in `%APPDATA%\ADE\agent_audit.jsonl`: ogni chiamata WRITE_SAFE/DANGEROUS con timestamp, tool, parametri, esito.
+3. **Registro azioni** append-only in `%APPDATA%\ADE\agent_audit.jsonl`: ogni chiamata WRITE_SAFE/DANGEROUS con timestamp, tool, parametri, esito. Nota di onestà: append-only significa che GigaMail non modifica le entry passate, NON che il file sia tamper-proof — chi ha accesso al filesystem può alterarlo. Una catena di integrità (hash chaining) avrà senso solo quando esisterà un ancoraggio esterno per l'hash di testa.
 4. **Anti prompt-injection**: il contenuto delle mail è dato non fidato. I tool DANGEROUS non sono mai auto-confermabili: il token di conferma va mostrato all'umano dal client MCP (Claude chiede conferma prima di eseguire tool distruttivi — il two-phase lo rende strutturale).
 5. **PyMuPDF assente** → licenza libera (MIT/Apache) possibile: l'estrazione PDF usa pdfplumber.
