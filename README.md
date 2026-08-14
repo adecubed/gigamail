@@ -32,6 +32,12 @@ ade-mail-agent login             # Microsoft device flow
 ade-mail-agent accounts add-imap # Aruba, Gmail, Libero, ...
 ```
 
+> **Microsoft login note**: the bundled Azure app is not yet
+> publisher-verified, so the consent screen shows an "unverified" notice
+> (works fine; some corporate tenants may block it). Standard alternative:
+> register your own Azure app and set your `client_id` in
+> `src/ade_mail_agent/core/ms_config.json`. IMAP needs none of this.
+
 Give the account its identity and knowledge (this is what makes replies yours):
 
 ```bash
@@ -110,6 +116,13 @@ ade-mail-agent login             # device flow Microsoft
 # oppure
 ade-mail-agent accounts add-imap # Aruba, Gmail, Libero, ...
 ```
+
+> **Nota sul login Microsoft**: l'app Azure inclusa non è ancora
+> publisher-verified, quindi la schermata di consenso mostra l'avviso
+> "unverified" (funziona comunque; alcuni tenant aziendali potrebbero
+> bloccarla). Alternativa standard: registra la tua app Azure e metti il
+> tuo `client_id` in `src/ade_mail_agent/core/ms_config.json`.
+> Per IMAP non serve nulla di tutto questo.
 
 Dai all'account la sua identità e la sua conoscenza (è ciò che rende le
 risposte *tue*):
