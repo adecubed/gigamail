@@ -19,12 +19,35 @@ import os
 import shutil
 import subprocess
 
-DEFAULT_COMMAND = ["claude", "-p", "{prompt}", "--allowedTools", "mcp__ade-mail__*"]
 DEFAULT_TIMEOUT = 180
 
 
 class AgentUnavailable(Exception):
     pass
+
+
+def _find_claude() -> str:
+    """Trova la CLI di Claude Code: PATH, oppure l'installazione versionata
+    piu' recente dell'app desktop (%APPDATA%/Claude/claude-code/<ver>/claude.exe)."""
+    on_path = shutil.which("claude")
+    if on_path:
+        return on_path
+    base = os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude-code")
+    try:
+        versions = [d for d in os.listdir(base)
+                    if os.path.exists(os.path.join(base, d, "claude.exe"))]
+        if versions:
+            newest = max(versions, key=lambda v: [int(x) for x in v.split(".") if x.isdigit()])
+            return os.path.join(base, newest, "claude.exe")
+    except Exception:
+        pass
+    return "claude"  # lasciamo che il chiamante segnali l'assenza
+
+
+def _default_command() -> list:
+    # "mcp__ade-mail" a livello server: consente tutti i tool del server MCP
+    # ade-mail (i DANGEROUS restano comunque a due fasi lato server).
+    return [_find_claude(), "-p", "{prompt}", "--allowedTools", "mcp__ade-mail"]
 
 
 def _config_path() -> str:
@@ -49,7 +72,7 @@ def get_config() -> dict:
             return cfg
     except Exception:
         pass
-    return {"command": list(DEFAULT_COMMAND), "timeout": DEFAULT_TIMEOUT}
+    return {"command": _default_command(), "timeout": DEFAULT_TIMEOUT}
 
 
 def status() -> dict:
