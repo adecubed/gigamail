@@ -1,3 +1,6 @@
+# GigaMail — mail for your AI agent
+# Copyright (C) 2026 Adecubed
+# Licensed under the GNU AGPL v3 or later. See LICENSE.
 """CLI di amministrazione di ADE Mail Agent.
 
 Tutte le operazioni che toccano credenziali vivono QUI e mai nei tool MCP:
