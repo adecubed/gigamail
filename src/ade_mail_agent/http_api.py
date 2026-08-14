@@ -630,6 +630,23 @@ def _run_agent(prompt: str) -> dict:
         raise HTTPException(503, str(e))
 
 
+def _suggest_attachments(aid: Optional[int], text: str) -> list:
+    """Propone allegati dai file di conoscenza dell'account in base al testo
+    dell'istruzione/oggetto (es. 'manda la planimetria A.2.1'). La UI mostra
+    i suggerimenti con checkbox: decide sempre l'utente."""
+    if not aid or not (text or "").strip():
+        return []
+    try:
+        ident = core_accounts.get_identity(aid)
+        paths = ident.get("file_paths") or []
+        if not paths:
+            return []
+        hits = identity_reader.find_relevant_files(paths, text, max_files=5)
+        return [{"name": h["name"], "path": h["path"]} for h in hits]
+    except Exception:
+        return []
+
+
 @app.get("/agent/status")
 def agent_status():
     return agent_bridge.status()
@@ -652,7 +669,11 @@ def generate_draft(req: GenerateDraftRequest, account_id: Optional[int] = None):
         f"Oggetto: {req.subject or 'non specificato'}\n"
         f"Istruzione: {req.instruction}"
     )
-    return _run_agent(prompt)
+    out = _run_agent(prompt)
+    out["suggested_attachments"] = _suggest_attachments(
+        aid, f"{req.instruction} {req.subject}"
+    )
+    return out
 
 
 class SmartDraftRequest(BaseModel):
@@ -688,7 +709,11 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
         f"--- EMAIL RICEVUTA ---\n{body[:6000]}\n--- FINE EMAIL ---\n"
         f"Istruzione dell'utente: {req.instruction or 'rispondi in modo appropriato'}"
     )
-    return _run_agent(prompt)
+    out = _run_agent(prompt)
+    out["suggested_attachments"] = _suggest_attachments(
+        aid, f"{req.instruction} {req.subject} {body[:1000]}"
+    )
+    return out
 
 
 class MailAskRequest(BaseModel):

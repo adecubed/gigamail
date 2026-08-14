@@ -55,6 +55,44 @@ def test_file_singolo_registrato(tmp_path):
     assert len(files) == 1 and files[0]["name"] == "singolo.txt"
 
 
+@pytest.fixture()
+def planimetrie_dir(tmp_path):
+    d = tmp_path / "schede"
+    d.mkdir()
+    for n in ("A.2.1.pdf", "A.0.1.pdf", "A.0.2.pdf", "B.2.1 no balcone.pdf",
+              "B.3.1.pdf", "rimanenze commerciali.txt"):
+        (d / n).write_bytes(b"x")
+    return d
+
+
+def test_find_relevant_codici_puntati(planimetrie_dir):
+    """Il caso reale: 'manda la planimetria A.2.1' deve trovare A.2.1.pdf,
+    non B.2.1 (che prima vinceva perche' 'al' matchava dentro 'balcone')."""
+    hits = identity_reader.find_relevant_files([str(planimetrie_dir)],
+                                               "manda la planimetria A.2.1 al cliente")
+    names = [h["name"] for h in hits]
+    assert names[0] == "A.2.1.pdf"
+    assert "B.2.1 no balcone.pdf" not in names
+
+
+def test_find_relevant_codici_multipli(planimetrie_dir):
+    hits = identity_reader.find_relevant_files([str(planimetrie_dir)],
+                                               "invia le schede A.0.1 e A.0.2")
+    names = {h["name"] for h in hits}
+    assert {"A.0.1.pdf", "A.0.2.pdf"} <= names
+
+
+def test_find_relevant_parole_intere(planimetrie_dir):
+    hits = identity_reader.find_relevant_files([str(planimetrie_dir)],
+                                               "mandami il file delle rimanenze")
+    assert [h["name"] for h in hits] == ["rimanenze commerciali.txt"]
+
+
+def test_find_relevant_query_generica_zero_rumore(planimetrie_dir):
+    assert identity_reader.find_relevant_files([str(planimetrie_dir)],
+                                               "ciao come stai") == []
+
+
 def test_extract_text_txt(tmp_path):
     f = tmp_path / "doc.txt"
     f.write_text("Riga uno\nRiga due", encoding="utf-8")
