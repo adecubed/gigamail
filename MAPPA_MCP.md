@@ -1,6 +1,17 @@
-# ADE Mail Agent — Mappa endpoint FastAPI → tool MCP
+# GigaMail — Mappa: superficie MCP e classi di rischio
 
-Versione agent-only: niente LLM interno, niente UI, trasporto **stdio** (nessuna porta HTTP).
+Come sono esposte le capacità di GigaMail a un agente, e con quale policy.
+
+**Due superfici, un solo core:**
+
+| Superficie | Chi la usa | Trasporto |
+|---|---|---|
+| Server MCP | l'agente | **stdio**, nessuna porta di rete |
+| Console (opzionale) | l'umano | API HTTP locale su `127.0.0.1`, token di sessione |
+
+Nessun LLM interno in nessuna delle due: il ragionamento è sempre
+dell'agente dell'utente (dalla console passa da `agent_bridge`).
+
 Ogni tool ha una **classe di rischio** che determina la policy:
 
 | Classe | Policy | Esempi |
@@ -98,18 +109,23 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `POST /mail/memory/index` / `stop`, `GET /mail/memory/indexer_state` | — | ADMIN | CLI: `ade-mail-agent index` (o indicizzazione lazy al primo uso). Embedding opzionali: senza chiave/Ollama la ricerca degrada a FTS keyword, mai errore |
 | `POST /cache/clear` | — | ADMIN | CLI |
 
-## 7. Eliminati del tutto (con motivo)
+## 7. Fuori dalla superficie MCP (e dove sono finite)
 
-| Endpoint | Motivo |
+Queste funzioni **non sono tool MCP**. L'LLM interno (`llm.py`) è stato
+eliminato; le funzioni che dipendevano da lui vivono ora nella console e
+sono delegate all'agente dell'utente tramite `agent_bridge`.
+
+| Funzione | Dove sta oggi |
 |---|---|
-| `POST /mail/generate_draft`, `/reply_draft`, `/smart_draft`, `/suggest_reply`, `/reply_natural`, `POST /mail/sender_summary`, `GET /mail/{id}/summary`, `POST /mail_ask` | LLM interno: nella versione agent l'intelligenza è dell'agente. `observer_context` + `sender_history` + `get_identity` gli danno il contesto per fare le stesse cose meglio |
-| `GET /mail/{id}/tts`, `GET /calendar/today/tts`, `POST /tts`, `POST /voice/transcribe`, `POST /voice/command` | Voce: canale dell'agente, non nostro |
-| `POST /ai_setup/*`, `GET/POST /openai/auth/*` | Auth verso fornitori AI: sparisce con l'LLM |
-| `POST /bulk/*` | Marketing bulk con AI: fuori scope v1 (candidata a tier pro futuro) |
-| `POST /office/excel`, `/office/word` | L'agente ha i propri strumenti documento |
-| `GET /mail/{id}/folder_suggestion` | Basata su LLM |
-| `GET /files/local`, `POST /identity/extract_from_url` | Superficie filesystem/scraping non necessaria; riduce rischio |
-| `GET /ui/pending`, `GET /mail/debug/folders` | UI/debug |
+| `generate_draft`, `smart_draft`, `mail_ask`, `sender_summary` | **Console**, delegati all'agente via `agent_bridge`. Non tool MCP: un agente che parla MCP ha già `read_message`, `search_mail`, `get_identity`, `observer_context` e ragiona da sé — un tool "scrivi la bozza" sarebbe un LLM dentro l'LLM |
+| Setup fornitori AI (`ai_setup`, `openai/auth`) | Rimossi: nessuna auth verso fornitori AI, l'intelligenza la porta l'agente |
+| Voce (`tts`, `voice/transcribe`, `voice/command`) | Fuori v1: l'agente ha i propri canali audio |
+| Marketing bulk (`bulk/*`) | Presente in console, fuori dalla v1 MCP (candidato a tier pro) |
+| Generazione documenti (`office/excel`, `office/word`) | Fuori: l'agente ha i propri strumenti documento |
+| `files/local`, `identity/extract_from_url` | Rimossi: superficie filesystem/scraping non necessaria, riduce il rischio |
+| `snooze/*`, `ui/pending`, `debug/folders` | Solo console / debug |
+
+Regola generale: **l'agente riceve capacità, non scorciatoie cognitive.**
 
 ---
 

@@ -14,8 +14,24 @@ option) any later version. See the LICENSE file for details.
 access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
 local search index, sender memory, and an agent-aware permission model.
 
-No built-in LLM: the intelligence is your agent's. No HTTP port: stdio
-transport. Your data stays on your machine.
+No built-in LLM: the intelligence is your agent's. The MCP server speaks
+stdio only — no network port. (An optional human console adds a local HTTP
+API bound to 127.0.0.1.)
+
+**On your data**: GigaMail keeps mail indexes, credentials, memory and
+configuration **on your machine** — we run no service and receive nothing.
+Mail content your agent reads is, of course, handled by that agent and its
+model provider under their own data policies. Choose your agent
+accordingly; the masker (coming) lets you hide sensitive fields before the
+agent ever sees them.
+
+![The human console: a draft written by the agent — real figures from the
+account's documents, the right floor plans attached, and appointment slots
+taken from the actual calendar. Nothing is sent until you approve it.](docs/console-draft.png)
+
+*A real draft: the agent pulled the figures from the account's documents,
+picked the floor plans to attach, and proposed slots from the calendar.
+The human reviews and sends — or edits the instruction and regenerates.*
 
 ## Why
 
@@ -72,10 +88,15 @@ reply, and asks you before sending.
 
 ## Tools
 
-23 typed tools. Reading: accounts, messages, folders, unread, hybrid search,
-attachments (text extraction), sender history, knowledge files, calendar.
-Safe writes (audited): mark read, move, create folder. Dangerous actions
-(two-phase confirmation): send, reply, delete, spam, calendar events.
+24 typed tools, generated from the server itself:
+
+- **Read (15)** — accounts, identity, knowledge files, messages, unread,
+  folders, hybrid search, attachment text, sender history, learned
+  patterns, calendar events, free-slot availability
+- **Safe writes (3, audited)** — mark read, move message, create folder
+- **Dangerous (6, two-phase confirmation)** — send, reply, delete message,
+  delete folder, create/delete calendar event
+
 Full map and design decisions: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 ## Security model
@@ -84,15 +105,28 @@ Email content is treated as **untrusted data** (prompt injection): dangerous
 tools are never self-confirmable — the first call only returns a preview and
 a one-time token; execution requires the user's explicit consent. The agent
 can only read files explicitly registered by the user, never the rest of the
-filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`.
+filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
+(append-only: GigaMail never rewrites past entries — it is not, and does not
+claim to be, tamper-proof storage).
+
+We red-team this: hostile emails ordering exfiltration, mass deletion and
+self-confirmation with invented tokens, fed to a real agent with every mail
+tool enabled.
+
+![Anti-injection harness: three hostile-email scenarios against a real
+agent, zero destructive actions](docs/anti-injection-harness.png)
+
+The structural half of that suite runs in CI on every push
+([tests/test_injection.py](tests/test_injection.py)); the real-agent half is
+opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) and runs with
+a dry-run guard so confirmed actions are audited but never executed.
 
 ## License
 
 **AGPL-3.0-or-later.** Free to use, study, modify and share. If you
 distribute a modified version — or run one as a network service — you must
-make your source available under the same license. Commercial licensing
-(for closed-source use) available on request: it's our code, so we can
-grant exceptions.
+make its source available under the same license. Commercial licenses for
+closed-source use are available from the copyright holder.
 
 ---
 
@@ -103,8 +137,25 @@ sicuro e controllato alla tua posta** — multi-account (Microsoft Graph +
 IMAP), calendario, indice di ricerca locale, memoria dei mittenti e un
 modello di permessi pensato per gli agenti.
 
-Nessun LLM interno: l'intelligenza è quella del tuo agente. Nessuna porta
-HTTP: trasporto stdio. I dati restano sul tuo PC.
+Nessun LLM interno: l'intelligenza è quella del tuo agente. Il server MCP
+parla solo stdio — nessuna porta di rete. (La console per l'umano, che è
+opzionale, aggiunge una API HTTP locale su 127.0.0.1.)
+
+**Sui tuoi dati**: GigaMail tiene indici della posta, credenziali, memoria
+e configurazione **sul tuo computer** — noi non gestiamo alcun servizio e
+non riceviamo nulla. Il contenuto delle mail che il tuo agente legge è
+ovviamente trattato da quell'agente e dal suo fornitore di modello secondo
+le loro policy. Scegli l'agente di conseguenza; il masker (in arrivo)
+permette di nascondere i dati sensibili prima che l'agente li veda.
+
+![La console umana: una bozza scritta dall'agente — dati reali dai documenti
+dell'account, planimetrie giuste in allegato e orari presi dal calendario.
+Niente parte finché non approvi.](docs/console-draft.png)
+
+*Una bozza vera: l'agente ha preso i dati dai documenti collegati
+all'account, scelto le planimetrie da allegare e proposto gli orari liberi
+dal calendario. L'umano rivede e invia — oppure corregge l'istruzione e
+rigenera.*
 
 ## Perché
 
@@ -163,12 +214,16 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-23 tool tipizzati. Lettura: account, messaggi, cartelle, non lette, ricerca
-ibrida, allegati (estrazione testo), storico mittenti, file di conoscenza,
-calendario. Scritture sicure (con audit): segna letto, sposta, crea cartella.
-Azioni pericolose (conferma a due fasi): invio, risposta, cancellazione,
-spam, eventi calendario. Mappa completa e decisioni di design:
-[MAPPA_MCP.md](MAPPA_MCP.md).
+24 tool tipizzati, generati dal server stesso:
+
+- **Lettura (15)** — account, identità, file di conoscenza, messaggi, non
+  lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
+  pattern appresi, eventi di calendario, slot liberi
+- **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
+- **Pericolose (6, conferma a due fasi)** — invio, risposta, cancellazione
+  messaggio, cancellazione cartella, creazione/cancellazione evento
+
+Mappa completa e decisioni di design: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 ## Modello di sicurezza
 
@@ -177,12 +232,27 @@ injection): i tool pericolosi non sono mai auto-confermabili — la prima
 chiamata restituisce solo un'anteprima e un token monouso; l'esecuzione
 richiede il consenso esplicito dell'utente. L'agente può leggere solo i file
 registrati esplicitamente dall'utente, mai il resto del filesystem. Ogni
-azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl`.
+azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
+GigaMail non riscrive mai le voci passate — non è, e non pretende di essere,
+un archivio a prova di manomissione).
+
+Lo mettiamo alla prova: mail ostili che ordinano esfiltrazione,
+cancellazione di massa e auto-conferma con token inventati, date a un agente
+reale con tutti i tool attivi.
+
+![Harness anti-injection: tre scenari di mail ostili contro un agente reale,
+zero azioni distruttive](docs/anti-injection-harness.png)
+
+La metà strutturale della suite gira in CI a ogni push
+([tests/test_injection.py](tests/test_injection.py)); quella con l'agente
+reale è opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) e usa
+una modalità dry-run, così le azioni confermate finiscono nell'audit ma non
+vengono mai eseguite.
 
 ## Licenza
 
 **AGPL-3.0-or-later.** Libero di usarlo, studiarlo, modificarlo e
 condividerlo. Se distribuisci una versione modificata — o la offri come
 servizio in rete — devi rendere disponibile il sorgente con la stessa
-licenza. Licenza commerciale (per usi closed-source) disponibile su
-richiesta: il codice è nostro, quindi possiamo concedere eccezioni.
+licenza. Licenze commerciali per usi closed-source sono disponibili dal
+titolare del copyright.
