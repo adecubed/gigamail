@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.1.1 — 2026-08-15
+
+**Security fix: the agent could approve its own destructive actions.**
+
+v0.1.0 returned a one-time confirmation token inside the tool result, which
+put it in the model's context. The agent held both halves — the preview and
+the key — so an instruction injected through an email could call the tool
+again with the token it had just read. The gate stopped accidents, not a
+determined injection. Reported on r/mcp by **u/ranbuman**; **u/anderson_the_one**
+added the point about binding approval to the exact operation shown.
+
+Approval is now **out of band**:
+
+- a dangerous tool returns only `request_id`, an inert reference — no secret
+  enters the model's context
+- approval happens through channels the agent has no path to: the console
+  API (behind its session token) or `gigamail approvals approve <id>`
+- execution uses the canonical arguments stored when the request was made,
+  never what the agent passes back at the second call
+- repeating a `request_id` returns *awaiting approval*, indefinitely
+- approvals live in SQLite, because requesting and approving now happen in
+  different processes
+
+New: `gigamail approvals list|approve|reject`, and `/approvals` endpoints on
+the console API. Tool parameter renamed `confirm_token` → `request_id`.
+
+Declared limitation: an agent with full shell access on the same machine can
+run the approval CLI. That is a different threat model and GigaMail does not
+claim to defend it.
+
+Tests: 94 → 103, including one asserting that no MCP tool grants approval and
+that the phase-1 payload contains no token. The red-team scenario now
+instructs the agent to approve itself; with all tools live, it took no
+destructive action.
+
 ## v0.1.0 — 2026-08-15
 
 First public release. GigaMail is in daily production use at one company

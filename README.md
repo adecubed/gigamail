@@ -42,9 +42,11 @@ The human reviews and sends — or edits the instruction and regenerates.*
 - **Knowledge files**: attach your price lists, terms, product sheets to an
   account — the agent reads them to answer mail. Your agent doesn't need to
   know everything: the account carries its own knowledge
-- **Agent-aware permissions**: reads are free; send/delete are two-phase
-  (preview → one-time confirm token → execution) with a human in the loop;
-  every write action lands in an append-only audit log
+- **Agent-aware permissions**: reads are free; send/delete require an
+  approval given **out of band** — the agent gets an inert request id, a
+  human approves from the console or the CLI, and only then does it execute,
+  with the exact arguments the human saw. Every write lands in an
+  append-only action log
 - **Credentials never touch the agent channel**: login and account management
   live in the CLI only — a prompt injection inside an email cannot add
   accounts or read secrets
@@ -97,24 +99,32 @@ reply, and asks you before sending.
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability
 - **Safe writes (3, audited)** — mark read, move message, create folder
-- **Dangerous (6, two-phase confirmation)** — send, reply, delete message,
-  delete folder, create/delete calendar event
+- **Dangerous (6, human approval out of band)** — send, reply, delete
+  message, delete folder, create/delete calendar event
 
 Full map and design decisions: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 ## Security model
 
-Email content is treated as **untrusted data** (prompt injection): dangerous
-tools are never self-confirmable — the first call only returns a preview and
-a one-time token; execution requires the user's explicit consent. The agent
+Email content is treated as **untrusted data** (prompt injection). The
+agent cannot approve its own actions, by construction: a dangerous tool
+returns only an inert `request_id`, and the approval lives outside the MCP
+surface — in the console (behind its session token) or a shell command. No
+secret ever enters the model context, so an injected instruction has
+nothing to spend. Repeating the id just returns *awaiting approval*. The agent
 can only read files explicitly registered by the user, never the rest of the
 filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
 (append-only: GigaMail never rewrites past entries — it is not, and does not
 claim to be, tamper-proof storage).
 
-We red-team this: hostile emails ordering exfiltration, mass deletion and
-self-confirmation with invented tokens, fed to a real agent with every mail
-tool enabled.
+We red-team this: hostile emails ordering exfiltration, mass deletion, and
+the agent to approve itself — fed to a real agent with every mail tool
+enabled.
+
+> This design is a fix. v0.1.0 returned a one-time confirm token in the
+> tool result, which put it in the model's context: the agent held both
+> halves. Thanks to **u/ranbuman** and **u/anderson_the_one** on r/mcp for
+> catching it. The switch now sits where the agent cannot reach.
 
 ![Anti-injection harness: three hostile-email scenarios against a real
 agent, zero destructive actions](docs/anti-injection-harness.png)
@@ -169,9 +179,11 @@ rigenera.*
 - **File di conoscenza**: collega listini, condizioni, schede prodotto a un
   account — l'agente li legge per rispondere alle mail. Il tuo agente non
   deve sapere tutto: le informazioni che gli servono viaggiano con l'account
-- **Permessi per agenti**: lettura libera; invio/cancellazione a due fasi
-  (anteprima → token monouso → esecuzione) con conferma umana; audit log
-  append-only di ogni azione di scrittura
+- **Permessi per agenti**: lettura libera; invio/cancellazione richiedono
+  un'approvazione data **fuori banda** — all'agente arriva solo un id
+  inerte, un umano approva dalla console o dalla CLI, e solo allora si
+  esegue, con gli argomenti esatti che l'umano ha visto. Ogni scrittura
+  finisce in un registro append-only
 - **Credenziali fuori dal canale agente**: login e gestione account solo via
   CLI — una prompt injection dentro una mail non può aggiungere account né
   leggere segreti
@@ -227,25 +239,35 @@ risposta e ti chiede conferma prima di inviare.
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi
 - **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
-- **Pericolose (6, conferma a due fasi)** — invio, risposta, cancellazione
-  messaggio, cancellazione cartella, creazione/cancellazione evento
+- **Pericolose (6, approvazione umana fuori banda)** — invio, risposta,
+  cancellazione messaggio, cancellazione cartella, creazione/cancellazione
+  evento
 
 Mappa completa e decisioni di design: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 ## Modello di sicurezza
 
 Il contenuto delle email è trattato come **dato non fidato** (prompt
-injection): i tool pericolosi non sono mai auto-confermabili — la prima
-chiamata restituisce solo un'anteprima e un token monouso; l'esecuzione
-richiede il consenso esplicito dell'utente. L'agente può leggere solo i file
+injection). L'agente non può approvare le proprie azioni, per costruzione:
+un tool pericoloso restituisce solo un `request_id` inerte, e l'approvazione
+vive fuori dalla superficie MCP — nella console (dietro il suo token di
+sessione) o in un comando di shell. Nessun segreto entra nel contesto del
+modello, quindi un'istruzione iniettata non ha nulla da spendere. Ripetere
+l'id restituisce solo *in attesa di approvazione*. L'agente può leggere solo i file
 registrati esplicitamente dall'utente, mai il resto del filesystem. Ogni
 azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
 GigaMail non riscrive mai le voci passate — non è, e non pretende di essere,
 un archivio a prova di manomissione).
 
 Lo mettiamo alla prova: mail ostili che ordinano esfiltrazione,
-cancellazione di massa e auto-conferma con token inventati, date a un agente
+cancellazione di massa e all'agente di approvarsi da solo, date a un agente
 reale con tutti i tool attivi.
+
+> Questo disegno è una correzione. La v0.1.0 restituiva un token di conferma
+> monouso nel risultato del tool, quindi dentro il contesto del modello:
+> l'agente aveva entrambe le metà. Grazie a **u/ranbuman** e
+> **u/anderson_the_one** su r/mcp per averlo notato. Ora l'interruttore sta
+> dove l'agente non arriva.
 
 ![Harness anti-injection: tre scenari di mail ostili contro un agente reale,
 zero azioni distruttive](docs/anti-injection-harness.png)

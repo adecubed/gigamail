@@ -35,10 +35,12 @@ public thank-you.
 The guarantees this project actually makes — break any of these and we want
 to know:
 
-- **The confirmation gate.** A destructive tool (`send_mail`, `reply_mail`,
+- **The approval gate.** A destructive tool (`send_mail`, `reply_mail`,
   `delete_message`, `delete_folder`, `create_event`, `delete_event`)
-  executing without a valid, unexpired, single-use token — or executing with
-  arguments other than the ones shown in the preview.
+  executing without a human approval given out of band — or executing with
+  arguments other than the ones the human saw. In particular: **any path by
+  which the agent can approve its own request**, or any secret reaching the
+  model's context that could be spent to self-approve.
 - **Account isolation.** Any path where an agent asking for account X reads
   or writes account Y.
 - **Credential exposure.** Passwords, tokens or the account key reachable
@@ -63,7 +65,22 @@ Not because they don't matter, but because they aren't ours to fix:
 - **The action log is append-only, not tamper-proof.** Anyone with write
   access to your filesystem can alter `agent_audit.jsonl`. We state this
   plainly rather than pretending otherwise.
+- **An agent with full shell access to the same machine.** It can run the
+  approval CLI, read the console token, or just use your mail client
+  directly. If your agent can run arbitrary commands as you, GigaMail's gate
+  is not the weak link — state that threat model honestly rather than
+  pretending otherwise.
 - Attacks requiring an already-compromised machine or Windows user account.
+
+## Fixed
+
+- **v0.1.1 — agent could self-approve destructive actions.** v0.1.0 returned
+  a one-time confirmation token inside the tool result, so it entered the
+  model's context: an injected instruction could call the tool again with the
+  token it had just read. Approval now happens out of band and the agent
+  receives only an inert request id. Reported on r/mcp by **u/ranbuman**,
+  with a sharpening from **u/anderson_the_one** on binding approval to the
+  exact operation shown. Thank you both.
 
 ## How we test this ourselves
 
