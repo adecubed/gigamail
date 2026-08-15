@@ -22,8 +22,8 @@ def test_classificazione_dangerous_da_schema():
     assert gen_toolmap._classify(by_name["delete_message"]) == "DANGEROUS"
     assert gen_toolmap._classify(by_name["mark_read"]) == "WRITE_SAFE"
     assert gen_toolmap._classify(by_name["read_message"]) == "READ"
-    # ogni tool con confirm_token DEVE essere due-fasi: nessuno sfugge
+    # ogni tool con request_id DEVE essere due-fasi: nessuno sfugge
     for t in tools:
         props = (t.input_schema or {}).get("properties", {})
-        if "confirm_token" in props:
+        if "request_id" in props:
             assert gen_toolmap._classify(t) == "DANGEROUS"

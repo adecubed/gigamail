@@ -205,6 +205,62 @@ def cmd_identity_remove_file(args) -> int:
     return 0
 
 
+def _fmt_preview(preview: dict) -> str:
+    righe = []
+    for k, v in (preview or {}).items():
+        v = str(v)
+        if len(v) > 300:
+            v = v[:300] + "…"
+        righe.append(f"    {k}: {v}")
+    return "\n".join(righe) or "    (nessuna anteprima)"
+
+
+def cmd_approvals_list(_args) -> int:
+    from ade_mail_agent import policy
+    pending = policy.store().list_pending()
+    if not pending:
+        print("Nessuna richiesta in attesa.")
+        return 0
+    print(f"{len(pending)} richiesta/e in attesa di approvazione:\n")
+    for r in pending:
+        import time as _t
+        eta = int(r["expires_at"] - _t.time())
+        print(f"  {r['request_id']}  [{r['tool']}]  scade tra {eta // 60}m{eta % 60:02d}s")
+        print(_fmt_preview(r["preview"]))
+        print()
+    print("Approva con:  gigamail approvals approve <request_id>")
+    print("Rifiuta con:  gigamail approvals reject <request_id>")
+    return 0
+
+
+def cmd_approvals_approve(args) -> int:
+    from ade_mail_agent import policy
+    rec = policy.store().get(args.request_id)
+    if not rec:
+        print(f"Richiesta '{args.request_id}' inesistente.")
+        return 1
+    print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
+    if not args.yes:
+        conferma = input("Approvare questa azione? [y/N] ").strip().lower()
+        if conferma != "y":
+            print("Annullato (la richiesta resta in attesa).")
+            return 0
+    if policy.store().approve(args.request_id):
+        print("Approvata. L'agente puo' ora completare l'azione.")
+        return 0
+    print("Non approvabile: gia' decisa o scaduta.")
+    return 1
+
+
+def cmd_approvals_reject(args) -> int:
+    from ade_mail_agent import policy
+    if policy.store().reject(args.request_id):
+        print("Rifiutata.")
+        return 0
+    print("Non rifiutabile: gia' decisa o scaduta.")
+    return 1
+
+
 def cmd_index(args) -> int:
     from ade_mail_agent.core import accounts as core_accounts
     from ade_mail_agent.core import mail_memory
@@ -263,6 +319,18 @@ def main() -> int:
     p_rmf.add_argument("path")
     p_rmf.add_argument("--account-id", type=int, default=None, dest="account_id")
     p_rmf.set_defaults(fn=cmd_identity_remove_file)
+
+    p_appr = sub.add_parser("approvals", help="approva le azioni richieste dall'agente")
+    appr_sub = p_appr.add_subparsers(dest="subcommand", required=True)
+    appr_sub.add_parser("list").set_defaults(fn=cmd_approvals_list)
+    p_ok = appr_sub.add_parser("approve")
+    p_ok.add_argument("request_id")
+    p_ok.add_argument("-y", "--yes", action="store_true",
+                      help="non chiedere conferma interattiva")
+    p_ok.set_defaults(fn=cmd_approvals_approve)
+    p_no = appr_sub.add_parser("reject")
+    p_no.add_argument("request_id")
+    p_no.set_defaults(fn=cmd_approvals_reject)
 
     p_idx = sub.add_parser("index")
     p_idx.add_argument("account_id", type=int, nargs="?", default=None)
