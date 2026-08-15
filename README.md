@@ -52,10 +52,10 @@ The human reviews and sends — or edits the instruction and regenerates.*
 ## Quick start
 
 ```bash
-pip install -e .                 # from a clone; PyPI package coming
-ade-mail-agent login             # Microsoft device flow
-# or
-ade-mail-agent accounts add-imap # Aruba, Gmail, Libero, ...
+pip install -e ".[all]"       # from a clone; PyPI package coming
+
+gigamail login                # Microsoft device flow
+gigamail accounts add-imap    # or IMAP: Aruba, Gmail, Libero, ...
 ```
 
 > **Microsoft login note**: the bundled Azure app is not yet
@@ -67,20 +67,23 @@ ade-mail-agent accounts add-imap # Aruba, Gmail, Libero, ...
 Give the account its identity and knowledge (this is what makes replies yours):
 
 ```bash
-ade-mail-agent identity set                       # who am I, what I do, tone
-ade-mail-agent identity add-file C:\docs\pricelist.xlsx
-ade-mail-agent identity add-file C:\docs\catalog\   # whole folder
+gigamail identity set                       # who am I, what I do, tone
+gigamail identity add-file C:\docs\pricelist.xlsx
+gigamail identity add-file C:\docs\catalog\   # whole folder
 ```
 
 Register in Claude Desktop / Claude Code (`mcpServers`):
 
 ```json
 {
-  "ade-mail": {
-    "command": "ade-mail-agent-server"
+  "gigamail": {
+    "command": "gigamail-server"
   }
 }
 ```
+
+The commands are also available under their legacy names
+(`ade-mail-agent`, `ade-mail-agent-server`), so existing setups keep working.
 
 Then just ask your agent: *"reply to the last quote request using the price
 list"* — it reads the mail, pulls the numbers from your file, drafts the
@@ -176,10 +179,10 @@ rigenera.*
 ## Setup rapido
 
 ```bash
-pip install -e .                 # da un clone; pacchetto PyPI in arrivo
-ade-mail-agent login             # device flow Microsoft
-# oppure
-ade-mail-agent accounts add-imap # Aruba, Gmail, Libero, ...
+pip install -e ".[all]"       # da un clone; pacchetto PyPI in arrivo
+
+gigamail login                # device flow Microsoft
+gigamail accounts add-imap    # oppure IMAP: Aruba, Gmail, Libero, ...
 ```
 
 > **Nota sul login Microsoft**: l'app Azure inclusa non è ancora
@@ -193,20 +196,24 @@ Dai all'account la sua identità e la sua conoscenza (è ciò che rende le
 risposte *tue*):
 
 ```bash
-ade-mail-agent identity set                       # chi sono, cosa faccio, tono
-ade-mail-agent identity add-file C:\docs\listino.xlsx
-ade-mail-agent identity add-file C:\docs\catalogo\   # intera cartella
+gigamail identity set                       # chi sono, cosa faccio, tono
+gigamail identity add-file C:\docs\listino.xlsx
+gigamail identity add-file C:\docs\catalogo\   # intera cartella
 ```
 
 Registrazione in Claude Desktop / Claude Code (`mcpServers`):
 
 ```json
 {
-  "ade-mail": {
-    "command": "ade-mail-agent-server"
+  "gigamail": {
+    "command": "gigamail-server"
   }
 }
 ```
+
+I comandi restano disponibili anche con i vecchi nomi
+(`ade-mail-agent`, `ade-mail-agent-server`), così le installazioni esistenti
+continuano a funzionare.
 
 Poi chiedi al tuo agente: *"rispondi all'ultima richiesta di preventivo
 usando il listino"* — legge la mail, prende i numeri dal tuo file, prepara la
