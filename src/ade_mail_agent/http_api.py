@@ -828,16 +828,24 @@ def get_approval(request_id: str):
     return rec
 
 
+def _who() -> str:
+    import getpass
+    try:
+        return f"console:{getpass.getuser()}"
+    except Exception:
+        return "console"
+
+
 @app.post("/approvals/{request_id}/approve")
 def approve_request(request_id: str):
-    if not policy.store().approve(request_id):
+    if not policy.store().approve(request_id, by=_who()):
         raise HTTPException(409, "Richiesta non approvabile (già decisa o scaduta)")
     return {"success": True, "request_id": request_id, "status": "approved"}
 
 
 @app.post("/approvals/{request_id}/reject")
 def reject_request(request_id: str):
-    if not policy.store().reject(request_id):
+    if not policy.store().reject(request_id, by=_who()):
         raise HTTPException(409, "Richiesta non rifiutabile (già decisa o scaduta)")
     return {"success": True, "request_id": request_id, "status": "rejected"}
 

@@ -101,9 +101,14 @@ class ApprovalStore:
                     status     TEXT NOT NULL,
                     created_at REAL NOT NULL,
                     expires_at REAL NOT NULL,
-                    decided_at REAL
+                    decided_at REAL,
+                    decided_by TEXT
                 )
             """)
+            # migrazione per database creati prima del tracciamento di chi decide
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(approvals)")}
+            if "decided_by" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN decided_by TEXT")
 
     def create(self, tool: str, args: Dict[str, Any], preview: Dict[str, Any],
                ttl: float = _APPROVAL_TTL_SECONDS) -> str:
@@ -147,41 +152,64 @@ class ApprovalStore:
             out.append(d)
         return out
 
-    def _decide(self, request_id: str, status: str) -> bool:
+    def _decide(self, request_id: str, status: str, by: str) -> bool:
+        """Transizione pending -> approved/rejected, atomica: solo la prima
+        decisione vince, anche se console e CLI arrivano insieme."""
         now = time.time()
         with self._conn() as conn:
             cur = conn.execute(
-                "UPDATE approvals SET status=?, decided_at=? WHERE request_id=?"
-                " AND status=? AND expires_at > ?",
-                (status, now, request_id, PENDING, now),
+                "UPDATE approvals SET status=?, decided_at=?, decided_by=?"
+                " WHERE request_id=? AND status=? AND expires_at > ?",
+                (status, now, by, request_id, PENDING, now),
             )
-            return cur.rowcount > 0
+            return cur.rowcount == 1
 
-    def approve(self, request_id: str) -> bool:
-        """Chiamata SOLO dalla console o dalla CLI — mai da un tool MCP."""
-        ok = self._decide(request_id, APPROVED)
-        audit("approval", {"request_id": request_id}, "approved" if ok else "approve_failed")
+    def approve(self, request_id: str, by: str = "unknown") -> bool:
+        """Chiamata SOLO dalla console o dalla CLI — mai da un tool MCP.
+        `by` identifica il canale e l'utente di sistema che ha approvato."""
+        rec = self.get(request_id)
+        ok = self._decide(request_id, APPROVED, by)
+        audit("approval", {"request_id": request_id, "by": by,
+                           "for_tool": (rec or {}).get("tool")},
+              "approved" if ok else "approve_failed")
         return ok
 
-    def reject(self, request_id: str) -> bool:
-        ok = self._decide(request_id, REJECTED)
-        audit("approval", {"request_id": request_id}, "rejected" if ok else "reject_failed")
+    def reject(self, request_id: str, by: str = "unknown") -> bool:
+        rec = self.get(request_id)
+        ok = self._decide(request_id, REJECTED, by)
+        audit("approval", {"request_id": request_id, "by": by,
+                           "for_tool": (rec or {}).get("tool")},
+              "rejected" if ok else "reject_failed")
         return ok
 
     def consume_approved(self, request_id: str, tool: str) -> Optional[Dict[str, Any]]:
-        """Se la richiesta e' approvata, valida e non scaduta: la marca
-        eseguita e restituisce gli argomenti CANONICI (quelli mostrati
-        all'umano, non quelli ripassati adesso dall'agente)."""
+        """Consuma ATOMICAMENTE un'approvazione: la transizione
+        approved -> executed avviene in una sola UPDATE condizionale, e solo
+        chi la vince ottiene gli argomenti canonici.
+
+        Non e' pedanteria: con SELECT-poi-UPDATE due chiamate concorrenti
+        dello stesso request_id vedrebbero entrambe 'approved' ed
+        eseguirebbero due volte la stessa azione approvata una volta sola —
+        due mail identiche al cliente, o due cancellazioni.
+        """
         now = time.time()
-        with self._conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM approvals WHERE request_id=?", (request_id,)
-            ).fetchone()
-            if not row or row["tool"] != tool or row["status"] != APPROVED \
-                    or row["expires_at"] < now:
+        conn = self._conn()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            cur = conn.execute(
+                "UPDATE approvals SET status=? WHERE request_id=? AND tool=?"
+                " AND status=? AND expires_at > ?",
+                (EXECUTED, request_id, tool, APPROVED, now),
+            )
+            if cur.rowcount != 1:
+                conn.rollback()
                 return None
-            conn.execute("UPDATE approvals SET status=? WHERE request_id=?",
-                         (EXECUTED, request_id))
+            row = conn.execute(
+                "SELECT args_json FROM approvals WHERE request_id=?", (request_id,)
+            ).fetchone()
+            conn.commit()
+        finally:
+            conn.close()
         return json.loads(row["args_json"])
 
     def purge_expired(self) -> int:

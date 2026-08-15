@@ -88,6 +88,75 @@ def test_approvazione_monouso():
         policy.execute_dangerous("send_mail", {}, r["request_id"], _preview, lambda a: "ok")
 
 
+def test_consume_concorrente_esegue_una_volta_sola():
+    """Due chiamate simultanee della fase 2 sullo stesso request_id: una
+    sola deve vincere. Con SELECT-poi-UPDATE entrambe vedrebbero 'approved'
+    e la mail partirebbe due volte."""
+    import threading
+
+    r = _fase1()
+    policy.store().approve(r["request_id"])
+
+    esiti, errori = [], []
+    barriera = threading.Barrier(8)
+
+    def corri():
+        try:
+            barriera.wait()
+            esiti.append(policy.store().consume_approved(r["request_id"], "send_mail"))
+        except Exception as e:  # pragma: no cover
+            errori.append(e)
+
+    thread = [threading.Thread(target=corri) for _ in range(8)]
+    for t in thread:
+        t.start()
+    for t in thread:
+        t.join()
+
+    assert not errori
+    vincitori = [e for e in esiti if e is not None]
+    assert len(vincitori) == 1, f"consumata {len(vincitori)} volte invece di 1"
+    assert vincitori[0]["to"] == "x@y.it"
+
+
+def test_decisione_concorrente_una_sola_vince():
+    """Console e CLI che approvano/rifiutano insieme: la prima decisione
+    vince, la seconda riceve False (niente doppia transizione)."""
+    import threading
+
+    r = _fase1()
+    esiti = []
+    barriera = threading.Barrier(2)
+
+    def approva():
+        barriera.wait()
+        esiti.append(("approve", policy.store().approve(r["request_id"], by="console:test")))
+
+    def rifiuta():
+        barriera.wait()
+        esiti.append(("reject", policy.store().reject(r["request_id"], by="cli:test")))
+
+    t1, t2 = threading.Thread(target=approva), threading.Thread(target=rifiuta)
+    t1.start(); t2.start(); t1.join(); t2.join()
+
+    assert sum(1 for _, ok in esiti if ok) == 1
+
+
+def test_audit_registra_chi_ha_approvato():
+    """L'approvazione e' l'unico punto in cui un umano entra nel ciclo:
+    deve risultare chi e quando."""
+    r = _fase1()
+    policy.store().approve(r["request_id"], by="console:simon")
+    voce = _read_audit()[-1]
+    assert voce["tool"] == "approval"
+    assert voce["outcome"] == "approved"
+    assert voce["args"]["by"] == "console:simon"
+    assert voce["args"]["for_tool"] == "send_mail"
+    assert voce["ts"]
+    rec = policy.store().get(r["request_id"])
+    assert rec["decided_by"] == "console:simon" and rec["decided_at"]
+
+
 def test_request_id_di_un_tool_non_vale_per_un_altro():
     r = _fase1()
     policy.store().approve(r["request_id"])
