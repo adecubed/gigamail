@@ -205,6 +205,14 @@ def cmd_identity_remove_file(args) -> int:
     return 0
 
 
+def _cli_who() -> str:
+    import getpass
+    try:
+        return f"cli:{getpass.getuser()}"
+    except Exception:
+        return "cli"
+
+
 def _fmt_preview(preview: dict) -> str:
     righe = []
     for k, v in (preview or {}).items():
@@ -245,7 +253,7 @@ def cmd_approvals_approve(args) -> int:
         if conferma != "y":
             print("Annullato (la richiesta resta in attesa).")
             return 0
-    if policy.store().approve(args.request_id):
+    if policy.store().approve(args.request_id, by=_cli_who()):
         print("Approvata. L'agente puo' ora completare l'azione.")
         return 0
     print("Non approvabile: gia' decisa o scaduta.")
@@ -254,7 +262,7 @@ def cmd_approvals_approve(args) -> int:
 
 def cmd_approvals_reject(args) -> int:
     from ade_mail_agent import policy
-    if policy.store().reject(args.request_id):
+    if policy.store().reject(args.request_id, by=_cli_who()):
         print("Rifiutata.")
         return 0
     print("Non rifiutabile: gia' decisa o scaduta.")
