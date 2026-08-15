@@ -34,15 +34,15 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `GET /accounts` | `list_accounts` | READ | Senza dati sensibili (no password/token nel payload) |
 | `GET /accounts/active` | — (incluso in `list_accounts`) | — | Flag `active` per account |
 | `POST /accounts/active/{id}` | — | — | Non serve: ogni tool accetta `account_id` opzionale |
-| `DELETE /accounts/{id}` | — | ADMIN | Solo CLI: `ade-mail-agent accounts remove` |
+| `DELETE /accounts/{id}` | — | ADMIN | Solo CLI: `gigamail accounts remove` |
 | `GET /accounts/{id}/identity` | `get_identity` | READ | Contesto "chi sono / cosa faccio / tono" utile all'agente per scrivere bozze |
-| `POST /accounts/{id}/identity` | — | ADMIN | Solo CLI: `ade-mail-agent identity set` (l'agente legge l'identità, non la modifica: una mail ostile non può avvelenarla) |
+| `POST /accounts/{id}/identity` | — | ADMIN | Solo CLI: `gigamail identity set` (l'agente legge l'identità, non la modifica: una mail ostile non può avvelenarla) |
 | `GET /accounts/{id}/identity/files` | `list_knowledge_files` | READ | File di conoscenza registrati dall'utente (listini, condizioni, schede) |
 | lettura file identity | `read_knowledge_file` | READ | Estrae il testo di un file registrato. Whitelist = SOLO i percorsi registrati via CLI (`identity add-file`), mai il resto del filesystem |
-| `POST /accounts/imap` | — | ADMIN | Solo CLI: `ade-mail-agent accounts add-imap` |
+| `POST /accounts/imap` | — | ADMIN | Solo CLI: `gigamail accounts add-imap` |
 | `GET /accounts/providers` | — | ADMIN | Preset provider dentro la CLI |
 | `GET /auth/status` | — *(pianificato: `auth_status`)* | READ | Stato token per account (valido/scaduto), mai il token stesso |
-| `GET /auth/login`, `POST /auth/complete` | — | ADMIN | Solo CLI: `ade-mail-agent login` (device flow Microsoft) |
+| `GET /auth/login`, `POST /auth/complete` | — | ADMIN | Solo CLI: `gigamail login` (device flow Microsoft) |
 | `POST /auth/logout` | — | ADMIN | Solo CLI |
 | `GET /addresses`, `GET /addresses/search` | — *(pianificato: `search_contacts`)* | READ | Rubrica derivata dallo storico |
 
@@ -92,7 +92,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 | `POST /calendar` | `create_event` | DANGEROUS | Due fasi (può generare inviti ad altri) |
 | `PATCH /calendar/{id}` | — *(pianificato: `update_event`)* | DANGEROUS | Due fasi |
 | `DELETE /calendar/{id}` | `delete_event` | DANGEROUS | Due fasi |
-| `POST /calendar/caldav/test|setup`, `DELETE …` | — | ADMIN | Solo CLI: `ade-mail-agent caldav setup` |
+| `POST /calendar/caldav/test|setup`, `DELETE …` | — | ADMIN | Solo CLI: `gigamail caldav setup` |
 | `GET /calendar/caldav/status`, `GET /calendar/primary` | — (campo di `list_accounts`) | — | |
 | `POST /calendar/primary/{id}` | — | ADMIN | Solo CLI |
 
@@ -106,7 +106,7 @@ l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
 
 | Endpoint attuale | Tool MCP | Classe | Note |
 |---|---|---|---|
-| `POST /mail/memory/index` / `stop`, `GET /mail/memory/indexer_state` | — | ADMIN | CLI: `ade-mail-agent index` (o indicizzazione lazy al primo uso). Embedding opzionali: senza chiave/Ollama la ricerca degrada a FTS keyword, mai errore |
+| `POST /mail/memory/index` / `stop`, `GET /mail/memory/indexer_state` | — | ADMIN | CLI: `gigamail index` (o indicizzazione lazy al primo uso). Embedding opzionali: senza chiave/Ollama la ricerca degrada a FTS keyword, mai errore |
 | `POST /cache/clear` | — | ADMIN | CLI |
 
 ## 7. Fuori dalla superficie MCP (e dove sono finite)
