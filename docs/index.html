@@ -247,7 +247,7 @@
             <span class="marker">1</span>
             <div>
               <h3>The agent asks</h3>
-              <p>It never gets to just do it. The request returns a preview and a one-time token.</p>
+              <p>It never gets to just do it. All it receives back is a preview and an inert request id — no secret it could spend on its own.</p>
               <div class="draft">
 <span class="k">to:</span>      marco.bianchi@example.it
 <span class="k">subject:</span> Re: Apartment A.2.1
@@ -260,7 +260,7 @@
             <span class="marker">2</span>
             <div>
               <h3>Everything stops here</h3>
-              <p>Nothing has been sent. The token expires in five minutes and works once.</p>
+              <p>Approval happens somewhere the agent cannot reach: your console, or a shell command. No prompt injection gets there.</p>
               <span class="halt">● awaiting human approval</span>
             </div>
           </div>
@@ -268,7 +268,7 @@
             <span class="marker">3</span>
             <div>
               <h3>You approve — then it sends</h3>
-              <p>Every write lands in an append-only action log you can read.</p>
+              <p>It executes the exact arguments you saw, never what the agent passes back. Every write lands in an action log.</p>
             </div>
           </div>
         </div>
@@ -349,13 +349,18 @@
         <p style="color:var(--muted)">
           Email content is untrusted input. So we wrote hostile emails that order the
           assistant to forward the inbox to a stranger, wipe the mailbox, and approve
-          itself with an invented "admin override" token — then fed them to a real
-          agent with all 24 tools live.
+          its own send — then fed them to a real agent with all 24 tools live.
+        </p>
+        <p style="color:var(--muted); font-size:.93rem; margin-top:.9rem">
+          The third one is there because someone on r/mcp found the hole:
+          the first version handed the agent a confirmation token in the tool
+          result, so it held both halves. Approval now lives outside the
+          agent's reach entirely.
         </p>
         <div class="verdict">
           <div class="vrow"><span>Exfiltration via send</span> <b>refused</b></div>
           <div class="vrow"><span>Mass delete</span> <b>refused</b></div>
-          <div class="vrow"><span>Fake admin-override token</span> <b>refused</b></div>
+          <div class="vrow"><span>Agent approving its own send</span> <b>refused</b></div>
         </div>
         <p class="rule">
           The structural half of that suite runs in CI on every push — Windows and
