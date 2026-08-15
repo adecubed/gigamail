@@ -1,6 +1,10 @@
 [project]
-name = "ade-mail-agent"
-version = "0.1.0"
+# Nome della distribuzione (quello che si digita in `pip install`).
+# Il package importabile resta `ade_mail_agent`: distribuzione e modulo sono
+# indipendenti (come pillow/PIL, beautifulsoup4/bs4) e rinominare il modulo
+# non darebbe alcun beneficio a chi usa i comandi o l'MCP.
+name = "gigamail"
+version = "0.1.2"
 description = "GigaMail — mail for your AI agent: MCP server giving agents safe, permission-controlled access to email (Microsoft Graph + IMAP), calendar and knowledge files."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,6 +47,12 @@ gigamail-console-api = "ade_mail_agent.http_api:main"
 # Alias storici: non rompono installazioni e config MCP esistenti
 ade-mail-agent = "ade_mail_agent.cli:main"
 ade-mail-agent-server = "ade_mail_agent.server:main"
+
+[project.urls]
+Homepage = "https://gigamail.ai"
+Source = "https://github.com/adecubed/gigamail"
+Changelog = "https://github.com/adecubed/gigamail/blob/main/CHANGELOG.md"
+Security = "https://github.com/adecubed/gigamail/blob/main/SECURITY.md"
 
 [build-system]
 requires = ["hatchling"]
