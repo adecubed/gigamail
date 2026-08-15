@@ -1,0 +1,69 @@
+name: Release to PyPI
+
+# Pubblicazione via trusted publisher (OIDC): nessun token, nessun segreto
+# conservato nel repo. PyPI si fida di questo workflow, in questo repo,
+# nell'environment "pypi".
+#
+# Come si rilascia:
+#   1. aggiorna version in pyproject.toml e __init__.py, aggiorna CHANGELOG
+#   2. tag vX.Y.Z (immutabile: un numero bruciato non si ricicla)
+#   3. crea la Release su GitHub da quel tag
+#   -> questo workflow costruisce, verifica e pubblica
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:   # per una prova manuale senza pubblicare
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Test suite (non pubblichiamo codice non verificato)
+        run: |
+          pip install -e ".[all,dev]"
+          pytest -q
+          python -m ade_mail_agent.gen_toolmap --check
+
+      - name: Build sdist + wheel
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*
+
+      - name: La versione costruita deve coincidere col tag
+        if: github.event_name == 'release'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          BUILT=$(ls dist/*.tar.gz | sed -E 's/.*gigamail-(.*)\.tar\.gz/\1/')
+          echo "tag=$TAG  costruito=$BUILT"
+          test "$TAG" = "$BUILT" || {
+            echo "::error::Il tag ($TAG) non coincide con la versione del pacchetto ($BUILT)."
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # richiesto dal trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
