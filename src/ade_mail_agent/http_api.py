@@ -31,7 +31,7 @@ from ade_mail_agent.core import (
     identity_reader,
     availability,
 )
-from ade_mail_agent import agent_bridge
+from ade_mail_agent import agent_bridge, policy
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -806,6 +806,40 @@ def sender_summary(req: SenderSummaryRequest):
 def observer_stats(account_id: Optional[int] = None):
     aid = account_id or _active_id() or 0
     return observer.get_stats(aid)
+
+
+# ── APPROVAZIONI (il canale fuori banda) ─────────────────────────────
+# Questi endpoint sono il punto in cui un UMANO autorizza un'azione
+# distruttiva richiesta dall'agente. Vivono qui, dietro il token della
+# console, e non esistono come tool MCP: l'agente puo' creare richieste
+# e leggerne lo stato, ma non puo' approvarle.
+
+@app.get("/approvals")
+def list_approvals():
+    """Richieste in attesa di approvazione umana."""
+    return policy.store().list_pending()
+
+
+@app.get("/approvals/{request_id}")
+def get_approval(request_id: str):
+    rec = policy.store().get(request_id)
+    if not rec:
+        raise HTTPException(404, "Richiesta inesistente")
+    return rec
+
+
+@app.post("/approvals/{request_id}/approve")
+def approve_request(request_id: str):
+    if not policy.store().approve(request_id):
+        raise HTTPException(409, "Richiesta non approvabile (già decisa o scaduta)")
+    return {"success": True, "request_id": request_id, "status": "approved"}
+
+
+@app.post("/approvals/{request_id}/reject")
+def reject_request(request_id: str):
+    if not policy.store().reject(request_id):
+        raise HTTPException(409, "Richiesta non rifiutabile (già decisa o scaduta)")
+    return {"success": True, "request_id": request_id, "status": "rejected"}
 
 
 @app.get("/audit")

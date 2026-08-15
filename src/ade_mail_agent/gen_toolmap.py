@@ -24,7 +24,7 @@ def _mappa_path() -> Path:
 
 def _classify(tool) -> str:
     props = (tool.input_schema or {}).get("properties", {})
-    if "confirm_token" in props:
+    if "request_id" in props:
         return "DANGEROUS"
     if tool.name in WRITE_SAFE_TOOLS:
         return "WRITE_SAFE"
