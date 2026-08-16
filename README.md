@@ -54,7 +54,7 @@ The human reviews and sends — or edits the instruction and regenerates.*
 ## Quick start
 
 ```bash
-pip install -e ".[all]"       # from a clone; PyPI package coming
+pip install "gigamail[all]"
 
 gigamail login                # Microsoft device flow
 gigamail accounts add-imap    # or IMAP: Aruba, Gmail, Libero, ...
@@ -191,7 +191,7 @@ rigenera.*
 ## Setup rapido
 
 ```bash
-pip install -e ".[all]"       # da un clone; pacchetto PyPI in arrivo
+pip install "gigamail[all]"
 
 gigamail login                # device flow Microsoft
 gigamail accounts add-imap    # oppure IMAP: Aruba, Gmail, Libero, ...
