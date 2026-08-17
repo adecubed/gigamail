@@ -6,10 +6,14 @@ teaches the OpenClaw agent how to use the GigaMail MCP server and, above
 all, how to behave in front of the approval gate. It does not replace the
 `mcp.servers` configuration — see [INTEGRATIONS.md](../../INTEGRATIONS.md).
 
-Users install it with:
+Page: https://clawhub.ai/adecubed/skills/gigamail — security audit
+(NVIDIA SkillSpector + VirusTotal + static analysis): **Pass**.
+
+Users install it with either:
 
 ```bash
-clawhub install gigamail
+openclaw skills install @adecubed/gigamail
+clawhub install @adecubed/gigamail
 ```
 
 Publishing (maintainers), from the repository root:
@@ -19,6 +23,12 @@ clawhub login
 clawhub skill publish integrations/clawhub/gigamail --slug gigamail --name GigaMail --version X.Y.Z --dry-run
 clawhub skill publish integrations/clawhub/gigamail --slug gigamail --name GigaMail --version X.Y.Z --changelog "..."
 ```
+
+**License.** ClawHub publishes every skill under MIT-0 (the CLI accepts
+those terms on publish; the registry schema admits no other value). This
+skill text — `gigamail/SKILL.md` — is therefore MIT-0. That does not extend
+to GigaMail itself: the server, CLI and console remain AGPL-3.0-or-later
+under the repository LICENSE.
 
 The skill version follows its own semver (it is text, it changes at a
 different pace than the server). Keep `version:` in the SKILL.md
