@@ -2,7 +2,6 @@
 name: gigamail
 description: Email and calendar for your OpenClaw agent through the GigaMail MCP server — read, search, draft, reply, schedule — with every destructive action (send, delete, calendar write) held for out-of-band human approval that the agent cannot grant itself.
 version: 0.1.0
-license: AGPL-3.0-or-later
 metadata:
   openclaw:
     emoji: "📬"
@@ -43,7 +42,8 @@ configured under `mcp.servers` before its tools exist. GigaMail's own
 security gate is enforced server-side regardless of this skill; the skill
 tells you how to work with that gate, not around it.
 
-Repository: https://github.com/adecubed/gigamail (AGPL-3.0-or-later).
+Repository: https://github.com/adecubed/gigamail. The GigaMail server is
+AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
 Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
 
