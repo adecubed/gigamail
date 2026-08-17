@@ -39,10 +39,9 @@ from pydantic import BaseModel
 CONSOLE_TOKEN = os.environ.get("ADE_CONSOLE_TOKEN", "")
 PORT = int(os.environ.get("ADE_CONSOLE_PORT", "8002"))
 
-_ADE_MAIL_DIR = os.path.join(
-    os.environ.get("APPDATA", os.path.expanduser("~")), "ADE", "mail"
-)
-os.makedirs(_ADE_MAIL_DIR, exist_ok=True)
+from ade_mail_agent.core.data_paths import data_root as _data_root
+
+_ADE_MAIL_DIR = str(_data_root())
 ADDR_DB = os.path.join(_ADE_MAIL_DIR, ".addresses.db")
 
 app = FastAPI(title="GigaMail Console API")
@@ -853,10 +852,8 @@ def reject_request(request_id: str):
 @app.get("/audit")
 def audit_log(limit: int = 100):
     """Ultime azioni compiute dall'agente (per la vista console)."""
-    root = os.environ.get("ADE_ROOT") or os.path.join(
-        os.environ.get("APPDATA", os.path.expanduser("~")), "ADE"
-    )
-    path = os.path.join(root, "agent_audit.jsonl")
+    from ade_mail_agent.core.data_paths import app_root
+    path = os.path.join(str(app_root()), "agent_audit.jsonl")
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:

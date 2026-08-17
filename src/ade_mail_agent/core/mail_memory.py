@@ -26,13 +26,8 @@ from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
 # Path del DB in una cartella scrivibile utente, non nella directory app.
-try:
-    from .data_paths import db_path as _db_path
-    _DB_PATH = str(_db_path('.mail_memory.db'))
-except Exception:
-    _fallback_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ADE', 'mail')
-    os.makedirs(_fallback_dir, exist_ok=True)
-    _DB_PATH = os.path.join(_fallback_dir, '.mail_memory.db')
+from .data_paths import db_path as _db_path
+_DB_PATH = str(_db_path('.mail_memory.db'))
 _LOCK = threading.Lock()
 
 # ── INIT ──────────────────────────────────────────────────────────────────────

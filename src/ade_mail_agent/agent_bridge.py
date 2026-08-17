@@ -54,10 +54,8 @@ def _default_command() -> list:
 
 
 def _config_path() -> str:
-    root = os.environ.get("ADE_ROOT") or os.path.join(
-        os.environ.get("APPDATA", os.path.expanduser("~")), "ADE"
-    )
-    return os.path.join(root, "agent.json")
+    from ade_mail_agent.core.data_paths import app_root
+    return os.path.join(str(app_root()), "agent.json")
 
 
 def get_config() -> dict:

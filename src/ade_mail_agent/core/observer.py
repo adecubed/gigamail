@@ -11,7 +11,9 @@ import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-DB_PATH = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ADE', 'mail', '.observer.db')
+from .data_paths import db_path as _db_path
+
+DB_PATH = str(_db_path('.observer.db'))
 
 # Stopwords per keyword extraction
 _STOP = {

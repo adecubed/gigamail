@@ -9,8 +9,8 @@ import sqlite3
 import base64
 from typing import List, Optional, Dict
 from cryptography.fernet import Fernet
-_ADE_DATA = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ADE', 'mail')
-os.makedirs(_ADE_DATA, exist_ok=True)
+from .data_paths import data_root as _data_root
+_ADE_DATA = str(_data_root())
 DB_PATH  = os.path.join(_ADE_DATA, '.accounts.db')
 KEY_PATH = os.path.join(_ADE_DATA, '.accounts.key')
 KEY_PATH_DPAPI = KEY_PATH + '.dpapi'

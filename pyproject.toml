@@ -4,7 +4,7 @@
 # indipendenti (come pillow/PIL, beautifulsoup4/bs4) e rinominare il modulo
 # non darebbe alcun beneficio a chi usa i comandi o l'MCP.
 name = "gigamail"
-version = "0.1.2"
+version = "0.1.3"
 description = "GigaMail — mail for your AI agent: MCP server giving agents safe, permission-controlled access to email (Microsoft Graph + IMAP), calendar and knowledge files."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -3,27 +3,39 @@ data_paths.py — Sorgente unica per i path scrivibili di ADE Mail.
 
 In produzione l'app gira da C:\\Program Files\\... (read-only) e NON può scrivere
 accanto al codice. Tutti i file di dati (DB, cache, token, log) vanno in:
-    %APPDATA%\\ADE\\mail\\          (Windows)
-    ~/.ade/mail/                     (Linux/macOS)
+    %APPDATA%\\ADE\\           (Windows)
+    ~/.ade/                    (Linux/macOS)
+con la posta nella sottocartella mail/.
 
-Override per testing/Electron: variabile d'ambiente ADE_MAIL_DATA_DIR.
+Questo modulo è l'UNICA fonte dei percorsi: nessun altro modulo legge
+APPDATA direttamente. Client MCP che filtrano l'ambiente (es. Hermes passa
+solo un baseline di variabili) possono redirigere tutto con una variabile:
+    ADE_ROOT           sposta l'intera cartella ADE (approvazioni, audit, mail)
+    ADE_MAIL_DATA_DIR  sposta solo i dati mail (testing/Electron)
 """
 
 import os
 from pathlib import Path
 
 
-def data_root() -> Path:
-    """Root scrivibile per tutti i dati di ADE Mail. Crea la cartella se non esiste."""
-    override = os.environ.get("ADE_MAIL_DATA_DIR")
+def app_root() -> Path:
+    """Cartella applicativa ADE: approvals.db, agent_audit.jsonl, agent.json.
+    Override: ADE_ROOT."""
+    override = os.environ.get("ADE_ROOT")
     if override:
         root = Path(override)
     else:
         appdata = os.environ.get("APPDATA")  # Windows
-        if appdata:
-            root = Path(appdata) / "ADE" / "mail"
-        else:
-            root = Path.home() / ".ade" / "mail"
+        root = Path(appdata) / "ADE" if appdata else Path.home() / ".ade"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def data_root() -> Path:
+    """Root scrivibile per i dati mail (DB, cache, token, log).
+    Override: ADE_MAIL_DATA_DIR; altrimenti segue app_root()/mail."""
+    override = os.environ.get("ADE_MAIL_DATA_DIR")
+    root = Path(override) if override else app_root() / "mail"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
