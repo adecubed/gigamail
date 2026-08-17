@@ -72,6 +72,11 @@ Or directly in `~/.openclaw/openclaw.json` under `mcp.servers`:
 
 Check with `openclaw mcp probe gigamail`, reload with `openclaw mcp reload`.
 
+There is also a **ClawHub skill** (`clawhub install gigamail`, source in
+[integrations/clawhub/](integrations/clawhub/)): it does not replace the
+server config above — it teaches the agent how to work with the approval
+gate and the tools.
+
 ## Hermes (NousResearch hermes-agent) — verified (tool discovery)
 
 Tested 2026-08-16 on Windows: hermes-agent **0.19.0** (Python 3.12).
