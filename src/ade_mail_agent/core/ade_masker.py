@@ -402,9 +402,8 @@ def suggest_type(selection: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 def _db_path() -> str:
     """DB nella cartella dati ADE Mail (coerente con gli altri DB)."""
-    base = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ADE', 'mail')
-    os.makedirs(base, exist_ok=True)
-    return os.path.join(base, '.user_masks.db')
+    from .data_paths import data_root
+    return os.path.join(str(data_root()), '.user_masks.db')
 
 
 def _conn():

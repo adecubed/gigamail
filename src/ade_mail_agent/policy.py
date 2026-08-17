@@ -49,11 +49,8 @@ EXECUTED = "executed"
 
 
 def _ade_root() -> Path:
-    root = os.environ.get("ADE_ROOT") or os.path.join(
-        os.environ.get("APPDATA", os.path.expanduser("~")), "ADE"
-    )
-    os.makedirs(root, exist_ok=True)
-    return Path(root)
+    from ade_mail_agent.core.data_paths import app_root
+    return app_root()
 
 
 def _audit_path() -> Path:

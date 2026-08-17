@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.1.3 — 2026-08-16
+
+**Fix: data paths are now resolved in exactly one place.**
+
+Six modules used to read `APPDATA` independently, each with its own
+fallback (`~/ADE` for five of them, `~/.ade` for the sixth). Under an MCP
+client that filters the environment of stdio subprocesses — Hermes passes
+only a safe baseline, which does not include `APPDATA` on Windows — the
+server silently opened an empty accounts DB and wrote approval requests to
+a database the console and CLI never read. No error anywhere: the approval
+gate failed silently.
+
+All paths now come from `core/data_paths.py`:
+
+- `ADE_ROOT` relocates everything (accounts, mail data, approvals, audit)
+- `ADE_MAIL_DATA_DIR` relocates mail data only
+- without `APPDATA`, the POSIX fallback is `~/.ade` — one directory, not two
+
+With `APPDATA` present (any normal Windows setup) nothing moves: paths are
+byte-identical to previous releases. Tests: 106 → 111.
+
+**Verified integrations: OpenClaw and Hermes** (see INTEGRATIONS.md).
+Tool discovery of all 24 tools verified against OpenClaw 2026.7.1-2
+(`openclaw mcp add` + `probe`) and hermes-agent 0.19.0 (`hermes mcp test`),
+both on Windows. End-to-end agent workflows on those two platforms are not
+yet part of any claim.
+
+## v0.1.2 — 2026-08-15
+
+**Security fix: one approval could execute twice.** Consume was
+SELECT-then-UPDATE, so two concurrent phase-2 calls could both see
+"approved" and both execute — one human approval, two sends (8/8 with 8
+concurrent calls in the regression test). Consume is now a single
+conditional UPDATE; the identity of who approved is recorded in the audit
+log.
+
+Also: distribution renamed to **gigamail** on PyPI (`pip install
+"gigamail[all]"`, verified from a clean venv against the real index),
+publishing via GitHub trusted publisher (OIDC, no tokens), commands
+`gigamail`, `gigamail-server`, `gigamail-console-api` with the legacy
+`ade-mail-agent*` aliases kept.
+
 ## v0.1.1 — 2026-08-15
 
 **Security fix: the agent could approve its own destructive actions.**

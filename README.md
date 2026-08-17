@@ -87,6 +87,9 @@ Register in Claude Desktop / Claude Code (`mcpServers`):
 The commands are also available under their legacy names
 (`ade-mail-agent`, `ade-mail-agent-server`), so existing setups keep working.
 
+Using **OpenClaw** or **Hermes** instead of Claude? Verified configs in
+[INTEGRATIONS.md](INTEGRATIONS.md).
+
 Then just ask your agent: *"reply to the last quote request using the price
 list"* — it reads the mail, pulls the numbers from your file, drafts the
 reply, and asks you before sending.
@@ -226,6 +229,9 @@ Registrazione in Claude Desktop / Claude Code (`mcpServers`):
 I comandi restano disponibili anche con i vecchi nomi
 (`ade-mail-agent`, `ade-mail-agent-server`), così le installazioni esistenti
 continuano a funzionare.
+
+Usi **OpenClaw** o **Hermes** invece di Claude? Configurazioni verificate in
+[INTEGRATIONS.md](INTEGRATIONS.md).
 
 Poi chiedi al tuo agente: *"rispondi all'ultima richiesta di preventivo
 usando il listino"* — legge la mail, prende i numeri dal tuo file, prepara la
