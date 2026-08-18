@@ -1,0 +1,86 @@
+# Nous-approved MCP catalog entry (proposed).
+# Presence in this directory = approval. Merged via PR review.
+#
+# Schema version 1.
+manifest_version: 1
+
+name: gigamail
+description: Your real mailbox and calendar for Hermes (Microsoft 365 or IMAP), with human approval on every send, delete and calendar write.
+source: https://github.com/adecubed/gigamail
+
+# GigaMail is on PyPI, so there is nothing to clone: uvx runs the pinned
+# release in an isolated environment. `gigamail-server` is the MCP stdio
+# entry point; the same package also ships the `gigamail` CLI (used once,
+# outside Hermes, to connect an account — see post_install).
+#
+# Pinned per catalog dependency policy: exact version, and the pinned
+# release must be at least 2 weeks old at pin time. 0.1.3 was released
+# 2026-08-17 — do NOT merge this manifest before 2026-08-31.
+transport:
+  type: stdio
+  command: uvx
+  args:
+    - "--from"
+    - "gigamail[all]==0.1.3"
+    - "gigamail-server"
+
+# No credentials pass through Hermes or the agent channel, by design:
+# mailbox login (Microsoft device flow or IMAP password) happens once, in
+# a shell, with the GigaMail CLI. The only variable Hermes must pass is the
+# data directory, because Hermes gives stdio servers a filtered environment
+# (no APPDATA on Windows) and GigaMail derives its data dir from it.
+auth:
+  type: api_key
+  env:
+    - name: ADE_ROOT
+      prompt: "GigaMail data directory (Windows: %APPDATA%\\ADE, Linux/macOS: ~/.ade)"
+      required: true
+      secret: false
+
+# Tool selection at install time:
+# GigaMail exposes 24 tools in three classes. The 15 read tools plus the
+# 3 audited safe writes are enabled by default. The 6 dangerous tools
+# (send_mail, reply_mail, delete_message, delete_folder, create_event,
+# delete_event) are opt-in here — and even when enabled they never execute
+# on the agent's say-so: each returns an inert request_id and runs only
+# after a human approves it from the GigaMail console or CLI.
+tools:
+  default_enabled:
+    - list_accounts
+    - get_identity
+    - list_knowledge_files
+    - read_knowledge_file
+    - list_messages
+    - list_unread
+    - read_message
+    - read_attachment
+    - list_folders
+    - search_mail
+    - sender_history
+    - observer_context
+    - memory_stats
+    - list_events
+    - find_free_slots
+    - mark_read
+    - move_message
+    - create_folder
+
+post_install: |
+  GigaMail needs a mailbox connected once, from a shell (not from Hermes —
+  credentials never pass through the agent channel):
+
+    uvx --from "gigamail[all]==0.1.3" gigamail login             # Microsoft 365
+    uvx --from "gigamail[all]==0.1.3" gigamail accounts add-imap # any IMAP
+
+  Optional but valuable: give the account an identity and knowledge files
+  (price lists, catalogues) so drafts are written in your voice with your
+  numbers:
+
+    uvx --from "gigamail[all]==0.1.3" gigamail identity set
+
+  Test with `hermes mcp test gigamail` — expect 24 tools discovered.
+
+  Dangerous tools (send, reply, delete, calendar writes) return a
+  request_id and wait for a human: approve from the GigaMail desktop
+  console or with `gigamail approvals approve <id>`. The agent cannot
+  approve its own actions. Start a new Hermes session to load the tools.
