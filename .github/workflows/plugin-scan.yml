@@ -1,0 +1,27 @@
+name: Plugin Security Scan
+
+# HOL Plugin Scanner (hashgraph-online): manifest, secrets, MCP surface,
+# GitHub Actions hygiene, lockfiles. Required for listing in
+# awesome-ai-plugins (score >= 80, no critical/high findings).
+# Local run: uvx plugin-scanner scan . --profile public-marketplace
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: hashgraph-online/ai-plugin-scanner-action@55616c962cf86368423f7673b2ecdfdbe613d1af # v1.2.515
+        with:
+          plugin_dir: "."
+          min_score: 80
+          fail_on_severity: high

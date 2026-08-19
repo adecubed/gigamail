@@ -1,0 +1,34 @@
+{
+  "name": "gigamail",
+  "version": "0.1.3",
+  "description": "Mail and calendar for your AI agent: an MCP server on your real mailbox (Microsoft 365 or IMAP) with out-of-band human approval on every send, delete and calendar write.",
+  "author": {
+    "name": "Adecubed",
+    "url": "https://gigamail.ai"
+  },
+  "homepage": "https://gigamail.ai",
+  "repository": "https://github.com/adecubed/gigamail",
+  "license": "AGPL-3.0-or-later",
+  "keywords": ["email", "calendar", "mcp", "imap", "microsoft-365", "human-in-the-loop"],
+  "interface": {
+    "displayName": "GigaMail",
+    "shortDescription": "Your real inbox and calendar for your agent, with a human on the send button.",
+    "longDescription": "GigaMail exposes the user's real mailboxes (Microsoft 365 via Graph, or any IMAP provider) and calendar as 24 typed MCP tools. Reading, searching, attachment text, sender history, free-slot computation and drafting are free; send, reply, delete and calendar writes return an inert request id and execute only after a human approves out of band, from the desktop console or CLI, with the arguments stored at request time. Mail content is treated as data, never as instructions.",
+    "developerName": "Adecubed",
+    "category": "Productivity",
+    "capabilities": [
+      "Read, search and triage mail across Microsoft 365 and IMAP accounts",
+      "Extract attachment text (PDF, DOCX, XLSX) without passing binaries to the model",
+      "Draft replies from the account's identity and knowledge files",
+      "Compute free calendar slots and manage events",
+      "Out-of-band human approval for send, reply, delete and calendar writes"
+    ],
+    "brandColor": "#0B2B5C",
+    "composerIcon": "./docs/brand/gigamail-logo-256.png",
+    "logo": "./docs/brand/gigamail-logo-256.png",
+    "screenshots": ["./docs/console-draft.png"],
+    "websiteURL": "https://gigamail.ai",
+    "privacyPolicyURL": "https://github.com/adecubed/gigamail/blob/main/SECURITY.md",
+    "termsOfServiceURL": "https://github.com/adecubed/gigamail/blob/main/LICENSE"
+  }
+}

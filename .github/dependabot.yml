@@ -1,0 +1,17 @@
+# Dependabot: keeps the SHA-pinned GitHub Actions and the Python
+# dependencies current via pull requests. Actions are pinned to immutable
+# commit SHAs in the workflows; this is what moves the pins forward.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps"
