@@ -67,6 +67,50 @@ REJECTED = "rejected"
 EXECUTED = "executed"
 
 
+_ADDR_RE = None
+
+
+def describe_recipients(to: Any, cc: Any = None, bcc: Any = None) -> Dict[str, Any]:
+    """Cio' che l'umano vede come destinatari, nella forma che il server
+    usera' — indirizzi, mai display name — e un avviso per tutto cio' che
+    NON e' un indirizzo SMTP esplicito (nome nudo, gruppo, lista): quello
+    il provider puo' espanderlo a N destinatari dopo l'approvazione, e il
+    conteggio che l'umano ha approvato era uno. (r/mcp, ranbuman: check
+    the resolved value, never the requested one — qui lo dichiariamo.)"""
+    import re
+    global _ADDR_RE
+    if _ADDR_RE is None:
+        _ADDR_RE = re.compile(r"^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$")
+
+    def _split(v):
+        if not v:
+            return []
+        if isinstance(v, str):
+            return [p.strip() for p in re.split(r"[;,]", v) if p.strip()]
+        return [str(p).strip() for p in v if str(p).strip()]
+
+    out = []
+    may_expand = []
+    for field in ("to", "cc", "bcc"):
+        for raw in _split({"to": to, "cc": cc, "bcc": bcc}[field]):
+            m = re.search(r"<([^<>]+)>", raw)
+            addr = (m.group(1) if m else raw).strip()
+            explicit = bool(_ADDR_RE.match(addr))
+            item = {"field": field, "address": addr, "explicit": explicit}
+            if not explicit:
+                item["may_expand"] = True
+                may_expand.append(addr)
+            out.append(item)
+    d = {"recipients": out, "count": len(out)}
+    if may_expand:
+        d["warning"] = (
+            f"{len(may_expand)} recipient(s) are not explicit addresses "
+            f"({', '.join(may_expand)}): a group or alias may expand to more "
+            "recipients at send time. The count you approve is not guaranteed."
+        )
+    return d
+
+
 def _ade_root() -> Path:
     from ade_mail_agent.core.data_paths import app_root
     return app_root()
@@ -327,6 +371,64 @@ def dry_run_active() -> bool:
     return os.environ.get("ADE_MAIL_DRYRUN", "") not in ("", "0", "false")
 
 
+def _notify_command() -> Optional[List[str]]:
+    """GIGAMAIL_APPROVAL_NOTIFY_CMD: JSON array con placeholder {request_id},
+    {tool}, {summary}. Es. per OpenClaw → Telegram:
+      ["openclaw","message","send","--channel","telegram","--target","123",
+       "--message","GigaMail: {tool} awaiting approval ({request_id}): {summary}"]
+    Eseguito SENZA shell (argomenti separati: il testo della preview non puo'
+    diventare un comando), in background, con timeout, e il suo esito non
+    influenza mai la fase 1. SOLO NOTIFICA: non approva, non puo' approvare —
+    altrimenti sposterebbe il segreto digitabile dalla shell alla chat."""
+    raw = os.environ.get("GIGAMAIL_APPROVAL_NOTIFY_CMD", "").strip()
+    if not raw:
+        return None
+    try:
+        cmd = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(cmd, list) or not cmd or not all(isinstance(c, str) for c in cmd):
+        return None
+    return cmd
+
+
+def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
+    parts = []
+    for k in ("to", "subject", "replying_to", "action", "folder_id", "event_id", "start"):
+        v = preview.get(k)
+        if v:
+            parts.append(f"{k}={v}")
+    s = "; ".join(str(p) for p in parts) or json.dumps(preview, ensure_ascii=False, default=str)
+    return s[:limit]
+
+
+def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any]) -> bool:
+    """Lancia il comando di notifica configurato, se c'e'. Ritorna True se
+    e' stato avviato. Mai eccezioni verso il chiamante."""
+    cmd = _notify_command()
+    if not cmd:
+        return False
+    summary = _summarize_preview(preview)
+    argv = [c.replace("{request_id}", request_id).replace("{tool}", tool)
+             .replace("{summary}", summary) for c in cmd]
+    try:
+        import subprocess
+        import threading
+
+        def _run():
+            try:
+                subprocess.run(argv, timeout=30, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass  # la notifica e' best-effort
+
+        threading.Thread(target=_run, daemon=True).start()
+        audit(tool, {"request_id": request_id}, "approval_notified", detail=argv[0])
+        return True
+    except Exception:
+        return False
+
+
 def request_approval(tool: str, args: Dict[str, Any],
                      preview: Dict[str, Any]) -> Dict[str, Any]:
     """Fase 1: registra la richiesta e restituisce all'agente un riferimento
@@ -367,6 +469,7 @@ def request_approval(tool: str, args: Dict[str, Any],
         }
     request_id = s.create(tool, args, preview)
     audit(tool, args, "approval_requested")
+    notify_approval_requested(request_id, tool, preview)
     return {
         "status": "approval_required",
         "request_id": request_id,
