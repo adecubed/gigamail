@@ -109,12 +109,29 @@ def send_message(to: str, subject: str, body: str,
         payload = {'message': msg}
         res = requests.post(url, headers=_headers(), json=payload)
     ok = res.status_code in (200, 202)
+    requested = 1 + len(cc or []) + len(bcc or [])
+    # Graph risponde 202 Accepted senza corpo: non dice nulla per
+    # destinatario, e l'espansione di gruppi/liste la fa lui dopo. Lo
+    # dichiariamo invece di fingere un conteggio verificato.
+    provider_result = {
+        'provider': 'graph',
+        'http_status': res.status_code,
+        'request_id': res.headers.get('request-id') or res.headers.get('client-request-id'),
+        'requested': requested,
+        'accepted': None,  # non osservabile via sendMail
+        'per_recipient_verified': False,
+        'note': 'Graph sendMail returns 202 with no per-recipient result; '
+                'group/alias expansion happens server-side after acceptance.',
+    }
+    if not ok:
+        provider_result['error'] = f'HTTP {res.status_code}: {res.text[:300]}'
     return {
         'success': ok,
         'provider': 'microsoft',
         'sent_copy_saved': ok,
         'warning': None,
         'error': None if ok else f'HTTP {res.status_code}: {res.text[:300]}',
+        'provider_result': provider_result,
     }
 def get_attachment(message_id: str, filename: str = '') -> tuple:
     """

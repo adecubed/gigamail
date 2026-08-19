@@ -1198,7 +1198,17 @@ def send_message(
     imap_host: Optional[str] = None,
     imap_port: Optional[int] = None,
     imap_password: Optional[str] = None,
+    insecure_tls: bool = False,
 ) -> Dict[str, object]:
+    """Invia via SMTP. Ritorna il risultato normalizzato piu' `provider_result`:
+    cio' che il server ha DETTO di aver accettato, per destinatario — non
+    cio' che abbiamo chiesto. smtplib.sendmail restituisce i RCPT rifiutati
+    (vuoto = tutti accettati); lo propaghiamo invece di buttarlo, cosi'
+    l'audit non afferma un conteggio mai stato vero (r/mcp, ranbuman).
+
+    TLS: il certificato del server SMTP e' verificato di default. Per server
+    con certificato self-signed l'account puo' dichiarare insecure_tls=True
+    (opt-in esplicito, per quell'account soltanto)."""
     import base64
     from email.mime.base import MIMEBase
     from email import encoders
@@ -1226,18 +1236,32 @@ def send_message(
         except Exception as e:
             print(f'[IMAP] Allegato errore {att.get("name")}: {e}')
     try:
-        if smtp_port == 465:
-            ctx = ssl.create_default_context()
+        ctx = ssl.create_default_context()
+        if insecure_tls:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
+        if smtp_port == 465:
             with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as server:
                 server.login(email_addr, password)
-                server.sendmail(email_addr, all_recipients, msg.as_string())
+                refused = server.sendmail(email_addr, all_recipients, msg.as_string())
         else:
             with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
+                server.starttls(context=ctx)
                 server.login(email_addr, password)
-                server.sendmail(email_addr, all_recipients, msg.as_string())
+                refused = server.sendmail(email_addr, all_recipients, msg.as_string())
+        # sendmail: {} = tutti accettati; altrimenti {rcpt: (code, msg)} per i rifiutati
+        refused = refused or {}
+        accepted = [r for r in all_recipients if r not in refused]
+        provider_result = {
+            "provider": "smtp",
+            "requested": len(all_recipients),
+            "accepted": len(accepted),
+            "accepted_recipients": accepted,
+            "refused": {k: {"code": v[0], "message": (v[1].decode(errors="replace")
+                                                       if isinstance(v[1], bytes) else str(v[1]))}
+                        for k, v in refused.items()},
+            "tls_verified": not insecure_tls,
+        }
 
         saved = None
         if imap_host and imap_port and imap_password:
@@ -1250,11 +1274,16 @@ def send_message(
             )
             if not saved:
                 _imap_debug_log("send_message append-sent did-not-save-copy")
+        warning = None if (saved is None or saved) else "Mail inviata ma copia non salvata in Inviate"
+        if refused:
+            warning = (warning + "; " if warning else "") + \
+                f"{len(refused)} destinatario/i rifiutato/i dal server: {', '.join(refused)}"
         return {
-            "success": True,
+            "success": bool(accepted),
             "provider": "imap",
             "sent_copy_saved": True if saved is None else bool(saved),
-            "warning": None if (saved is None or saved) else "Mail inviata ma copia non salvata in Inviate",
+            "warning": warning,
+            "provider_result": provider_result,
         }
     except Exception as e:
         print(f"[IMAP] Send error: {e}")
@@ -1264,6 +1293,9 @@ def send_message(
             "sent_copy_saved": False,
             "warning": None,
             "error": str(e),
+            "provider_result": {"provider": "smtp", "requested": len(all_recipients),
+                                "accepted": 0, "error": str(e),
+                                "tls_verified": not insecure_tls},
         }
 def delete_message(
     imap_host: str,

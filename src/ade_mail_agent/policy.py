@@ -40,7 +40,26 @@ READ = "READ"
 WRITE_SAFE = "WRITE_SAFE"
 DANGEROUS = "DANGEROUS"
 
-_APPROVAL_TTL_SECONDS = 900  # 15 minuti: un umano deve avere il tempo di guardare
+def _env_int(name: str, default: int) -> int:
+    try:
+        v = int(os.environ.get(name, "") or default)
+        return v if v > 0 else default
+    except ValueError:
+        return default
+
+
+# 15 minuti: un umano deve avere il tempo di guardare. Configurabile, ma
+# una finestra lunga e' un rischio, non una comodita': un'approvazione data
+# ore dopo l'anteprima approva un contesto che puo' non esistere piu'.
+_APPROVAL_TTL_SECONDS = _env_int("GIGAMAIL_APPROVAL_TTL", 900)
+
+# Cap sulle richieste (promessa fatta su r/mcp): senza, un agente che
+# insiste produce una raffica di approvazioni identiche finche' una non
+# trova un umano distratto — esattamente l'autopilota che il gate evita.
+#   1) stesso (tool, args) con una pending viva → stessa request_id, non
+#      una nuova;
+#   2) piu' di N richieste create per tool nell'ultima ora → fase 1 rifiuta.
+_APPROVAL_MAX_PER_HOUR = _env_int("GIGAMAIL_APPROVAL_MAX_PER_HOUR", 20)
 
 PENDING = "pending"
 APPROVED = "approved"
@@ -57,7 +76,13 @@ def _audit_path() -> Path:
     return _ade_root() / "agent_audit.jsonl"
 
 
-def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "") -> None:
+def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
+          provider_result: Optional[Dict[str, Any]] = None) -> None:
+    """Una riga nel log. `args` e' cio' che e' stato CHIESTO (il payload
+    approvato); `provider_result` e' cio' che il server ha DETTO di aver
+    fatto (SMTP: destinatari accettati/rifiutati; Graph: id o errore).
+    Due fatti diversi, due campi: il log non afferma mai un conteggio che
+    non e' stato verificato."""
     entry = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "tool": tool,
@@ -66,6 +91,8 @@ def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "") -> No
     }
     if detail:
         entry["detail"] = detail[:500]
+    if provider_result is not None:
+        entry["provider_result"] = provider_result
     with open(_audit_path(), "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -102,10 +129,29 @@ class ApprovalStore:
                     decided_by TEXT
                 )
             """)
-            # migrazione per database creati prima del tracciamento di chi decide
+            # migrazioni per database creati da versioni precedenti
             cols = {r[1] for r in conn.execute("PRAGMA table_info(approvals)")}
             if "decided_by" not in cols:
                 conn.execute("ALTER TABLE approvals ADD COLUMN decided_by TEXT")
+            if "fingerprint" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN fingerprint TEXT")
+            # esito dell'esecuzione, sulla riga: "executed" = consumata, non
+            # "consegnata". Qui si scrive cosa ha detto il provider.
+            if "execution_outcome" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN execution_outcome TEXT")
+            if "provider_result_json" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN provider_result_json TEXT")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS ix_approvals_fp"
+                " ON approvals (tool, fingerprint, status)")
+
+    @staticmethod
+    def fingerprint(tool: str, args: Dict[str, Any]) -> str:
+        """Impronta stabile di (tool, args canonici): chiavi ordinate, cosi'
+        lo stesso payload con ordine diverso delle chiavi e' lo stesso."""
+        import hashlib
+        canon = json.dumps(args, ensure_ascii=False, default=str, sort_keys=True)
+        return hashlib.sha256(f"{tool}\n{canon}".encode("utf-8")).hexdigest()
 
     def create(self, tool: str, args: Dict[str, Any], preview: Dict[str, Any],
                ttl: float = _APPROVAL_TTL_SECONDS) -> str:
@@ -114,12 +160,34 @@ class ApprovalStore:
         with self._conn() as conn:
             conn.execute(
                 "INSERT INTO approvals (request_id, tool, args_json, preview_json,"
-                " status, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
+                " status, created_at, expires_at, fingerprint)"
+                " VALUES (?,?,?,?,?,?,?,?)",
                 (request_id, tool, json.dumps(args, ensure_ascii=False, default=str),
                  json.dumps(preview, ensure_ascii=False, default=str),
-                 PENDING, now, now + ttl),
+                 PENDING, now, now + ttl, self.fingerprint(tool, args)),
             )
         return request_id
+
+    def find_pending(self, tool: str, args: Dict[str, Any]) -> Optional[str]:
+        """request_id di una richiesta PENDING e non scaduta con lo stesso
+        (tool, args), se esiste: l'agente che ripete ottiene quella, non
+        una nuova."""
+        fp = self.fingerprint(tool, args)
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT request_id FROM approvals WHERE tool=? AND fingerprint=?"
+                " AND status=? AND expires_at > ? ORDER BY created_at DESC LIMIT 1",
+                (tool, fp, PENDING, time.time()),
+            ).fetchone()
+        return row["request_id"] if row else None
+
+    def count_created_since(self, tool: str, since_ts: float) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM approvals WHERE tool=? AND created_at > ?",
+                (tool, since_ts),
+            ).fetchone()
+        return int(row["n"]) if row else 0
 
     def get(self, request_id: str) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:
@@ -132,6 +200,8 @@ class ApprovalStore:
         d["args"] = json.loads(d.pop("args_json"))
         d["preview"] = json.loads(d.pop("preview_json"))
         d["expired"] = time.time() > d["expires_at"]
+        prj = d.pop("provider_result_json", None)
+        d["provider_result"] = json.loads(prj) if prj else None
         return d
 
     def list_pending(self) -> List[Dict[str, Any]]:
@@ -209,6 +279,22 @@ class ApprovalStore:
             conn.close()
         return json.loads(row["args_json"])
 
+    def record_outcome(self, request_id: str, outcome: str,
+                       provider_result: Optional[Dict[str, Any]] = None) -> None:
+        """Scrive sulla riga gia' EXECUTED cosa e' successo davvero:
+        outcome in {ok, failed, interrupted, dryrun} + risposta del provider.
+        Separato da consume: la riga e' gia' consumata PRIMA della chiamata
+        al provider (at-most-once); questo la completa dopo."""
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE approvals SET execution_outcome=?, provider_result_json=?"
+                " WHERE request_id=?",
+                (outcome,
+                 json.dumps(provider_result, ensure_ascii=False, default=str)
+                 if provider_result is not None else None,
+                 request_id),
+            )
+
     def purge_expired(self) -> int:
         with self._conn() as conn:
             cur = conn.execute(
@@ -244,8 +330,42 @@ def dry_run_active() -> bool:
 def request_approval(tool: str, args: Dict[str, Any],
                      preview: Dict[str, Any]) -> Dict[str, Any]:
     """Fase 1: registra la richiesta e restituisce all'agente un riferimento
-    INERTE. Nessun segreto attraversa il contesto del modello."""
-    request_id = store().create(tool, args, preview)
+    INERTE. Nessun segreto attraversa il contesto del modello.
+
+    Cap (promesso su r/mcp): lo stesso payload con una pending viva non
+    crea una seconda richiesta — torna la stessa request_id; e oltre N
+    richieste per tool nell'ultima ora la fase 1 rifiuta. Un agente che
+    insiste non puo' produrre una raffica di approvazioni identiche."""
+    s = store()
+    existing = s.find_pending(tool, args)
+    if existing:
+        audit(tool, {"request_id": existing}, "approval_request_deduplicated")
+        return {
+            "status": "approval_required",
+            "request_id": existing,
+            "preview": preview,
+            "deduplicated": True,
+            "expires_in_seconds": _APPROVAL_TTL_SECONDS,
+            "instructions": (
+                "Questa identica richiesta e' GIA' in attesa di approvazione "
+                "umana (stessa request_id). Non ricrearla: chiedi all'utente "
+                "di approvare dalla console GigaMail o con `gigamail approvals "
+                "approve " + existing + "`."
+            ),
+        }
+    if s.count_created_since(tool, time.time() - 3600) >= _APPROVAL_MAX_PER_HOUR:
+        audit(tool, args, "approval_rate_limited")
+        return {
+            "status": "rate_limited",
+            "request_id": None,
+            "instructions": (
+                f"Troppe richieste di approvazione per {tool} nell'ultima ora "
+                f"(limite {_APPROVAL_MAX_PER_HOUR}). Nessuna nuova richiesta "
+                "creata. Fermati e chiedi all'utente cosa vuole fare: insistere "
+                "non produce approvazioni."
+            ),
+        }
+    request_id = s.create(tool, args, preview)
     audit(tool, args, "approval_requested")
     return {
         "status": "approval_required",
@@ -310,13 +430,23 @@ def execute_dangerous(
         raise ValueError("Approvazione non piu' valida.")
 
     if dry_run_active():
+        store().record_outcome(request_id, "dryrun")
         audit(tool, canonical_args, "dryrun_executed")
         return {"dryrun": True, "tool": tool,
                 "note": "ADE_MAIL_DRYRUN attivo: azione NON eseguita"}
+    # La riga e' gia' EXECUTED (consumata) da consume_approved: at-most-once.
+    # Da qui in poi registriamo cosa e' successo DAVVERO — sulla riga e
+    # nell'audit — perche' "consumata" non vuol dire "consegnata".
     try:
         result = execute_fn(canonical_args)
-        audit(tool, canonical_args, "executed")
-        return result
     except Exception as e:
+        store().record_outcome(request_id, "failed", {"error": str(e)})
         audit(tool, canonical_args, "error", str(e))
         raise
+    provider_result = result.get("provider_result") if isinstance(result, dict) else None
+    ok = (result.get("success", True) if isinstance(result, dict) else bool(result))
+    store().record_outcome(request_id, "ok" if ok else "failed", provider_result)
+    audit(tool, canonical_args, "executed" if ok else "executed_with_error",
+          detail="" if ok else str((result or {}).get("error", "")),
+          provider_result=provider_result)
+    return result
