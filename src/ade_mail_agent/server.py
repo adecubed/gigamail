@@ -323,6 +323,9 @@ def send_mail(
         preview_fn=lambda: {
             "from": (sender or {}).get("email"),
             "to": to, "cc": cc or [], "bcc": bcc or [],
+            # indirizzi (mai display name) + avviso se qualcosa puo'
+            # espandersi a piu' destinatari dopo l'approvazione
+            **policy.describe_recipients(to, cc, bcc),
             "subject": subject, "body": body,
         },
         execute_fn=lambda a: mail_router.send_message(
