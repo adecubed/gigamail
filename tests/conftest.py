@@ -17,6 +17,10 @@ os.environ["APPDATA"] = str(_TMP)
 os.environ["ADE_ROOT"] = str(_TMP / "ADE")
 os.environ.pop("ADE_AGENT_CMD", None)
 os.environ.pop("ADE_CONSOLE_TOKEN", None)
+# La suite non deve MAI aprire un prompt Windows Hello / Touch ID vero sul
+# PC di chi la lancia: il consenso e' negato di default. I test che vogliono
+# un "si'" lo chiedono esplicitamente con allow + ADE_MAIL_DRYRUN.
+os.environ["GIGAMAIL_CONSENT_BACKEND"] = "deny"
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))

@@ -242,17 +242,27 @@ def cmd_approvals_list(_args) -> int:
 
 
 def cmd_approvals_approve(args) -> int:
-    from ade_mail_agent import policy
+    """Approva una richiesta. L'approvazione richiede una verifica
+    dell'utente fisico (Windows Hello / Touch ID): un processo — incluso
+    l'agente, se ha una shell — puo' lanciare questo comando ma non puo'
+    superare il prompt. Niente `--yes`: era la scorciatoia che un agente
+    avrebbe usato. Se la macchina non ha un backend di consenso, il
+    comando rifiuta e indica la console."""
+    from ade_mail_agent import policy, consent
     rec = policy.store().get(args.request_id)
     if not rec:
         print(f"Richiesta '{args.request_id}' inesistente.")
         return 1
     print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
-    if not args.yes:
-        conferma = input("Approvare questa azione? [y/N] ").strip().lower()
-        if conferma != "y":
-            print("Annullato (la richiesta resta in attesa).")
-            return 0
+    reason = f"GigaMail: approvare {rec['tool']} ({args.request_id})?"
+    try:
+        ok = consent.require_human(reason)
+    except consent.ConsentUnavailable as e:
+        print(f"Impossibile approvare da CLI: {e}")
+        return 2
+    if not ok:
+        print("Verifica non superata o annullata: la richiesta resta in attesa.")
+        return 1
     if policy.store().approve(args.request_id, by=_cli_who()):
         print("Approvata. L'agente puo' ora completare l'azione.")
         return 0
@@ -296,8 +306,8 @@ def cmd_purge(args) -> int:
     return 0
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(prog="ade-mail-agent")
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="gigamail")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("login").set_defaults(fn=cmd_login)
@@ -331,10 +341,10 @@ def main() -> int:
     p_appr = sub.add_parser("approvals", help="approva le azioni richieste dall'agente")
     appr_sub = p_appr.add_subparsers(dest="subcommand", required=True)
     appr_sub.add_parser("list").set_defaults(fn=cmd_approvals_list)
-    p_ok = appr_sub.add_parser("approve")
+    p_ok = appr_sub.add_parser(
+        "approve",
+        help="approva una richiesta (richiede Windows Hello / Touch ID)")
     p_ok.add_argument("request_id")
-    p_ok.add_argument("-y", "--yes", action="store_true",
-                      help="non chiedere conferma interattiva")
     p_ok.set_defaults(fn=cmd_approvals_approve)
     p_no = appr_sub.add_parser("reject")
     p_no.add_argument("request_id")
@@ -348,7 +358,7 @@ def main() -> int:
     p_purge.add_argument("account_id", type=int)
     p_purge.set_defaults(fn=cmd_purge)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     return args.fn(args)
 
 

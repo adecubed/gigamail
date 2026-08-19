@@ -65,12 +65,49 @@ Not because they don't matter, but because they aren't ours to fix:
 - **The action log is append-only, not tamper-proof.** Anyone with write
   access to your filesystem can alter `agent_audit.jsonl`. We state this
   plainly rather than pretending otherwise.
-- **An agent with full shell access to the same machine.** It can run the
-  approval CLI, read the console token, or just use your mail client
-  directly. If your agent can run arbitrary commands as you, GigaMail's gate
-  is not the weak link — state that threat model honestly rather than
-  pretending otherwise.
+- **An agent with shell access using something other than GigaMail.** If
+  it can run arbitrary commands as you, it can drive your mail client or
+  the provider's API directly, bypassing GigaMail entirely. That is outside
+  what a mail gate can enforce. What it can *not* do any more is use
+  GigaMail's own approval path — see "Approval requires a human" below.
 - Attacks requiring an already-compromised machine or Windows user account.
+
+## Approval requires a human — not just a command
+
+Until v0.1.3 we listed "an agent with shell access can run the approval
+CLI" as a different threat model. **u/ranbuman** (r/mcp) pointed out that
+this is exactly the agent the gate exists to supervise — Claude Code,
+OpenClaw and Hermes all hold a shell — so "out of band from MCP" was not
+"out of band from the agent". He was right, and v0.1.4 changes it:
+
+- Approving — from `gigamail approvals approve <id>` **or** from the
+  console's `POST /approvals/{id}/approve` — now requires an OS-level user
+  verification: **Windows Hello** (PIN, fingerprint, face) on Windows,
+  **LocalAuthentication** (Touch ID / password) on macOS. A process can
+  *open* that prompt; only the person at the machine can *satisfy* it.
+  There is no code to type, no file to read, no screen to capture.
+- The CLI flag `--yes` is gone. It was the shortcut an agent would use.
+- The console's session token alone no longer approves anything. The token
+  lives in a file a process can read; the OS prompt is what it cannot pass.
+- **No backend, no approval.** On a machine without Windows Hello or
+  LocalAuthentication (headless Linux, a server), the CLI refuses and the
+  console returns 503. We fail closed rather than fall back to a keyboard
+  confirmation.
+- Rejecting never needs the prompt: saying no is always safe.
+
+**What we measured, not what the docs promise** (Windows 11, 2026-08-19,
+`UserConsentVerifier.RequestVerificationAsync`): the prompt blocked for
+37 minutes until the human answered; a second request issued immediately
+after a successful one raised a **new** prompt (24 s of human wait) — no
+sudo-style grace window; the prompt appears even when invoked from a
+background process with no window. macOS sets
+`touchIDAuthenticationAllowableReuseDuration = 0` explicitly. If you find a
+platform that caches a verification and cannot be told not to, report it:
+on that platform the CLI path should degrade to console-only.
+
+What this does not cover: the same agent driving your mail client or the
+provider's API directly. That is no longer GigaMail's approval being
+bypassed — it is GigaMail not being in the loop at all.
 
 ## Fixed
 

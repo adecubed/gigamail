@@ -20,6 +20,12 @@ dependencies = [
     "requests>=2.31",
     "cryptography>=42",
     "python-dotenv>=1.0",
+    # Consenso umano per l'approvazione (Windows Hello / Touch ID):
+    # il prompt dell'OS che un processo puo' aprire ma non superare.
+    "winrt-runtime>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Foundation>=3.0; sys_platform == 'win32'",
+    "winrt-Windows.Security.Credentials.UI>=3.0; sys_platform == 'win32'",
+    "pyobjc-framework-LocalAuthentication>=10; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]
