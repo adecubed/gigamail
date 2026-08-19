@@ -75,13 +75,18 @@ def _smtp_credentials(a: dict) -> tuple:
 
 def _normalize_send_result(result) -> Dict:
     if isinstance(result, dict):
-        return {
+        out = {
             'success': bool(result.get('success')),
             'provider': result.get('provider'),
             'sent_copy_saved': bool(result.get('sent_copy_saved', result.get('success'))),
             'warning': result.get('warning'),
             'error': result.get('error'),
         }
+        # cio' che il provider ha accettato (SMTP: per destinatario; Graph:
+        # id/errore) — finisce nell'audit accanto al payload approvato
+        if result.get('provider_result') is not None:
+            out['provider_result'] = result['provider_result']
+        return out
     ok = bool(result)
     return {
         'success': ok,
@@ -182,6 +187,7 @@ def send_message(
         ))
     imap_host, imap_port, _, imap_password = _imap_credentials(a)
     smtp_host, smtp_port, email_addr, password = _smtp_credentials(a)
+    d = a.get('data', a)
     return _normalize_send_result(imap.send_message(
         smtp_host,
         smtp_port,
@@ -190,6 +196,7 @@ def send_message(
         to,
         subject,
         body,
+        insecure_tls=bool(d.get('insecure_tls', False)),
         cc=cc,
         bcc=bcc,
         attachments=attachments,
