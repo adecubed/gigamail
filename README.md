@@ -111,10 +111,13 @@ Full map and design decisions: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 Email content is treated as **untrusted data** (prompt injection). The
 agent cannot approve its own actions, by construction: a dangerous tool
-returns only an inert `request_id`, and the approval lives outside the MCP
-surface — in the console (behind its session token) or a shell command. No
-secret ever enters the model context, so an injected instruction has
-nothing to spend. Repeating the id just returns *awaiting approval*. The agent
+returns only an inert `request_id`, and approving it — from the console or
+from `gigamail approvals approve` — requires an OS-level verification of
+the person at the machine (**Windows Hello** / **Touch ID**). A process,
+including an agent that holds a shell, can open that prompt but cannot
+pass it; with no such backend available, nothing approves. No secret ever
+enters the model context, so an injected instruction has nothing to
+spend. Repeating the id just returns *awaiting approval*. The agent
 can only read files explicitly registered by the user, never the rest of the
 filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
 (append-only: GigaMail never rewrites past entries — it is not, and does not
@@ -255,10 +258,13 @@ Mappa completa e decisioni di design: [MAPPA_MCP.md](MAPPA_MCP.md).
 
 Il contenuto delle email è trattato come **dato non fidato** (prompt
 injection). L'agente non può approvare le proprie azioni, per costruzione:
-un tool pericoloso restituisce solo un `request_id` inerte, e l'approvazione
-vive fuori dalla superficie MCP — nella console (dietro il suo token di
-sessione) o in un comando di shell. Nessun segreto entra nel contesto del
-modello, quindi un'istruzione iniettata non ha nulla da spendere. Ripetere
+un tool pericoloso restituisce solo un `request_id` inerte, e approvarlo —
+dalla console o con `gigamail approvals approve` — richiede una verifica
+dell'utente fisico a livello di sistema operativo (**Windows Hello** /
+**Touch ID**). Un processo, compreso un agente con la shell, può aprire quel
+prompt ma non superarlo; senza un backend del genere, nulla viene approvato.
+Nessun segreto entra nel contesto del modello, quindi un'istruzione
+iniettata non ha nulla da spendere. Ripetere
 l'id restituisce solo *in attesa di approvazione*. L'agente può leggere solo i file
 registrati esplicitamente dall'utente, mai il resto del filesystem. Ogni
 azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
