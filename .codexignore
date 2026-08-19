@@ -1,0 +1,18 @@
+# Not part of the plugin surface: build artefacts, local environments,
+# console dependencies, and anything that could hold local state or secrets.
+.venv/
+node_modules/
+console/node_modules/
+__pycache__/
+*.pyc
+dist/
+build/
+.pytest_cache/
+.env
+*.db
+*.log
+*.key
+*.dpapi
+.token_cache.json
+NOTES.dev.md
+POST_DRAFTS.md
