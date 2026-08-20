@@ -217,10 +217,11 @@ function startPythonServer() {
     ? path.join(resourcesPath, 'gigamail', 'src')
     : path.join(__dirname, '..', 'src');
 
-  const req = http.get(`${API}/health`, { headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
-    console.log(`[GIGAMAIL] Backend console già attivo su porta ${API_PORT}`);
-  });
-  req.on('error', () => {
+  // Riusa un backend sulla porta SOLO se e' davvero il nostro: 200 +
+  // service "gigamail-console". Qualunque altra cosa in ascolto (una
+  // vecchia "ADE Mail" installata, un altro servizio) ha gia' fatto
+  // parlare la finestra nuova con un backend vecchio, in silenzio.
+  const startBackend = () => {
     console.log('[GIGAMAIL] Avvio backend console...');
     serverProcess = spawn(pythonPath, [
       '-X', 'utf8', '-c', 'from ade_mail_agent.http_api import main; main()',
@@ -238,8 +239,30 @@ function startPythonServer() {
     serverProcess.stderr?.on('data', (d) => console.error('[SERVER ERR]', d.toString().trim()));
     serverProcess.on('exit', (code) => console.log('[SERVER] exit', code));
     serverProcess.unref(); // non tenere vivo Electron per via del figlio
+  };
+
+  const req = http.get(`${API}/health`, { headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
+    let body = '';
+    res.on('data', (d) => { body += d; });
+    res.on('end', () => {
+      let ours = false;
+      try {
+        ours = res.statusCode === 200 && JSON.parse(body).service === 'gigamail-console';
+      } catch (_) { /* non JSON: non e' il nostro */ }
+      if (ours) {
+        console.log(`[GIGAMAIL] Backend console gia' attivo su porta ${API_PORT}`);
+      } else {
+        console.error(`[GIGAMAIL] Sulla porta ${API_PORT} risponde qualcosa che NON e' `
+          + `GigaMail (HTTP ${res.statusCode}). Chiudi quel programma (es. una `
+          + `vecchia "ADE Mail") e riavvia: non mi aggancio a un backend sconosciuto.`);
+        // Proviamo comunque a partire: se la porta e' davvero occupata il bind
+        // fallisce e lo vedrai nei log, invece di una UI che parla con un altro.
+        startBackend();
+      }
+    });
   });
-  req.setTimeout(1000);
+  req.on('error', startBackend);
+  req.setTimeout(1000, () => req.destroy(new Error('timeout')));
   req.end();
 }
 

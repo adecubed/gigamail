@@ -1,5 +1,63 @@
 # Changelog
 
+## v0.1.4 — 2026-08-19
+
+**Approval now requires the person at the machine.** Three days after
+v0.1.3, **u/ranbuman** (r/mcp) pointed out that "an agent with shell access
+can run the approval CLI" is not a different threat model — it is exactly
+the agent the gate exists to supervise: Claude Code, OpenClaw and Hermes
+all hold a shell. He was right.
+
+- Approving — `gigamail approvals approve <id>` **or** the console's
+  `POST /approvals/{id}/approve` — now opens an OS-level user verification:
+  **Windows Hello** (PIN/fingerprint/face) on Windows, **LocalAuthentication**
+  (Touch ID/password) on macOS. A process can open that prompt; only the
+  person at the machine can pass it. No code to type, no file to read, no
+  screen to capture. `--yes` is gone. The console token alone no longer
+  approves. **No backend, no approval** — the CLI refuses and the console
+  returns 503 on machines without Windows Hello / LocalAuthentication.
+  Rejecting never needs the prompt.
+- Measured, not assumed (Windows 11): the prompt blocks until the human
+  answers; a second request right after a successful one raises a **new**
+  prompt — no sudo-style grace; it appears from a background process with
+  no window. macOS reuse duration is set to 0. Details in SECURITY.md.
+
+**The approval path no longer asserts what it has not verified.**
+
+- **Cap on requests** (promised to u/Rebekator): the same payload with a
+  live pending request returns the same `request_id` instead of a new one;
+  more than `GIGAMAIL_APPROVAL_MAX_PER_HOUR` (20) per tool per hour →
+  `rate_limited`, nothing created. An insisting agent cannot produce a burst
+  of identical approvals.
+- **Audit from the provider's response** (u/ranbuman): SMTP per-recipient
+  refusals are read back from `sendmail()` and recorded as
+  `provider_result` next to the approved payload — in the audit log and on
+  the approval row (`execution_outcome`: ok / failed / dryrun). Graph
+  returns 202 with no per-recipient result: recorded as such
+  (`per_recipient_verified: false`), not faked.
+- **Preview shows addresses, never display names**, and flags any
+  recipient that is not an explicit SMTP address (bare name, group, list)
+  as `may_expand` — the count you approve is not guaranteed.
+- **SMTP TLS verified by default.** Port 465 used `CERT_NONE`; it now
+  verifies, with per-account `insecure_tls` opt-out for self-signed servers.
+
+**Notification.** `GIGAMAIL_APPROVAL_NOTIFY_CMD` (JSON argv with
+`{request_id} {tool} {summary}`) runs on every new request — e.g.
+`openclaw message send --channel telegram …` to reach you where your agent
+lives. Notification only: it cannot approve. Run without a shell, best
+effort, one per request (dedup does not re-notify).
+
+**Also:** `GIGAMAIL_ROOT` / `GIGAMAIL_DATA_DIR` (ADE_* kept as aliases);
+`GIGAMAIL_APPROVAL_TTL`; MCP server now identifies as `gigamail` with its
+package version; console refuses to reuse a port-8002 backend that is not
+GigaMail; Dependabot grouped; `server.json` for the official MCP Registry
+(`io.github.adecubed/gigamail`) and a README note for agents installing on
+a human's behalf.
+
+Tests: 111 → 159. New dependency on Windows: `winrt-Windows.Security.
+Credentials.UI` (Microsoft's PyWinRT projection); on macOS:
+`pyobjc-framework-LocalAuthentication`.
+
 ## v0.1.3 — 2026-08-16
 
 **Fix: data paths are now resolved in exactly one place.**

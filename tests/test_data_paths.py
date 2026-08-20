@@ -43,6 +43,29 @@ def test_senza_appdata_percorso_unico(monkeypatch, tmp_path):
     assert data_paths.data_root() == tmp_path / ".ade" / "mail"
 
 
+def test_gigamail_root_nuovo_nome(monkeypatch, tmp_path):
+    monkeypatch.delenv("ADE_ROOT", raising=False)
+    monkeypatch.delenv("ADE_MAIL_DATA_DIR", raising=False)
+    monkeypatch.delenv("GIGAMAIL_DATA_DIR", raising=False)
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path / "nuovo"))
+    assert data_paths.app_root() == tmp_path / "nuovo"
+    assert data_paths.data_root() == tmp_path / "nuovo" / "mail"
+
+
+def test_alias_ade_root_funziona_ancora(monkeypatch, tmp_path):
+    """Config esistenti (INTEGRATIONS.md 0.1.3, skill ClawHub, manifest
+    Hermes) usano ADE_ROOT: non si rompono."""
+    monkeypatch.delenv("GIGAMAIL_ROOT", raising=False)
+    monkeypatch.setenv("ADE_ROOT", str(tmp_path / "legacy"))
+    assert data_paths.app_root() == tmp_path / "legacy"
+
+
+def test_nuovo_nome_vince_sull_alias(monkeypatch, tmp_path):
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path / "nuovo"))
+    monkeypatch.setenv("ADE_ROOT", str(tmp_path / "legacy"))
+    assert data_paths.app_root() == tmp_path / "nuovo"
+
+
 def test_moduli_concordano_sui_percorsi():
     """I DB calcolati a import-time dai moduli core devono stare tutti
     sotto data_root(): nessun modulo calcola i percorsi per conto suo."""

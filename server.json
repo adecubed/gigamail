@@ -1,0 +1,48 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.adecubed/gigamail",
+  "description": "Your real mailbox and calendar for your agent (M365/IMAP); a human approves every send.",
+  "repository": {
+    "url": "https://github.com/adecubed/gigamail",
+    "source": "github"
+  },
+  "websiteUrl": "https://gigamail.ai",
+  "version": "0.1.4",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "gigamail",
+      "version": "0.1.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "--from",
+          "valueHint": "--from"
+        },
+        {
+          "type": "positional",
+          "value": "gigamail[all]==0.1.4",
+          "valueHint": "gigamail[all]==0.1.4"
+        },
+        {
+          "type": "positional",
+          "value": "gigamail-server",
+          "valueHint": "gigamail-server"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "GIGAMAIL_ROOT",
+          "description": "Data directory (Windows: %APPDATA%\\ADE, POSIX: ~/.ade). Optional; declare it if your MCP client filters the subprocess environment.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
