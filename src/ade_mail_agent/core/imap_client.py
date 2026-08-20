@@ -1206,6 +1206,10 @@ def send_message(
     (vuoto = tutti accettati); lo propaghiamo invece di buttarlo, cosi'
     l'audit non afferma un conteggio mai stato vero (r/mcp, ranbuman).
 
+    "accepted" = accettato al RCPT, al momento dell'invio. NON "consegnato":
+    un destinatario accettato e bounce-ato venti minuti dopo non compare
+    qui. Il nome del campo dice esattamente questo, di proposito.
+
     TLS: il certificato del server SMTP e' verificato di default. Per server
     con certificato self-signed l'account puo' dichiarare insecure_tls=True
     (opt-in esplicito, per quell'account soltanto)."""
