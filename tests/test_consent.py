@@ -84,6 +84,38 @@ def test_backend_windows_nega_tutto_tranne_verified(monkeypatch):
         assert consent._win_ask("x") is atteso, f"esito {esito}"
 
 
+def test_macos_contesto_fresco_per_ogni_approvazione(monkeypatch):
+    """r/mcp (ranbuman): la finestra di riuso di macOS appartiene
+    all'ISTANZA di LAContext, non al processo — un contesto tenuto vivo
+    puo' dare un successo silenzioso anche con reuseDuration al default.
+    Quindi: un LAContext NUOVO per ogni approvazione, e reuseDuration=0
+    su ciascuno. Questo test lo asserisce, cosi' nessun refactor potra'
+    spostare il contesto a livello modulo senza che si accenda."""
+    created = []
+
+    class _FakeCtx:
+        def __init__(self):
+            self.reuse = None
+            created.append(self)
+
+        def setTouchIDAuthenticationAllowableReuseDuration_(self, v):
+            self.reuse = v
+
+        def evaluatePolicy_localizedReason_reply_(self, policy_, reason, reply):
+            reply(True, None)
+
+    fake_la = types.SimpleNamespace(
+        LAContext=types.SimpleNamespace(
+            alloc=lambda: types.SimpleNamespace(init=lambda: _FakeCtx())),
+        LAPolicyDeviceOwnerAuthentication=1,
+    )
+    monkeypatch.setitem(__import__("sys").modules, "LocalAuthentication", fake_la)
+    assert consent._mac_ask("prima") is True
+    assert consent._mac_ask("seconda") is True
+    assert len(created) == 2, "stesso LAContext riusato tra due approvazioni"
+    assert all(c.reuse == 0 for c in created)
+
+
 # ------------------------------------------------------------------- CLI
 
 def _run_cli(argv):
