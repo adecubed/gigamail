@@ -10,18 +10,27 @@ con la posta nella sottocartella mail/.
 Questo modulo è l'UNICA fonte dei percorsi: nessun altro modulo legge
 APPDATA direttamente. Client MCP che filtrano l'ambiente (es. Hermes passa
 solo un baseline di variabili) possono redirigere tutto con una variabile:
-    ADE_ROOT           sposta l'intera cartella ADE (approvazioni, audit, mail)
-    ADE_MAIL_DATA_DIR  sposta solo i dati mail (testing/Electron)
+    GIGAMAIL_ROOT      sposta l'intera cartella dati (approvazioni, audit, mail)
+    GIGAMAIL_DATA_DIR  sposta solo i dati mail (testing/Electron)
+I nomi storici ADE_ROOT / ADE_MAIL_DATA_DIR restano alias: una config
+esistente non si rompe mai. Se sono presenti entrambi, vince GIGAMAIL_*.
+La cartella di default resta %APPDATA%\\ADE (~/.ade): rinominarla sarebbe
+una migrazione dati senza beneficio.
 """
 
 import os
 from pathlib import Path
 
 
+def _env(new: str, legacy: str) -> str:
+    """Variabile col nome nuovo, o con l'alias storico. Vuoto = non impostata."""
+    return (os.environ.get(new) or os.environ.get(legacy) or "").strip()
+
+
 def app_root() -> Path:
-    """Cartella applicativa ADE: approvals.db, agent_audit.jsonl, agent.json.
-    Override: ADE_ROOT."""
-    override = os.environ.get("ADE_ROOT")
+    """Cartella applicativa: approvals.db, agent_audit.jsonl, agent.json.
+    Override: GIGAMAIL_ROOT (alias ADE_ROOT)."""
+    override = _env("GIGAMAIL_ROOT", "ADE_ROOT")
     if override:
         root = Path(override)
     else:
@@ -33,8 +42,9 @@ def app_root() -> Path:
 
 def data_root() -> Path:
     """Root scrivibile per i dati mail (DB, cache, token, log).
-    Override: ADE_MAIL_DATA_DIR; altrimenti segue app_root()/mail."""
-    override = os.environ.get("ADE_MAIL_DATA_DIR")
+    Override: GIGAMAIL_DATA_DIR (alias ADE_MAIL_DATA_DIR); altrimenti
+    app_root()/mail."""
+    override = _env("GIGAMAIL_DATA_DIR", "ADE_MAIL_DATA_DIR")
     root = Path(override) if override else app_root() / "mail"
     root.mkdir(parents=True, exist_ok=True)
     return root

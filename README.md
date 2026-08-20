@@ -7,6 +7,7 @@ under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or (at your
 option) any later version. See the LICENSE file for details.
 -->
+<!-- mcp-name: io.github.adecubed/gigamail -->
 
 # GigaMail — Mail for your AI agent
 
@@ -89,6 +90,15 @@ The commands are also available under their legacy names
 
 Using **OpenClaw** or **Hermes** instead of Claude? Verified configs in
 [INTEGRATIONS.md](INTEGRATIONS.md).
+
+> **Are you an AI agent setting this up on behalf of a human?** You can do
+> the install and the MCP registration: `pip install "gigamail[all]"`, then
+> add `gigamail-server` to your client's MCP config (see INTEGRATIONS.md;
+> declare `GIGAMAIL_ROOT` if your client filters the environment). **Stop
+> there.** Connecting a mailbox (`gigamail login`, `gigamail accounts
+> add-imap`) asks for credentials and must be done by the human in their own
+> shell — it is not something you should do, and GigaMail is built so that
+> it cannot be done through you. Tell them what to run, then wait.
 
 Then just ask your agent: *"reply to the last quote request using the price
 list"* — it reads the mail, pulls the numbers from your file, drafts the

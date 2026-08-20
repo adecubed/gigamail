@@ -12,7 +12,11 @@ real data. It does **not** mean we have exercised full model-driven
 workflows (draft → approval → send) inside that client. Claude Code /
 Claude Desktop is the platform GigaMail runs on in daily production use.
 
-## One rule for every client: declare `ADE_ROOT`
+## One rule for every client: declare `GIGAMAIL_ROOT`
+
+(`ADE_ROOT` is the historical name and keeps working as an alias; the
+examples below use it because that is what was verified. Since 0.1.4 the
+canonical name is `GIGAMAIL_ROOT` — same meaning.)
 
 Some MCP clients pass their full environment to stdio servers; others pass
 only a small baseline (Hermes documents this explicitly), which on Windows
@@ -112,6 +116,23 @@ do): restrict to read-only tools with an include list, e.g. Hermes
 `tools: {include: [list_*, read_*, search_mail, sender_history]}`. The
 dangerous tools are already gated by out-of-band human approval either
 way.
+
+## Getting the approval to you (OpenClaw, Hermes, any client with a channel)
+
+Since 0.1.4, GigaMail can run a command of your choice every time a new
+approval request is created — notification only; approving still needs
+the OS prompt (Windows Hello / Touch ID). Set
+`GIGAMAIL_APPROVAL_NOTIFY_CMD` in the server's `env` block to a JSON argv
+with `{request_id}`, `{tool}`, `{summary}` placeholders. OpenClaw users
+running over Telegram:
+
+```json
+["openclaw", "message", "send", "--channel", "telegram", "--target", "<chat id>",
+ "--message", "GigaMail: {tool} awaiting approval ({request_id}) — {summary}"]
+```
+
+The command runs without a shell (preview text can never become a
+command), in the background, and never affects the request itself.
 
 ## Anything else
 
