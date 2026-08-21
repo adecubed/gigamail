@@ -1153,6 +1153,54 @@ def get_message(
             raise
         finally:
             _close_conn_safely(conn)
+
+
+def get_message_headers(
+    imap_host: str,
+    imap_port: int,
+    email_addr: str,
+    password: str,
+    message_id: str,
+    folder: str = "INBOX",
+) -> Optional[Dict[str, List[str]]]:
+    """Intestazioni complete di un messaggio: {nome-minuscolo: [valori]}.
+
+    Servono alle barriere anti-spam delle regole di risposta (mail_guard):
+    Authentication-Results, Auto-Submitted, List-Id, X-Spam-Flag... non
+    stanno nel dict di get_message e non devono starci (sono rumore per
+    l'agente). BODY.PEEK[HEADER]: il fetch NON marca la mail come letta.
+    None = header non recuperabili (il chiamante tratta fail-closed)."""
+    clean_id = "".join(c for c in str(message_id) if c.isdigit())
+    if not clean_id:
+        return None
+    conn = None
+    try:
+        conn = _connect(imap_host, imap_port, email_addr, password)
+        requested = (folder or "INBOX").strip()
+        if requested.upper() == "INBOX":
+            resolved = _resolve_folder(conn, requested)
+        else:
+            resolved = _resolve_folder_strict(conn, requested) or _resolve_folder(conn, requested)
+        if not resolved:
+            return None
+        status, _ = conn.select(f'"{resolved}"')
+        if status != "OK":
+            return None
+        _, data = _uid_fetch(conn, clean_id, "(BODY.PEEK[HEADER])")
+        if not data or data[0] is None:
+            return None
+        msg = email.message_from_bytes(data[0][1])
+        headers: Dict[str, List[str]] = {}
+        for name, value in msg.items():
+            headers.setdefault(name.lower(), []).append(_hdr_str(value))
+        return headers
+    except Exception as e:
+        _imap_debug_log(f"get_message_headers error id={message_id!r}: {e}")
+        return None
+    finally:
+        _close_conn_safely(conn)
+
+
 def set_read_status(
     imap_host: str,
     imap_port: int,
@@ -1199,6 +1247,7 @@ def send_message(
     imap_port: Optional[int] = None,
     imap_password: Optional[str] = None,
     insecure_tls: bool = False,
+    extra_headers: Optional[Dict[str, str]] = None,
 ) -> Dict[str, object]:
     """Invia via SMTP. Ritorna il risultato normalizzato piu' `provider_result`:
     cio' che il server ha DETTO di aver accettato, per destinatario — non
@@ -1222,6 +1271,10 @@ def send_message(
     msg["To"] = to
     msg["Subject"] = subject
     msg["Date"] = formatdate(localtime=True)
+    # Le risposte generate dalle regole (0.2) escono marcate RFC 3834:
+    # un altro autoresponder che ci rispetta non ci risponde, niente loop.
+    for hk, hv in (extra_headers or {}).items():
+        msg[hk] = hv
     if cc:
         msg["Cc"] = ", ".join(cc)
     if bcc:

@@ -21,6 +21,11 @@ os.environ.pop("ADE_CONSOLE_TOKEN", None)
 # PC di chi la lancia: il consenso e' negato di default. I test che vogliono
 # un "si'" lo chiedono esplicitamente con allow + ADE_MAIL_DRYRUN.
 os.environ["GIGAMAIL_CONSENT_BACKEND"] = "deny"
+# ...e non deve nemmeno far comparire toast di sistema sul suo desktop.
+os.environ["GIGAMAIL_NOTIFY_DESKTOP"] = "0"
+# Lingua delle notifiche pinnata: la suite deve dare lo stesso esito sul
+# PC italiano di Simone e sui runner CI in inglese.
+os.environ["GIGAMAIL_LANG"] = "it"
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))

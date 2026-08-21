@@ -1,5 +1,87 @@
 # Changelog
 
+## v0.2.0 — unreleased
+
+**Semi-auto and auto reply — rules with a fence around them.** The first
+new capability since the gate: the user can declare, behind Windows Hello /
+Touch ID, that mail from certain senders (or in a certain folder) gets a
+drafted reply automatically — proposed for approval (`semi`) or sent within
+strict limits (`auto`). Email autopilot is an existing category; what the
+others don't ship is the fence. Design was published on r/mcp before the
+code.
+
+- **`gigamail watch`** — a new CLI process (the MCP server stays passive)
+  that polls unread mail, matches rules, has the *user's own agent*
+  (`agent_bridge`, default `claude -p`) draft the body, and turns it into a
+  standard approval request. GigaMail still contains no LLM.
+- **Rules live outside the agent's reach**: created, resumed and only
+  manageable via `gigamail rules add/list/pause/resume/remove` — creation
+  and reactivation require the OS-level human verification. There is no MCP
+  tool that touches rules: a prompt injection cannot say "enable automode".
+  Every rule has a mandatory expiry, a daily cap and a per-sender cooldown.
+- **Fixed addressing**: the drafter produces the body and nothing else.
+  Recipient, thread and subject are fixed by GigaMail from the incoming
+  message — the reply goes to the authenticated `From` only, never to
+  `Reply-To`, never to addresses written by the draft. An injection in the
+  body has no exit channel.
+- **Per-rule content**: the draft can only draw from the documents attached
+  to that rule (plus the account identity) — no global knowledge, no mail
+  search. Blast radius = the files you chose.
+- **Deterministic anti-spam barriers, in front of the rules** (no LLM
+  decides *whether* to reply): DMARC not `pass` → never `auto`; RFC 3834
+  (Auto-Submitted, Precedence bulk/junk/list, List-Id/List-Unsubscribe,
+  X-Auto-Response-Suppress, empty Return-Path, no-reply senders) → no reply
+  at all; the provider's spam verdict is respected; executable/archive
+  attachments and abnormal bodies never trigger; a burst of matches
+  **pauses the rule by itself** (resume requires Hello); outgoing rule
+  replies are marked `Auto-Submitted: auto-replied` over SMTP (Graph does
+  not accept that header — declared, not faked).
+- **first_contact: semi** by default — the first message from a new sender
+  always goes through human approval, even on an `auto` rule; full auto for
+  first contacts is an explicit per-rule opt-in.
+- **auto = pre-approval, not self-approval**: the request is created
+  already-approved with `decided_by automode:<rule_id>` — the human gave
+  that approval behind Hello when creating the rule, for a precise scope,
+  with an expiry. Same atomic consume→execute path, same audit, same
+  `provider_result`; the pluggable notification (B5) fires either way.
+- **Fixed live, day one**: replying through Microsoft Graph was broken —
+  the `/reply` payload sent both `message.body` and `comment`, which Graph
+  rejects (`SamePropertyContentConflictBody`). It failed as a bare
+  `success: false`, because `reply_message` returned a boolean and threw
+  the provider's answer away. Now `reply_message` returns the normalized
+  result and `provider_result` reaches the audit for replies exactly as it
+  does for sends — which is how the bug was found in the first live run of
+  a rule (semi, Graph account, notification → Hello → sent, 202).
+- **The notification now tells you everything** ("mail arrived from X,
+  I propose this reply — approve?"): a new `{message}` placeholder carries
+  the full human-readable text (sender, subject, draft body, the approve
+  command) to the configured notify command; a **native desktop toast**
+  (Windows/macOS/Linux) fires by default on every approval request —
+  `GIGAMAIL_NOTIFY_DESKTOP=0` disables it. The notify command can now also
+  live in `notify.json` next to `agent.json` (env var still wins), so it
+  survives reboots. For `auto` rules the notification fires *after* the
+  send, with the real outcome. Notification remains notification: no
+  channel approves anything. Notifications speak **the user's language**
+  (system locale, `GIGAMAIL_LANG` to override; it/en today) — while the
+  *reply* language is chosen by the drafting agent from the incoming mail,
+  two different audiences. Measured live on Windows 11: toasts from an
+  unpackaged app are silently dropped until a Start-menu shortcut carries
+  `System.AppUserModel.ID` — the registry key alone is not enough —
+  so GigaMail registers itself (per-user shortcut + HKCU key,
+  once, best-effort). Notification commands also survive short-lived
+  processes now (`watch --once` no longer kills the notify thread
+  mid-flight), and `notify.json` tolerates the BOM that Windows editors
+  add.
+- `gigamail rules add` also takes flags (`--senders/--folder`, `--style`,
+  `--doc`, `--mode`, caps, expiry) and skips the questions; the Windows
+  Hello / Touch ID prompt remains the one thing that cannot be scripted.
+- New: `core/rules.py` (`.rules.db`), `core/mail_guard.py`, `watcher.py`,
+  `get_message_headers` on both providers (IMAP `BODY.PEEK[HEADER]`, Graph
+  `internetMessageHeaders`). 191 tests (was 160), including the
+  anti-injection harness extended to rules: a hostile mail in a watched
+  folder gets its reply sent only to its own sender, with only the
+  drafter's text.
+
 ## v0.1.4 — 2026-08-19
 
 **Approval now requires the person at the machine.** Three days after

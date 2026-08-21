@@ -156,6 +156,21 @@ def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict
         return ms_mail.get_message(message_id)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
     return imap.get_message(imap_host, imap_port, email_addr, password, message_id, folder=folder or "INBOX")
+def get_message_headers(account_id=None, message_id: str = '', folder: str = '') -> Optional[Dict]:
+    """Intestazioni complete ({nome-minuscolo: [valori]}) per le barriere
+    anti-spam delle regole (mail_guard). None = non recuperabili."""
+    a = _account(account_id)
+    if not a:
+        return None
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.get_message_headers(message_id)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.get_message_headers(
+        imap_host, imap_port, email_addr, password, message_id,
+        folder=folder or 'INBOX',
+    )
+
+
 def send_message(
     account_id=None,
     to: str = '',
@@ -165,6 +180,7 @@ def send_message(
     attachments: list = None,
     cc: list = None,
     bcc: list = None,
+    auto_submitted: bool = False,
 ) -> Dict:
     a = _account(account_id)
     if not a:
@@ -188,6 +204,12 @@ def send_message(
     imap_host, imap_port, _, imap_password = _imap_credentials(a)
     smtp_host, smtp_port, email_addr, password = _smtp_credentials(a)
     d = a.get('data', a)
+    # RFC 3834 sulle risposte generate dalle regole (0.2): via SMTP l'header
+    # Auto-Submitted si mette; via Graph no (accetta solo header x-*), il
+    # limite e' dichiarato in SECURITY.md — l'anti-loop in INGRESSO
+    # (mail_guard) non dipende da questo.
+    extra = {"Auto-Submitted": "auto-replied",
+             "X-Auto-Response-Suppress": "All"} if auto_submitted else None
     return _normalize_send_result(imap.send_message(
         smtp_host,
         smtp_port,
@@ -203,19 +225,23 @@ def send_message(
         imap_host=imap_host,
         imap_port=imap_port,
         imap_password=imap_password,
+        extra_headers=extra,
     ))
-def reply_message(account_id=None, message_id: str = '', body: str = '') -> bool:
+def reply_message(account_id=None, message_id: str = '', body: str = '',
+                  auto_submitted: bool = False) -> Dict:
     """
     Risponde a una mail esistente.
     Recupera mittente e oggetto originale, poi invia la risposta
     con il reply_to_id impostato (thread corretto su Microsoft).
+    Ritorna il risultato normalizzato di send_message (con provider_result):
+    "success: false" senza il PERCHE' del provider era un buco nell'audit.
     """
     a = _account(account_id)
     if not a:
-        return False
+        return {'success': False, 'error': 'Account non trovato'}
     msg = get_message(account_id, message_id)
     if not msg:
-        return False
+        return {'success': False, 'error': 'Messaggio originale non trovato'}
     # Estrai mittente originale
     from_field = msg.get('from', {})
     if isinstance(from_field, dict):
@@ -235,8 +261,9 @@ def reply_message(account_id=None, message_id: str = '', body: str = '') -> bool
         subject=reply_subject,
         body=body,
         reply_to_id=message_id,
+        auto_submitted=auto_submitted,
     )
-    return bool(result.get('success')) if isinstance(result, dict) else bool(result)
+    return result if isinstance(result, dict) else {'success': bool(result)}
 
 def get_priority_messages(account_id=None, top: int = 20) -> List[Dict]:
     a = _account(account_id)

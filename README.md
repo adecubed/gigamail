@@ -150,6 +150,31 @@ The structural half of that suite runs in CI on every push
 opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) and runs with
 a dry-run guard so confirmed actions are audited but never executed.
 
+## Reply rules (0.2): semi-auto and auto reply, fenced
+
+You can tell GigaMail: *mail from these senders (or in this folder) gets a
+reply drafted from these documents*. Rules are created from the CLI —
+`gigamail rules add` — behind the same Windows Hello / Touch ID prompt as
+approvals, and `gigamail watch` is the process that applies them. The MCP
+server stays passive and **there is no MCP tool that touches rules**: an
+injected instruction cannot enable autopilot.
+
+- **semi** (default): the draft becomes a normal approval request — you get
+  the notification, you approve with Hello, it goes out.
+- **auto**: the request is born approved, `decided_by automode:<rule_id>` —
+  you gave that approval when you created the rule, for a precise scope,
+  with a mandatory expiry, a daily cap and a per-sender cooldown. The
+  notification still fires.
+
+The drafter (your own agent, via `claude -p`) produces the reply *body*
+and nothing else: recipient, subject and thread are fixed from the incoming
+message — always the sender, never `Reply-To`, never an address written by
+the draft. Deterministic barriers run first: no DMARC pass → never auto;
+auto-generated mail, lists, no-reply senders, the provider's spam verdict,
+executable attachments → no reply at all; the first message from a new
+sender always goes through you; a burst of matches pauses the rule by
+itself. Details in [SECURITY.md](SECURITY.md).
+
 ## License
 
 **AGPL-3.0-or-later.** Free to use, study, modify and share. If you
@@ -299,6 +324,32 @@ La metà strutturale della suite gira in CI a ogni push
 reale è opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) e usa
 una modalità dry-run, così le azioni confermate finiscono nell'audit ma non
 vengono mai eseguite.
+
+## Regole di risposta (0.2): semi-auto e auto reply, con recinto
+
+Puoi dire a GigaMail: *le mail da questi mittenti (o in questa cartella)
+ricevono una risposta preparata da questi documenti*. Le regole si creano
+dalla CLI — `gigamail rules add` — dietro lo stesso prompt Windows Hello /
+Touch ID delle approvazioni, e `gigamail watch` è il processo che le
+applica. Il server MCP resta passivo e **nessun tool MCP tocca le regole**:
+un'istruzione iniettata non può accendere l'autopilota.
+
+- **semi** (default): la bozza diventa una normale richiesta di
+  approvazione — arriva la notifica, approvi con Hello, parte.
+- **auto**: la richiesta nasce già approvata, `decided_by
+  automode:<rule_id>` — quell'approvazione l'hai data tu creando la regola,
+  per uno scope preciso, con scadenza obbligatoria, tetto giornaliero e
+  cooldown per mittente. La notifica parte comunque.
+
+Chi scrive (il tuo agente, via `claude -p`) produce il *corpo* della
+risposta e nient'altro: destinatario, oggetto e thread li fissa GigaMail
+dal messaggio in arrivo — sempre il mittente, mai il `Reply-To`, mai un
+indirizzo scritto dalla bozza. Prima passano barriere deterministiche:
+niente DMARC pass → mai auto; posta automatica, liste, mittenti no-reply,
+il verdetto spam del provider, allegati eseguibili → nessuna risposta; il
+primo messaggio di un mittente nuovo passa sempre da te; una raffica di
+match mette in pausa la regola da sola. Dettagli in
+[SECURITY.md](SECURITY.md).
 
 ## Licenza
 

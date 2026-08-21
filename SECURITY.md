@@ -109,6 +109,41 @@ What this does not cover: the same agent driving your mail client or the
 provider's API directly. That is no longer GigaMail's approval being
 bypassed — it is GigaMail not being in the loop at all.
 
+## Reply rules (0.2): auto means pre-approved, not self-approved
+
+Semi-auto and auto reply look like the opposite of everything above — an
+action leaving without a per-send approval. The properties that make it
+compatible:
+
+- **A rule is created and reactivated only behind the OS prompt** (Windows
+  Hello / Touch ID), only from the CLI or console. **No MCP tool can touch
+  rules**: an injected instruction cannot say "enable automode" — the agent
+  has no tool for it. Pausing a rule needs no prompt (saying stop is always
+  safe); resuming does.
+- **Scope is narrow and declared**: specific senders or one folder, only
+  the documents attached to the rule as content sources, a daily cap, a
+  per-sender cooldown, and a **mandatory expiry**. Never "everything".
+- **Fixed addressing**: the drafting agent produces the reply *body* and
+  nothing else. GigaMail fixes recipient, subject and thread from the
+  incoming message — the reply goes to the `From` that matched the rule,
+  never to `Reply-To`, never to addresses appearing in the draft. A prompt
+  injection in the mail body has no exit channel.
+- **Deterministic barriers decide *whether* to reply; no LLM does**:
+  DMARC not `pass` → never auto (a whitelist is worthless on an
+  unauthenticated `From`); RFC 3834 auto-generated mail, mailing lists,
+  no-reply senders, the provider's spam verdict, executable/archive
+  attachments → no reply at all; the first message from a new sender goes
+  through human approval by default; a burst of matches pauses the rule
+  itself (resume requires the prompt). Headers unreadable = fail closed.
+- **The audit trail is identical to a human approval**, with
+  `decided_by: automode:<rule_id>` — it is always visible *which* rule let
+  *what* through — and the approval-request notification fires for auto
+  sends too, so the human sees it even after the fact.
+- Declared limit: outgoing rule replies carry `Auto-Submitted:
+  auto-replied` over SMTP; Microsoft Graph rejects non `x-*` custom headers,
+  so replies sent through Graph do not carry it. Our own loop protection
+  does not depend on that header (it is inbound, per RFC 3834).
+
 ## Fixed
 
 - **v0.1.1 — agent could self-approve destructive actions.** v0.1.0 returned

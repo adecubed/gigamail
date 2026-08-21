@@ -136,6 +136,49 @@ def test_dedup_non_rinotifica(monkeypatch, tmp_path):
     assert counter.read_text() == "x"
 
 
+def test_placeholder_message_porta_il_testo_completo(monkeypatch, tmp_path):
+    """{message} = testo leggibile per l'umano ("e' arrivata una mail da...,
+    propongo..., approvi?"), passato dal watcher; senza message esplicito
+    degrada al riassunto."""
+    out = tmp_path / "msg.txt"
+    cmd = [sys.executable, "-c",
+           "import sys; open(sys.argv[1],'w',encoding='utf-8').write(sys.argv[2])",
+           str(out), "{message}"]
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps(cmd))
+    testo = "E' arrivata una mail da x@y.it. Propongo: ciao. Approvi?"
+    policy.notify_approval_requested("req_m", "reply_mail", {"subject": "s"},
+                                     message=testo)
+    assert _wait_for(out)
+    assert out.read_text(encoding="utf-8") == testo
+
+
+def test_comando_da_notify_json_se_manca_env(monkeypatch, tmp_path):
+    """Il comando puo' vivere in notify.json accanto ad agent.json: la
+    configurazione sopravvive senza env var. L'env, se c'e', vince."""
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    cfg = policy._ade_root() / "notify.json"
+    cfg.write_text(json.dumps({"command": ["mycmd", "{message}"]}),
+                   encoding="utf-8")
+    try:
+        assert policy._notify_command() == ["mycmd", "{message}"]
+        monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD",
+                           json.dumps(["envcmd", "{summary}"]))
+        assert policy._notify_command() == ["envcmd", "{summary}"]
+        # file malformato: ignorato, nessuna eccezione
+        monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+        cfg.write_text("garbage", encoding="utf-8")
+        assert policy._notify_command() is None
+    finally:
+        cfg.unlink(missing_ok=True)
+
+
+def test_desktop_notify_spento_via_env(monkeypatch):
+    from ade_mail_agent.core import desktop_notify
+    monkeypatch.setenv("GIGAMAIL_NOTIFY_DESKTOP", "0")
+    assert desktop_notify.enabled() is False
+    assert desktop_notify.notify("t", "b", background=False) is False
+
+
 def test_notifica_non_approva_niente(monkeypatch, tmp_path):
     """Il comando di notifica gira; la richiesta resta PENDING.
     La notifica e' un avviso, non un canale di approvazione."""
