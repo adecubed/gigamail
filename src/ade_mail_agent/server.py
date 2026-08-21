@@ -370,11 +370,12 @@ def reply_mail(
     return policy.execute_dangerous(
         "reply_mail", args, request_id,
         preview_fn=_preview,
-        execute_fn=lambda a: {
-            "success": mail_router.reply_message(
-                account_id=a["account_id"], message_id=a["message_id"], body=a["body"]
-            )
-        },
+        # reply_message ritorna il risultato normalizzato: provider_result
+        # arriva cosi' fino all'audit anche per le risposte, non solo per
+        # send_mail.
+        execute_fn=lambda a: mail_router.reply_message(
+            account_id=a["account_id"], message_id=a["message_id"], body=a["body"]
+        ),
     )
 
 

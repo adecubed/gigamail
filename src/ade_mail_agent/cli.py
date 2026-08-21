@@ -279,6 +279,213 @@ def cmd_approvals_reject(args) -> int:
     return 1
 
 
+def _hello_or_refuse(reason: str):
+    """Verifica dell'utente fisico per le operazioni sulle regole. Ritorna
+    il timestamp della verifica, o None (e spiega) se negata/impossibile.
+    Fail-closed: senza backend di consenso le regole non si creano da CLI."""
+    import time as _t
+    from ade_mail_agent import consent
+    try:
+        ok = consent.require_human(reason)
+    except consent.ConsentUnavailable as e:
+        print(f"Impossibile: {e}")
+        return None
+    if not ok:
+        print("Verifica non superata o annullata: nessuna modifica.")
+        return None
+    return _t.time()
+
+
+def cmd_rules_add(args) -> int:
+    """Crea una regola di risposta (semi-auto o auto). Con i flag
+    (--senders/--folder, --style, --doc...) salta le domande; senza, chiede
+    interattivamente. In entrambi i casi la conferma finale e' Windows
+    Hello / Touch ID: una regola e' una pre-approvazione, e nasce solo
+    dalle mani dell'utente fisico."""
+    import os as _os
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import rules as rules_mod
+
+    aid = _resolve_account_id(getattr(args, "account_id", None))
+    if not aid:
+        print("Nessun account. Usa 'login' o 'accounts add-imap'.")
+        return 1
+    acc = core_accounts.get_account_by_id(aid)
+    if not acc:
+        print(f"Account {aid} inesistente (vedi 'accounts list').")
+        return 1
+    print(f"Nuova regola di risposta per {acc.get('email')} (account {aid})\n")
+
+    flag_senders = getattr(args, "senders", None)
+    flag_folder = getattr(args, "folder", None)
+    non_interactive = bool(flag_senders or flag_folder)
+
+    if non_interactive:
+        if flag_senders and flag_folder:
+            print("--senders e --folder sono alternativi.")
+            return 1
+        if flag_senders:
+            kind = "senders"
+            values = [v.strip().lower() for v in flag_senders.split(",") if v.strip()]
+        else:
+            kind = "folder"
+            values = [flag_folder.strip()]
+        style = getattr(args, "style", None) or ""
+        docs = []
+        for p in getattr(args, "doc", None) or []:
+            p = _os.path.abspath(p)
+            if not _os.path.exists(p):
+                print(f"Documento inesistente: {p}")
+                return 1
+            docs.append(p)
+        mode = getattr(args, "mode", None) or "semi"
+        if mode not in rules_mod.MODES:
+            print(f"Modalita' '{mode}' non valida (semi|auto).")
+            return 1
+        first_contact = getattr(args, "first_contact", None) or "semi"
+        daily_cap = getattr(args, "daily_cap", None) or rules_mod.DEFAULT_DAILY_CAP
+        cooldown = getattr(args, "cooldown_hours", None)
+        cooldown = rules_mod.DEFAULT_COOLDOWN_HOURS if cooldown is None else cooldown
+        expiry = getattr(args, "expiry_days", None) or rules_mod.DEFAULT_EXPIRY_DAYS
+    else:
+        kind = ""
+        while kind not in rules_mod.TRIGGER_KINDS:
+            kind = input("Trigger — 'senders' (indirizzi) o 'folder' (cartella): ").strip().lower()
+        if kind == "senders":
+            raw = input("Indirizzi (separati da virgola): ").strip()
+            values = [v.strip().lower() for v in raw.split(",") if v.strip()]
+        else:
+            values = [input("Nome cartella (es. INBOX.Leads): ").strip()]
+            print("NB: trigger a cartella = mittente arbitrario. Le barriere "
+                  "anti-spam e first_contact:semi restano davanti.")
+        style = input("Stile/istruzioni per la risposta: ").strip()
+        docs = []
+        print("Documenti da cui la bozza puo' pescare (INVIO per terminare).")
+        print("Solo questi: niente knowledge globale, niente ricerca in posta.")
+        while True:
+            p = input("  percorso documento: ").strip()
+            if not p:
+                break
+            p = _os.path.abspath(p)
+            if not _os.path.exists(p):
+                print(f"  inesistente: {p}")
+                continue
+            docs.append(p)
+        mode = ""
+        while mode not in rules_mod.MODES:
+            mode = input("Modalita' — 'semi' (ogni invio approvato con Hello) o "
+                         "'auto' (invio senza approvazione, entro i limiti): ").strip().lower()
+        first_contact = "semi"
+        if mode == "auto":
+            fc = input("Primo contatto da mittente nuovo: 'semi' (default, "
+                       "consigliato) o 'auto': ").strip().lower()
+            first_contact = fc if fc in rules_mod.MODES else "semi"
+
+        def _num(prompt, default, cast=int):
+            raw = input(f"{prompt} [{default}]: ").strip()
+            try:
+                return cast(raw) if raw else default
+            except ValueError:
+                return default
+
+        daily_cap = _num("Tetto risposte/giorno", rules_mod.DEFAULT_DAILY_CAP)
+        cooldown = _num("Cooldown per mittente (ore)", rules_mod.DEFAULT_COOLDOWN_HOURS, float)
+        expiry = _num("Scadenza regola (giorni)", rules_mod.DEFAULT_EXPIRY_DAYS, float)
+
+    if not values or not all(values):
+        print("Trigger vuoto: annullato.")
+        return 1
+    if first_contact not in rules_mod.MODES:
+        print(f"first_contact '{first_contact}' non valido (semi|auto).")
+        return 1
+
+    trig = ", ".join(values)
+    print(f"\nRiepilogo: [{mode}] {kind}={trig}; docs={len(docs)}; "
+          f"cap={daily_cap}/giorno; cooldown={cooldown}h; scade tra {expiry}g")
+    hello_ts = _hello_or_refuse(
+        f"GigaMail: creare la regola {mode.upper()} per {trig}?")
+    if not hello_ts:
+        return 1
+    rule_id = rules_mod.store().create(
+        account_id=aid, trigger_kind=kind, trigger_values=values,
+        reply_style=style, doc_paths=docs, mode=mode,
+        first_contact=first_contact, daily_cap=daily_cap,
+        cooldown_hours=cooldown, expiry_days=expiry,
+        created_by=_cli_who(), hello_verified_at=hello_ts)
+    from ade_mail_agent.policy import audit
+    audit("rule", {"rule_id": rule_id, "mode": mode, "trigger": values},
+          "rule_created", detail=_cli_who())
+    print(f"Regola creata: {rule_id}. Il watcher la usa da subito "
+          "(avvialo con: gigamail watch).")
+    return 0
+
+
+def cmd_rules_list(_args) -> int:
+    import time as _t
+    from ade_mail_agent.core import rules as rules_mod
+    rows = rules_mod.store().list_all()
+    if not rows:
+        print("Nessuna regola. Creane una con: gigamail rules add")
+        return 0
+    for r in rows:
+        state = "PAUSA" if r["paused"] else ("SCADUTA" if r["expired"] else "attiva")
+        days_left = int((r["expires_at"] - _t.time()) / 86400)
+        trig = ", ".join(r["trigger_values"])
+        print(f"  {r['rule_id']}  [{r['mode']}] {r['trigger_kind']}={trig}  "
+              f"({state}, scade tra {max(days_left, 0)}g, "
+              f"cap {r['daily_cap']}/g)")
+        if r["paused"] and r["pause_reason"]:
+            print(f"    motivo pausa: {r['pause_reason']}")
+    return 0
+
+
+def cmd_rules_pause(args) -> int:
+    from ade_mail_agent.core import rules as rules_mod
+    if rules_mod.store().pause(args.rule_id, "pausa manuale"):
+        print("Regola in pausa. Riattiva con: gigamail rules resume "
+              f"{args.rule_id} (richiede Hello)")
+        return 0
+    print("Regola inesistente.")
+    return 1
+
+
+def cmd_rules_resume(args) -> int:
+    from ade_mail_agent.core import rules as rules_mod
+    rule = rules_mod.store().get(args.rule_id)
+    if not rule:
+        print("Regola inesistente.")
+        return 1
+    hello_ts = _hello_or_refuse(
+        f"GigaMail: riattivare la regola {args.rule_id}?")
+    if not hello_ts:
+        return 1
+    rules_mod.store().resume(args.rule_id, hello_ts)
+    from ade_mail_agent.policy import audit
+    audit("rule", {"rule_id": args.rule_id}, "rule_resumed", detail=_cli_who())
+    print("Regola riattivata.")
+    return 0
+
+
+def cmd_rules_remove(args) -> int:
+    from ade_mail_agent.core import rules as rules_mod
+    if rules_mod.store().delete(args.rule_id):
+        from ade_mail_agent.policy import audit
+        audit("rule", {"rule_id": args.rule_id}, "rule_deleted", detail=_cli_who())
+        print("Regola eliminata.")
+        return 0
+    print("Regola inesistente.")
+    return 1
+
+
+def cmd_watch(args) -> int:
+    from ade_mail_agent.watcher import Watcher
+    try:
+        Watcher(interval=args.interval, verbose=args.verbose).run(once=args.once)
+    except KeyboardInterrupt:
+        print("\nWatcher fermato.")
+    return 0
+
+
 def cmd_index(args) -> int:
     from ade_mail_agent.core import accounts as core_accounts
     from ade_mail_agent.core import mail_memory
@@ -349,6 +556,48 @@ def main(argv=None) -> int:
     p_no = appr_sub.add_parser("reject")
     p_no.add_argument("request_id")
     p_no.set_defaults(fn=cmd_approvals_reject)
+
+    p_rules = sub.add_parser(
+        "rules", help="regole di risposta semi-auto/auto (creazione dietro Hello)")
+    rules_sub = p_rules.add_subparsers(dest="subcommand", required=True)
+    p_radd = rules_sub.add_parser(
+        "add", help="crea una regola (richiede Windows Hello / Touch ID)")
+    p_radd.add_argument("--senders", help="indirizzi trigger, separati da virgola")
+    p_radd.add_argument("--folder", help="cartella trigger (alternativa a --senders)")
+    p_radd.add_argument("--style", help="stile/istruzioni per la risposta")
+    p_radd.add_argument("--doc", action="append",
+                        help="documento sorgente (ripetibile)")
+    p_radd.add_argument("--mode", choices=["semi", "auto"], default=None)
+    p_radd.add_argument("--first-contact", choices=["semi", "auto"],
+                        default=None, dest="first_contact")
+    p_radd.add_argument("--daily-cap", type=int, default=None, dest="daily_cap")
+    p_radd.add_argument("--cooldown-hours", type=float, default=None,
+                        dest="cooldown_hours")
+    p_radd.add_argument("--expiry-days", type=float, default=None,
+                        dest="expiry_days")
+    p_radd.add_argument("--account-id", type=int, default=None,
+                        dest="account_id")
+    p_radd.set_defaults(fn=cmd_rules_add)
+    rules_sub.add_parser("list").set_defaults(fn=cmd_rules_list)
+    p_pause = rules_sub.add_parser("pause")
+    p_pause.add_argument("rule_id")
+    p_pause.set_defaults(fn=cmd_rules_pause)
+    p_resume = rules_sub.add_parser(
+        "resume", help="riattiva una regola (richiede Windows Hello / Touch ID)")
+    p_resume.add_argument("rule_id")
+    p_resume.set_defaults(fn=cmd_rules_resume)
+    p_rrm = rules_sub.add_parser("remove")
+    p_rrm.add_argument("rule_id")
+    p_rrm.set_defaults(fn=cmd_rules_remove)
+
+    p_watch = sub.add_parser(
+        "watch", help="processo che applica le regole alla posta in arrivo")
+    p_watch.add_argument("--once", action="store_true",
+                         help="un solo giro, poi esce")
+    p_watch.add_argument("--interval", type=int, default=60,
+                         help="secondi tra un giro e l'altro (default 60)")
+    p_watch.add_argument("--verbose", action="store_true")
+    p_watch.set_defaults(fn=cmd_watch)
 
     p_idx = sub.add_parser("index")
     p_idx.add_argument("account_id", type=int, nargs="?", default=None)

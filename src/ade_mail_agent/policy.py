@@ -372,24 +372,37 @@ def dry_run_active() -> bool:
 
 
 def _notify_command() -> Optional[List[str]]:
-    """GIGAMAIL_APPROVAL_NOTIFY_CMD: JSON array con placeholder {request_id},
-    {tool}, {summary}. Es. per OpenClaw → Telegram:
-      ["openclaw","message","send","--channel","telegram","--target","123",
-       "--message","GigaMail: {tool} awaiting approval ({request_id}): {summary}"]
+    """Comando di notifica configurato: JSON array con placeholder
+    {request_id}, {tool}, {summary}, {message} ({message} = testo completo
+    leggibile, es. per Telegram via curl:
+      ["curl","-s","https://api.telegram.org/bot<TOKEN>/sendMessage",
+       "-d","chat_id=<ID>","--data-urlencode","text={message}"]).
+    Sorgenti, in ordine: env GIGAMAIL_APPROVAL_NOTIFY_CMD, poi il file
+    notify.json accanto ad agent.json ({"command": [...]}) — cosi' la
+    configurazione sopravvive al riavvio senza env vars.
     Eseguito SENZA shell (argomenti separati: il testo della preview non puo'
     diventare un comando), in background, con timeout, e il suo esito non
     influenza mai la fase 1. SOLO NOTIFICA: non approva, non puo' approvare —
     altrimenti sposterebbe il segreto digitabile dalla shell alla chat."""
+    def _valid(cmd):
+        return (isinstance(cmd, list) and cmd
+                and all(isinstance(c, str) for c in cmd))
+
     raw = os.environ.get("GIGAMAIL_APPROVAL_NOTIFY_CMD", "").strip()
-    if not raw:
-        return None
+    if raw:
+        try:
+            cmd = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return cmd if _valid(cmd) else None
     try:
-        cmd = json.loads(raw)
-    except json.JSONDecodeError:
+        # utf-8-sig: Notepad e Out-File di Windows salvano col BOM, e il
+        # file lo edita l'utente a mano — non deve rompersi per questo.
+        with open(_ade_root() / "notify.json", encoding="utf-8-sig") as f:
+            cmd = (json.load(f) or {}).get("command")
+        return cmd if _valid(cmd) else None
+    except Exception:
         return None
-    if not isinstance(cmd, list) or not cmd or not all(isinstance(c, str) for c in cmd):
-        return None
-    return cmd
 
 
 def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
@@ -402,31 +415,74 @@ def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
     return s[:limit]
 
 
-def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any]) -> bool:
-    """Lancia il comando di notifica configurato, se c'e'. Ritorna True se
-    e' stato avviato. Mai eccezioni verso il chiamante."""
-    cmd = _notify_command()
-    if not cmd:
-        return False
-    summary = _summarize_preview(preview)
-    argv = [c.replace("{request_id}", request_id).replace("{tool}", tool)
-             .replace("{summary}", summary) for c in cmd]
+def user_lang() -> str:
+    """Lingua in cui GigaMail parla ALL'UMANO (notifiche): quella del suo
+    sistema, override con GIGAMAIL_LANG. Oggi 'it' o 'en' (default).
+    La lingua delle RISPOSTE email non c'entra: quella la sceglie l'agente
+    dalla mail in arrivo."""
+    forced = os.environ.get("GIGAMAIL_LANG", "").strip().lower()
+    if forced:
+        return "it" if forced.startswith("it") else "en"
     try:
-        import subprocess
-        import threading
-
-        def _run():
-            try:
-                subprocess.run(argv, timeout=30, stdin=subprocess.DEVNULL,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except Exception:
-                pass  # la notifica e' best-effort
-
-        threading.Thread(target=_run, daemon=True).start()
-        audit(tool, {"request_id": request_id}, "approval_notified", detail=argv[0])
-        return True
+        import locale
+        loc = (locale.getlocale()[0] or "")
+        if not loc:
+            loc = locale.getdefaultlocale()[0] or ""
+        return "it" if str(loc).lower().startswith("it") else "en"
     except Exception:
-        return False
+        return "en"
+
+
+def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any],
+                              message: Optional[str] = None) -> bool:
+    """Notifica l'umano su TUTTI i canali configurati: desktop (toast di
+    sistema, attiva di default) + comando configurato (es. Telegram via
+    curl/openclaw). `message` e' il testo completo leggibile ("e' arrivata
+    una mail da X, propongo questa risposta... approvi?"); se assente si
+    genera dal riassunto della preview. Ritorna True se almeno un canale e'
+    partito. Mai eccezioni verso il chiamante, mai bloccante."""
+    summary = _summarize_preview(preview)
+    if message:
+        text = message
+    elif user_lang() == "it":
+        text = f"GigaMail: {tool} in attesa di approvazione — {summary}"
+    else:
+        text = f"GigaMail: {tool} awaiting approval — {summary}"
+
+    fired = False
+    try:
+        from ade_mail_agent.core import desktop_notify
+        if desktop_notify.notify("GigaMail", text):
+            fired = True
+    except Exception:
+        pass
+
+    cmd = _notify_command()
+    if cmd:
+        argv = [c.replace("{request_id}", request_id).replace("{tool}", tool)
+                 .replace("{summary}", summary).replace("{message}", text)
+                for c in cmd]
+        try:
+            import subprocess
+            import threading
+
+            def _run():
+                try:
+                    subprocess.run(argv, timeout=30, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass  # la notifica e' best-effort
+
+            # NON daemon: il comando di notifica deve sopravvivere all'uscita
+            # di un processo breve (watch --once, CLI) — un daemon thread
+            # verrebbe ucciso a meta' curl.
+            threading.Thread(target=_run, daemon=False).start()
+            audit(tool, {"request_id": request_id}, "approval_notified",
+                  detail=argv[0])
+            fired = True
+        except Exception:
+            pass
+    return fired
 
 
 def request_approval(tool: str, args: Dict[str, Any],

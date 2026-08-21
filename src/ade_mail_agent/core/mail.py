@@ -62,6 +62,27 @@ def mark_read(message_id: str):
 def set_read_status(message_id: str, is_read: bool = True):
     url = f'{GRAPH_URL}/me/messages/{message_id}'
     requests.patch(url, headers=_headers(), json={'isRead': is_read})
+def get_message_headers(message_id: str):
+    """Intestazioni internet del messaggio come {nome-minuscolo: [valori]},
+    per le barriere anti-spam delle regole (mail_guard). None = non
+    recuperabili: il chiamante tratta fail-closed."""
+    url = f'{GRAPH_URL}/me/messages/{message_id}'
+    params = {'$select': 'internetMessageHeaders'}
+    try:
+        res = requests.get(url, headers=_headers(), params=params)
+        res.raise_for_status()
+        raw = res.json().get('internetMessageHeaders') or []
+        out = {}
+        for h in raw:
+            name = str(h.get('name') or '').lower()
+            if name:
+                out.setdefault(name, []).append(str(h.get('value') or ''))
+        return out or None
+    except Exception as e:
+        print(f'[MS get_message_headers] error: {e}')
+        return None
+
+
 def send_message(to: str, subject: str, body: str,
                  reply_to_id: str = None,
                  cc: list = None, bcc: list = None,
@@ -90,7 +111,11 @@ def send_message(to: str, subject: str, body: str,
     if reply_to_id and not graph_atts:
         # Reply senza allegati: endpoint /reply (mantiene il thread)
         url = f'{GRAPH_URL}/me/messages/{reply_to_id}/reply'
-        payload = {'message': {'body': {'contentType': 'Text', 'content': body}}, 'comment': body}
+        # SOLO 'comment': passare anche message.body fa rifiutare la chiamata
+        # (SamePropertyContentConflictBody, "Specify either 'Comment' or
+        # 'Body'"). Scoperto dal vivo il 2026-08-21 grazie al provider_result
+        # propagato: prima il reply Graph falliva con un booleano muto.
+        payload = {'comment': body}
         res = requests.post(url, headers=_headers(), json=payload)
     else:
         # sendMail: invio nuovo o forward; supporta allegati inline (<~3MB totali)
