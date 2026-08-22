@@ -187,3 +187,33 @@ def test_notifica_non_approva_niente(monkeypatch, tmp_path):
     r = _phase1()
     time.sleep(0.3)
     assert policy.store().get(r["request_id"])["status"] == policy.PENDING
+
+
+def test_toast_xml_con_azioni_protocol():
+    """I bottoni della toast aprono gigamail://... (activationType=protocol):
+    la toast non approva, lancia la CLI che alza Hello."""
+    from ade_mail_agent.core import desktop_notify
+    xml = desktop_notify.build_toast_xml(
+        "GigaMail", "corpo <b>", [("Approva", "gigamail://approve/req_1"),
+                                  ("Rifiuta", "gigamail://reject/req_1")])
+    assert "launch='gigamail://approve/req_1'" in xml
+    assert xml.count("activationType='protocol'") == 3
+    assert "&lt;b&gt;" in xml  # escape
+    assert "<actions>" not in desktop_notify.build_toast_xml("t", "b")
+
+
+def test_open_url_accetta_solo_approve_reject(monkeypatch):
+    from ade_mail_agent import cli
+    calls = []
+    monkeypatch.setattr(cli, "cmd_approvals_approve", lambda a: calls.append(("a", a.request_id)) or 0)
+    monkeypatch.setattr(cli, "cmd_approvals_reject", lambda a: calls.append(("r", a.request_id)) or 0)
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "")
+
+    class A:
+        url = "gigamail://approve/req_ab12"
+    assert cli.cmd_open_url(A) == 0
+    A.url = "gigamail://reject/req_ab12/"
+    assert cli.cmd_open_url(A) == 0
+    A.url = "gigamail://delete/req_ab12"
+    assert cli.cmd_open_url(A) == 1
+    assert calls == [("a", "req_ab12"), ("r", "req_ab12")]

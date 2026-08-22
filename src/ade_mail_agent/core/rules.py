@@ -103,6 +103,17 @@ class RuleStore:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS ix_handled_rule_ts"
                 " ON handled (rule_id, ts)")
+            # feedback dell'umano per "rifiuta e riprova con modifica"
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(handled)")}
+            if "feedback" not in cols:
+                conn.execute("ALTER TABLE handled ADD COLUMN feedback TEXT")
+            # stato piccolo del watcher (es. offset di getUpdates Telegram)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS kv (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
 
     # ------------------------------------------------------------- rules
 
@@ -234,6 +245,49 @@ class RuleStore:
                 "UPDATE handled SET status=?, reason=?, ts=?"
                 " WHERE rule_id=? AND message_id=?",
                 (status, reason or None, time.time(), rule_id, str(message_id)))
+
+    def get_handled(self, rule_id: str, message_id: str) -> Optional[Dict[str, Any]]:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM handled WHERE rule_id=? AND message_id=?",
+                (rule_id, str(message_id))).fetchone()
+        return dict(row) if row else None
+
+    def find_by_request(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """La riga handled che ha generato una certa richiesta di
+        approvazione: serve per tradurre un "approva req_x" arrivato da
+        Telegram nella mail e nella regola a cui appartiene."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM handled WHERE request_id=?",
+                (request_id,)).fetchone()
+        return dict(row) if row else None
+
+    def request_retry(self, rule_id: str, message_id: str, feedback: str) -> None:
+        """L'umano ha rifiutato la bozza e chiesto una modifica: la mail
+        torna in coda con il feedback, e il watcher la rifa' al prossimo
+        giro (process_retries) — ripassando dal gate."""
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE handled SET status='retry', reason=NULL, feedback=?,"
+                " ts=? WHERE rule_id=? AND message_id=?",
+                (feedback, time.time(), rule_id, str(message_id)))
+
+    def retries(self) -> List[Dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM handled WHERE status='retry'").fetchall()
+        return [dict(r) for r in rows]
+
+    def kv_get(self, key: str, default: str = "") -> str:
+        with self._conn() as conn:
+            row = conn.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+        return row["value"] if row and row["value"] is not None else default
+
+    def kv_set(self, key: str, value: str) -> None:
+        with self._conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?,?)",
+                         (key, str(value)))
 
     def pending_requests(self, rule_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Le mail per cui esiste una richiesta di approvazione creata dal

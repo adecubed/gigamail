@@ -27,6 +27,7 @@ Proprieta' non negoziabili (design 20/08, NOTES):
     al massimo semi. Raffica di match → la regola si pausa da sola.
 """
 import os
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -34,6 +35,7 @@ from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import file_extractor, mail_guard, mail_router, observer
 from ade_mail_agent.core import rules as rules_mod
+from ade_mail_agent.core import telegram_channel
 
 TOOL = "reply_mail"
 
@@ -44,6 +46,8 @@ TOOL = "reply_mail"
 # mail resta semplicemente da leggere (nessun retry automatico).
 _RULE_TTL_SECONDS = policy._env_int("GIGAMAIL_RULE_APPROVAL_TTL", 4 * 3600)
 
+_DRAFT_ATTEMPTS = 3
+_DRAFT_TIMEOUT_SECONDS = policy._env_int("GIGAMAIL_DRAFT_TIMEOUT", 300)
 _DOC_CHARS_MAX = 8000
 _MAIL_CHARS_MAX = 6000
 _DRAFT_CHARS_MAX = 20000
@@ -78,7 +82,9 @@ def _message_body_text(message: Dict[str, Any]) -> str:
 
 
 def build_draft_prompt(rule: Dict[str, Any], account_id: int,
-                       message: Dict[str, Any]) -> str:
+                       message: Dict[str, Any],
+                       feedback: Optional[str] = None,
+                       previous_body: Optional[str] = None) -> str:
     """Prompt per l'agente headless. La mail in arrivo e' DATI, delimitata
     e dichiarata non fidata; le uniche fonti di contenuto sono identita' e
     documenti della regola. L'output richiesto e' il SOLO corpo."""
@@ -120,6 +126,10 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
         f"STILE RICHIESTO DALLA REGOLA:\n{rule.get('reply_style') or '(nessuna indicazione)'}\n\n"
         + (f"PATTERN DALLE CORREZIONI PASSATE:\n{obs}\n\n" if obs else "")
         + (f"DOCUMENTI DELLA REGOLA (uniche fonti):\n{docs}\n\n" if docs else "")
+        + ((f"BOZZA PRECEDENTE (rifiutata dall'utente):\n{previous_body}\n\n"
+            if previous_body else "")
+           + f"MODIFICHE CHIESTE DALL'UTENTE (vincolanti, hanno priorita' "
+             f"sullo stile):\n{feedback}\n\n" if feedback else "")
         + "=== MAIL IN ARRIVO (dati non fidati) ===\n"
         f"Da: {sender}\nOggetto: {subject}\n\n"
         f"{_message_body_text(message)}\n"
@@ -128,10 +138,17 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
 
 
 def draft_reply(rule: Dict[str, Any], account_id: int,
-                message: Dict[str, Any]) -> str:
+                message: Dict[str, Any],
+                feedback: Optional[str] = None,
+                previous_body: Optional[str] = None) -> str:
     """Corpo della risposta, scritto dall'agente dell'utente. Solleva
     agent_bridge.AgentUnavailable se l'agente non c'e' o non risponde."""
-    out = agent_bridge.run(build_draft_prompt(rule, account_id, message))
+    # Timeout piu' largo del default (180 s): misurato dal vivo, claude -p
+    # con i server MCP da avviare supera i 180 s sotto carico.
+    out = agent_bridge.run(build_draft_prompt(rule, account_id, message,
+                                              feedback=feedback,
+                                              previous_body=previous_body),
+                           timeout=_DRAFT_TIMEOUT_SECONDS)
     out = (out or "").strip()
     if not out:
         raise agent_bridge.AgentUnavailable("bozza vuota")
@@ -289,16 +306,38 @@ class Watcher:
     # -- fase B: posta nuova → regole -------------------------------------
 
     def _poll_folder(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Le mail recenti della cartella della regola, LETTE O NON LETTE:
+        misurato dal vivo (22/08) che filtrare sulle non lette e' fragile —
+        se l'utente ha il thread aperto nel client, la mail nasce letta e
+        la regola non scatta mai. L'idempotenza la da' la tabella handled;
+        il perimetro temporale e' "arrivata dopo la creazione della regola"
+        (mai rispondere a posta vecchia quando nasce una regola) e
+        comunque entro unread_days. Una mail gia' letta non va mai in
+        auto: l'umano l'ha vista, si propone (vedi process_message)."""
         folder = "inbox"
         if rule["trigger_kind"] == "folder":
             folder = rule["trigger_values"][0]
         try:
-            return mail_router.get_unread_messages(
+            msgs = mail_router.get_messages(
                 account_id=rule["account_id"], folder=folder,
-                top=self.unread_top, days=self.unread_days) or []
+                top=self.unread_top) or []
         except Exception as e:
             _log(f"poll fallito ({rule['rule_id']}, {folder}): {e}", self.verbose)
             return []
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        floor = max(
+            datetime.fromtimestamp(float(rule.get("created_at") or 0), timezone.utc),
+            now - timedelta(days=self.unread_days))
+        out = []
+        for m in msgs:
+            if not isinstance(m, dict):
+                continue
+            dt = mail_router._message_datetime(str(m.get("receivedDateTime") or ""))
+            if dt is not None and dt < floor:
+                continue
+            out.append(m)
+        return out
 
     @staticmethod
     def _matches(rule: Dict[str, Any], message: Dict[str, Any]) -> bool:
@@ -311,9 +350,15 @@ class Watcher:
     def _folder_of(self, rule: Dict[str, Any]) -> str:
         return rule["trigger_values"][0] if rule["trigger_kind"] == "folder" else "inbox"
 
-    def process_message(self, rule: Dict[str, Any], message: Dict[str, Any]) -> str:
+    def process_message(self, rule: Dict[str, Any], message: Dict[str, Any],
+                        retry_feedback: Optional[str] = None,
+                        previous_body: Optional[str] = None) -> str:
         """Una mail matchata da una regola, dall'inizio alla decisione.
-        Ritorna lo status registrato (per i test e per il log)."""
+        Ritorna lo status registrato (per i test e per il log).
+        `retry_feedback`: l'umano ha rifiutato una bozza e chiesto una
+        modifica — si rifa' la bozza col feedback, si saltano tetto e
+        cooldown (l'ha chiesto lui) ma NON le barriere, e l'esito e'
+        sempre semi: una bozza corretta a mano la vuole vedere."""
         rs = rules_mod.store()
         rule_id = rule["rule_id"]
         account_id = rule["account_id"]
@@ -355,12 +400,14 @@ class Watcher:
                 message=pause_msg)
             return "paused"
 
-        # tetto giornaliero e cooldown per mittente (5)
-        if rs.sent_today(rule_id) >= rule["daily_cap"]:
-            return _skip("daily-cap")
-        last = rs.last_reply_to(rule_id, sender)
-        if last and time.time() - last < rule["cooldown_hours"] * 3600:
-            return _skip("cooldown")
+        # tetto giornaliero e cooldown per mittente (5) — non per i retry
+        # chiesti dall'umano
+        if retry_feedback is None:
+            if rs.sent_today(rule_id) >= rule["daily_cap"]:
+                return _skip("daily-cap")
+            last = rs.last_reply_to(rule_id, sender)
+            if last and time.time() - last < rule["cooldown_hours"] * 3600:
+                return _skip("cooldown")
 
         # barriere sul messaggio (1,2,3,7) — fail-closed sugli header
         folder = self._folder_of(rule)
@@ -379,20 +426,46 @@ class Watcher:
         # lo permettono (DMARC pass) e non e' un primo contatto con
         # first_contact=semi
         mode = rule["mode"]
-        if mode == "auto":
+        if retry_feedback is not None:
+            mode = "semi"
+        elif mode == "auto":
             if not verdict.auto_ok:
                 mode = "semi"
             elif rule["first_contact"] == "semi" and not rs.ever_replied_to(sender, account_id):
                 mode = "semi"
+            elif bool(full.get("isRead", message.get("isRead"))):
+                mode = "semi"  # l'umano l'ha gia' vista: propongo, non invio
 
         # bozza dall'agente dell'utente, SOLO corpo
         try:
-            body = draft_reply(rule, account_id, full)
+            body = draft_reply(rule, account_id, full,
+                               feedback=retry_feedback,
+                               previous_body=previous_body)
         except agent_bridge.AgentUnavailable as e:
-            rs.set_status(rule_id, message_id, "failed", f"draft:{e}")
+            # L'agente non ha risposto (timeout, assente): non e' colpa
+            # della mail. Si riprova ai giri successivi, fino a
+            # _DRAFT_ATTEMPTS; poi si dichiara il fallimento all'umano
+            # (misurato dal vivo 22/08: claude -p oltre i 180 s sotto carico).
+            prev = rs.get_handled(rule_id, message_id) or {}
+            m_att = re.match(r"^draft-attempt:(\d+)$", str(prev.get("reason") or ""))
+            attempt = (int(m_att.group(1)) if m_att else 0) + 1
             policy.audit("watch_rule", {"rule_id": rule_id,
                                         "message_id": message_id}, "draft_failed",
-                         detail=str(e)[:200])
+                         detail=f"attempt {attempt}: {str(e)[:160]}")
+            if attempt < _DRAFT_ATTEMPTS:
+                rs.request_retry(rule_id, message_id, retry_feedback or "")
+                rs.set_status(rule_id, message_id, "retry", f"draft-attempt:{attempt}")
+                return "retry"
+            rs.set_status(rule_id, message_id, "failed", f"draft:{e}")
+            policy.notify_approval_requested(
+                "-", f"draft_failed:{rule_id}", {"action": "draft failed"},
+                message=(f"Bozza NON prodotta per la mail da {sender} "
+                         f"({rule_id}): l'agente non risponde ({e}). "
+                         f"Rispondi a mano."
+                         if policy.user_lang() == "it" else
+                         f"No draft produced for the mail from {sender} "
+                         f"({rule_id}): the agent is not responding ({e}). "
+                         f"Reply by hand."))
             return "failed"
 
         args = {"message_id": message_id, "body": body, "account_id": account_id}
@@ -406,9 +479,20 @@ class Watcher:
             rs.record(rule_id, account_id, message_id, sender,
                       "awaiting_approval", "", request_id)
             if created:
+                buttons = None
+                tg = telegram_channel.channel()
+                if tg:
+                    buttons = tg.action_buttons(
+                        request_id, policy.user_lang(), tg.approve_enabled)
+                it = policy.user_lang() == "it"
+                actions = [("✅ " + ("Approva" if it else "Approve"),
+                            f"gigamail://approve/{request_id}"),
+                           ("❌ " + ("Rifiuta" if it else "Reject"),
+                            f"gigamail://reject/{request_id}")]
                 policy.notify_approval_requested(
                     request_id, TOOL, preview,
-                    message=_semi_notify_text(rule, full, body, request_id))
+                    message=_semi_notify_text(rule, full, body, request_id),
+                    buttons=buttons, actions=actions)
             _log(f"semi: {request_id} in attesa ({rule_id}, {sender})", self.verbose)
             return "awaiting_approval"
 
@@ -437,9 +521,44 @@ class Watcher:
              self.verbose)
         return "sent" if ok else "failed"
 
+    def process_retries(self) -> int:
+        """Le mail per cui l'umano ha chiesto "rifai la bozza cosi'":
+        non passano dal filtro unread (magari l'ha gia' letta), si
+        ripescano per id e si riprocessano col feedback."""
+        n = 0
+        rs = rules_mod.store()
+        for row in rs.retries():
+            rule = rs.get(row["rule_id"])
+            if not rule or rule["paused"] or rule["expired"]:
+                rs.set_status(row["rule_id"], row["message_id"], "failed",
+                              "rule-inactive")
+                continue
+            previous = None
+            rec = policy.store().get(row["request_id"]) if row.get("request_id") else None
+            if rec:
+                previous = (rec.get("args") or {}).get("body")
+            try:
+                message = mail_router.get_message(
+                    account_id=rule["account_id"], message_id=row["message_id"],
+                    folder=self._folder_of(rule)) or {}
+            except Exception as e:
+                rs.set_status(row["rule_id"], row["message_id"], "failed",
+                              f"refetch:{e}"[:200])
+                continue
+            if not message:
+                rs.set_status(row["rule_id"], row["message_id"], "failed",
+                              "message-vanished")
+                continue
+            self.process_message(rule, message,
+                                 retry_feedback=row.get("feedback") or "",
+                                 previous_body=previous)
+            n += 1
+        return n
+
     def tick(self) -> Dict[str, int]:
         stats = {"executed": 0, "processed": 0}
         stats["executed"] = self.execute_approved()
+        stats["processed"] += self.process_retries()
         for rule in rules_mod.store().active():
             for message in self._poll_folder(rule):
                 if not self._matches(rule, message):
@@ -451,8 +570,156 @@ class Watcher:
                 stats["processed"] += 1
         return stats
 
+    # -- Telegram: tap e comandi dall'umano --------------------------------
+
+    def _tg_say(self, tg, it: str, en: str) -> None:
+        tg.send(it if policy.user_lang() == "it" else en)
+
+    def handle_telegram_event(self, tg, ev: Dict[str, Any]) -> None:
+        """Un update di Telegram. SOLO la chat configurata conta: il resto
+        finisce nell'audit e basta."""
+        if not tg.is_trusted(ev):
+            policy.audit("telegram", {"chat_id": ev.get("chat_id"),
+                                      "from_id": ev.get("from_id")},
+                         "telegram_unauthorized")
+            return
+        rs = rules_mod.store()
+        if ev["kind"] == "callback":
+            m = re.match(r"^([arm]):(req_[0-9a-f]+)$", ev.get("data", ""))
+            tg.answer_callback(ev.get("callback_id", ""))
+            if m:
+                self._tg_action(tg, m.group(1), m.group(2), rs)
+            return
+        text = (ev.get("text") or "").strip()
+        waiting = rs.kv_get("tg_await_feedback")
+        if waiting:
+            rs.kv_set("tg_await_feedback", "")
+            self._tg_retry(tg, waiting, text, rs)
+            return
+        m = re.match(r"^/?(approva|approve|si|sì|ok|yes)\s+(req_[0-9a-f]+)\s*$",
+                     text, re.I)
+        if m:
+            self._tg_action(tg, "a", m.group(2), rs)
+            return
+        m = re.match(r"^/?(rifiuta|reject|no)\s+(req_[0-9a-f]+)\s*(?::\s*(.+))?$",
+                     text, re.I | re.S)
+        if m:
+            if m.group(3):
+                self._tg_retry(tg, m.group(2), m.group(3).strip(), rs)
+            else:
+                self._tg_action(tg, "r", m.group(2), rs)
+            return
+        self._tg_say(tg,
+                     "Comandi: 'approva req_x', 'rifiuta req_x', "
+                     "'rifiuta req_x: <modifiche>' — o i bottoni sotto la bozza.",
+                     "Commands: 'approve req_x', 'reject req_x', "
+                     "'reject req_x: <changes>' — or the buttons under the draft.")
+
+    def _tg_action(self, tg, action: str, rid: str, rs) -> None:
+        row = rs.find_by_request(rid)
+        rec = policy.store().get(rid)
+        if not row or not rec:
+            self._tg_say(tg, f"{rid}: richiesta sconosciuta.",
+                         f"{rid}: unknown request.")
+            return
+        if rec["status"] != policy.PENDING or rec["expired"]:
+            self._tg_say(tg, f"{rid}: gia' decisa o scaduta ({rec['status']}).",
+                         f"{rid}: already decided or expired ({rec['status']}).")
+            return
+        who = f"telegram:{tg.chat_id}"
+        if action == "a":
+            if not tg.approve_enabled:
+                self._tg_say(tg,
+                             "L'approvazione da Telegram non e' abilitata su "
+                             "questo GigaMail: approva dal PC (Hello). Da qui "
+                             "puoi solo rifiutare o chiedere modifiche.",
+                             "Approval from Telegram is not enabled on this "
+                             "GigaMail: approve on the PC (Hello). From here "
+                             "you can only reject or ask for changes.")
+                return
+            if not policy.store().approve(rid, by=who):
+                self._tg_say(tg, f"{rid}: non approvabile.", f"{rid}: not approvable.")
+                return
+            self.execute_approved()
+            h = rs.get_handled(row["rule_id"], row["message_id"]) or {}
+            ok = h.get("status") == "sent"
+            self._tg_say(
+                tg,
+                f"✅ Inviata ({rid})." if ok
+                else f"⚠️ Approvata ma invio fallito ({rid}): {h.get('reason')}",
+                f"✅ Sent ({rid})." if ok
+                else f"⚠️ Approved but send failed ({rid}): {h.get('reason')}")
+            return
+        if action == "r":
+            policy.store().reject(rid, by=who)
+            rs.set_status(row["rule_id"], row["message_id"], "rejected")
+            self._tg_say(tg, f"❌ Rifiutata ({rid}). Nessun invio.",
+                         f"❌ Rejected ({rid}). Nothing sent.")
+            return
+        if action == "m":
+            rs.kv_set("tg_await_feedback", rid)
+            self._tg_say(tg,
+                         f"✏️ Scrivi qui le modifiche che vuoi alla bozza {rid}: "
+                         "la rifaccio e te la ripropongo.",
+                         f"✏️ Type the changes you want to draft {rid}: "
+                         "I will redo it and propose it again.")
+
+    def _tg_retry(self, tg, rid: str, feedback: str, rs) -> None:
+        row = rs.find_by_request(rid)
+        rec = policy.store().get(rid)
+        if not row or not rec:
+            self._tg_say(tg, f"{rid}: richiesta sconosciuta.", f"{rid}: unknown request.")
+            return
+        if not feedback:
+            self._tg_say(tg, "Modifiche vuote: nessuna azione.", "Empty changes: nothing done.")
+            return
+        if rec["status"] == policy.PENDING and not rec["expired"]:
+            policy.store().reject(rid, by=f"telegram:{tg.chat_id}")
+        rs.request_retry(row["rule_id"], row["message_id"], feedback)
+        policy.audit("watch_rule", {"rule_id": row["rule_id"],
+                                    "message_id": row["message_id"]},
+                     "retry_requested", detail=feedback[:200])
+        self._tg_say(tg, "✏️ Ok, rifaccio la bozza con le tue modifiche…",
+                     "✏️ Ok, redoing the draft with your changes…")
+        self.process_retries()
+
+    def _wait(self, seconds: int) -> None:
+        """Tra un tick e l'altro: long-poll di Telegram se configurato
+        (reagisce subito a un tap), altrimenti sleep."""
+        tg = telegram_channel.channel()
+        if not tg:
+            time.sleep(seconds)
+            return
+        rs = rules_mod.store()
+        deadline = time.time() + seconds
+        while True:
+            remaining = int(deadline - time.time())
+            if remaining <= 0:
+                return
+            offset = int(rs.kv_get("tg_offset", "0") or 0)
+            events, new_offset = tg.poll(offset, timeout=min(remaining, 30))
+            if new_offset != offset:
+                rs.kv_set("tg_offset", str(new_offset))
+            for ev in events:
+                try:
+                    self.handle_telegram_event(tg, ev)
+                except Exception as e:
+                    _log(f"telegram event fallito: {e}", True)
+            if events:
+                return  # qualcosa e' successo: tick subito
+
     def run(self, once: bool = False) -> None:
-        _log(f"watcher attivo, intervallo {self.interval}s", True)
+        tg = telegram_channel.channel()
+        _log(f"watcher attivo, intervallo {self.interval}s"
+             + (f", Telegram {'con' if tg.approve_enabled else 'senza'} approvazione"
+                if tg else ""), True)
+        if tg:
+            # Quale chat questo watcher considera "l'umano": scritto
+            # nell'audit a ogni avvio, cosi' un notify.json manomesso
+            # lascia traccia (SECURITY.md, approvazione da Telegram).
+            policy.audit("telegram", {"chat_id": tg.chat_id,
+                                      "approve": tg.approve_enabled},
+                         "telegram_trusted_chat")
         while True:
             try:
                 stats = self.tick()
@@ -464,4 +731,4 @@ class Watcher:
                 _log(f"tick fallito: {e}", True)
             if once:
                 return
-            time.sleep(self.interval)
+            self._wait(self.interval)

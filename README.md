@@ -161,6 +161,12 @@ injected instruction cannot enable autopilot.
 
 - **semi** (default): the draft becomes a normal approval request — you get
   the notification, you approve with Hello, it goes out.
+- Notifications reach you where you are: a **Windows toast** with
+  ✅ / ❌ buttons (run `gigamail desktop-setup` once — UAC prompt — to make
+  them clickable; they open the approval, which raises Hello) and
+  **Telegram** (`gigamail telegram setup`, your own bot: ✅ approve if you
+  opted in with `--approve` behind Hello, ❌ reject, ✏️ ask for changes —
+  accepted only from your chat).
 - **auto**: the request is born approved, `decided_by automode:<rule_id>` —
   you gave that approval when you created the rule, for a precise scope,
   with a mandatory expiry, a daily cap and a per-sender cooldown. The
@@ -336,6 +342,12 @@ un'istruzione iniettata non può accendere l'autopilota.
 
 - **semi** (default): la bozza diventa una normale richiesta di
   approvazione — arriva la notifica, approvi con Hello, parte.
+- Le notifiche ti raggiungono dove sei: **toast Windows** con bottoni
+  ✅ / ❌ (una volta `gigamail desktop-setup` — prompt UAC — per renderli
+  cliccabili; aprono l'approvazione, che alza Hello) e **Telegram**
+  (`gigamail telegram setup`, col tuo bot: ✅ approva se hai scelto
+  `--approve` dietro Hello, ❌ rifiuta, ✏️ chiedi modifiche — accettati
+  solo dalla tua chat).
 - **auto**: la richiesta nasce già approvata, `decided_by
   automode:<rule_id>` — quell'approvazione l'hai data tu creando la regola,
   per uno scope preciso, con scadenza obbligatoria, tetto giornaliero e

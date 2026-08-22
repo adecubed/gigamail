@@ -42,7 +42,7 @@ def fake_world(monkeypatch):
     """Provider e agente finti. `world` raccoglie cio' che succede."""
     world = {"unread": [], "headers": DMARC_PASS, "replies": [],
              "draft": "Buongiorno,\nin allegato trova le informazioni.\nSaluti"}
-    monkeypatch.setattr(mail_router, "get_unread_messages",
+    monkeypatch.setattr(mail_router, "get_messages",
                         lambda **kw: list(world["unread"]))
     monkeypatch.setattr(mail_router, "get_message_headers",
                         lambda **kw: world["headers"])
@@ -145,6 +145,27 @@ def test_auto_senza_dmarc_pass_degrada_a_semi(fake_world):
     watcher_mod.Watcher().tick()
     assert fake_world["replies"] == []
     assert len(policy.store().list_pending()) == 1
+
+
+def test_mail_gia_letta_mai_auto(fake_world):
+    """L'utente l'ha gia' vista nel client → si propone, non si invia."""
+    rid = _rule(mode="auto")
+    _seed_trust(rid)
+    m = _msg()
+    m["isRead"] = True
+    fake_world["unread"] = [m]
+    watcher_mod.Watcher().tick()
+    assert fake_world["replies"] == []
+    assert len(policy.store().list_pending()) == 1
+
+
+def test_posta_precedente_alla_regola_ignorata(fake_world):
+    """Una regola nuova non risponde alla posta vecchia."""
+    _rule(mode="semi")
+    m = _msg()
+    m["receivedDateTime"] = "2020-01-01T10:00:00Z"
+    fake_world["unread"] = [m]
+    assert watcher_mod.Watcher().tick()["processed"] == 0
 
 
 def test_mail_automatica_non_riceve_mai_risposta(fake_world):

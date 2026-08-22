@@ -434,13 +434,17 @@ def user_lang() -> str:
 
 
 def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any],
-                              message: Optional[str] = None) -> bool:
+                              message: Optional[str] = None,
+                              buttons: Optional[List[List[Dict[str, str]]]] = None,
+                              actions: Optional[List[tuple]] = None) -> bool:
     """Notifica l'umano su TUTTI i canali configurati: desktop (toast di
-    sistema, attiva di default) + comando configurato (es. Telegram via
-    curl/openclaw). `message` e' il testo completo leggibile ("e' arrivata
-    una mail da X, propongo questa risposta... approvi?"); se assente si
-    genera dal riassunto della preview. Ritorna True se almeno un canale e'
-    partito. Mai eccezioni verso il chiamante, mai bloccante."""
+    sistema, attiva di default), Telegram nativo (blocco "telegram" in
+    notify.json, con `buttons` = tastiera inline sotto il messaggio) e il
+    comando generico configurato (openclaw, curl...). `message` e' il testo
+    completo leggibile ("e' arrivata una mail da X, propongo questa
+    risposta... approvi?"); se assente si genera dal riassunto della
+    preview. Ritorna True se almeno un canale e' partito. Mai eccezioni
+    verso il chiamante, mai bloccante."""
     summary = _summarize_preview(preview)
     if message:
         text = message
@@ -452,7 +456,22 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
     fired = False
     try:
         from ade_mail_agent.core import desktop_notify
-        if desktop_notify.notify("GigaMail", text):
+        # `actions` = bottoni sulla toast: aprono gigamail://approve/<id>
+        # (→ CLI → Hello), non approvano da soli
+        if desktop_notify.notify("GigaMail", text, actions=actions):
+            fired = True
+    except Exception:
+        pass
+
+    try:
+        from ade_mail_agent.core import telegram_channel
+        tg = telegram_channel.channel()
+        if tg:
+            import threading
+            threading.Thread(target=lambda: tg.send(text, buttons=buttons),
+                             daemon=False).start()
+            audit(tool, {"request_id": request_id}, "approval_notified",
+                  detail="telegram")
             fired = True
     except Exception:
         pass

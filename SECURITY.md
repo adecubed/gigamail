@@ -139,6 +139,23 @@ compatible:
   `decided_by: automode:<rule_id>` — it is always visible *which* rule let
   *what* through — and the approval-request notification fires for auto
   sends too, so the human sees it even after the fact.
+- **Approving from Telegram** (opt-in, `gigamail telegram setup --approve`,
+  behind the OS prompt). This looks like the "typeable secret moved to
+  chat" we rejected — it is not. The rejected design was a code shown in
+  chat that the agent could read and type back. Here the watcher accepts
+  `approve / reject / edit` **only from the configured chat_id**, and the
+  Bot API cannot fabricate a message *from* a user: a process on the PC,
+  even holding the bot token, writes *as the bot*, never as you. The trust
+  anchor becomes your phone's Telegram session — the same nature as
+  Windows Hello (whoever holds the unlocked phone ≈ whoever knows the
+  PIN). Declared limits: the phone is now an approval device, protect it
+  like one; a stolen bot token lets someone read the draft previews or
+  silence the channel (DoS → fail-closed), **not** approve; `notify.json`
+  is a file on disk, so a process with your shell could edit the trusted
+  chat_id — the watcher audits the configuration it trusts and the real
+  user stops receiving notifications the moment it changes. Rejecting and
+  asking for changes never need approval rights. Audit: `decided_by:
+  telegram:<chat_id>`.
 - Declared limit: outgoing rule replies carry `Auto-Submitted:
   auto-replied` over SMTP; Microsoft Graph rejects non `x-*` custom headers,
   so replies sent through Graph do not carry it. Our own loop protection

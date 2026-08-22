@@ -477,6 +477,120 @@ def cmd_rules_remove(args) -> int:
     return 1
 
 
+def cmd_telegram_setup(args) -> int:
+    """Configura Telegram come canale di notifica e (opzionale, dietro
+    Hello) di approvazione. Il token si digita a video e NON e' un
+    argomento: niente cronologia di shell, niente agente che lo vede."""
+    import json as _json
+    from ade_mail_agent.core import telegram_channel
+    existing = telegram_channel.load_config() or {}
+    # chat_id: dal blocco telegram esistente, o dal vecchio comando curl
+    default_chat = existing.get("chat_id")
+    if not default_chat:
+        try:
+            with open(telegram_channel._config_path(), encoding="utf-8-sig") as f:
+                cmd = (_json.load(f) or {}).get("command") or []
+            for c in cmd:
+                if str(c).startswith("chat_id="):
+                    default_chat = int(str(c).split("=", 1)[1])
+        except Exception:
+            pass
+    print("Telegram — il tuo chat_id e' il tuo user id (chiedilo a @userinfobot).")
+    raw = input(f"chat_id [{default_chat or ''}]: ").strip()
+    try:
+        chat_id = int(raw) if raw else int(default_chat)
+    except (TypeError, ValueError):
+        print("chat_id non valido.")
+        return 1
+    token = getpass.getpass("Token del bot (da @BotFather, non viene mostrato): ").strip()
+    if not token and existing.get("token"):
+        token = existing["token"]
+        print("(token invariato)")
+    if not token or ":" not in token:
+        print("Token mancante o malformato (atteso numeri:lettere).")
+        return 1
+    approve = bool(getattr(args, "approve", False))
+    if approve:
+        print("\nATTENZIONE: con --approve un tap su Telegram INVIA la mail. "
+              "Il tuo telefono diventa un dispositivo di approvazione, come "
+              "il PIN di Windows Hello. Chi ha il telefono sbloccato puo' dire si'.")
+        hello_ts = _hello_or_refuse(
+            "GigaMail: abilitare l'APPROVAZIONE delle risposte da Telegram "
+            f"(chat {chat_id})?")
+        if not hello_ts:
+            return 1
+    telegram_channel.save_config(token, chat_id, approve)
+    from ade_mail_agent.policy import audit
+    audit("telegram", {"chat_id": chat_id, "approve": approve},
+          "telegram_configured", detail=_cli_who())
+    tg = telegram_channel.channel()
+    ok = tg.send("GigaMail: canale Telegram configurato"
+                 + (" — approvazione ABILITATA." if approve else
+                    " — solo notifiche e rifiuto (approva dal PC).")) if tg else False
+    print("Configurato." + (" Messaggio di prova inviato." if ok else
+                            " ATTENZIONE: il messaggio di prova NON e' partito (token/chat_id?)."))
+    return 0 if ok else 1
+
+
+def cmd_telegram_test(_args) -> int:
+    from ade_mail_agent.core import telegram_channel
+    tg = telegram_channel.channel()
+    if not tg:
+        print("Telegram non configurato: gigamail telegram setup")
+        return 1
+    ok = tg.send("GigaMail: messaggio di prova.")
+    print("Inviato." if ok else "Invio fallito (token/chat_id?).")
+    return 0 if ok else 1
+
+
+def cmd_desktop_setup(args) -> int:
+    """Una volta per PC: rende cliccabili i bottoni della toast.
+    Scrive HKLM\\Software\\Classes\\gigamail (serve admin: prompt UAC) e il
+    collegamento Start Menu con l'AppID. Senza, le toast arrivano senza
+    bottoni e si approva da CLI/console/Telegram."""
+    import sys as _sys
+    from ade_mail_agent.core import desktop_notify
+    if _sys.platform != "win32":
+        print("Solo Windows: su macOS/Linux la notifica e' solo informativa.")
+        return 0
+    desktop_notify._win_register_aumid()
+    if getattr(args, "check", False):
+        print("Bottoni toast:", "ATTIVI" if desktop_notify.protocol_registered()
+              else "non attivi (esegui: gigamail desktop-setup)")
+        return 0
+    if desktop_notify.protocol_registered():
+        print("Gia' configurato: i bottoni della toast sono attivi.")
+        return 0
+    print("Registro lo schema gigamail:// a livello macchina: conferma il "
+          "prompt UAC di Windows...")
+    ok = desktop_notify.register_protocol_machine()
+    print("Fatto: i bottoni della toast aprono l'approvazione (Hello)." if ok
+          else "Non registrato (UAC negato o errore). Le toast restano senza bottoni.")
+    return 0 if ok else 1
+
+
+def cmd_open_url(args) -> int:
+    """Handler dello schema gigamail:// (click su una toast). Traduce
+    l'URL in un comando della CLI: approve → Hello. La finestra resta
+    aperta finche' l'utente non preme INVIO, cosi' vede l'esito."""
+    import re as _re
+    m = _re.match(r"^gigamail://(approve|reject)/(req_[0-9a-f]+)/?$",
+                  (args.url or "").strip(), _re.I)
+    if not m:
+        print(f"URL non riconosciuto: {args.url}")
+        input("Premi INVIO per chiudere... ")
+        return 1
+    action, rid = m.group(1).lower(), m.group(2)
+
+    class _A:
+        request_id = rid
+    rc = cmd_approvals_approve(_A) if action == "approve" else cmd_approvals_reject(_A)
+    if rc == 0 and action == "approve":
+        print("Il watcher la invia al prossimo giro (entro l'intervallo di polling).")
+    input("Premi INVIO per chiudere... ")
+    return rc
+
+
 def cmd_watch(args) -> int:
     from ade_mail_agent.watcher import Watcher
     try:
@@ -589,6 +703,26 @@ def main(argv=None) -> int:
     p_rrm = rules_sub.add_parser("remove")
     p_rrm.add_argument("rule_id")
     p_rrm.set_defaults(fn=cmd_rules_remove)
+
+    p_tg = sub.add_parser(
+        "telegram", help="Telegram: notifiche e (opzionale) approvazione dal telefono")
+    tg_sub = p_tg.add_subparsers(dest="subcommand", required=True)
+    p_tgs = tg_sub.add_parser(
+        "setup", help="configura bot e chat (token digitato, mai argomento)")
+    p_tgs.add_argument("--approve", action="store_true",
+                       help="abilita l'approvazione da Telegram (richiede Hello)")
+    p_tgs.set_defaults(fn=cmd_telegram_setup)
+    tg_sub.add_parser("test").set_defaults(fn=cmd_telegram_test)
+
+    p_ds = sub.add_parser(
+        "desktop-setup",
+        help="rende cliccabili i bottoni delle notifiche Windows (una volta, UAC)")
+    p_ds.add_argument("--check", action="store_true")
+    p_ds.set_defaults(fn=cmd_desktop_setup)
+
+    p_url = sub.add_parser("open-url", help=argparse.SUPPRESS)
+    p_url.add_argument("url")
+    p_url.set_defaults(fn=cmd_open_url)
 
     p_watch = sub.add_parser(
         "watch", help="processo che applica le regole alla posta in arrivo")
