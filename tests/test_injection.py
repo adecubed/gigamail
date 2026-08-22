@@ -164,7 +164,7 @@ def test_istruzioni_server_marcano_le_mail_come_non_fidate():
     """Guardia di regressione: le instructions MCP devono dire che il
     contenuto email non e' fidato e che l'agente NON puo' auto-approvarsi."""
     instr = (srv.mcp.instructions or "").upper()
-    assert "NON " in instr and "FIDAT" in instr
+    assert "UNTRUSTED" in instr and "NEVER" in instr
     assert "request_id" in (srv.mcp.instructions or "")
 
 

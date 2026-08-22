@@ -72,6 +72,46 @@ code.
   processes now (`watch --once` no longer kills the notify thread
   mid-flight), and `notify.json` tolerates the BOM that Windows editors
   add.
+- **Approve, reject or ask for changes from Telegram.** `gigamail telegram
+  setup` (token typed, never an argument) makes Telegram a native channel:
+  semi drafts arrive with ✅ / ❌ / ✏️ buttons; the watcher long-polls
+  `getUpdates` between ticks and reacts in a second. Commands are accepted
+  **only from the configured chat_id** — the Bot API cannot forge a
+  message from a user, so a process on the PC cannot say yes for you.
+  ✅ requires `--approve`, an explicit opt-in given behind Windows Hello /
+  Touch ID (your phone becomes an approval device — see SECURITY.md);
+  ❌ and ✏️ never need it. ✏️ asks for your changes, the drafter redoes
+  the body with them (and the rejected draft as context), and the new
+  draft goes through the gate again — always as semi, even on an `auto`
+  rule. Audit: `decided_by: telegram:<chat_id>`; the trusted chat is
+  written to the audit at every watcher start.
+- **Clickable Windows notifications.** Semi drafts arrive as a toast with
+  ✅ / ❌ buttons that open `gigamail://approve/<id>` — a URL scheme that
+  launches the CLI, which raises Windows Hello. The toast never approves by
+  itself; it opens the door. Measured live: toast buttons resolve custom
+  schemes only from the *machine-level* registry (per-user registration is
+  enough for the shell, not for toasts), so `gigamail desktop-setup` writes
+  that key once behind a UAC prompt; until then toasts arrive without
+  buttons (the text still says how to approve) rather than with a dead
+  "Get an app" dialog.
+- Watcher robustness from the live runs: rules now consider every message
+  received after the rule was created, read or unread (a thread open in
+  the mail client marks mail read before the watcher sees it) — a mail the
+  user already read never goes `auto`, at most `semi`; a draft that times
+  out (`claude -p` under load) is retried up to 3 times with a 300 s
+  timeout (`GIGAMAIL_DRAFT_TIMEOUT`), then the user is told to reply by
+  hand instead of a silent failure.
+- **Tool descriptions rewritten for agents** (after glama.ai's Tool Score
+  rated `create_folder` D and the `delete_*` tools C: one-line Italian
+  descriptions, 0% parameter documentation, no annotations). All 24 tools
+  now carry an English description that states purpose, side effects,
+  prerequisites, what is returned and what to use instead; every
+  parameter is documented in the schema; MCP annotations
+  (`readOnlyHint` / `destructiveHint` / `idempotentHint` /
+  `openWorldHint`) declare the risk class machine-readably and match the
+  READ / WRITE_SAFE / DANGEROUS map. The six two-phase tools share one
+  explicit contract text. Server `instructions` are in English too. A
+  test keeps all of this from regressing.
 - `gigamail rules add` also takes flags (`--senders/--folder`, `--style`,
   `--doc`, `--mode`, caps, expiry) and skips the questions; the Windows
   Hello / Touch ID prompt remains the one thing that cannot be scripted.

@@ -9,9 +9,9 @@ guardando ne' la chat ne' la console. Windows: toast nativa (WinRT, la
 stessa famiglia gia' usata per Windows Hello); macOS: osascript; Linux:
 notify-send se esiste.
 
-SOLO NOTIFICA, mai approvazione: la toast non ha bottoni che approvano.
-Approvi da console o CLI, dietro Hello — il canale che mostra non e' mai
-il canale che decide.
+La toast NON approva mai da sola: i suoi bottoni (Approva/Rifiuta) aprono
+un URL gigamail:// che lancia la CLI, e la CLI alza Windows Hello. Il
+canale che mostra apre la porta; solo l'umano la passa.
 
 GIGAMAIL_NOTIFY_DESKTOP=0 la spegne (default: attiva).
 """
@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import threading
+from typing import List, Optional, Tuple
 
 _APP_ID = "GigaMail"
 
@@ -99,6 +100,130 @@ Add-Type -TypeDefinition $code
 '''
 
 
+# Click sulla toast → approvazione. La toast puo' solo APRIRE un URL
+# (activationType="protocol"): lo schema gigamail:// lancia la CLI —
+# `gigamail open-url gigamail://approve/<id>` → `approvals approve` →
+# prompt Hello. La toast non approva mai da sola: apre la porta, l'umano
+# la passa.
+#
+# Misurato dal vivo (Windows 11, 2026-08-22): la registrazione PER-UTENTE
+# (HKCU\Software\Classes) basta alla shell (Start-Process gigamail://...
+# apre la CLI) ma NON ai bottoni delle toast, che risolvono lo schema solo
+# dalle registrazioni DI MACCHINA (HKLM). Nemmeno Capabilities +
+# RegisteredApplications per-utente bastano (provato). Quindi:
+#   - `gigamail desktop-setup` scrive HKLM una volta, con prompt UAC
+#     (register_protocol_machine);
+#   - finche' non e' fatto, la toast esce SENZA bottoni (il testo dice
+#     comunque come approvare): meglio di un dialogo "Ottieni un'app".
+PROTOCOL = "gigamail"
+
+
+def protocol_command() -> str:
+    return f'"{sys.executable}" -m ade_mail_agent.cli open-url "%1"'
+
+
+def protocol_registered() -> bool:
+    """True se HKLM ha lo schema gigamail:// che punta a QUESTO python."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                           rf"Software\Classes\{PROTOCOL}\shell\open\command")
+        val, _ = winreg.QueryValueEx(k, None)
+        winreg.CloseKey(k)
+        return str(val).strip().lower() == protocol_command().lower()
+    except Exception:
+        return False
+
+
+def register_protocol_machine() -> bool:
+    """Scrive HKLM\Software\Classes\gigamail con un PowerShell elevato
+    (prompt UAC: e' l'utente a dire si'). Ritorna True se dopo la
+    registrazione risulta corretta. Idempotente."""
+    if sys.platform != "win32":
+        return False
+    if protocol_registered():
+        return True
+    cmd = protocol_command().replace("'", "''")
+    base = "HKLM:\\Software\\Classes\\" + PROTOCOL
+    sub = base + "\\shell\\open\\command"
+    script = "\n".join([
+        f"$cmd = '{cmd}'",
+        f"New-Item -Path '{base}' -Force | Out-Null",
+        f"Set-ItemProperty '{base}' -Name '(default)' -Value 'URL:GigaMail'",
+        f"Set-ItemProperty '{base}' -Name 'URL Protocol' -Value ''",
+        f"New-Item -Path '{sub}' -Force | Out-Null",
+        f"Set-ItemProperty '{sub}' -Name '(default)' -Value $cmd",
+    ])
+    path = ""
+    try:
+        import tempfile
+        fd, path = tempfile.mkstemp(prefix="gigamail-protocol-", suffix=".ps1")
+        with os.fdopen(fd, "w", encoding="utf-8-sig") as f:
+            f.write(script)
+        # Lo script viaggia su file: niente quoting annidato; -Verb RunAs
+        # apre il prompt UAC, -Wait aspetta che l'utente risponda.
+        subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+             "Start-Process powershell -Verb RunAs -Wait -ArgumentList "
+             f"'-NoProfile','-ExecutionPolicy','Bypass','-File','{path}'"],
+            timeout=300, stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        return False
+    finally:
+        try:
+            os.unlink(path)
+        except Exception:
+            pass
+    return protocol_registered()
+
+
+def _win_register_protocol() -> None:
+    """Registrazione per-utente (HKCU): serve a ShellExecute e non guasta;
+    per le toast conta register_protocol_machine()."""
+    try:
+        import winreg
+        base = rf"Software\Classes\{PROTOCOL}"
+        k = winreg.CreateKey(winreg.HKEY_CURRENT_USER, base)
+        winreg.SetValueEx(k, None, 0, winreg.REG_SZ, "URL:GigaMail")
+        winreg.SetValueEx(k, "URL Protocol", 0, winreg.REG_SZ, "")
+        winreg.CloseKey(k)
+        k = winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r"\shell\open\command")
+        winreg.SetValueEx(k, None, 0, winreg.REG_SZ, protocol_command())
+        winreg.CloseKey(k)
+    except Exception:
+        pass
+
+
+def actions_supported() -> bool:
+    """Bottoni cliccabili sulla toast: solo Windows con lo schema
+    registrato a livello macchina (gigamail desktop-setup)."""
+    return sys.platform == "win32" and protocol_registered()
+
+
+def build_toast_xml(title: str, body: str,
+                    actions: Optional[List[Tuple[str, str]]] = None) -> str:
+    """XML della toast. `actions` = [(etichetta, url gigamail://...)]:
+    diventano bottoni; il primo e' anche il click sul corpo."""
+    xml = "<toast"
+    if actions:
+        xml += f" activationType='protocol' launch='{_xml_escape(actions[0][1])}'"
+    xml += ("><visual><binding template='ToastGeneric'>"
+            f"<text>{_xml_escape(title)}</text>"
+            f"<text>{_xml_escape(body)}</text>"
+            "</binding></visual>")
+    if actions:
+        xml += "<actions>"
+        for label, url in actions[:5]:
+            xml += (f"<action content='{_xml_escape(label)}' "
+                    f"activationType='protocol' arguments='{_xml_escape(url)}'/>")
+        xml += "</actions>"
+    xml += "</toast>"
+    return xml
+
+
 def _win_shortcut_path() -> str:
     return os.path.join(os.environ.get("APPDATA", ""),
                         "Microsoft", "Windows", "Start Menu", "Programs",
@@ -134,8 +259,13 @@ def _win_register_aumid() -> None:
         pass
 
 
-def _win_toast(title: str, body: str) -> bool:
+def _win_toast(title: str, body: str,
+               actions: Optional[List[Tuple[str, str]]] = None) -> bool:
     _win_register_aumid()
+    if actions:
+        _win_register_protocol()
+        if not protocol_registered():
+            actions = None  # senza HKLM il bottone darebbe "Ottieni un'app"
     try:
         from winrt.windows.data.xml.dom import XmlDocument  # type: ignore
         from winrt.windows.ui.notifications import (  # type: ignore
@@ -143,12 +273,7 @@ def _win_toast(title: str, body: str) -> bool:
         )
     except ImportError:
         return _win_toast_powershell(title, body)
-    xml = (
-        "<toast><visual><binding template='ToastGeneric'>"
-        f"<text>{_xml_escape(title)}</text>"
-        f"<text>{_xml_escape(body)}</text>"
-        "</binding></visual></toast>"
-    )
+    xml = build_toast_xml(title, body, actions)
     doc = XmlDocument()
     doc.load_xml(xml)
     # pywinrt 3.x espone l'overload con application_id come *_with_id;
@@ -209,7 +334,8 @@ def _linux_notify(title: str, body: str) -> bool:
     return True
 
 
-def notify(title: str, body: str, background: bool = True) -> bool:
+def notify(title: str, body: str, background: bool = True,
+           actions: Optional[List[Tuple[str, str]]] = None) -> bool:
     """Mostra una notifica di sistema. Mai eccezioni verso il chiamante,
     mai bloccante (di default parte in un thread): l'esito della notifica
     non deve influenzare la creazione della richiesta."""
@@ -219,7 +345,7 @@ def notify(title: str, body: str, background: bool = True) -> bool:
     def _run():
         try:
             if sys.platform == "win32":
-                _win_toast(title, body)
+                _win_toast(title, body, actions)
             elif sys.platform == "darwin":
                 _mac_notify(title, body)
             else:
