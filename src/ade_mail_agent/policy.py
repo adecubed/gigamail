@@ -141,6 +141,20 @@ def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """`with conn:` di serie fa commit/rollback ma NON chiude: la
+    connessione vive fino al garbage collector, e su Windows tiene il
+    lock sul file .db (CI rossa su Python 3.12/3.13: WinError 32 alla
+    unlink in test_store_unavailable). Qui l'uscita dal with chiude
+    sempre: ogni operazione degli store apre, committa e rilascia."""
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
+
 class ApprovalStore:
     """Richieste di approvazione condivise tra processi.
 
@@ -154,7 +168,8 @@ class ApprovalStore:
         self._init()
 
     def _conn(self):
-        conn = sqlite3.connect(self.path, timeout=10)
+        conn = sqlite3.connect(self.path, timeout=10,
+                               factory=_ClosingConnection)
         conn.row_factory = sqlite3.Row
         return conn
 

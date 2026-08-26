@@ -51,13 +51,26 @@ def _db_path() -> Path:
     return app_root() / ".rules.db"
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Come in policy.py: l'uscita dal `with` chiude la connessione,
+    non solo commit/rollback — senza, su Windows il file resta lockato
+    fino al GC."""
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            return super().__exit__(exc_type, exc, tb)
+        finally:
+            self.close()
+
+
 class RuleStore:
     def __init__(self, path: Optional[Path] = None):
         self.path = str(path or _db_path())
         self._init()
 
     def _conn(self):
-        conn = sqlite3.connect(self.path, timeout=10)
+        conn = sqlite3.connect(self.path, timeout=10,
+                               factory=_ClosingConnection)
         conn.row_factory = sqlite3.Row
         return conn
 
