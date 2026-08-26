@@ -1,7 +1,7 @@
 ---
 name: gigamail
 description: Email and calendar for your OpenClaw agent through the GigaMail MCP server — read, search, draft, reply, schedule — with every destructive action (send, delete, calendar write) held for out-of-band human approval that the agent cannot grant itself.
-version: 0.1.1
+version: 0.2.0
 metadata:
   openclaw:
     emoji: "📬"
@@ -54,8 +54,8 @@ Repository: https://github.com/adecubed/gigamail. The GigaMail server is
 AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
 Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
-Requires gigamail ≥ 0.1.4 (approval via OS-level user verification;
-GIGAMAIL_* environment variables).
+Requires gigamail ≥ 0.2.1 (approval via OS-level user verification;
+GIGAMAIL_* environment variables; reply rules and the watcher).
 
 ## Setup (once)
 
@@ -162,6 +162,25 @@ Rules that follow from this:
 - Never call a dangerous tool "to see what happens". Phase 1 creates a
   pending request the user will see; only create one when the user
   actually wants the action.
+
+## Reply rules (0.2) — what you can and cannot do
+
+Since 0.2 the user can create reply rules: mail from declared senders (or
+in a folder) gets a draft written automatically and either proposed for
+approval (`semi`) or sent within strict limits (`auto`). Everything about
+rules is out of your reach by design:
+
+- **You have no tool to create, modify, resume or delete rules.** They are
+  managed only from the GigaMail console ("Automations" view) or the CLI
+  (`gigamail rules ...`), behind the same OS-level verification as
+  approvals. If the user asks you to "set up an auto-reply", explain that
+  and point them there — do not try to emulate a rule by watching mail and
+  sending yourself: every send you initiate still needs per-send approval.
+- The drafts for rules are written by a separate watcher process
+  (`gigamail watch`), not by you, from the documents attached to the rule.
+- Approval requests created by rules reach the user as desktop toasts and
+  Telegram messages with approve/reject/edit buttons; your `request_id`
+  flow is unchanged.
 
 ## Untrusted content
 
