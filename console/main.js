@@ -427,6 +427,17 @@ let isCompact = false;
 let savedBounds = null;
 const COMPACT_WIDTH = 350;
 
+// Documenti per le regole di risposta (0.2.1): file picker nativo, il
+// renderer riceve solo i percorsi assoluti scelti dall'utente.
+ipcMain.handle('pick-files', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Documenti', extensions: ['pdf', 'docx', 'xlsx', 'txt', 'md', 'csv'] },
+              { name: 'Tutti i file', extensions: ['*'] }],
+  });
+  return r.canceled ? [] : r.filePaths;
+});
+
 ipcMain.handle('toggle-compact', () => {
   if (!mainWindow) return { compact: isCompact };
   if (!isCompact) {

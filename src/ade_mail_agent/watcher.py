@@ -555,8 +555,20 @@ class Watcher:
             n += 1
         return n
 
+    def heartbeat(self) -> None:
+        """Stato del processo per la console: pid, intervallo e ultimo
+        giro, in rules.db (kv). 'attivo' = heartbeat recente."""
+        try:
+            rs = rules_mod.store()
+            rs.kv_set("watch_pid", str(os.getpid()))
+            rs.kv_set("watch_interval", str(self.interval))
+            rs.kv_set("watch_heartbeat", str(time.time()))
+        except Exception:
+            pass
+
     def tick(self) -> Dict[str, int]:
         stats = {"executed": 0, "processed": 0}
+        self.heartbeat()
         stats["executed"] = self.execute_approved()
         stats["processed"] += self.process_retries()
         for rule in rules_mod.store().active():
