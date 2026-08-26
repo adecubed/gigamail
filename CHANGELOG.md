@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.2.1 — unreleased
+
+**The console catches up with 0.2.** Until now rules, the watcher and the
+notification channels existed only in the CLI; the console still showed a
+leftover "AI setup" panel (ChatGPT login / OpenAI API key) calling an
+endpoint that no longer existed — a relic of the pre-GigaMail app and a
+contradiction of "no built-in LLM".
+
+- New **Automations** view: reply rules (list, create, pause, resume,
+  delete, per-rule activity), watcher (status, start/stop, log) and a
+  notifications/agent panel (which agent writes drafts, whether the human
+  verification backend exists, desktop toast buttons with a one-click
+  UAC setup, Telegram status).
+- Same fence as the CLI: creating or resuming a rule from the console
+  raises Windows Hello / Touch ID **in the backend** (`POST /rules`,
+  `POST /rules/{id}/resume`) — the console token alone never pre-approves
+  anything. Pausing and deleting need no prompt. The Telegram bot token
+  is deliberately not enterable from the window (CLI only).
+- Backend endpoints: `/rules*`, `/watch/status|start|stop|log`,
+  `/notify/status`, `/notify/desktop-setup`. The watcher writes a
+  heartbeat (pid, interval, last tick) so the console can tell "running"
+  from "stale"; started from the console it runs detached and survives
+  closing the window.
+- Documents for a rule are chosen with the native file picker; only the
+  chosen paths reach the backend.
+- Removed: the ChatGPT/OpenAI "AI setup" modal and its i18n strings.
+
+**An unreachable approval store now denies explicitly.** Both phases return
+`status: store_unavailable` with a null `request_id`, and phase 2 never
+calls the send function — it stays a deny even when the audit log itself
+cannot be written. Behaviour under a missing store was already fail-closed
+by exception; **u/ranbuman** (r/mcp) named why that is not enough on its
+own: a bare exception reads as a bug, so the next person wraps it in a
+try/except to quiet the logs and the gate becomes fail-open in a commit
+that looks like cleanup. Six tests now turn red if that commit is ever
+written. SECURITY.md documents it, including the one case where the hourly
+cap does reset — delete the database and restart, which also drops every
+pending and approved row: the cap moves, the gate does not.
+
 ## v0.2.0 — unreleased
 
 **Semi-auto and auto reply — rules with a fence around them.** The first

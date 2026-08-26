@@ -576,8 +576,8 @@ body {
 ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.28); }
 
 /* AI SETUP — card */
-#aiSetupOverlay .modal-body { gap: 0; }
-#aiSetupOverlay .ai-card {
+#view-automations .modal-body { gap: 0; }
+#view-automations .ai-card {
   border: 1.5px solid rgba(0,0,0,0.75);
   border-radius: var(--radius-sm);
   padding: 14px;
@@ -586,24 +586,24 @@ body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   transition: all 0.18s;
 }
-#aiSetupOverlay .ai-card:hover {
+#view-automations .ai-card:hover {
   background: linear-gradient(135deg, rgba(238,185,221,0.25), rgba(176,199,244,0.25));
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
-#aiSetupOverlay .ai-card-head {
+#view-automations .ai-card-head {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   margin-bottom: 12px;
 }
-#aiSetupOverlay .ai-card-icon {
+#view-automations .ai-card-icon {
   font-size: 22px;
   line-height: 1;
   flex-shrink: 0;
 }
-#aiSetupOverlay .ai-card-titles { flex: 1; min-width: 0; }
-#aiSetupOverlay .ai-card-title {
+#view-automations .ai-card-titles { flex: 1; min-width: 0; }
+#view-automations .ai-card-title {
   font-size: 13px;
   font-weight: 600;
   color: rgba(0,0,0,0.82);
@@ -612,29 +612,29 @@ body {
   gap: 8px;
   margin-bottom: 3px;
 }
-#aiSetupOverlay .ai-card-sub {
+#view-automations .ai-card-sub {
   font-size: 11.5px;
   color: rgba(0,0,0,0.5);
   line-height: 1.45;
 }
-#aiSetupOverlay .ai-card-row {
+#view-automations .ai-card-row {
   display: flex;
   gap: 8px;
   align-items: center;
 }
-#aiSetupOverlay .ai-card-status {
+#view-automations .ai-card-status {
   flex: 1;
   font-size: 11.5px;
   color: rgba(0,0,0,0.5);
 }
-#aiSetupOverlay .ai-card-status.ok {
+#view-automations .ai-card-status.ok {
   color: #16a34a;
   font-weight: 600;
 }
-#aiSetupOverlay .ai-card-status.err {
+#view-automations .ai-card-status.err {
   color: rgba(200,50,40,0.85);
 }
-#aiSetupOverlay .ai-tag {
+#view-automations .ai-tag {
   background: linear-gradient(135deg, var(--accent), var(--accent-light));
   border: 1.5px solid rgba(0,0,0,0.75);
   color: rgba(0,0,0,0.82);
@@ -731,3 +731,19 @@ body {
   margin-left: 4px;
 }
 
+
+/* AUTOMAZIONI (0.2.1) */
+#view-automations { min-height:0; max-height:100vh; overflow:hidden; }
+.auto-wrap { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; }
+.auto-body { flex:1; min-height:0; overflow-y:auto; padding:14px 14px 40px; display:flex; gap:16px; align-items:flex-start; }
+.auto-col { flex:1; min-width:320px; display:flex; flex-direction:column; gap:10px; }
+.auto-col > .field-label { margin-top:4px; }
+#view-automations .ai-card .field-row { margin-bottom:8px; }
+#view-automations .ai-card-status.warn { color:#b45309; font-weight:600; }
+.auto-log { max-height:180px; overflow:auto; background:rgba(0,0,0,0.04); border-radius:var(--radius-sm); padding:8px; margin-top:8px; white-space:pre-wrap; }
+/* Automazioni: scrollbar larga e sempre visibile, scorrimento con rotella */
+.auto-body { scrollbar-gutter: stable; }
+.auto-body::-webkit-scrollbar { width:12px; }
+.auto-body::-webkit-scrollbar-track { background:rgba(0,0,0,0.05); border-radius:6px; }
+.auto-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.28); border-radius:6px; border:2px solid transparent; background-clip:content-box; }
+.auto-body::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.45); background-clip:content-box; }

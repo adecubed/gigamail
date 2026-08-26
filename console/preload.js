@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openNewMailWindow:  (data) => ipcRenderer.send('open-new-mail-window', data),
   openReplyWindow:    (data) => ipcRenderer.send('open-reply-window', data),
   toggleCompact: () => ipcRenderer.invoke('toggle-compact'),
+  pickFiles: () => ipcRenderer.invoke('pick-files'),
   openAttachment:   (name, bytes) => ipcRenderer.invoke('mail-attachment-open',    { name, bytes }),
   saveAttachmentAs: (name, bytes) => ipcRenderer.invoke('mail-attachment-save-as', { name, bytes }),
 });

@@ -161,6 +161,35 @@ compatible:
   so replies sent through Graph do not carry it. Our own loop protection
   does not depend on that header (it is inbound, per RFC 3834).
 
+## When the approval store is unavailable
+
+Every gate here depends on one SQLite file. What happens when it is not
+reachable — deleted, locked, permissions revoked mid-run — is part of the
+design, not an accident, and it is written down here because
+**u/ranbuman** (r/mcp) pointed out why it has to be:
+
+> A bare exception from a missing store looks exactly like a bug, so the
+> next person who sees it in the logs wraps it in a try/except to quiet
+> the noise, and the gate becomes fail open in a commit that reads like
+> cleanup.
+
+So the deny is explicit and named rather than implicit. Phase 1 and phase
+2 both return `status: store_unavailable` with `request_id: null`, and
+**execution is never attempted** — the send function is not called at all.
+It is a deliberate answer, not a crash, and it stays a deny even if the
+audit log itself cannot be written. Tests in
+`tests/test_store_unavailable.py` assert exactly that, including that
+`execute_fn` is never invoked; anyone "cleaning up" the deny turns them red.
+
+**The one case where the rate cap does not hold, stated plainly.** Delete
+`approvals.db` and restart the process, and the schema is recreated empty,
+so the hourly request counter starts again from zero. The same act drops
+every pending and approved row, so there is nothing left to consume: the
+cap resets, the gate does not move. Which is the honest framing of what
+the cap is — a limiter on how many requests can be *created*, not a
+security boundary. The boundary is the human approval plus the OS prompt,
+and neither survives in a deleted database.
+
 ## Fixed
 
 - **v0.1.1 — agent could self-approve destructive actions.** v0.1.0 returned

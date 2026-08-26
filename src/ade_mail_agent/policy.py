@@ -504,6 +504,38 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
     return fired
 
 
+# Diniego ESPLICITO quando lo store delle approvazioni non e' raggiungibile.
+#
+# Perche' non basta lasciar propagare l'eccezione (r/mcp, ranbuman, 2026-08-21):
+# un'eccezione nuda da uno store mancante sembra esattamente un bug, e il
+# prossimo che la vede nei log la avvolge in un try/except per zittire il
+# rumore — cosi' il gate diventa fail-open dentro un commit che si legge come
+# pulizia. Un diniego con un suo codice non e' sicurezza migliore oggi: e'
+# cio' che impedisce a quel commit di essere scritto l'anno prossimo.
+# I test in tests/test_store_unavailable.py lo tengono vero.
+STORE_UNAVAILABLE = "store_unavailable"
+
+
+def _deny_store_unavailable(tool: str, err: Exception) -> Dict[str, Any]:
+    """Risposta deliberata, non un crash: nessuna richiesta creata, nessuna
+    azione eseguita. Il chiamante NON deve mai proseguire dopo questo."""
+    try:
+        audit(tool, {}, "approval_store_unavailable", detail=str(err))
+    except Exception:
+        pass  # se non si puo' nemmeno scrivere l'audit, il diniego resta
+    return {
+        "status": STORE_UNAVAILABLE,
+        "request_id": None,
+        "instructions": (
+            "Archivio delle approvazioni non raggiungibile: NIENTE e' stato "
+            "creato ne' eseguito, di proposito. Non e' un errore transitorio "
+            "da riprovare in loop: avvisa l'utente, che deve controllare "
+            "l'installazione di GigaMail. Senza archivio non esiste "
+            "approvazione, quindi non esiste esecuzione."
+        ),
+    }
+
+
 def request_approval(tool: str, args: Dict[str, Any],
                      preview: Dict[str, Any]) -> Dict[str, Any]:
     """Fase 1: registra la richiesta e restituisce all'agente un riferimento
@@ -514,7 +546,10 @@ def request_approval(tool: str, args: Dict[str, Any],
     richieste per tool nell'ultima ora la fase 1 rifiuta. Un agente che
     insiste non puo' produrre una raffica di approvazioni identiche."""
     s = store()
-    existing = s.find_pending(tool, args)
+    try:
+        existing = s.find_pending(tool, args)
+    except Exception as e:
+        return _deny_store_unavailable(tool, e)
     if existing:
         audit(tool, {"request_id": existing}, "approval_request_deduplicated")
         return {
@@ -530,7 +565,11 @@ def request_approval(tool: str, args: Dict[str, Any],
                 "approve " + existing + "`."
             ),
         }
-    if s.count_created_since(tool, time.time() - 3600) >= _APPROVAL_MAX_PER_HOUR:
+    try:
+        recenti = s.count_created_since(tool, time.time() - 3600)
+    except Exception as e:
+        return _deny_store_unavailable(tool, e)
+    if recenti >= _APPROVAL_MAX_PER_HOUR:
         audit(tool, args, "approval_rate_limited")
         return {
             "status": "rate_limited",
@@ -542,7 +581,10 @@ def request_approval(tool: str, args: Dict[str, Any],
                 "non produce approvazioni."
             ),
         }
-    request_id = s.create(tool, args, preview)
+    try:
+        request_id = s.create(tool, args, preview)
+    except Exception as e:
+        return _deny_store_unavailable(tool, e)
     audit(tool, args, "approval_requested")
     notify_approval_requested(request_id, tool, preview)
     return {
@@ -571,7 +613,10 @@ def execute_dangerous(
     if not request_id:
         return request_approval(tool, args, preview_fn())
 
-    record = store().get(request_id)
+    try:
+        record = store().get(request_id)
+    except Exception as e:
+        return _deny_store_unavailable(tool, e)
     if record is None or record["tool"] != tool:
         audit(tool, {"request_id": request_id}, "approval_invalid")
         raise ValueError(
@@ -602,7 +647,10 @@ def execute_dangerous(
         audit(tool, {"request_id": request_id}, "approval_already_used")
         raise ValueError("Questa richiesta e' gia' stata eseguita.")
 
-    canonical_args = store().consume_approved(request_id, tool)
+    try:
+        canonical_args = store().consume_approved(request_id, tool)
+    except Exception as e:
+        return _deny_store_unavailable(tool, e)
     if canonical_args is None:
         audit(tool, {"request_id": request_id}, "approval_invalid")
         raise ValueError("Approvazione non piu' valida.")
