@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.1 — unreleased
+## v0.2.1 — 2026-08-26
 
 **The console catches up with 0.2.** Until now rules, the watcher and the
 notification channels existed only in the CLI; the console still showed a
@@ -39,7 +39,7 @@ written. SECURITY.md documents it, including the one case where the hourly
 cap does reset — delete the database and restart, which also drops every
 pending and approved row: the cap moves, the gate does not.
 
-## v0.2.0 — unreleased
+## v0.2.0 — 2026-08-26 (tagged together with v0.2.1)
 
 **Semi-auto and auto reply — rules with a fence around them.** The first
 new capability since the gate: the user can declare, behind Windows Hello /

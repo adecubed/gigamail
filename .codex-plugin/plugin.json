@@ -1,6 +1,6 @@
 {
   "name": "gigamail",
-  "version": "0.1.4",
+  "version": "0.2.1",
   "description": "Mail and calendar for your AI agent: an MCP server on your real mailbox (Microsoft 365 or IMAP) with out-of-band human approval on every send, delete and calendar write.",
   "author": {
     "name": "Adecubed",
