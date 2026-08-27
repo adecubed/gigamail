@@ -13,8 +13,8 @@ option) any later version. See the LICENSE file for details.
 
 **English** · [Italiano](#lang-it) · [中文](#lang-zh)
 
-**MCP server that gives Claude (or any MCP-compatible agent) safe, controlled
-access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
+**MCP server that gives your agent — Claude, Codex, OpenClaw, Hermes, or any
+MCP client — safe, controlled access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
 local search index, sender memory, and an agent-aware permission model.
 
 No built-in LLM: the intelligence is your agent's. The MCP server speaks
@@ -198,8 +198,8 @@ closed-source use are available from the copyright holder.
 [English](#gigamail--mail-for-your-ai-agent) · **Italiano** · [中文](#lang-zh)
 
 
-**Server MCP che dà a Claude (o a qualunque agente compatibile) accesso
-sicuro e controllato alla tua posta** — multi-account (Microsoft Graph +
+**Server MCP che dà al tuo agente — Claude, Codex, OpenClaw, Hermes o
+qualunque client MCP — accesso sicuro e controllato alla tua posta** — multi-account (Microsoft Graph +
 IMAP), calendario, indice di ricerca locale, memoria dei mittenti e un
 modello di permessi pensato per gli agenti.
 
@@ -385,8 +385,8 @@ titolare del copyright.
 
 [English](#gigamail--mail-for-your-ai-agent) · [Italiano](#lang-it) · **中文**
 
-**一个 MCP 服务器，让 Claude（或任何兼容 MCP 的代理）安全、受控地访问你的
-真实邮箱** —— 多账户（Microsoft Graph + IMAP）、日历、本地搜索索引、发件人
+**一个 MCP 服务器，让你的代理 —— Claude、Codex、OpenClaw、Hermes 或任何
+兼容 MCP 的客户端 —— 安全、受控地访问你的真实邮箱** —— 多账户（Microsoft Graph + IMAP）、日历、本地搜索索引、发件人
 记忆，以及面向代理的权限模型。
 
 不内置任何 LLM：智能来自你自己的代理。MCP 服务器只使用 stdio 传输，不开

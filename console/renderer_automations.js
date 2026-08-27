@@ -9,8 +9,9 @@
 (function () {
   const API = 'http://127.0.0.1:8002';
   const $ = (id) => document.getElementById(id);
-  const isEn = () => (localStorage.getItem('ade_lang') || 'it') === 'en';
-  const T = (it, en) => (isEn() ? en : it);
+  const lang = () => (localStorage.getItem('ade_lang') || 'it');
+  const T = (it, en, zh) =>
+    lang() === 'it' ? it : lang() === 'zh' ? (zh || en) : en;
 
   async function api(path, opts = {}) {
     const r = await fetch(API + path, {
