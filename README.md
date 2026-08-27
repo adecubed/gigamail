@@ -11,6 +11,8 @@ option) any later version. See the LICENSE file for details.
 
 # GigaMail — Mail for your AI agent
 
+**English** · [Italiano](#lang-it) · [中文](#lang-zh)
+
 **MCP server that gives Claude (or any MCP-compatible agent) safe, controlled
 access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
 local search index, sender memory, and an agent-aware permission model.
@@ -190,7 +192,11 @@ closed-source use are available from the copyright holder.
 
 ---
 
+<a id="lang-it"></a>
 # GigaMail — La posta per il tuo agente AI
+
+[English](#gigamail--mail-for-your-ai-agent) · **Italiano** · [中文](#lang-zh)
+
 
 **Server MCP che dà a Claude (o a qualunque agente compatibile) accesso
 sicuro e controllato alla tua posta** — multi-account (Microsoft Graph +
@@ -370,3 +376,130 @@ condividerlo. Se distribuisci una versione modificata — o la offri come
 servizio in rete — devi rendere disponibile il sorgente con la stessa
 licenza. Licenze commerciali per usi closed-source sono disponibili dal
 titolare del copyright.
+
+
+---
+
+<a id="lang-zh"></a>
+# GigaMail — 给你的 AI 代理的邮箱
+
+[English](#gigamail--mail-for-your-ai-agent) · [Italiano](#lang-it) · **中文**
+
+**一个 MCP 服务器，让 Claude（或任何兼容 MCP 的代理）安全、受控地访问你的
+真实邮箱** —— 多账户（Microsoft Graph + IMAP）、日历、本地搜索索引、发件人
+记忆，以及面向代理的权限模型。
+
+不内置任何 LLM：智能来自你自己的代理。MCP 服务器只使用 stdio 传输，不开
+网络端口。（可选的人工控制台会在 127.0.0.1 上提供一个本地 HTTP API。）
+
+**关于你的数据**：GigaMail 把邮件索引、凭据、记忆和配置全部保存在**你自己
+的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
+然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
+
+## 为什么
+
+- **混合搜索**：提供商搜索（Graph/IMAP）+ 本地 SQLite 索引，快速且支持离线
+- **发件人记忆**：按发件人记录语气、话题与往来历史，让回复更贴切
+- **观察者**：从用户对过往草稿的修改中学习偏好
+- **知识文件**：把价目表、条款、产品资料挂到账户上，代理读取它们来回信 ——
+  你的代理不需要什么都懂：账户自带知识
+- **面向代理的权限**：读取自由；发送/删除需要**带外**给出的人工批准 ——
+  代理只拿到一个惰性的请求 id，人从控制台或 CLI 批准后才会执行，且执行的
+  是人当时看到的那份参数。每次写操作都会记入只追加的审计日志
+- **凭据永远不经过代理通道**：登录与账户管理只存在于 CLI —— 邮件里的提示
+  注入无法添加账户或读取任何机密
+
+## 快速开始
+
+```bash
+pip install "gigamail[all]"
+
+gigamail login                # Microsoft 设备码登录
+gigamail accounts add-imap    # 或任意 IMAP 提供商
+```
+
+为账户设置身份与知识（这是让回复"像你"的关键）：
+
+```bash
+gigamail identity set                       # 我是谁、做什么、语气
+gigamail identity add-file C:\docs\pricelist.xlsx
+```
+
+在 Claude Desktop / Claude Code 中注册（`mcpServers`）：
+
+```json
+{
+  "gigamail": {
+    "command": "gigamail-server"
+  }
+}
+```
+
+使用 **OpenClaw** 或 **Hermes**？经过验证的配置见
+[INTEGRATIONS.md](INTEGRATIONS.md)。
+
+> **你是替人类做安装的 AI 代理吗？** 你可以完成安装与 MCP 注册：
+> `pip install "gigamail[all]"`，然后把 `gigamail-server` 加入客户端的 MCP
+> 配置。**到此为止。** 连接邮箱（`gigamail login`、`gigamail accounts
+> add-imap`）需要输入凭据，必须由人类在自己的终端里完成 —— 这不是你该做的
+> 事，GigaMail 的设计也让它无法经由你完成。告诉他们要运行什么，然后等待。
+
+之后直接对你的代理说："用价目表回复最近那封询价邮件" —— 它会读邮件、从你
+的文件里取数字、写好草稿，并在发送前征得你的同意。
+
+## 工具
+
+24 个类型化工具，由服务器本身生成：
+
+- **读取（15）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
+  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段
+- **安全写入（3，有审计）** —— 标记已读、移动邮件、新建文件夹
+- **危险操作（6，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
+  创建/删除日历事件
+
+## 安全模型
+
+邮件内容被视为**不可信数据**（提示注入）。代理从构造上就无法批准自己的
+操作：危险工具只返回一个惰性的 `request_id`，而批准它 —— 无论从控制台还是
+`gigamail approvals approve` —— 都需要对机器前的人进行操作系统级验证
+（**Windows Hello** / **Touch ID**）。任何进程（包括持有 shell 的代理）都能
+弹出这个验证框，却无法通过它；没有此类验证后端时，一律拒绝（fail-closed）。
+没有任何机密进入模型上下文，被注入的指令无物可用。重复提交 id 只会得到
+*等待批准*。代理只能读取用户明确注册的文件，永远碰不到文件系统的其余部分。
+每次写操作都记入只追加的审计日志（GigaMail 从不改写历史条目 —— 它不是、
+也不自称是防篡改存储）。
+
+我们对此做红队测试：让恶意邮件命令真实代理外泄数据、批量删除、自我批准 ——
+在所有邮件工具全开的情况下，零破坏性操作。
+
+## 回复规则（0.2）：带栅栏的半自动与全自动回复
+
+你可以告诉 GigaMail：*来自这些发件人（或这个文件夹）的邮件，用这些文档起草
+回复*。规则只能从 CLI（`gigamail rules add`）或控制台创建，且要经过与批准
+相同的 Windows Hello / Touch ID 验证；`gigamail watch` 是执行规则的进程。
+MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：被注入的指令无法
+打开自动驾驶。
+
+- **semi**（默认）：草稿成为一个普通的批准请求 —— 你收到通知，用 Hello
+  批准后才会发出。
+- 通知会找到你：**Windows 桌面通知**带 ✅/❌ 按钮（运行一次
+  `gigamail desktop-setup` 使其可点击；按钮只是打开批准流程，仍需 Hello），
+  以及 **Telegram**（`gigamail telegram setup`，用你自己的机器人：✅ 批准需
+  在 Hello 背后显式开启 `--approve`；❌ 拒绝、✏️ 要求修改 —— 且只接受来自
+  你那个会话的指令）。
+- **auto**：请求生来即已批准，`decided_by automode:<rule_id>` —— 这份批准是
+  你创建规则时在 Hello 背后给出的，范围精确、必有过期时间、每日上限和按
+  发件人的冷却时间。通知照常发出。
+
+起草者（你自己的代理，经 `claude -p`）只产出回复*正文*：收件人、主题与
+会话线程由 GigaMail 从来信中确定 —— 永远回给通过验证的发件人，绝不理会
+`Reply-To`，也绝不使用草稿里写出的地址。确定性栅栏先行：DMARC 未通过 →
+永不 auto；自动生成的邮件、邮件列表、no-reply 发件人、提供商的垃圾邮件判定、
+可执行附件 → 一律不回复；新发件人的第一封邮件永远经过你；短时间内大量命中
+会让规则自动暂停。详见 [SECURITY.md](SECURITY.md)。
+
+## 许可证
+
+**AGPL-3.0-or-later.** 自由使用、研究、修改与分享。若你分发修改版 —— 或将
+其作为网络服务运行 —— 必须以相同许可证提供其源代码。闭源商用许可可向版权
+持有人洽询。

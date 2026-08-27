@@ -65,6 +65,8 @@ def world(monkeypatch):
                         lambda **kw: w["replies"].append(kw) or {"success": True})
     monkeypatch.setattr(agent_bridge, "run", lambda prompt, **kw: w["draft"])
     monkeypatch.setattr(telegram_channel, "channel", lambda: tg)
+    # setup verificato simulato: la chat fidata registrata dietro Hello
+    rules_mod.store().kv_set("tg_trusted_chat", str(CHAT))
     return w
 
 
@@ -243,3 +245,45 @@ def test_comando_sconosciuto_spiega(world):
     w = watcher_mod.Watcher()
     w.handle_telegram_event(world["tg"], _ev_text("ciao bot"))
     assert "approva" in world["tg"].sent[-1]["text"].lower()
+
+
+# ------------------------------------------ chat fidata (u/Secondmindsystems)
+
+def test_approva_richiede_chat_fidata_registrata(world):
+    """approve=True in notify.json non basta: serve il kv scritto dietro
+    Hello al setup. Senza, il si' da Telegram viene rifiutato."""
+    rules_mod.store().kv_set("tg_trusted_chat", "")  # setup mai fatto
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert world["replies"] == []
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    rules_mod.store().kv_set("tg_trusted_chat", str(CHAT))
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert len(world["replies"]) == 1
+
+
+def test_cambio_chat_revoca_le_pending(world):
+    """notify.json riscritto con un'altra chat: le pending del watcher
+    vengono revocate, la vecchia chat fidata riceve l'avviso, una volta."""
+    rules_mod.store().kv_set("tg_trusted_chat", "555")  # fidata = 555
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    alerts = []
+    world["tg"].send_to = lambda chat, text: alerts.append((chat, text)) or True
+    w.check_telegram_trust(world["tg"])
+    assert policy.store().get(rid)["status"] == policy.REJECTED
+    assert policy.store().get(rid)["decided_by"] == "system:telegram-chat-changed"
+    assert alerts and alerts[0][0] == 555
+    # e il si' dalla chat nuova non passa comunque
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert world["replies"] == []
+    # l'avviso non si ripete
+    w.check_telegram_trust(world["tg"])
+    assert len(alerts) == 1
