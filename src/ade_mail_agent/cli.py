@@ -520,6 +520,13 @@ def cmd_telegram_setup(args) -> int:
         if not hello_ts:
             return 1
     telegram_channel.save_config(token, chat_id, approve)
+    # La chat FIDATA per l'approvazione e' quella registrata QUI, dietro
+    # Hello: se qualcuno riscrive notify.json con un'altra chat, il watcher
+    # disabilita l'approvazione e revoca le pending finche' il setup
+    # verificato non viene rifatto (hardening da u/Secondmindsystems).
+    from ade_mail_agent.core import rules as _rules
+    _rules.store().kv_set("tg_trusted_chat", str(chat_id) if approve else "")
+    _rules.store().kv_set("tg_mismatch_alerted", "")
     from ade_mail_agent.policy import audit
     audit("telegram", {"chat_id": chat_id, "approve": approve},
           "telegram_configured", detail=_cli_who())

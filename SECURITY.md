@@ -151,9 +151,14 @@ compatible:
   PIN). Declared limits: the phone is now an approval device, protect it
   like one; a stolen bot token lets someone read the draft previews or
   silence the channel (DoS → fail-closed), **not** approve; `notify.json`
-  is a file on disk, so a process with your shell could edit the trusted
-  chat_id — the watcher audits the configuration it trusts and the real
-  user stops receiving notifications the moment it changes. Rejecting and
+  is a file on disk, so a process with your shell could edit the
+  configured chat_id — but the chat that can approve is the one recorded
+  behind the OS prompt at `telegram setup --approve`, stored separately.
+  When the configured chat stops matching it, the watcher disables
+  Telegram approval, revokes every pending rule request, alerts the
+  previously trusted chat, and writes the mismatch to the audit; approval
+  comes back only through the verified setup path (hardening suggested by
+  u/Secondmindsystems on r/mcp). Rejecting and
   asking for changes never need approval rights. Audit: `decided_by:
   telegram:<chat_id>`.
 - Declared limit: outgoing rule replies carry `Auto-Submitted:

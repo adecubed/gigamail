@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.2.2 — unreleased
+
+- **Changing the Telegram chat revokes trust** (u/Secondmindsystems,
+  r/mcp, within hours of the 0.2.1 post): the chat allowed to approve is
+  the one recorded behind Windows Hello / Touch ID at `gigamail telegram
+  setup --approve`, stored outside `notify.json`. If the configured
+  chat_id stops matching it, the watcher disables Telegram approval,
+  rejects every pending rule request (`decided_by:
+  system:telegram-chat-changed`), alerts the previously trusted chat once,
+  and audits the mismatch; approval returns only through the verified
+  setup. His second point — an edited draft must invalidate the old
+  approval — was already the behaviour (✏️ rejects the old request and
+  creates a new request_id; approval binds to the canonical payload), now
+  stated explicitly. Note: existing installs must re-run
+  `gigamail telegram setup --approve` once to record the trusted chat.
+
 ## v0.2.1 — 2026-08-26
 
 **The console catches up with 0.2.** Until now rules, the watcher and the

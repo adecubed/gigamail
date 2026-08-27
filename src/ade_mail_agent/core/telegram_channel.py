@@ -98,6 +98,12 @@ class Telegram:
 
     # ------------------------------------------------------------ out
 
+    def send_to(self, chat_id: int, text: str) -> bool:
+        """Messaggio a una chat specifica: serve per avvisare la chat
+        fidata PRECEDENTE quando qualcuno cambia il chat_id configurato."""
+        return self._call("sendMessage", chat_id=int(chat_id),
+                          text=text[:4000]) is not None
+
     def send(self, text: str, buttons: Optional[List[List[Dict[str, str]]]] = None) -> bool:
         params: Dict[str, Any] = {"chat_id": self.chat_id, "text": text[:4000]}
         if buttons:

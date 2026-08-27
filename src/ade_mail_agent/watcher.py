@@ -483,7 +483,8 @@ class Watcher:
                 tg = telegram_channel.channel()
                 if tg:
                     buttons = tg.action_buttons(
-                        request_id, policy.user_lang(), tg.approve_enabled)
+                        request_id, policy.user_lang(),
+                        self._tg_approve_allowed(tg))
                 it = policy.user_lang() == "it"
                 actions = [("✅ " + ("Approva" if it else "Approve"),
                             f"gigamail://approve/{request_id}"),
@@ -587,6 +588,58 @@ class Watcher:
     def _tg_say(self, tg, it: str, en: str) -> None:
         tg.send(it if policy.user_lang() == "it" else en)
 
+    def _tg_approve_allowed(self, tg) -> bool:
+        """L'approvazione da Telegram vale solo se il chat_id configurato
+        in notify.json COINCIDE con quello registrato dietro Hello al
+        `telegram setup --approve` (kv tg_trusted_chat). Cambiare il file
+        non basta: la fiducia si ri-conquista dal percorso verificato.
+        (Hardening da u/Secondmindsystems su r/mcp, 27/08/2026.)"""
+        if not tg.approve_enabled:
+            return False
+        trusted = rules_mod.store().kv_get("tg_trusted_chat", "")
+        return trusted == str(tg.chat_id)
+
+    def check_telegram_trust(self, tg) -> None:
+        """Se la chat configurata e' cambiata rispetto a quella fidata:
+        revoca le pending del watcher, avvisa la VECCHIA chat fidata,
+        scrivi l'audit. Una volta per cambio (kv tg_mismatch_alerted)."""
+        rs = rules_mod.store()
+        trusted = rs.kv_get("tg_trusted_chat", "")
+        if not tg.approve_enabled or not trusted or trusted == str(tg.chat_id):
+            return
+        if rs.kv_get("tg_mismatch_alerted", "") == str(tg.chat_id):
+            return
+        rs.kv_set("tg_mismatch_alerted", str(tg.chat_id))
+        policy.audit("telegram", {"configured": tg.chat_id,
+                                  "trusted": trusted},
+                     "telegram_chat_mismatch")
+        revoked = 0
+        for row in rs.pending_requests():
+            rec = policy.store().get(row["request_id"])
+            if rec and rec["status"] == policy.PENDING:
+                policy.store().reject(row["request_id"],
+                                      by="system:telegram-chat-changed")
+                rs.set_status(row["rule_id"], row["message_id"], "rejected",
+                              "telegram-chat-changed")
+                revoked += 1
+        try:
+            if policy.user_lang() == "it":
+                tg.send_to(int(trusted),
+                           f"⚠️ GigaMail: il chat_id configurato e' cambiato "
+                           f"({trusted} → {tg.chat_id}). Approvazione da "
+                           f"Telegram DISABILITATA e {revoked} richieste in "
+                           f"attesa revocate. Se sei stato tu, rifai "
+                           f"`gigamail telegram setup --approve` (Hello).")
+            else:
+                tg.send_to(int(trusted),
+                           f"⚠️ GigaMail: the configured chat_id changed "
+                           f"({trusted} → {tg.chat_id}). Approval from "
+                           f"Telegram DISABLED and {revoked} pending requests "
+                           f"revoked. If this was you, re-run "
+                           f"`gigamail telegram setup --approve` (Hello).")
+        except Exception:
+            pass
+
     def handle_telegram_event(self, tg, ev: Dict[str, Any]) -> None:
         """Un update di Telegram. SOLO la chat configurata conta: il resto
         finisce nell'audit e basta."""
@@ -640,7 +693,7 @@ class Watcher:
             return
         who = f"telegram:{tg.chat_id}"
         if action == "a":
-            if not tg.approve_enabled:
+            if not self._tg_approve_allowed(tg):
                 self._tg_say(tg,
                              "L'approvazione da Telegram non e' abilitata su "
                              "questo GigaMail: approva dal PC (Hello). Da qui "
@@ -702,6 +755,7 @@ class Watcher:
         if not tg:
             time.sleep(seconds)
             return
+        self.check_telegram_trust(tg)
         rs = rules_mod.store()
         deadline = time.time() + seconds
         while True:
@@ -732,6 +786,7 @@ class Watcher:
             policy.audit("telegram", {"chat_id": tg.chat_id,
                                       "approve": tg.approve_enabled},
                          "telegram_trusted_chat")
+            self.check_telegram_trust(tg)
         while True:
             try:
                 stats = self.tick()
