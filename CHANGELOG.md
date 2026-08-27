@@ -2,6 +2,11 @@
 
 ## v0.2.2 — unreleased
 
+- **中文**: the README has a full Chinese section and the console speaks
+  Chinese (language switch cycles IT → EN → 中; first-pass translation of
+  all ~270 strings, with English fallback for anything missed — polish
+  and corrections are very welcome: `console/i18n.js`).
+
 - **Changing the Telegram chat revokes trust** (u/Secondmindsystems,
   r/mcp, within hours of the 0.2.1 post): the chat allowed to approve is
   the one recorded behind Windows Hello / Touch ID at `gigamail telegram
