@@ -238,6 +238,15 @@ def build_toast_xml(title: str, body: str,
     xml = "<toast"
     if actions:
         xml += f" activationType='protocol' launch='{_xml_escape(actions[0][1])}'"
+        # scenario='reminder': la toast RESTA a schermo finche' l'umano
+        # non decide, invece di sparire dopo pochi secondi. Windows non
+        # espone una durata arbitraria per il popup (duration='long'
+        # arriva a ~25s): per un'approvazione che scade in 15 minuti
+        # l'unica cosa sensata e' che non se ne vada da sola. Richiede
+        # almeno un bottone, e qui ce ne sono quattro.
+        xml += " scenario='reminder'"
+    else:
+        xml += " duration='long'"
     xml += ("><visual><binding template='ToastGeneric'>"
             f"<text>{_xml_escape(title)}</text>"
             f"<text>{_xml_escape(body)}</text>"
@@ -287,8 +296,29 @@ def _win_register_aumid() -> None:
         pass
 
 
+def _toast_tag(actions: Optional[List[Tuple[str, str]]]) -> str:
+    """Identita' della toast: la request_id che i bottoni aprono.
+
+    Serve a due cose opposte e ugualmente necessarie. Senza tag,
+    Windows accorpa le notifiche della stessa app e cinque
+    approvazioni diverse finiscono una sopra l'altra: ne vedi una e le
+    altre quattro spariscono. Con il tag ognuna e' distinta e restano
+    tutte. E rilanciare la MEDESIMA richiesta sostituisce la sua
+    toast invece di aggiungerne una copia."""
+    import re
+    for _, url in actions or []:
+        # largo di proposito: un id che non combacia con la regex
+        # farebbe tornare il tag vuoto, cioe' di nuovo le toast
+        # accorpate, e in silenzio.
+        m = re.search(r"(req_[0-9A-Za-z]+)", url)
+        if m:
+            return m.group(1)[:64]
+    return ""
+
+
 def _win_toast(title: str, body: str,
-               actions: Optional[List[Tuple[str, str]]] = None) -> bool:
+               actions: Optional[List[Tuple[str, str]]] = None,
+               expires_in: Optional[int] = None) -> bool:
     _win_register_aumid()
     if actions:
         _win_register_protocol()
@@ -310,7 +340,25 @@ def _win_toast(title: str, body: str,
         notifier = ToastNotificationManager.create_toast_notifier_with_id(_APP_ID)
     except AttributeError:
         notifier = ToastNotificationManager.create_toast_notifier(_APP_ID)
-    notifier.show(ToastNotification(doc))
+    notifica = ToastNotification(doc)
+    tag = _toast_tag(actions)
+    if tag:
+        try:
+            notifica.tag = tag
+            notifica.group = "approvals"
+        except Exception:
+            pass  # best-effort: meglio una toast accorpata che nessuna
+    if expires_in:
+        # Quanto resta nel centro notifiche: la richiesta scade, e una
+        # toast che sopravvive alla scadenza invita a premere Approva
+        # su qualcosa che non e' piu' approvabile.
+        try:
+            import datetime as _dt
+            notifica.expiration_time = (_dt.datetime.now(_dt.timezone.utc)
+                                        + _dt.timedelta(seconds=expires_in))
+        except Exception:
+            pass
+    notifier.show(notifica)
     return True
 
 
@@ -363,7 +411,8 @@ def _linux_notify(title: str, body: str) -> bool:
 
 
 def notify(title: str, body: str, background: bool = True,
-           actions: Optional[List[Tuple[str, str]]] = None) -> bool:
+           actions: Optional[List[Tuple[str, str]]] = None,
+           expires_in: Optional[int] = None) -> bool:
     """Mostra una notifica di sistema. Mai eccezioni verso il chiamante,
     mai bloccante (di default parte in un thread): l'esito della notifica
     non deve influenzare la creazione della richiesta."""
@@ -373,7 +422,7 @@ def notify(title: str, body: str, background: bool = True,
     def _run():
         try:
             if sys.platform == "win32":
-                _win_toast(title, body, actions)
+                _win_toast(title, body, actions, expires_in)
             elif sys.platform == "darwin":
                 _mac_notify(title, body)
             else:
