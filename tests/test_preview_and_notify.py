@@ -3,6 +3,7 @@ destinatario non e' un indirizzo esplicito (gruppo/alias: puo' espandersi).
 B5: notifica pluggable alla creazione della richiesta — solo notifica,
 senza shell, best-effort, mai bloccante.
 """
+import io
 import json
 import os
 import sys
@@ -136,6 +137,43 @@ def test_dedup_non_rinotifica(monkeypatch, tmp_path):
     assert counter.read_text() == "x"
 
 
+def test_toast_di_un_tool_ha_i_quattro_bottoni(monkeypatch):
+    """Regressione: la fase 1 di un tool MCP passava `preview` e basta,
+    quindi la toast usciva muta — l'umano vedeva l'avviso e non aveva
+    niente da premere. Deve arrivare Leggi/Approva/Modifica/Rifiuta, e ogni
+    bottone deve puntare alla request_id giusta."""
+    visti = {}
+
+    def _spia(title, body, background=True, actions=None):
+        visti["actions"] = actions
+        return True
+
+    from ade_mail_agent.core import desktop_notify
+    monkeypatch.setattr(desktop_notify, "notify", _spia)
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    monkeypatch.setenv("GIGAMAIL_LANG", "it")
+
+    rid = _phase1()["request_id"]
+    actions = visti["actions"]
+    assert [a[1] for a in actions] == [
+        f"gigamail://show/{rid}", f"gigamail://approve/{rid}",
+        f"gigamail://edit/{rid}", f"gigamail://reject/{rid}"]
+    assert [a[0].split()[-1] for a in actions] == [
+        "Leggi", "Approva", "Modifica", "Rifiuta"]
+
+
+def test_url_dei_bottoni_accettati_dal_parser():
+    """I quattro URL che la toast puo' aprire devono essere gli stessi che
+    `open-url` riconosce: un bottone che apre un URL non gestito darebbe
+    "URL non riconosciuto" invece dell'azione."""
+    import re
+    from ade_mail_agent import cli
+    src = io.open(cli.__file__.replace(".pyc", ".py"), encoding="utf-8").read()
+    verbi = re.search(r"gigamail://\(([a-z|]+)\)/", src).group(1).split("|")
+    for _, url in policy.toast_actions("req_deadbeef"):
+        assert url.split("//")[1].split("/")[0] in verbi
+
+
 def test_placeholder_message_porta_il_testo_completo(monkeypatch, tmp_path):
     """{message} = testo leggibile per l'umano ("e' arrivata una mail da...,
     propongo..., approvi?"), passato dal watcher; senza message esplicito
@@ -217,3 +255,23 @@ def test_open_url_accetta_solo_approve_reject(monkeypatch):
     A.url = "gigamail://delete/req_ab12"
     assert cli.cmd_open_url(A) == 1
     assert calls == [("a", "req_ab12"), ("r", "req_ab12")]
+
+
+def test_bottoni_toast_non_legati_a_un_solo_interprete(monkeypatch):
+    """Regressione: protocol_registered() confrontava HKLM con
+    sys.executable, quindi un secondo interprete sulla macchina (il python
+    di sistema accanto a quello del venv) faceva uscire la toast MUTA, in
+    silenzio. Conta il comando registrato, non chi lo sta leggendo."""
+    from ade_mail_agent.core import desktop_notify as d
+    monkeypatch.setattr(d.os.path, "exists", lambda p: True)
+    args = d._PROTOCOL_ARGS
+
+    for exe in (r"C:\proj\.venv\Scripts\python.exe", r"C:\Python310\python.exe"):
+        assert d.registered_command_ok('"' + exe + '" ' + args)
+
+    # stretto dove serve: argomenti altrui, eseguibile mancante o assente
+    assert not d.registered_command_ok(r'"C:\x\python.exe" -m altro.cli open-url "%1"')
+    assert not d.registered_command_ok(args)
+    assert not d.registered_command_ok("")
+    monkeypatch.setattr(d.os.path, "exists", lambda p: False)
+    assert not d.registered_command_ok(r'"C:\gone\python.exe" ' + args)

@@ -118,12 +118,29 @@ Add-Type -TypeDefinition $code
 PROTOCOL = "gigamail"
 
 
+_PROTOCOL_ARGS = '-m ade_mail_agent.cli open-url "%1"'
+
+
 def protocol_command() -> str:
-    return f'"{sys.executable}" -m ade_mail_agent.cli open-url "%1"'
+    return f'"{sys.executable}" {_PROTOCOL_ARGS}'
 
 
 def protocol_registered() -> bool:
-    """True se HKLM ha lo schema gigamail:// che punta a QUESTO python."""
+    """True se HKLM lancia la CLI GigaMail sullo schema gigamail://.
+
+    Il confronto NON e' con sys.executable. Che i bottoni funzionino
+    dipende dal comando REGISTRATO — un python che esiste e che sa aprire
+    `ade_mail_agent.cli open-url` — non dal fatto che sia lo stesso
+    interprete che in questo momento sta costruendo la toast. Con
+    l'uguaglianza esatta bastava un secondo interprete sulla macchina (il
+    python di sistema accanto a quello del venv) perche' la toast uscisse
+    muta, in silenzio e senza che niente lo spiegasse: il caso piu'
+    frequente, non quello raro.
+
+    Resta stretto dove serve: gli argomenti devono essere esattamente i
+    nostri e l'eseguibile deve esistere davvero, cosi' una registrazione
+    di qualcun altro — o rimasta indietro rispetto a un venv cancellato —
+    non ci fa promettere bottoni che poi darebbero "Ottieni un'app"."""
     if sys.platform != "win32":
         return False
     try:
@@ -132,9 +149,20 @@ def protocol_registered() -> bool:
                            rf"Software\Classes\{PROTOCOL}\shell\open\command")
         val, _ = winreg.QueryValueEx(k, None)
         winreg.CloseKey(k)
-        return str(val).strip().lower() == protocol_command().lower()
     except Exception:
         return False
+    return registered_command_ok(str(val))
+
+
+def registered_command_ok(val: str) -> bool:
+    """Il comando letto da HKLM e' il nostro e puo' partire? Pura, cosi'
+    il caso "secondo interprete" resta coperto da un test invece che da un
+    registro di Windows."""
+    val = (val or "").strip()
+    if not val.lower().endswith(_PROTOCOL_ARGS.lower()):
+        return False
+    exe = val[: -len(_PROTOCOL_ARGS)].strip().strip('"')
+    return bool(exe) and os.path.exists(exe)
 
 
 def register_protocol_machine() -> bool:

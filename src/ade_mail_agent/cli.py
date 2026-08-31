@@ -213,12 +213,13 @@ def _cli_who() -> str:
         return "cli"
 
 
-def _fmt_preview(preview: dict) -> str:
+def _fmt_preview(preview: dict, limit: int = 300) -> str:
+    """`limit=0`: nessun troncamento — per chi legge per decidere."""
     righe = []
     for k, v in (preview or {}).items():
         v = str(v)
-        if len(v) > 300:
-            v = v[:300] + "…"
+        if limit and len(v) > limit:
+            v = v[:limit] + "…"
         righe.append(f"    {k}: {v}")
     return "\n".join(righe) or "    (nessuna anteprima)"
 
@@ -576,12 +577,98 @@ def cmd_desktop_setup(args) -> int:
     return 0 if ok else 1
 
 
+def cmd_open_url_show(rid: str) -> int:
+    """gigamail://show — il bottone "Leggi". Mostra l'anteprima INTERA
+    (niente troncamento: il corpo della mail e' esattamente cio' che
+    l'umano deve leggere prima di decidere), poi chiede se decidere qui.
+
+    Leggere e decidere sono lo stesso momento: mandare l'umano a ripescare
+    la toast dal centro notifiche dopo che ha finito di leggere e' il modo
+    piu' sicuro di fargli premere Approva senza rileggere. Il cancello non
+    si abbassa: "approva" passa da cmd_approvals_approve, quindi da Windows
+    Hello, esattamente come il bottone della toast."""
+    from ade_mail_agent import policy
+    rec = policy.store().get(rid)
+    if not rec:
+        print(f"Richiesta '{rid}' inesistente.")
+        input("Premi INVIO per chiudere... ")
+        return 1
+    import time as _t
+    eta = int(rec["expires_at"] - _t.time())
+    stato = "scaduta" if rec["expired"] else f"scade tra {eta // 60}m{eta % 60:02d}s"
+    print(f"Richiesta {rid}  [{rec['tool']}]  {rec['status']}, {stato}")
+    print()
+    print(_fmt_preview(rec["preview"], limit=0))
+    print()
+    if rec["status"] != policy.PENDING or rec["expired"]:
+        input("Premi INVIO per chiudere... ")
+        return 0
+
+    class _A:
+        request_id = rid
+
+    scelta = input("[a] approva (Windows Hello)  [r] rifiuta  "
+                   "[INVIO] decido dopo: ").strip().lower()
+    if scelta.startswith("a"):
+        rc = cmd_approvals_approve(_A)
+    elif scelta.startswith("r"):
+        rc = cmd_approvals_reject(_A)
+    else:
+        print(f"Nessuna decisione. Approva con:  gigamail approvals approve {rid}")
+        rc = 0
+    input("Premi INVIO per chiudere... ")
+    return rc
+
+
+def cmd_open_url_edit(rid: str) -> int:
+    """gigamail://edit — il bottone "Modifica". Non esiste un modo sicuro
+    di riscrivere qui il testo che l'agente ha proposto: la richiesta e'
+    congelata a cio' che verrebbe eseguito. Quindi "modifica" = rifiuta
+    QUESTA e lascia scritto cosa cambiare, cosi' l'agente ripropone. Il
+    rifiuto e' l'unica decisione che un canale non-Hello puo' prendere:
+    chiude una porta, non ne apre una."""
+    from ade_mail_agent import policy
+    rec = policy.store().get(rid)
+    if not rec:
+        print(f"Richiesta '{rid}' inesistente.")
+        return 1
+    print(f"Tool: {rec['tool']}")
+    print("Anteprima:")
+    print(_fmt_preview(rec["preview"], limit=0))
+    print()
+    nota = input("Cosa vuoi cambiare? (INVIO a vuoto = lascio tutto com'e') ").strip()
+    if not nota:
+        print("Nessuna modifica: la richiesta resta in attesa.")
+        return 0
+    if not policy.store().reject(rid, by=f"{_cli_who()} modifica: {nota[:200]}"):
+        print("Non modificabile: gia' decisa o scaduta.")
+        return 1
+    print()
+    print("Richiesta annullata. Riporta questa nota all'agente:")
+    print(f"  {nota}")
+    return 0
+
+
+def _console_utf8() -> None:
+    """La finestra aperta da una toast eredita la codepage di Windows
+    (cp1252): stampare li' il corpo di una mail vera — un'emoji, un
+    nome cinese — la farebbe morire di UnicodeEncodeError proprio
+    mentre l'umano sta leggendo per decidere. Meglio un carattere
+    sostituito che una finestra che sparisce."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def cmd_open_url(args) -> int:
     """Handler dello schema gigamail:// (click su una toast). Traduce
     l'URL in un comando della CLI: approve → Hello. La finestra resta
     aperta finche' l'utente non preme INVIO, cosi' vede l'esito."""
     import re as _re
-    m = _re.match(r"^gigamail://(approve|reject)/(req_[0-9a-f]+)/?$",
+    _console_utf8()
+    m = _re.match(r"^gigamail://(approve|reject|show|edit)/(req_[0-9a-f]+)/?$",
                   (args.url or "").strip(), _re.I)
     if not m:
         print(f"URL non riconosciuto: {args.url}")
@@ -591,9 +678,15 @@ def cmd_open_url(args) -> int:
 
     class _A:
         request_id = rid
-    rc = cmd_approvals_approve(_A) if action == "approve" else cmd_approvals_reject(_A)
-    if rc == 0 and action == "approve":
-        print("Il watcher la invia al prossimo giro (entro l'intervallo di polling).")
+    if action == "show":
+        return cmd_open_url_show(rid)  # gestisce da solo attesa e decisione
+    if action == "edit":
+        rc = cmd_open_url_edit(rid)
+    else:
+        rc = (cmd_approvals_approve(_A) if action == "approve"
+              else cmd_approvals_reject(_A))
+        if rc == 0 and action == "approve":
+            print("Il watcher la invia al prossimo giro (entro l'intervallo di polling).")
     input("Premi INVIO per chiudere... ")
     return rc
 

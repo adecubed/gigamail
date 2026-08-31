@@ -448,6 +448,28 @@ def user_lang() -> str:
         return "en"
 
 
+def toast_actions(request_id: str) -> List[tuple]:
+    """I bottoni della toast di approvazione: [(etichetta, url)].
+
+    Ogni bottone APRE soltanto un URL gigamail:// che lancia la CLI —
+    "Approva" fa comunque passare da Windows Hello. Nessun bottone decide
+    da solo. Sono qui, e non nel chiamante, perche' ogni richiesta di
+    approvazione (tool MCP o regola del watcher) deve mostrare gli stessi
+    quattro: senza `actions` la toast esce muta e l'umano vede l'avviso ma
+    non ha niente da premere."""
+    it = user_lang() == "it"
+    return [
+        ("👁 " + ("Leggi" if it else "Read"),
+         f"gigamail://show/{request_id}"),
+        ("✅ " + ("Approva" if it else "Approve"),
+         f"gigamail://approve/{request_id}"),
+        ("✏️ " + ("Modifica" if it else "Edit"),
+         f"gigamail://edit/{request_id}"),
+        ("❌ " + ("Rifiuta" if it else "Reject"),
+         f"gigamail://reject/{request_id}"),
+    ]
+
+
 def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any],
                               message: Optional[str] = None,
                               buttons: Optional[List[List[Dict[str, str]]]] = None,
@@ -601,7 +623,8 @@ def request_approval(tool: str, args: Dict[str, Any],
     except Exception as e:
         return _deny_store_unavailable(tool, e)
     audit(tool, args, "approval_requested")
-    notify_approval_requested(request_id, tool, preview)
+    notify_approval_requested(request_id, tool, preview,
+                              actions=toast_actions(request_id))
     return {
         "status": "approval_required",
         "request_id": request_id,
