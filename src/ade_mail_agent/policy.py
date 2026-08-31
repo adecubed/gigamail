@@ -82,19 +82,15 @@ def describe_recipients(to: Any, cc: Any = None, bcc: Any = None) -> Dict[str, A
     if _ADDR_RE is None:
         _ADDR_RE = re.compile(r"^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$")
 
-    def _split(v):
-        if not v:
-            return []
-        if isinstance(v, str):
-            return [p.strip() for p in re.split(r"[;,]", v) if p.strip()]
-        return [str(p).strip() for p in v if str(p).strip()]
+    # Lo stesso split che finisce in busta (core.addresses): l'anteprima
+    # deve elencare esattamente i destinatari che partiranno, non una
+    # lista parallela che puo' divergere.
+    from ade_mail_agent.core.addresses import split_addresses
 
     out = []
     may_expand = []
     for field in ("to", "cc", "bcc"):
-        for raw in _split({"to": to, "cc": cc, "bcc": bcc}[field]):
-            m = re.search(r"<([^<>]+)>", raw)
-            addr = (m.group(1) if m else raw).strip()
+        for addr in split_addresses({"to": to, "cc": cc, "bcc": bcc}[field]):
             explicit = bool(_ADDR_RE.match(addr))
             item = {"field": field, "address": addr, "explicit": explicit}
             if not explicit:

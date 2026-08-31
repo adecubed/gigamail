@@ -2,6 +2,7 @@
 mail.py — Lettura, invio e gestione mail via Microsoft Graph API.
 """
 import requests
+from .addresses import split_addresses
 from .auth import get_token
 from typing import Optional, List, Dict
 GRAPH_URL = 'https://graph.microsoft.com/v1.0'
@@ -123,18 +124,19 @@ def send_message(to: str, subject: str, body: str,
         msg = {
             'subject': subject,
             'body': {'contentType': 'Text', 'content': body},
-            'toRecipients': _recipients([to]),
+            'toRecipients': _recipients(split_addresses(to)),
         }
         if cc:
-            msg['ccRecipients'] = _recipients(cc)
+            msg['ccRecipients'] = _recipients(split_addresses(cc))
         if bcc:
-            msg['bccRecipients'] = _recipients(bcc)
+            msg['bccRecipients'] = _recipients(split_addresses(bcc))
         if graph_atts:
             msg['attachments'] = graph_atts
         payload = {'message': msg}
         res = requests.post(url, headers=_headers(), json=payload)
     ok = res.status_code in (200, 202)
-    requested = 1 + len(cc or []) + len(bcc or [])
+    requested = (len(split_addresses(to)) + len(split_addresses(cc))
+                 + len(split_addresses(bcc)))
     # Graph risponde 202 Accepted senza corpo: non dice nulla per
     # destinatario, e l'espansione di gruppi/liste la fa lui dopo. Lo
     # dichiariamo invece di fingere un conteggio verificato.
