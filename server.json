@@ -7,13 +7,13 @@
     "source": "github"
   },
   "websiteUrl": "https://gigamail.ai",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "gigamail",
-      "version": "0.2.1",
+      "version": "0.2.3",
       "transport": {
         "type": "stdio"
       },
@@ -26,8 +26,8 @@
         },
         {
           "type": "positional",
-          "value": "gigamail[all]==0.2.1",
-          "valueHint": "gigamail[all]==0.2.1"
+          "value": "gigamail[all]==0.2.3",
+          "valueHint": "gigamail[all]==0.2.3"
         },
         {
           "type": "positional",
