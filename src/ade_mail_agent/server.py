@@ -163,6 +163,76 @@ def _identity_paths(account_id: Optional[int]) -> list[str]:
     return core_accounts.get_identity(aid).get("file_paths") or []
 
 
+def _resolve_attachments(account_id: Optional[int],
+                         names: Optional[list]) -> tuple:
+    """Nomi di file -> file REGISTRATI nell'identity, con il percorso.
+
+    Il vincolo e' il punto: un allegato puo' essere solo un file che
+    l'utente ha gia' registrato per quell'account (listini, planimetrie),
+    mai un percorso arbitrario. Senza, `send_mail` diventerebbe il modo
+    piu' comodo per far uscire dal disco un file qualunque, e
+    l'approvazione umana non basterebbe: l'umano approva un nome, non
+    sceglie il file.
+
+    Ritorna (risolti, mancanti). I mancanti fermano la fase 1: meglio un
+    errore che una mail che parte senza la planimetria promessa nel testo.
+    """
+    if not names:
+        return [], []
+    paths = _identity_paths(account_id)
+    risolti, mancanti = [], []
+    for n in names:
+        n = str(n)
+        match = identity_reader.find_files_by_names(paths, [n])
+        # Esatto prima di tutto: 'A.1.4' deve dare A.1.4.pdf, mai il
+        # primo di una rosa di simili. Allegare la planimetria
+        # sbagliata a un cliente non da' nessun errore: la mail parte,
+        # sembra giusta, e dentro c'e' un altro appartamento.
+        radice = n.rsplit('.', 1)[0] if n.lower().endswith(
+            tuple(identity_reader._ESTENSIONI)) else n
+        esatti = [f for f in match
+                  if f['name_no_ext'].lower() == radice.lower()]
+        scelti = esatti or match
+        if len(scelti) == 1:
+            f = scelti[0]
+            risolti.append({"name": f["name"], "path": f["path"]})
+        elif not scelti:
+            mancanti.append(n)
+        else:
+            mancanti.append(
+                f"{n} (ambiguo: "
+                + ", ".join(f['name'] for f in scelti[:5]) + ")")
+    return risolti, mancanti
+
+
+def _attachments_preview(risolti: list) -> list:
+    """Cosa l'umano vede prima di approvare: nome, percorso e dimensione
+    reali di ogni file che uscira'."""
+    out = []
+    for f in risolti or []:
+        try:
+            kb = round(os.path.getsize(f["path"]) / 1024, 1)
+        except Exception:
+            kb = None
+        out.append({"name": f["name"], "path": f["path"], "size_kb": kb})
+    return out
+
+
+def _attachments_payload(risolti: list) -> list:
+    """Legge i file al momento dell'INVIO, non dell'anteprima, e li porta
+    nel formato di mail_router: [{name, data_b64, type}]."""
+    import base64 as _b64
+    import mimetypes as _mt
+    out = []
+    for f in risolti or []:
+        with open(f["path"], "rb") as fh:
+            data = fh.read()
+        tipo = _mt.guess_type(f["name"])[0] or "application/octet-stream"
+        out.append({"name": f["name"], "type": tipo,
+                    "data_b64": _b64.b64encode(data).decode("ascii")})
+    return out
+
+
 @mcp.tool(annotations=READ_LOCAL)
 def list_knowledge_files(account_id: AccountId = None) -> list[dict]:
     """List the knowledge files the user attached to an account (price
@@ -499,12 +569,29 @@ def send_mail(
     body: Annotated[str, Field(description="Plain-text body, sent as-is.")],
     cc: Annotated[Optional[list[str]], Field(description="CC addresses.")] = None,
     bcc: Annotated[Optional[list[str]], Field(description="BCC addresses.")] = None,
+    attachments: Annotated[Optional[list[str]], Field(
+        description="File names to attach, as shown by "
+                    "list_knowledge_files. ONLY files registered in "
+                    "the account identity can be attached: an "
+                    "arbitrary path is not accepted. A name that "
+                    "matches nothing aborts the request instead of "
+                    "sending the mail without it.")] = None,
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
+    allegati, mancanti = _resolve_attachments(account_id, attachments)
+    if mancanti:
+        return {"status": "error", "request_id": None,
+                "error": "Nessun file registrato corrisponde a: "
+                         + ", ".join(mancanti)
+                         + ". Usa list_knowledge_files per l'elenco. "
+                           "Niente e' stato inviato."}
     args = {
         "to": to, "subject": subject, "body": body,
         "cc": cc, "bcc": bcc, "account_id": account_id,
+        # i percorsi RISOLTI, non i nomi chiesti: cosi' parte
+        # esattamente il file che compare nell'anteprima approvata
+        "attachments": allegati,
     }
     sender = core_accounts.get_account_by_id(account_id) if account_id \
         else core_accounts.get_active_account()
@@ -517,10 +604,12 @@ def send_mail(
             # espandersi a piu' destinatari dopo l'approvazione
             **policy.describe_recipients(to, cc, bcc),
             "subject": subject, "body": body,
+            "attachments": _attachments_preview(allegati),
         },
         execute_fn=lambda a: mail_router.send_message(
             account_id=a["account_id"], to=a["to"], subject=a["subject"],
             body=a["body"], cc=a["cc"], bcc=a["bcc"],
+            attachments=_attachments_payload(a.get("attachments")),
         ),
     )
 
@@ -539,10 +628,21 @@ def reply_mail(
         description="Plain-text body of the reply. Only the body: "
                     "recipient, subject ('Re: ...') and threading are set "
                     "by GigaMail from the original message.")],
+    attachments: Annotated[Optional[list[str]], Field(
+        description="File names to attach, as shown by "
+                    "list_knowledge_files. Same rule as send_mail: "
+                    "only files registered in the account identity.")] = None,
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
-    args = {"message_id": message_id, "body": body, "account_id": account_id}
+    allegati, mancanti = _resolve_attachments(account_id, attachments)
+    if mancanti:
+        return {"status": "error", "request_id": None,
+                "error": "Nessun file registrato corrisponde a: "
+                         + ", ".join(mancanti)
+                         + ". Niente e' stato inviato."}
+    args = {"message_id": message_id, "body": body, "account_id": account_id,
+            "attachments": allegati}
 
     def _preview():
         original = mail_router.get_message(
@@ -554,6 +654,7 @@ def reply_mail(
                 "subject": original.get("subject"),
             },
             "body": body,
+            "attachments": _attachments_preview(allegati),
         }
 
     return policy.execute_dangerous(
@@ -563,7 +664,9 @@ def reply_mail(
         # arriva cosi' fino all'audit anche per le risposte, non solo per
         # send_mail.
         execute_fn=lambda a: mail_router.reply_message(
-            account_id=a["account_id"], message_id=a["message_id"], body=a["body"]
+            account_id=a["account_id"], message_id=a["message_id"],
+            body=a["body"],
+            attachments=_attachments_payload(a.get("attachments")),
         ),
     )
 

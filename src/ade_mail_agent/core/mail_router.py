@@ -228,7 +228,8 @@ def send_message(
         extra_headers=extra,
     ))
 def reply_message(account_id=None, message_id: str = '', body: str = '',
-                  auto_submitted: bool = False) -> Dict:
+                  auto_submitted: bool = False,
+                  attachments: list = None) -> Dict:
     """
     Risponde a una mail esistente.
     Recupera mittente e oggetto originale, poi invia la risposta
@@ -262,6 +263,7 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
         body=body,
         reply_to_id=message_id,
         auto_submitted=auto_submitted,
+        attachments=attachments,
     )
     return result if isinstance(result, dict) else {'success': bool(result)}
 
