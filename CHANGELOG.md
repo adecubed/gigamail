@@ -1,6 +1,54 @@
 # Changelog
 
-## v0.2.2 — unreleased
+## v0.2.3 — 2026-08-31
+
+Four bugs found by using GigaMail for a real morning of mail, not by
+reading the code. Three of them shared a shape: the action reported
+success and did the wrong thing quietly.
+
+- **Approval toasts came out mute.** Every MCP tool creates its request
+  through `require_approval()`, which notified without passing `actions`
+  — so the toast was built with no buttons and the human saw an alert
+  with nothing to press. Only the watcher's semi-auto path passed them,
+  which is why the feature looked like it worked. Now every approval
+  carries the same four: Leggi / Approva / Modifica / Rifiuta. **Leggi**
+  shows the entire preview (no more 300-character truncation of a mail
+  body) and lets you decide on the spot — reading and deciding are the
+  same moment. **Modifica** rejects the request and hands back your note.
+  Buttons still only open a `gigamail://` URL: Approva goes through
+  Windows Hello exactly as before.
+
+- **A second Python on the machine silenced the buttons.**
+  `protocol_registered()` compared the HKLM registration with
+  `sys.executable`, so the system Python next to the venv one produced a
+  mute toast without a word. What matters is the *registered* command,
+  not who is reading it.
+
+- **Multi-recipient sends put one malformed address in the envelope.**
+  `send_mail("a@x.it, b@y.it")` passed the string whole: SMTP issued a
+  single `RCPT TO:<a@x.it, b@y.it>`, Graph a single `toRecipients`. The
+  provider need not refuse it — ours didn't, returning `success: true`
+  and `"accepted": 1`. Half the recipients were never in the envelope and
+  nothing said so; the `To:` header was right, so the copy in Sent looked
+  fine. `split_addresses()` (new `core/addresses.py`) is now used by
+  SMTP, by Graph **and** by the preview you approve, so the list you
+  approve and the envelope that leaves cannot drift apart.
+
+- **`send_mail` and `reply_mail` can attach identity files.** Only files
+  registered in that account's identity (price lists, floor plans),
+  never an arbitrary path — otherwise send_mail is the easiest way to
+  walk a file off the disk, and approval doesn't help, because the human
+  approves a *name*. The preview lists name, path and real size of every
+  attachment; a name that resolves to nothing aborts the request rather
+  than sending a mail without the plan its body promises.
+
+- **Dotted names resolved to the wrong file.**
+  `os.path.splitext("B.1.3")` returns `("B.1", ".3")`, so a lookup for
+  apartment B.1.3 searched for "B.1" and matched B.1.1, B.1.2, B.1.4 as
+  well — first one wins. Silent: the mail went out carrying another
+  apartment's floor plan. `read_knowledge_file` shares that function, so
+  asking for one data sheet could return another. Fixed, and an
+  ambiguous name now stops the request instead of guessing.
 
 - **中文**: the README has a full Chinese section and the console speaks
   Chinese (language switch cycles IT → EN → 中; first-pass translation of
