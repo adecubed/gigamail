@@ -16,6 +16,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import parsedate_to_datetime
 from typing import List, Dict, Optional, Tuple
+
+from .addresses import split_addresses
 # Alias canonici → nomi IMAP comuni
 _FOLDER_ALIASES = {
     "inbox": ["INBOX", "Inbox"],
@@ -1280,7 +1282,11 @@ def send_message(
     if bcc:
         msg["Bcc"] = ", ".join(bcc)
     msg.attach(MIMEText(body, "plain", "utf-8"))
-    all_recipients = [to] + (cc or []) + (bcc or [])
+    # La busta vuole indirizzi, uno per RCPT: "a@x.it, b@y.it" passata
+    # intera diventa UN destinatario malformato e meta' della gente non
+    # riceve niente, con l'invio che torna success.
+    all_recipients = (split_addresses(to) + split_addresses(cc)
+                      + split_addresses(bcc))
     for att in attachments or []:
         try:
             data = base64.b64decode(att["data_b64"])
