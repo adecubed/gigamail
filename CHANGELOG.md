@@ -50,6 +50,19 @@ success and did the wrong thing quietly.
   asking for one data sheet could return another. Fixed, and an
   ambiguous name now stops the request instead of guessing.
 
+- **Toasts stayed put and stopped swallowing each other.** Five approvals
+  raised in a row appeared as one: Windows collapses toasts from the same
+  app unless each carries its own `tag`, so four vanished silently at the
+  exact moment there were five decisions to make. The tag is now the
+  request_id — and re-raising the *same* request replaces its toast
+  instead of stacking a duplicate. The popup also no longer expires under
+  you mid-read (`scenario='reminder'`: it stays until you decide; Windows
+  offers no arbitrary duration, `duration='long'` tops out near 25s).
+  The 15 minutes now live where they are real: the notification is born
+  with the request's own TTL, so it sits in the action centre exactly as
+  long as the approval is valid and removes itself when it dies — no
+  Approva button on a request that can no longer be approved.
+
 - **中文**: the README has a full Chinese section and the console speaks
   Chinese (language switch cycles IT → EN → 中; first-pass translation of
   all ~270 strings, with English fallback for anything missed — polish
