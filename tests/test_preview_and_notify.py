@@ -144,8 +144,9 @@ def test_toast_di_un_tool_ha_i_quattro_bottoni(monkeypatch):
     bottone deve puntare alla request_id giusta."""
     visti = {}
 
-    def _spia(title, body, background=True, actions=None):
+    def _spia(title, body, background=True, actions=None, expires_in=None):
         visti["actions"] = actions
+        visti["expires_in"] = expires_in
         return True
 
     from ade_mail_agent.core import desktop_notify
@@ -160,6 +161,8 @@ def test_toast_di_un_tool_ha_i_quattro_bottoni(monkeypatch):
         f"gigamail://edit/{rid}", f"gigamail://reject/{rid}"]
     assert [a[0].split()[-1] for a in actions] == [
         "Leggi", "Approva", "Modifica", "Rifiuta"]
+    # la notifica dura quanto la richiesta, non un tempo suo
+    assert visti["expires_in"] == policy._APPROVAL_TTL_SECONDS
 
 
 def test_url_dei_bottoni_accettati_dal_parser():
@@ -275,3 +278,27 @@ def test_bottoni_toast_non_legati_a_un_solo_interprete(monkeypatch):
     assert not d.registered_command_ok("")
     monkeypatch.setattr(d.os.path, "exists", lambda p: False)
     assert not d.registered_command_ok(r'"C:\gone\python.exe" ' + args)
+
+
+def test_toast_non_si_accorpano_e_restano():
+    """Cinque approvazioni diverse devono restare cinque notifiche.
+
+    Senza tag Windows accorpa le toast della stessa app: ne vedi una e le
+    altre spariscono. E la toast di un'approvazione non deve svanire dopo
+    pochi secondi mentre la richiesta vive 15 minuti — scenario=reminder
+    la tiene a schermo finche' l'umano decide."""
+    from ade_mail_agent.core import desktop_notify as d
+
+    tag = [d._toast_tag(policy.toast_actions(r))
+           for r in ("req_aaa111", "req_bbb222", "req_ccc333")]
+    assert tag == ["req_aaa111", "req_bbb222", "req_ccc333"]
+    assert len(set(tag)) == 3          # ognuna la sua, non si sovrascrivono
+    # rilanciare la stessa richiesta riusa il tag: sostituisce, non duplica
+    assert d._toast_tag(policy.toast_actions("req_aaa111")) == "req_aaa111"
+
+    xml = d.build_toast_xml("GigaMail", "x", policy.toast_actions("req_aaa111"))
+    assert "scenario='reminder'" in xml
+    # senza bottoni reminder non e' ammesso: resta la durata lunga
+    assert "scenario" not in d.build_toast_xml("GigaMail", "x")
+    assert "duration='long'" in d.build_toast_xml("GigaMail", "x")
+    assert d._toast_tag(None) == ""

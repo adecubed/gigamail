@@ -490,8 +490,11 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
     try:
         from ade_mail_agent.core import desktop_notify
         # `actions` = bottoni sulla toast: aprono gigamail://approve/<id>
-        # (→ CLI → Hello), non approvano da soli
-        if desktop_notify.notify("GigaMail", text, actions=actions):
+        # (→ CLI → Hello), non approvano da soli. `expires_in` e' la
+        # scadenza VERA della richiesta: la notifica dura quanto
+        # l'approvazione, non un tempo suo scelto altrove.
+        if desktop_notify.notify("GigaMail", text, actions=actions,
+                                 expires_in=_APPROVAL_TTL_SECONDS):
             fired = True
     except Exception:
         pass
