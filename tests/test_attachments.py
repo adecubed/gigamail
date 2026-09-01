@@ -5,6 +5,7 @@
 import pytest
 
 from ade_mail_agent import server
+from ade_mail_agent.core import attachments as att
 
 
 @pytest.fixture
@@ -15,7 +16,7 @@ def identity(tmp_path, monkeypatch):
     (reg / "A.1.4.pdf").write_bytes(b"%PDF-1.4 planimetria")
     segreto = tmp_path / "passwords.txt"
     segreto.write_text("roba che non deve uscire")
-    monkeypatch.setattr(server, "_identity_paths", lambda aid: [str(reg)])
+    monkeypatch.setattr(att, "identity_paths", lambda aid: [str(reg)])
     return reg, segreto
 
 
@@ -81,7 +82,7 @@ def test_codice_puntato_non_pesca_la_scheda_sbagliata(tmp_path, monkeypatch):
     reg.mkdir()
     for code in ("B.1.1", "B.1.2", "B.1.3", "B.1.4", "A.1.4"):
         (reg / f"{code}.pdf").write_bytes(b"%PDF " + code.encode())
-    monkeypatch.setattr(server, "_identity_paths", lambda aid: [str(reg)])
+    monkeypatch.setattr(att, "identity_paths", lambda aid: [str(reg)])
 
     trovati = identity_reader.find_files_by_names([str(reg)], ["B.1.3"])
     assert [f["name"] for f in trovati] == ["B.1.3.pdf"]
@@ -102,7 +103,7 @@ def test_nome_ambiguo_non_sceglie_da_solo(tmp_path, monkeypatch):
     reg.mkdir()
     (reg / "B.2.1 bilo.pdf").write_bytes(b"%PDF a")
     (reg / "B.2.1 no balcone.pdf").write_bytes(b"%PDF b")
-    monkeypatch.setattr(server, "_identity_paths", lambda aid: [str(reg)])
+    monkeypatch.setattr(att, "identity_paths", lambda aid: [str(reg)])
     risolti, mancanti = server._resolve_attachments(2, ["B.2.1"])
     assert risolti == []
     assert len(mancanti) == 1 and "ambiguo" in mancanti[0]

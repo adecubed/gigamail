@@ -403,8 +403,27 @@ def cmd_rules_add(args) -> int:
     trig = ", ".join(values)
     print(f"\nRiepilogo: [{mode}] {kind}={trig}; docs={len(docs)}; "
           f"cap={daily_cap}/giorno; cooldown={cooldown}h; scade tra {expiry}g")
+    cc_list = [v.strip() for v in (getattr(args, "cc", None) or "").split(",")
+               if v.strip()]
+    allegati_nomi = list(getattr(args, "attach", None) or [])
+    if allegati_nomi:
+        # Meglio scoprire adesso che un nome non risolve, non fra un mese
+        # quando la regola scatta e salta la mail senza che nessuno guardi.
+        from ade_mail_agent.core import attachments as _att
+        risolti, mancanti = _att.resolve(aid, allegati_nomi)
+        if mancanti:
+            print("Allegati non risolti: " + ", ".join(mancanti))
+            print("Usa i nomi come li mostra 'gigamail identity files'.")
+            return 1
+        print("Allegati fissi: "
+              + ", ".join(f["name"] for f in risolti))
+    dal_corpo = bool(getattr(args, "reply_to_body_address", False))
+    # Deviare il destinatario e' la cosa piu' delicata che questa
+    # regola fa: va detta nel prompt che l'utente sta approvando,
+    # non solo nel database.
     hello_ts = _hello_or_refuse(
-        f"GigaMail: creare la regola {mode.upper()} per {trig}?")
+        f"GigaMail: creare la regola {mode.upper()} per {trig}?"
+        + (" Le risposte andranno all'indirizzo scritto nel CORPO del messaggio, non al mittente." if dal_corpo else ""))
     if not hello_ts:
         return 1
     rule_id = rules_mod.store().create(
@@ -412,7 +431,10 @@ def cmd_rules_add(args) -> int:
         reply_style=style, doc_paths=docs, mode=mode,
         first_contact=first_contact, daily_cap=daily_cap,
         cooldown_hours=cooldown, expiry_days=expiry,
-        created_by=_cli_who(), hello_verified_at=hello_ts)
+        created_by=_cli_who(), hello_verified_at=hello_ts,
+        reply_to_body_address=bool(getattr(args, "reply_to_body_address",
+                                           False)),
+        cc=cc_list, attachments=allegati_nomi)
     from ade_mail_agent.policy import audit
     audit("rule", {"rule_id": rule_id, "mode": mode, "trigger": values},
           "rule_created", detail=_cli_who())
@@ -791,6 +813,13 @@ def main(argv=None) -> int:
                         dest="expiry_days")
     p_radd.add_argument("--account-id", type=int, default=None,
                         dest="account_id")
+    p_radd.add_argument("--cc", default=None,
+                        help="indirizzi sempre in copia, separati da virgola")
+    p_radd.add_argument("--attach", action="append", dest="attach",
+                        help="nome di un file registrato nell'identity da allegare sempre (ripetibile)")
+    p_radd.add_argument("--reply-to-body-address", action="store_true",
+                        dest="reply_to_body_address",
+                        help="rispondi all'indirizzo scritto NEL CORPO invece che al mittente (portali: idealista, immobiliare...)")
     p_radd.set_defaults(fn=cmd_rules_add)
     rules_sub.add_parser("list").set_defaults(fn=cmd_rules_list)
     p_pause = rules_sub.add_parser("pause")

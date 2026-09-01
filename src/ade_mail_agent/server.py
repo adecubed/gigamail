@@ -26,6 +26,7 @@ from pydantic import Field
 
 from ade_mail_agent import policy
 from ade_mail_agent.core import (
+    attachments,
     availability,
     file_extractor,
     identity_reader,
@@ -165,73 +166,17 @@ def _identity_paths(account_id: Optional[int]) -> list[str]:
 
 def _resolve_attachments(account_id: Optional[int],
                          names: Optional[list]) -> tuple:
-    """Nomi di file -> file REGISTRATI nell'identity, con il percorso.
-
-    Il vincolo e' il punto: un allegato puo' essere solo un file che
-    l'utente ha gia' registrato per quell'account (listini, planimetrie),
-    mai un percorso arbitrario. Senza, `send_mail` diventerebbe il modo
-    piu' comodo per far uscire dal disco un file qualunque, e
-    l'approvazione umana non basterebbe: l'umano approva un nome, non
-    sceglie il file.
-
-    Ritorna (risolti, mancanti). I mancanti fermano la fase 1: meglio un
-    errore che una mail che parte senza la planimetria promessa nel testo.
-    """
-    if not names:
-        return [], []
-    paths = _identity_paths(account_id)
-    risolti, mancanti = [], []
-    for n in names:
-        n = str(n)
-        match = identity_reader.find_files_by_names(paths, [n])
-        # Esatto prima di tutto: 'A.1.4' deve dare A.1.4.pdf, mai il
-        # primo di una rosa di simili. Allegare la planimetria
-        # sbagliata a un cliente non da' nessun errore: la mail parte,
-        # sembra giusta, e dentro c'e' un altro appartamento.
-        radice = n.rsplit('.', 1)[0] if n.lower().endswith(
-            tuple(identity_reader._ESTENSIONI)) else n
-        esatti = [f for f in match
-                  if f['name_no_ext'].lower() == radice.lower()]
-        scelti = esatti or match
-        if len(scelti) == 1:
-            f = scelti[0]
-            risolti.append({"name": f["name"], "path": f["path"]})
-        elif not scelti:
-            mancanti.append(n)
-        else:
-            mancanti.append(
-                f"{n} (ambiguo: "
-                + ", ".join(f['name'] for f in scelti[:5]) + ")")
-    return risolti, mancanti
+    """Delega a core.attachments: la stessa risoluzione la usano anche
+    le regole del watcher, e due copie divergerebbero."""
+    return attachments.resolve(account_id, names)
 
 
 def _attachments_preview(risolti: list) -> list:
-    """Cosa l'umano vede prima di approvare: nome, percorso e dimensione
-    reali di ogni file che uscira'."""
-    out = []
-    for f in risolti or []:
-        try:
-            kb = round(os.path.getsize(f["path"]) / 1024, 1)
-        except Exception:
-            kb = None
-        out.append({"name": f["name"], "path": f["path"], "size_kb": kb})
-    return out
+    return attachments.preview(risolti)
 
 
 def _attachments_payload(risolti: list) -> list:
-    """Legge i file al momento dell'INVIO, non dell'anteprima, e li porta
-    nel formato di mail_router: [{name, data_b64, type}]."""
-    import base64 as _b64
-    import mimetypes as _mt
-    out = []
-    for f in risolti or []:
-        with open(f["path"], "rb") as fh:
-            data = fh.read()
-        tipo = _mt.guess_type(f["name"])[0] or "application/octet-stream"
-        out.append({"name": f["name"], "type": tipo,
-                    "data_b64": _b64.b64encode(data).decode("ascii")})
-    return out
-
+    return attachments.payload(risolti)
 
 @mcp.tool(annotations=READ_LOCAL)
 def list_knowledge_files(account_id: AccountId = None) -> list[dict]:
