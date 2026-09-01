@@ -233,6 +233,45 @@ def _preview_for(rule: Dict[str, Any], message: Dict[str, Any],
     return preview
 
 
+def pid_alive(pid: int) -> bool:
+    if not pid:
+        return False
+    try:
+        if os.name == "nt":
+            import ctypes
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
+            if not h:
+                return False
+            ctypes.windll.kernel32.CloseHandle(h)
+            return True
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+
+def running_state() -> Dict[str, Any]:
+    """C'e' un watcher vivo? Il watcher registra pid, intervallo e
+    battito a ogni giro: un pid ancora esistente ma fermo da piu' di
+    tre giri e' un processo morto male, non un watcher.
+
+    Sta qui e non nell'API HTTP perche' la stessa risposta serve a
+    tre chiamanti — console, CLI e l'attivita' pianificata — e tre
+    copie divergerebbero: basta che una dica 'fermo' quando e' vivo
+    e si ritrovano due watcher sulle stesse regole."""
+    rs = rules_mod.store()
+    hb = float(rs.kv_get("watch_heartbeat", "0") or 0)
+    interval = int(rs.kv_get("watch_interval", "60") or 60)
+    pid = int(rs.kv_get("watch_pid", "0") or 0)
+    age = time.time() - hb if hb else None
+    alive = pid_alive(pid)
+    running = alive and age is not None and age < max(interval * 3, 90)
+    return {"running": running, "pid": pid if alive else None,
+            "interval": interval,
+            "last_tick_age_seconds": int(age) if age is not None else None,
+            "active_rules": len(rs.active())}
+
+
 def _execute_reply(request_id: str, args: Dict[str, Any]) -> Any:
     """Esegue una richiesta reply_mail APPROVATA, con lo stesso percorso
     consume→execute dei tool MCP (at-most-once, provider_result, audit).

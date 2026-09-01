@@ -109,3 +109,40 @@ def test_i_campi_della_regola_sono_vuoti_di_default():
     firma = inspect.signature(rules.RuleStore.create)
     assert firma.parameters["cc"].default is None
     assert firma.parameters["attachments"].default is None
+
+
+def test_un_watcher_alla_volta(monkeypatch):
+    """Il controllo "e' gia' attivo?" deve stare in un posto solo: console,
+    CLI e attivita' pianificata lo chiedono tutti e tre, e se una delle tre
+    risponde 'fermo' mentre e' vivo si ritrovano due watcher a contendersi
+    le stesse mail — come e' successo riavviando il task."""
+    import time as _t
+
+    class _RS:
+        def __init__(self, hb, interval="120"):
+            self._kv = {"watch_pid": "4242", "watch_heartbeat": str(hb),
+                        "watch_interval": interval}
+
+        def kv_get(self, k, d=""):
+            return self._kv.get(k, d)
+
+        def active(self):
+            return [{"rule_id": "rule_x"}]
+
+    monkeypatch.setattr(watcher, "pid_alive", lambda pid: True)
+
+    # battito fresco: vivo
+    monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
+    st = watcher.running_state()
+    assert st["running"] is True and st["pid"] == 4242
+
+    # pid esistente ma fermo da oltre tre giri: processo morto male
+    monkeypatch.setattr(watcher.rules_mod, "store",
+                        lambda: _RS(_t.time() - 1000))
+    assert watcher.running_state()["running"] is False
+
+    # nessun processo: fermo, e il pid non viene spacciato per buono
+    monkeypatch.setattr(watcher, "pid_alive", lambda pid: False)
+    monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
+    st = watcher.running_state()
+    assert st["running"] is False and st["pid"] is None
