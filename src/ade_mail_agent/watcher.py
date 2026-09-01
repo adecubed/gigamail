@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import accounts as core_accounts
+from ade_mail_agent.core import approval_pin
 from ade_mail_agent.core import attachments as attachments_mod
 from ade_mail_agent.core import file_extractor, mail_guard, mail_router, observer
 from ade_mail_agent.core import rules as rules_mod
@@ -809,6 +810,11 @@ class Watcher:
                                 message_id=ev.get("message_id", 0))
             return
         text = (ev.get("text") or "").strip()
+        in_attesa_pin = rs.kv_get("tg_await_pin", "")
+        if in_attesa_pin:
+            self._tg_check_pin(tg, in_attesa_pin, text, rs,
+                               ev.get("message_id", 0))
+            return
         waiting = rs.kv_get("tg_await_feedback")
         if waiting:
             rs.kv_set("tg_await_feedback", "")
@@ -881,6 +887,26 @@ class Watcher:
                              "GigaMail: approve on the PC (Hello). From here "
                              "you can only reject or ask for changes.")
                 return
+            atteso = rs.kv_get("tg_approve_pin", "")
+            if atteso:
+                # Con un PIN configurato il tap non decide: apre solo la
+                # domanda. Avere il telefono non basta piu', bisogna
+                # anche sapere il PIN.
+                bloccato = self._tg_pin_locked(rs)
+                if bloccato:
+                    self._tg_say(
+                        tg,
+                        "\U0001F512 Approvazione da Telegram bloccata per "
+                        f"{bloccato}s dopo troppi PIN sbagliati. Approva dal PC.",
+                        "\U0001F512 Telegram approval locked for "
+                        f"{bloccato}s after too many wrong PINs. Approve from the PC.")
+                    return
+                rs.kv_set("tg_await_pin", rid)
+                self._tg_say(
+                    tg,
+                    f"\U0001F511 Scrivi il PIN per approvare {rid}.",
+                    f"\U0001F511 Type the PIN to approve {rid}.")
+                return
             if not policy.store().approve(rid, by=who):
                 self._tg_say(tg, f"{rid}: non approvabile.", f"{rid}: not approvable.")
                 return
@@ -931,6 +957,84 @@ class Watcher:
                          "la rifaccio e te la ripropongo.",
                          f"✏️ Type the changes you want to draft {rid}: "
                          "I will redo it and propose it again.")
+
+    _PIN_MAX_FAILS = 3
+    _PIN_LOCK_SECONDS = 900
+
+    def _tg_pin_locked(self, rs) -> int:
+        """Secondi di blocco rimanenti, 0 se libero."""
+        fino = float(rs.kv_get("tg_pin_locked_until", "0") or 0)
+        resta = int(fino - time.time())
+        return resta if resta > 0 else 0
+
+    def _tg_check_pin(self, tg, rid: str, text: str, rs,
+                      message_id: int = 0) -> None:
+        """Il PIN scritto in chat.
+
+        Il messaggio viene cancellato SUBITO, giusto o sbagliato che
+        sia: un PIN lasciato nella cronologia lo legge chiunque riapra
+        la conversazione, e la cancellazione non deve dipendere
+        dall'esito."""
+        tg.delete_message(message_id)
+        rs.kv_set("tg_await_pin", "")
+        rec = policy.store().get(rid)
+        if not rec or rec["status"] != policy.PENDING or rec["expired"]:
+            self._tg_say(
+                tg,
+                f"{rid}: non piu' approvabile. Niente e' partito.",
+                f"{rid}: no longer approvable. Nothing sent.")
+            return
+        if not approval_pin.verify_pin(text, rs.kv_get("tg_approve_pin", "")):
+            falliti = int(rs.kv_get("tg_pin_fails", "0") or 0) + 1
+            rs.kv_set("tg_pin_fails", str(falliti))
+            policy.audit("telegram", {"request_id": rid}, "pin_failed",
+                         detail=f"tentativo {falliti}")
+            if falliti >= self._PIN_MAX_FAILS:
+                rs.kv_set("tg_pin_fails", "0")
+                rs.kv_set("tg_pin_locked_until",
+                          str(time.time() + self._PIN_LOCK_SECONDS))
+                policy.audit("telegram", {"request_id": rid}, "pin_locked")
+                self._tg_say(
+                    tg,
+                    "\U0001F512 Tre PIN sbagliati: approvazione da Telegram "
+                    "bloccata per 15 minuti. Se non sei stato tu, qualcuno "
+                    "ha in mano il tuo Telegram.",
+                    "\U0001F512 Three wrong PINs: Telegram approval locked "
+                    "for 15 minutes. If this was not you, someone has your "
+                    "Telegram.")
+                return
+            resta = self._PIN_MAX_FAILS - falliti
+            self._tg_say(
+                tg,
+                f"\u274C PIN errato. Altri {resta} tentativi. Ritenta "
+                f"premendo Approva su {rid}.",
+                f"\u274C Wrong PIN. {resta} attempts left. Tap Approve "
+                f"on {rid} to retry.")
+            return
+        rs.kv_set("tg_pin_fails", "0")
+        who = f"telegram:{tg.chat_id}+pin"
+        if not policy.store().approve(rid, by=who):
+            self._tg_say(tg, f"{rid}: non approvabile.",
+                         f"{rid}: not approvable.")
+            return
+        row = rs.find_by_request(rid)
+        if not row:
+            self._tg_say(
+                tg,
+                f"\u2705 Approvata ({rid}). Non e' ancora partita: la "
+                "completa l'agente che l'ha richiesta.",
+                f"\u2705 Approved ({rid}). Not sent yet: the agent that "
+                "asked for it completes the send.")
+            return
+        self.execute_approved()
+        h = rs.get_handled(row["rule_id"], row["message_id"]) or {}
+        ok = h.get("status") == "sent"
+        self._tg_say(
+            tg,
+            f"\u2705 Inviata ({rid})." if ok
+            else f"\u26A0 Approvata ma invio fallito ({rid}).",
+            f"\u2705 Sent ({rid})." if ok
+            else f"\u26A0 Approved but send failed ({rid}).")
 
     def _tg_retry(self, tg, rid: str, feedback: str, rs) -> None:
         row = rs.find_by_request(rid)

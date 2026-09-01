@@ -500,6 +500,66 @@ def cmd_rules_remove(args) -> int:
     return 1
 
 
+def cmd_telegram_pin(args) -> int:
+    """Imposta (o rimuove) il PIN che serve per approvare da Telegram.
+
+    Da qui in poi un tap su Approva non basta: il bot chiede il PIN e
+    approva solo se e' giusto. Serve a chiudere il buco che
+    l'approvazione da telefono apre — chi ha il telefono sbloccato
+    puo' dire di si' — senza rinunciare alla comodita' di decidere
+    fuori casa.
+
+    Il PIN si sceglie dietro Hello, come tutto cio' che allarga i
+    poteri di un canale, e viene salvato solo come hash scrypt."""
+    from ade_mail_agent.core import approval_pin
+    from ade_mail_agent.core import rules as rules_mod
+    rs = rules_mod.store()
+
+    if getattr(args, "remove", False):
+        hello_ts = _hello_or_refuse(
+            "GigaMail: RIMUOVERE il PIN per approvare da Telegram? "
+            "Dopo, un tap sul telefono bastera' ad approvare.")
+        if not hello_ts:
+            return 1
+        rs.kv_set("tg_approve_pin", "")
+        rs.kv_set("tg_pin_fails", "0")
+        rs.kv_set("tg_pin_locked_until", "0")
+        audit_pin("pin_removed")
+        print("PIN rimosso: su Telegram un tap su Approva ora invia.")
+        return 0
+
+    print("Il PIN protegge l'approvazione da Telegram: dopo il tap su")
+    print("Approva il bot lo chiede, e senza PIN giusto non invia nulla.")
+    print("ATTENZIONE: il PIN viaggia nella chat. GigaMail cancella il")
+    print("messaggio subito, ma non e' come Windows Hello: e' una")
+    print("barriera contro il telefono lasciato sbloccato, non contro chi")
+    print("controlla il tuo account Telegram.")
+    pin = getpass.getpass("Nuovo PIN (non viene mostrato): ").strip()
+    ok, perche = approval_pin.valid_pin(pin)
+    if not ok:
+        print(perche)
+        return 1
+    if getpass.getpass("Ripetilo: ").strip() != pin:
+        print("I due PIN non coincidono.")
+        return 1
+    hello_ts = _hello_or_refuse(
+        "GigaMail: impostare il PIN per approvare da Telegram?")
+    if not hello_ts:
+        return 1
+    rs.kv_set("tg_approve_pin", approval_pin.hash_pin(pin))
+    rs.kv_set("tg_pin_fails", "0")
+    rs.kv_set("tg_pin_locked_until", "0")
+    audit_pin("pin_set")
+    print("PIN impostato. Da ora il tap su Approva chiede il PIN;")
+    print("tre errori bloccano l'approvazione da Telegram per 15 minuti.")
+    return 0
+
+
+def audit_pin(outcome: str) -> None:
+    from ade_mail_agent.policy import audit
+    audit("telegram", {"by": _cli_who()}, outcome)
+
+
 def cmd_telegram_setup(args) -> int:
     """Configura Telegram come canale di notifica e (opzionale, dietro
     Hello) di approvazione. Il token si digita a video e NON e' un
@@ -857,6 +917,11 @@ def main(argv=None) -> int:
                        help="abilita l'approvazione da Telegram (richiede Hello)")
     p_tgs.set_defaults(fn=cmd_telegram_setup)
     tg_sub.add_parser("test").set_defaults(fn=cmd_telegram_test)
+    p_tgp = tg_sub.add_parser(
+        "pin", help="PIN richiesto per approvare da Telegram (Hello)")
+    p_tgp.add_argument("--remove", action="store_true",
+                       help="toglie il PIN: il tap tornera' a bastare")
+    p_tgp.set_defaults(fn=cmd_telegram_pin)
 
     p_ds = sub.add_parser(
         "desktop-setup",
