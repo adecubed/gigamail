@@ -93,7 +93,19 @@ class RuleStore:
                     created_by        TEXT NOT NULL,
                     hello_verified_at REAL NOT NULL,
                     paused            INTEGER NOT NULL DEFAULT 0,
-                    pause_reason      TEXT
+                    pause_reason      TEXT,
+                    -- 1 = rispondi all'indirizzo scritto NEL CORPO,
+                    -- non al mittente. Serve ai portali (idealista,
+                    -- immobiliare): li' il From e' un relay e la
+                    -- persona vera sta dentro il messaggio. Default 0:
+                    -- l'indirizzamento fisso resta la norma.
+                    reply_to_body_address INTEGER NOT NULL DEFAULT 0,
+                    -- copie fisse e allegati fissi della regola: i
+                    -- secondi sono NOMI di file registrati
+                    -- nell'identity, risolti al momento della bozza e
+                    -- mostrati nell'anteprima che l'umano approva.
+                    cc                TEXT NOT NULL DEFAULT '[]',
+                    attachments       TEXT NOT NULL DEFAULT '[]'
                 )
             """)
             # Ogni mail che una regola ha guardato, con l'esito: e' insieme
@@ -120,6 +132,17 @@ class RuleStore:
             cols = {r[1] for r in conn.execute("PRAGMA table_info(handled)")}
             if "feedback" not in cols:
                 conn.execute("ALTER TABLE handled ADD COLUMN feedback TEXT")
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(rules)")}
+            if "reply_to_body_address" not in cols:
+                conn.execute("ALTER TABLE rules ADD COLUMN"
+                             " reply_to_body_address INTEGER NOT NULL"
+                             " DEFAULT 0")
+            if "cc" not in cols:
+                conn.execute("ALTER TABLE rules ADD COLUMN cc TEXT"
+                             " NOT NULL DEFAULT '[]'")
+            if "attachments" not in cols:
+                conn.execute("ALTER TABLE rules ADD COLUMN attachments"
+                             " TEXT NOT NULL DEFAULT '[]'")
             # stato piccolo del watcher (es. offset di getUpdates Telegram)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS kv (
@@ -138,7 +161,10 @@ class RuleStore:
                cooldown_hours: float = DEFAULT_COOLDOWN_HOURS,
                expiry_days: float = DEFAULT_EXPIRY_DAYS,
                created_by: str = "unknown",
-               hello_verified_at: float = 0.0) -> str:
+               hello_verified_at: float = 0.0,
+               reply_to_body_address: bool = False,
+               cc: Optional[List[str]] = None,
+               attachments: Optional[List[str]] = None) -> str:
         """Registra una regola. `hello_verified_at` e' l'istante in cui il
         chiamante ha superato consent.require_human: DEVE essere valorizzato
         (il chiamante e' la CLI/console, mai un tool MCP). Qui e' un dato,
@@ -163,14 +189,17 @@ class RuleStore:
                 "INSERT INTO rules (rule_id, account_id, trigger_kind,"
                 " trigger_values, reply_style, doc_paths, mode, first_contact,"
                 " daily_cap, cooldown_hours, expires_at, created_at,"
-                " created_by, hello_verified_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " created_by, hello_verified_at, reply_to_body_address,"
+                " cc, attachments)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (rule_id, int(account_id), trigger_kind,
                  json.dumps(trigger_values, ensure_ascii=False),
                  reply_style, json.dumps(doc_paths, ensure_ascii=False),
                  mode, first_contact, int(daily_cap), float(cooldown_hours),
                  now + expiry_days * 86400, now, created_by,
-                 float(hello_verified_at)),
+                 float(hello_verified_at), 1 if reply_to_body_address else 0,
+                 json.dumps(cc or [], ensure_ascii=False),
+                 json.dumps(attachments or [], ensure_ascii=False)),
             )
         return rule_id
 
@@ -180,6 +209,9 @@ class RuleStore:
         d["trigger_values"] = json.loads(d["trigger_values"])
         d["doc_paths"] = json.loads(d["doc_paths"])
         d["paused"] = bool(d["paused"])
+        d["reply_to_body_address"] = bool(d.get("reply_to_body_address", 0))
+        d["cc"] = json.loads(d.get("cc") or "[]")
+        d["attachments"] = json.loads(d.get("attachments") or "[]")
         d["expired"] = time.time() > d["expires_at"]
         return d
 

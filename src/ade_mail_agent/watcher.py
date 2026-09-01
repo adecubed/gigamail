@@ -33,6 +33,7 @@ from typing import Any, Dict, List, Optional
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import accounts as core_accounts
+from ade_mail_agent.core import attachments as attachments_mod
 from ade_mail_agent.core import file_extractor, mail_guard, mail_router, observer
 from ade_mail_agent.core import rules as rules_mod
 from ade_mail_agent.core import telegram_channel
@@ -157,9 +158,59 @@ def draft_reply(rule: Dict[str, Any], account_id: int,
 
 # -------------------------------------------------------------- approvals
 
+_MAILTO_RE = re.compile(r'mailto:([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})',
+                        re.IGNORECASE)
+
+
+def body_reply_address(message: Dict[str, Any],
+                       sender: str) -> Optional[str]:
+    """L'indirizzo della persona vera, quando il mittente e' un relay.
+
+    I portali immobiliari mandano la notifica da un loro robot
+    (reply@idealista.it) e mettono l'indirizzo di chi ha scritto
+    dentro il corpo, come mailto:. Rispondere al From significa
+    rispondere al robot.
+
+    Prende il PRIMO mailto: del corpo e scarta tutto cio' che appare
+    del dominio del mittente: i link di servizio del portale
+    (privacy, assistenza, disiscrizione) sono mailto: anche loro, e
+    senza questo filtro si finirebbe a scrivere all'assistenza.
+    Torna None se non trova niente di plausibile: allora la regola
+    non propone nulla, invece di indovinare un destinatario.
+    """
+    corpo = ""
+    for chiave in ("body_text", "bodyPreview"):
+        corpo = corpo or str(message.get(chiave) or "")
+    b = message.get("body")
+    if isinstance(b, dict):
+        corpo += " " + str(b.get("content") or "")
+    dominio = sender.split("@")[-1].lower() if "@" in sender else ""
+    for indirizzo in _MAILTO_RE.findall(corpo):
+        dest = indirizzo.strip().lower()
+        if dominio and dest.endswith(dominio):
+            continue
+        if dest == (sender or "").lower():
+            continue
+        return dest
+    return None
+
+
+def _reply_subject(message: Dict[str, Any]) -> str:
+    """`send_message` non ricostruisce l'oggetto come fa reply_message:
+    qui lo mettiamo noi, cosi' il destinatario vede un "Re:" sensato."""
+    originale = str(message.get("subject") or "").strip()
+    if not originale:
+        return "Re:"
+    if originale.lower().startswith("re:"):
+        return originale
+    return f"Re: {originale}"
+
+
 def _preview_for(rule: Dict[str, Any], message: Dict[str, Any],
-                 body: str, mode: str) -> Dict[str, Any]:
-    return {
+                 body: str, mode: str,
+                 to_address: Optional[str] = None,
+                 allegati: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+    preview = {
         "replying_to": {
             "from": mail_guard.sender_address(message),
             "subject": message.get("subject"),
@@ -168,6 +219,18 @@ def _preview_for(rule: Dict[str, Any], message: Dict[str, Any],
         "rule_id": rule["rule_id"],
         "rule_mode": mode,
     }
+    if to_address:
+        # In evidenza, perche' e' l'unico dato che NON viene dal
+        # mittente autenticato ma dal corpo: e' quello che l'umano
+        # deve guardare prima di approvare.
+        preview["to"] = to_address
+        preview["to_source"] = ("indirizzo preso dal CORPO del "
+                                "messaggio, non dal mittente")
+    if rule.get("cc"):
+        preview["cc"] = rule["cc"]
+    if allegati:
+        preview["attachments"] = attachments_mod.preview(allegati)
+    return preview
 
 
 def _execute_reply(request_id: str, args: Dict[str, Any]) -> Any:
@@ -177,9 +240,19 @@ def _execute_reply(request_id: str, args: Dict[str, Any]) -> Any:
     return policy.execute_dangerous(
         TOOL, args, request_id,
         preview_fn=lambda: {},  # mai usata: request_id presente
-        execute_fn=lambda a: mail_router.reply_message(
-            account_id=a["account_id"], message_id=a["message_id"],
-            body=a["body"], auto_submitted=True,
+        execute_fn=lambda a: (
+            mail_router.send_message(
+                account_id=a["account_id"], to=a["to"],
+                subject=a.get("subject") or "",
+                body=a["body"], auto_submitted=True,
+                cc=a.get("cc") or None,
+                attachments=attachments_mod.payload(a.get("attachments")),
+            )
+            if a.get("to") else
+            mail_router.reply_message(
+                account_id=a["account_id"], message_id=a["message_id"],
+                body=a["body"], auto_submitted=True,
+            )
         ),
     )
 
@@ -469,7 +542,47 @@ class Watcher:
             return "failed"
 
         args = {"message_id": message_id, "body": body, "account_id": account_id}
-        preview = _preview_for(rule, full, body, mode)
+        to_address = None
+        if rule.get("reply_to_body_address"):
+            to_address = body_reply_address(full, sender)
+            if not to_address:
+                # La regola promette di scrivere alla persona e la
+                # persona non c'e': fermarsi e' l'unica opzione. Il
+                # ripiego sul mittente manderebbe la risposta al relay
+                # del portale, cioe' proprio cio' che la regola evita.
+                rs.set_status(rule_id, message_id, "skipped",
+                              "no-body-address")
+                policy.audit("watch_rule", {"rule_id": rule_id,
+                                            "message_id": message_id},
+                             "skipped", detail="no-body-address")
+                _log(f"nessun indirizzo nel corpo ({rule_id}, {sender}): "
+                     "salto", self.verbose)
+                return "skipped"
+            args["to"] = to_address
+            args["subject"] = _reply_subject(full)
+        if rule.get("cc"):
+            args["cc"] = list(rule["cc"])
+        allegati = []
+        if rule.get("attachments"):
+            allegati, mancanti = attachments_mod.resolve(
+                account_id, rule["attachments"])
+            if mancanti:
+                # La regola promette allegati che non esistono piu'
+                # (file rinominato, identity cambiata): fermarsi e'
+                # meglio di una mail che cita planimetrie assenti.
+                rs.set_status(rule_id, message_id, "skipped",
+                              "attachments-missing")
+                policy.audit("watch_rule", {"rule_id": rule_id,
+                                            "message_id": message_id},
+                             "skipped",
+                             detail="allegati non risolti: "
+                                    + ", ".join(mancanti)[:160])
+                _log(f"allegati non risolti ({rule_id}): {mancanti}",
+                     self.verbose)
+                return "skipped"
+            args["attachments"] = allegati
+        preview = _preview_for(rule, full, body, mode, to_address,
+                               allegati)
         request_id, created = _create_request(rule, args, preview)
         if not request_id:
             rs.set_status(rule_id, message_id, "skipped", "approval-cap")
