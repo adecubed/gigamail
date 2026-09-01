@@ -993,9 +993,21 @@ class Watcher:
 
     def run(self, once: bool = False) -> None:
         tg = telegram_channel.channel()
+        # Non basta approve_enabled: l'approvazione da Telegram vale solo
+        # se la chat e' stata registrata dietro Hello. Dire "con
+        # approvazione" guardando solo il file e' dichiarare attiva una
+        # cosa spenta — e lo si scopre premendo Approva e vedendosi
+        # rispondere di no.
+        approva = bool(tg) and self._tg_approve_allowed(tg)
         _log(f"watcher attivo, intervallo {self.interval}s"
-             + (f", Telegram {'con' if tg.approve_enabled else 'senza'} approvazione"
+             + (f", Telegram {'con' if approva else 'senza'} approvazione"
                 if tg else ""), True)
+        if tg and tg.approve_enabled and not approva:
+            _log("ATTENZIONE: notify.json chiede l'approvazione da "
+                 "Telegram ma nessuna chat e' registrata dietro Hello "
+                 "(tg_trusted_chat vuoto): i tap su Approva verranno "
+                 "rifiutati. Esegui: gigamail telegram setup --approve",
+                 True)
         if tg:
             # Quale chat questo watcher considera "l'umano": scritto
             # nell'audit a ogni avvio, cosi' un notify.json manomesso
