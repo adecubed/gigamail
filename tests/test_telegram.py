@@ -315,3 +315,39 @@ def test_approvazione_di_un_tool_ha_i_bottoni(monkeypatch):
     assert b is not None
     azioni = [x["callback_data"] for riga in b for x in riga]
     assert azioni == ["a:req_abc123", "r:req_abc123", "m:req_abc123"]
+
+
+def test_su_telegram_si_vede_la_mail_intera():
+    """La toast puo' restare corta perche' ha il bottone Leggi; Telegram
+    quel secondo passo non ce l'ha. Se il corpo non e' nel messaggio si
+    finisce ad approvare una mail di cui si e' letto solo l'oggetto."""
+    from ade_mail_agent import policy
+    preview = {
+        "from": "info@20128milano.it", "to": "sam@euronext.com",
+        "cc": ["info@fingroupspa.com"], "subject": "Re: Appuntamento",
+        "attachments": [{"name": "B.1.3.pdf"}],
+        "body": "Gentile Sig. Sam,\n\ndisponibilita' attuale: ...\n\nCordiali saluti",
+    }
+    t = policy.full_preview_text("send_mail", preview)
+    assert "Da: info@20128milano.it" in t
+    assert "A: sam@euronext.com" in t
+    assert "Cc: info@fingroupspa.com" in t
+    assert "Oggetto: Re: Appuntamento" in t
+    assert "B.1.3.pdf" in t
+    assert "Gentile Sig. Sam," in t and "Cordiali saluti" in t
+
+
+def test_il_corpo_lungo_viene_troncato_ma_dichiarato():
+    """Telegram taglia a 4096: meglio dire che manca un pezzo che farlo
+    sparire in silenzio."""
+    from ade_mail_agent import policy
+    t = policy.full_preview_text(
+        "send_mail", {"to": "a@x.it", "subject": "s", "body": "x" * 9000})
+    assert len(t) < 4096
+    assert "troncato" in t or "truncated" in t
+
+
+def test_senza_corpo_resta_il_riassunto():
+    from ade_mail_agent import policy
+    t = policy.full_preview_text("delete_message", {"action": "elimina"})
+    assert "action=elimina" in t
