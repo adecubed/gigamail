@@ -149,6 +149,20 @@ class Telegram:
                     "callback_data": f"m:{request_id}"})
         return [row]
 
+    def clear_buttons(self, message_id: int) -> bool:
+        """Toglie la tastiera da un messaggio gia' mandato.
+
+        Una richiesta scade dopo 15 minuti ma il messaggio resta in
+        chat per sempre, con i suoi tre bottoni: si continua a
+        premerli e a farsi rispondere di no. Tolti i bottoni, il
+        messaggio resta come storico e smette di promettere azioni."""
+        if not message_id:
+            return False
+        return self._call("editMessageReplyMarkup",
+                          chat_id=self.chat_id,
+                          message_id=int(message_id),
+                          reply_markup={"inline_keyboard": []}) is not None
+
     def answer_callback(self, callback_id: str, text: str = "") -> None:
         self._call("answerCallbackQuery", callback_query_id=callback_id,
                    text=text[:200])
@@ -179,6 +193,10 @@ class Telegram:
                     "from_id": int((cq.get("from") or {}).get("id") or 0),
                     "data": str(cq.get("data") or ""),
                     "callback_id": str(cq.get("id") or ""),
+                    # da quale messaggio arriva il tap: serve a
+                    # togliergli i bottoni quando non c'e' piu' niente
+                    # da premere.
+                    "message_id": int((cq.get("message") or {}).get("message_id") or 0),
                 })
                 continue
             msg = upd.get("message") or {}
