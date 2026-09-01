@@ -1011,35 +1011,14 @@ def rule_activity(rule_id: str, limit: int = 30):
 # --- watcher: processo separato, avviato/fermato dal backend ---------------
 
 def _watch_state() -> dict:
-    import time as _t
-    from ade_mail_agent.core import rules as rules_mod
-    rs = rules_mod.store()
-    hb = float(rs.kv_get("watch_heartbeat", "0") or 0)
-    interval = int(rs.kv_get("watch_interval", "60") or 60)
-    pid = int(rs.kv_get("watch_pid", "0") or 0)
-    age = _t.time() - hb if hb else None
-    alive = bool(pid) and _pid_alive(pid)
-    running = alive and age is not None and age < max(interval * 3, 90)
-    return {"running": running, "pid": pid if alive else None,
-            "interval": interval,
-            "last_tick_age_seconds": int(age) if age is not None else None,
-            "active_rules": len(rs.active())}
+    """Delega al watcher: la console non tiene una sua idea di "attivo"."""
+    from ade_mail_agent.watcher import running_state
+    return running_state()
 
 
 def _pid_alive(pid: int) -> bool:
-    try:
-        if os.name == "nt":
-            import ctypes
-            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED
-            if not h:
-                return False
-            ctypes.windll.kernel32.CloseHandle(h)
-            return True
-        os.kill(pid, 0)
-        return True
-    except Exception:
-        return False
-
+    from ade_mail_agent.watcher import pid_alive
+    return pid_alive(pid)
 
 @app.get("/watch/status")
 def watch_status():

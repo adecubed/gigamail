@@ -713,6 +713,21 @@ def cmd_open_url(args) -> int:
     return rc
 
 
+def cmd_watch_running(_args) -> int:
+    """Esce 0 se un watcher e' vivo, 1 se no. Serve a chi deve
+    decidere se avviarne uno — l'attivita' pianificata, uno script —
+    senza reimplementare il controllo e rischiare di far partire un
+    secondo watcher sulle stesse regole."""
+    from ade_mail_agent.watcher import running_state
+    st = running_state()
+    if st["running"]:
+        print(f"pid {st['pid']}, ultimo giro {st['last_tick_age_seconds']}s fa, "
+              f"{st['active_rules']} regole attive")
+        return 0
+    print("nessun watcher attivo")
+    return 1
+
+
 def cmd_watch(args) -> int:
     from ade_mail_agent.watcher import Watcher
     try:
@@ -861,6 +876,10 @@ def main(argv=None) -> int:
                          help="secondi tra un giro e l'altro (default 60)")
     p_watch.add_argument("--verbose", action="store_true")
     p_watch.set_defaults(fn=cmd_watch)
+
+    sub.add_parser("watch-running",
+                   help="esce 0 se un watcher e' gia' attivo").set_defaults(
+        fn=cmd_watch_running)
 
     p_idx = sub.add_parser("index")
     p_idx.add_argument("account_id", type=int, nargs="?", default=None)
