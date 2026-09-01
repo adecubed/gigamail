@@ -25,6 +25,7 @@ class FakeTG:
         self.approve_enabled = approve
         self.sent = []
         self.answered = []
+        self.cleared = []
 
     def send(self, text, buttons=None, html=False):
         self.sent.append({"text": text, "buttons": buttons, "html": html})
@@ -32,6 +33,10 @@ class FakeTG:
 
     def answer_callback(self, cid, text=""):
         self.answered.append(cid)
+
+    def clear_buttons(self, message_id):
+        self.cleared.append(message_id)
+        return True
 
     action_buttons = staticmethod(telegram_channel.Telegram.action_buttons)
     safe_html = staticmethod(telegram_channel.Telegram.safe_html)
@@ -84,9 +89,9 @@ def _pending_id():
     return policy.store().list_pending()[0]["request_id"]
 
 
-def _ev_cb(data, chat=CHAT, frm=None):
+def _ev_cb(data, chat=CHAT, frm=None, message_id=777):
     return {"kind": "callback", "chat_id": chat, "from_id": frm or chat,
-            "data": data, "callback_id": "cb1"}
+            "data": data, "callback_id": "cb1", "message_id": message_id}
 
 
 def _ev_text(text, chat=CHAT, frm=None):
@@ -351,3 +356,47 @@ def test_senza_corpo_resta_il_riassunto():
     from ade_mail_agent import policy
     t = policy.full_preview_text("delete_message", {"action": "elimina"})
     assert "action=elimina" in t
+
+
+def test_una_richiesta_scaduta_non_e_una_gia_decisa(world):
+    """Il messaggio diceva "gia' decisa o scaduta (pending)": decisa e
+    pending nella stessa frase, e chi legge non capisce cosa sia
+    successo. Sono due casi diversi e vanno detti diversi."""
+    import time as _t
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+
+    # la faccio scadere senza che nessuno l'abbia decisa
+    store = policy.store()
+    with store._conn() as conn:
+        conn.execute("UPDATE approvals SET expires_at=? WHERE request_id=?",
+                     (_t.time() - 60, rid))
+    assert store.get(rid)["expired"] is True
+
+    w.handle_telegram_event(world["tg"], _ev_cb(f"m:{rid}"))
+    detto = world["tg"].sent[-1]["text"]
+    assert "scaduta" in detto and "Niente e' partito" in detto
+    assert "gia' decisa" not in detto
+    assert policy.store().get(rid)["status"] == policy.PENDING  # mai decisa
+
+
+def test_i_bottoni_spariscono_quando_non_servono_piu(world):
+    """Una richiesta vive 15 minuti, il messaggio Telegram resta in chat
+    per sempre: senza togliere la tastiera si continua a premerla e a
+    farsi rispondere di no. Il tap porta con se' il message_id, quindi i
+    bottoni spariscono la prima volta che scopri che e' morta."""
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+
+    w.handle_telegram_event(world["tg"], _ev_cb(f"r:{rid}", message_id=999))
+    assert world["tg"].cleared == [999]          # decisa: via i bottoni
+
+    world["tg"].cleared.clear()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}", message_id=999))
+    assert world["tg"].cleared == [999]          # gia' decisa: idem

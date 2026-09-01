@@ -805,7 +805,8 @@ class Watcher:
             m = re.match(r"^([arm]):(req_[0-9a-f]+)$", ev.get("data", ""))
             tg.answer_callback(ev.get("callback_id", ""))
             if m:
-                self._tg_action(tg, m.group(1), m.group(2), rs)
+                self._tg_action(tg, m.group(1), m.group(2), rs,
+                                message_id=ev.get("message_id", 0))
             return
         text = (ev.get("text") or "").strip()
         waiting = rs.kv_get("tg_await_feedback")
@@ -832,7 +833,8 @@ class Watcher:
                      "Commands: 'approve req_x', 'reject req_x', "
                      "'reject req_x: <changes>' — or the buttons under the draft.")
 
-    def _tg_action(self, tg, action: str, rid: str, rs) -> None:
+    def _tg_action(self, tg, action: str, rid: str, rs,
+                   message_id: int = 0) -> None:
         row = rs.find_by_request(rid)
         rec = policy.store().get(rid)
         if not rec:
@@ -844,9 +846,29 @@ class Watcher:
         # ha una, e prima finiva qui come 'sconosciuta': i bottoni
         # c'erano ma non facevano niente.
         da_regola = bool(row)
-        if rec["status"] != policy.PENDING or rec["expired"]:
-            self._tg_say(tg, f"{rid}: gia' decisa o scaduta ({rec['status']}).",
-                         f"{rid}: already decided or expired ({rec['status']}).")
+        if rec["expired"] and rec["status"] == policy.PENDING:
+            # Scaduta e mai decisa: dire "gia' decisa" mostrando
+            # "pending" e' una contraddizione che lascia l'umano a
+            # chiedersi cosa sia successo. Qui non c'e' niente da
+            # decidere: la richiesta e' morta di vecchiaia e va rifatta.
+            import time as _t
+            quando = _t.strftime("%H:%M", _t.localtime(rec["expires_at"]))
+            self._tg_say(
+                tg,
+                f"⏱ {rid}: scaduta alle {quando}, nessuno l'ha "
+                "decisa. Niente e' partito. Chiedi all'agente di "
+                "rifare la richiesta.",
+                f"⏱ {rid}: expired at {quando}, nobody decided "
+                "it. Nothing was sent. Ask the agent to raise it "
+                "again.")
+            tg.clear_buttons(message_id)
+            return
+        if rec["status"] != policy.PENDING:
+            self._tg_say(
+                tg,
+                f"{rid}: gia' decisa ({rec['status']}). Nessuna azione.",
+                f"{rid}: already decided ({rec['status']}). No action.")
+            tg.clear_buttons(message_id)
             return
         who = f"telegram:{tg.chat_id}"
         if action == "a":
@@ -872,6 +894,7 @@ class Watcher:
                     "la completa l'agente che l'ha richiesta.",
                     f"✅ Approved ({rid}). Not sent yet: the agent "
                     "that asked for it completes the send.")
+                tg.clear_buttons(message_id)
                 return
             self.execute_approved()
             h = rs.get_handled(row["rule_id"], row["message_id"]) or {}
@@ -882,6 +905,7 @@ class Watcher:
                 else f"⚠️ Approvata ma invio fallito ({rid}): {h.get('reason')}",
                 f"✅ Sent ({rid})." if ok
                 else f"⚠️ Approved but send failed ({rid}): {h.get('reason')}")
+            tg.clear_buttons(message_id)
             return
         if action == "r":
             policy.store().reject(rid, by=who)
@@ -889,6 +913,7 @@ class Watcher:
                 rs.set_status(row["rule_id"], row["message_id"], "rejected")
             self._tg_say(tg, f"❌ Rifiutata ({rid}). Nessun invio.",
                          f"❌ Rejected ({rid}). Nothing sent.")
+            tg.clear_buttons(message_id)
             return
         if action == "m":
             rs.kv_set("tg_await_feedback", rid)
