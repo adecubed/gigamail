@@ -400,3 +400,25 @@ def test_i_bottoni_spariscono_quando_non_servono_piu(world):
     world["tg"].cleared.clear()
     w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}", message_id=999))
     assert world["tg"].cleared == [999]          # gia' decisa: idem
+
+
+def test_il_log_non_dichiara_attiva_un_approvazione_spenta(world, monkeypatch, capsys):
+    """notify.json con approve:true ma nessuna chat registrata dietro
+    Hello = approvazione SPENTA. Il watcher scriveva comunque "Telegram
+    con approvazione", e lo scoprivi solo premendo Approva e vedendoti
+    rispondere di no."""
+    from ade_mail_agent.core import rules as rules_mod
+    rs = rules_mod.store()
+    rs.kv_set("tg_trusted_chat", "")          # mai registrata
+    w = watcher_mod.Watcher()
+    w.run(once=True)
+    out = capsys.readouterr().out
+    assert "Telegram senza approvazione" in out
+    assert "gigamail telegram setup --approve" in out
+
+    # registrata: torna "con", e nessun avviso
+    rs.kv_set("tg_trusted_chat", str(CHAT))
+    w.run(once=True)
+    out = capsys.readouterr().out
+    assert "Telegram con approvazione" in out
+    assert "ATTENZIONE" not in out
