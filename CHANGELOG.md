@@ -1,5 +1,79 @@
 # Changelog
 
+## v0.2.4 — 2026-09-01
+
+A day of using GigaMail on real mail, which is where the rest of these
+were found. The recurring shape: something reported success, or reported
+a capability it did not have, and only the phone or the customer found
+out.
+
+- **Rules can answer the person instead of the portal.** A listings site
+  sends its notification from a relay (`reply@idealista.it`) and puts the
+  enquirer's address in the body, so a semi-auto rule drafted a perfect
+  reply and addressed it to a robot. Fixed addressing stays the default —
+  it is what stops a hostile mail redirecting an answer via `Reply-To` —
+  but a rule can now opt out with `reply_to_body_address`. The extracted
+  address is shown in the approval preview, flagged as coming from the
+  body, because it is the one field that does not come from an
+  authenticated sender. No address found skips the message rather than
+  falling back to the relay.
+
+- **Rules carry cc and attachments.** Attachment names resolve against
+  the account identity and are listed with real sizes in the preview; a
+  name that no longer resolves skips the message instead of sending a
+  mail that cites floor plans it does not have. `gigamail rules add`
+  resolves them once at creation so a typo surfaces then, not a month
+  later.
+
+- **The watcher survives logout.** `scripts/watch-task.ps1` registers it
+  with Task Scheduler, in the user's interactive session — never as
+  SYSTEM, because account passwords are sealed with per-user DPAPI and
+  approval toasts only exist inside a session. Stopping the task does not
+  kill the tree it launched, which left two watchers competing over the
+  same mail, so the launcher now asks `gigamail watch-running` first and
+  that answer moved into `watcher.running_state()`, shared by console,
+  CLI and task.
+
+- **Telegram approvals actually work.** Requests raised by a tool arrived
+  with no buttons, and tapping one answered "unknown request" because the
+  handler required a rule row. Both fixed. Approving a tool request from
+  the chat does not send — phase 2 belongs to the agent that asked — and
+  the reply says so instead of implying the mail left.
+
+- **Nothing in a Telegram approval is tappable except the buttons.**
+  Without `parse_mode` Telegram linkifies addresses itself, so in a
+  buttonless message the only thing to press was the recipient's
+  `mailto:` — which opens the phone's mail client and asks you to sign
+  in. An approval whose single affordance is an unexpected login prompt
+  is indistinguishable from phishing, on the one channel with no Hello
+  behind it. Addresses and URLs now go in `<code>`.
+
+- **The chat shows the whole mail**, not just its subject: sender,
+  recipients, cc, attachments and body, trimmed to fit Telegram's limit
+  with the cut labelled. The toast can stay terse because it has a Leggi
+  button; the chat has no second step.
+
+- **A request that expired is not one that was decided.** The reply said
+  "already decided or expired (pending)" — two contradictory things at
+  once. The cases now read differently, and the buttons are stripped the
+  moment you discover the request is dead, so the message stops offering
+  actions that can only be refused.
+
+- **No more announcing an approval that is switched off.** `notify.json`
+  can say `approve: true` while no chat was ever recorded behind Windows
+  Hello; the watcher logged "Telegram con approvazione" on the strength
+  of the file alone, and the only way to learn otherwise was to tap
+  Approva and be told no.
+
+- **Optional PIN before approving from Telegram** (`gigamail telegram
+  pin`, set and removed behind Hello). A tap alone means whoever holds
+  the unlocked phone can send mail. Stored as scrypt with a random salt,
+  three wrong tries lock the channel for 15 minutes, and the message
+  carrying the PIN is deleted whether it was right or wrong. It is not
+  Hello and does not pretend to be: the PIN crosses the chat in clear, so
+  it guards against a phone left unlocked, not against someone who
+  controls the Telegram account.
+
 ## v0.2.3 — 2026-08-31
 
 Four bugs found by using GigaMail for a real morning of mail, not by
