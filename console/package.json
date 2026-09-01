@@ -8,11 +8,72 @@
     "email": "info@adecubed.com"
   },
   "homepage": "https://adecubed.com",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
   "dependencies": {
     "better-sqlite3": "^9.6.0",
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "electron": "^30.5.1"
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.adecubed.gigamail",
+    "productName": "GigaMail",
+    "copyright": "Copyright © 2026 Adecubed",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!python-embedded/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../src",
+        "to": "gigamail/src",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc"
+        ]
+      },
+      {
+        "from": "python-embedded",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../docs/brand/gigamail.ico",
+      "publisherName": "Adecubed"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "perMachine": true,
+      "installerIcon": "../docs/brand/gigamail.ico",
+      "uninstallerIcon": "../docs/brand/gigamail.ico",
+      "installerHeaderIcon": "../docs/brand/gigamail.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GigaMail",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
