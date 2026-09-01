@@ -104,11 +104,36 @@ class Telegram:
         return self._call("sendMessage", chat_id=int(chat_id),
                           text=text[:4000]) is not None
 
-    def send(self, text: str, buttons: Optional[List[List[Dict[str, str]]]] = None) -> bool:
+    def send(self, text: str,
+             buttons: Optional[List[List[Dict[str, str]]]] = None,
+             html: bool = False) -> bool:
+        """`html=True` per i testi passati da safe_html(): senza
+        parse_mode Telegram linkifica da solo indirizzi e URL del
+        messaggio, e in un'approvazione l'unica cosa tappabile
+        diventa il mailto: del destinatario."""
         params: Dict[str, Any] = {"chat_id": self.chat_id, "text": text[:4000]}
+        if html:
+            params["parse_mode"] = "HTML"
         if buttons:
             params["reply_markup"] = {"inline_keyboard": buttons}
         return self._call("sendMessage", **params) is not None
+
+    @staticmethod
+    def safe_html(text: str) -> str:
+        """Testo per Telegram in cui niente diventa un link.
+
+        Telegram riconosce da solo indirizzi email e URL nel testo e
+        li rende tappabili. In un messaggio di approvazione senza
+        bottoni il risultato e' che l'unica cosa premibile e' il
+        `mailto:` del destinatario: aprirlo lancia il client di posta
+        del telefono e chiede di autenticarsi. Indirizzi e URL vanno
+        quindi in <code>, che Telegram non linkifica, cosi' le
+        uniche cose da premere restano i bottoni."""
+        import re as _re
+        esc = (text.replace("&", "&amp;").replace("<", "&lt;")
+                   .replace(">", "&gt;"))
+        pat = _re.compile(r"(https?://\S+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})")
+        return pat.sub(lambda m: f"<code>{m.group(1)}</code>", esc)
 
     @staticmethod
     def action_buttons(request_id: str, lang: str, can_approve: bool) -> List[List[Dict[str, str]]]:

@@ -26,14 +26,15 @@ class FakeTG:
         self.sent = []
         self.answered = []
 
-    def send(self, text, buttons=None):
-        self.sent.append({"text": text, "buttons": buttons})
+    def send(self, text, buttons=None, html=False):
+        self.sent.append({"text": text, "buttons": buttons, "html": html})
         return True
 
     def answer_callback(self, cid, text=""):
         self.answered.append(cid)
 
     action_buttons = staticmethod(telegram_channel.Telegram.action_buttons)
+    safe_html = staticmethod(telegram_channel.Telegram.safe_html)
     is_trusted = telegram_channel.Telegram.is_trusted
 
 
@@ -287,3 +288,30 @@ def test_cambio_chat_revoca_le_pending(world):
     # l'avviso non si ripete
     w.check_telegram_trust(world["tg"])
     assert len(alerts) == 1
+
+
+def test_indirizzi_non_diventano_link_tappabili():
+    """Regressione, vista dal vivo su Telegram: senza parse_mode Telegram
+    linkifica da solo l'indirizzo nel testo, e in un messaggio senza
+    bottoni l'UNICA cosa premibile diventava il mailto: del destinatario —
+    che sul telefono apre il client di posta e chiede un login. Ora
+    indirizzi e URL vanno in <code>, che Telegram non tocca."""
+    h = telegram_channel.Telegram.safe_html(
+        "GigaMail: send_mail in attesa — to=manuela.fomiatti@gmail.com; "
+        "vedi https://esempio.it/x")
+    assert "<code>manuela.fomiatti@gmail.com</code>" in h
+    assert "<code>https://esempio.it/x</code>" in h
+    # e il testo resta innocuo se contiene HTML
+    assert "&lt;b&gt;" in telegram_channel.Telegram.safe_html("<b>x</b>")
+
+
+def test_approvazione_di_un_tool_ha_i_bottoni(monkeypatch):
+    """I messaggi Telegram delle richieste nate da un tool arrivavano
+    muti: require_approval passava gli actions della toast ma non i
+    buttons di Telegram."""
+    from ade_mail_agent import policy
+    monkeypatch.setattr(telegram_channel, "channel", lambda: FakeTG())
+    b = policy.telegram_buttons("req_abc123")
+    assert b is not None
+    azioni = [x["callback_data"] for riga in b for x in riga]
+    assert azioni == ["a:req_abc123", "r:req_abc123", "m:req_abc123"]
