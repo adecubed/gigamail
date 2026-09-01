@@ -149,6 +149,17 @@ class Telegram:
                     "callback_data": f"m:{request_id}"})
         return [row]
 
+    def delete_message(self, message_id: int) -> bool:
+        """Cancella un messaggio dalla chat. Usato per il PIN: un PIN
+        scritto in chat resta nella cronologia e sui server di
+        Telegram, e chiunque riapra la conversazione lo legge. Non e'
+        una garanzia — Telegram puo' rifiutare, e altri client
+        possono averlo gia' visto — ma non lasciarlo li' e' il minimo."""
+        if not message_id:
+            return False
+        return self._call("deleteMessage", chat_id=self.chat_id,
+                          message_id=int(message_id)) is not None
+
     def clear_buttons(self, message_id: int) -> bool:
         """Toglie la tastiera da un messaggio gia' mandato.
 
@@ -206,6 +217,9 @@ class Telegram:
                     "chat_id": int((msg.get("chat") or {}).get("id") or 0),
                     "from_id": int((msg.get("from") or {}).get("id") or 0),
                     "text": str(msg["text"]),
+                    # serve a cancellare dalla chat il messaggio che
+                    # contiene il PIN
+                    "message_id": int(msg.get("message_id") or 0),
                 })
         return events, new_offset
 

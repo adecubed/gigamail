@@ -26,6 +26,7 @@ class FakeTG:
         self.sent = []
         self.answered = []
         self.cleared = []
+        self.deleted = []
 
     def send(self, text, buttons=None, html=False):
         self.sent.append({"text": text, "buttons": buttons, "html": html})
@@ -36,6 +37,10 @@ class FakeTG:
 
     def clear_buttons(self, message_id):
         self.cleared.append(message_id)
+        return True
+
+    def delete_message(self, message_id):
+        self.deleted.append(message_id)
         return True
 
     action_buttons = staticmethod(telegram_channel.Telegram.action_buttons)
@@ -94,8 +99,9 @@ def _ev_cb(data, chat=CHAT, frm=None, message_id=777):
             "data": data, "callback_id": "cb1", "message_id": message_id}
 
 
-def _ev_text(text, chat=CHAT, frm=None):
-    return {"kind": "text", "chat_id": chat, "from_id": frm or chat, "text": text}
+def _ev_text(text, chat=CHAT, frm=None, message_id=555):
+    return {"kind": "text", "chat_id": chat, "from_id": frm or chat,
+            "text": text, "message_id": message_id}
 
 
 # ------------------------------------------------------------- config
@@ -422,3 +428,82 @@ def test_il_log_non_dichiara_attiva_un_approvazione_spenta(world, monkeypatch, c
     out = capsys.readouterr().out
     assert "Telegram con approvazione" in out
     assert "ATTENZIONE" not in out
+
+
+def _con_pin(pin="739104"):
+    from ade_mail_agent.core import approval_pin, rules as rules_mod
+    rs = rules_mod.store()
+    rs.kv_set("tg_approve_pin", approval_pin.hash_pin(pin))
+    rs.kv_set("tg_pin_fails", "0")
+    rs.kv_set("tg_pin_locked_until", "0")
+    rs.kv_set("tg_trusted_chat", str(CHAT))
+    return rs
+
+
+def test_col_pin_il_tap_da_solo_non_approva(world):
+    """Il punto della funzione: avere il telefono sbloccato non basta piu'."""
+    rs = _con_pin()
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING   # non approvata
+    assert world["replies"] == []                                # niente inviato
+    assert "PIN" in world["tg"].sent[-1]["text"]
+    assert rs.kv_get("tg_await_pin") == rid
+
+
+def test_il_pin_giusto_approva_e_il_messaggio_sparisce(world):
+    _con_pin()
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    w.handle_telegram_event(world["tg"], _ev_text("739104", message_id=42))
+
+    assert policy.store().get(rid)["status"] in (policy.APPROVED, policy.EXECUTED)
+    assert 42 in world["tg"].deleted        # il PIN non resta in cronologia
+    assert len(world["replies"]) == 1
+
+
+def test_tre_pin_sbagliati_bloccano_e_non_inviano(world):
+    """Uno spazio di PIN e' minuscolo: senza blocco lo si indovina a tentativi."""
+    rs = _con_pin()
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+
+    for tentativo in ("000000", "111222", "987654"):
+        w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+        w.handle_telegram_event(world["tg"], _ev_text(tentativo))
+
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert world["replies"] == []
+    assert float(rs.kv_get("tg_pin_locked_until", "0")) > 0
+    assert "bloccata" in world["tg"].sent[-1]["text"]
+
+    # e da bloccato nemmeno il PIN giusto passa
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert "bloccata" in world["tg"].sent[-1]["text"]
+    assert rs.kv_get("tg_await_pin", "") == ""
+
+
+def test_il_pin_sbagliato_viene_cancellato_comunque(world):
+    """Anche un PIN errato e' un tentativo di segreto: non deve restare
+    scritto in chat."""
+    _con_pin()
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    w.handle_telegram_event(world["tg"], _ev_text("000000", message_id=77))
+    assert 77 in world["tg"].deleted
