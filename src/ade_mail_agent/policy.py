@@ -466,6 +466,22 @@ def toast_actions(request_id: str) -> List[tuple]:
     ]
 
 
+def telegram_buttons(request_id: str):
+    """Gli stessi tre bottoni delle bozze da regola, anche per le
+    richieste nate da un tool: senza, il messaggio Telegram arrivava
+    muto e l'unica cosa tappabile era l'indirizzo del destinatario.
+    None se Telegram non e' configurato."""
+    try:
+        from ade_mail_agent.core import telegram_channel
+        tg = telegram_channel.channel()
+        if not tg:
+            return None
+        return tg.action_buttons(request_id, user_lang(),
+                                 bool(getattr(tg, "approve_enabled", False)))
+    except Exception:
+        return None
+
+
 def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any],
                               message: Optional[str] = None,
                               buttons: Optional[List[List[Dict[str, str]]]] = None,
@@ -504,8 +520,14 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
         tg = telegram_channel.channel()
         if tg:
             import threading
-            threading.Thread(target=lambda: tg.send(text, buttons=buttons),
-                             daemon=False).start()
+            # safe_html: in un'approvazione l'unica cosa tappabile non
+            # deve essere il mailto' del destinatario (apre il client di
+            # posta e chiede un login). Tappabili solo i bottoni.
+            testo_tg = telegram_channel.Telegram.safe_html(text)
+            threading.Thread(
+                target=lambda: tg.send(testo_tg, buttons=buttons,
+                                       html=True),
+                daemon=False).start()
             audit(tool, {"request_id": request_id}, "approval_notified",
                   detail="telegram")
             fired = True
@@ -623,7 +645,8 @@ def request_approval(tool: str, args: Dict[str, Any],
         return _deny_store_unavailable(tool, e)
     audit(tool, args, "approval_requested")
     notify_approval_requested(request_id, tool, preview,
-                              actions=toast_actions(request_id))
+                              actions=toast_actions(request_id),
+                              buttons=telegram_buttons(request_id))
     return {
         "status": "approval_required",
         "request_id": request_id,

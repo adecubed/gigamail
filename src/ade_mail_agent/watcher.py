@@ -835,10 +835,15 @@ class Watcher:
     def _tg_action(self, tg, action: str, rid: str, rs) -> None:
         row = rs.find_by_request(rid)
         rec = policy.store().get(rid)
-        if not row or not rec:
+        if not rec:
             self._tg_say(tg, f"{rid}: richiesta sconosciuta.",
                          f"{rid}: unknown request.")
             return
+        # `row` esiste solo per le bozze nate da una regola. Una
+        # richiesta creata da un tool (send_mail dell'agente) non ne
+        # ha una, e prima finiva qui come 'sconosciuta': i bottoni
+        # c'erano ma non facevano niente.
+        da_regola = bool(row)
         if rec["status"] != policy.PENDING or rec["expired"]:
             self._tg_say(tg, f"{rid}: gia' decisa o scaduta ({rec['status']}).",
                          f"{rid}: already decided or expired ({rec['status']}).")
@@ -857,6 +862,17 @@ class Watcher:
             if not policy.store().approve(rid, by=who):
                 self._tg_say(tg, f"{rid}: non approvabile.", f"{rid}: not approvable.")
                 return
+            if not da_regola:
+                # Nessuno qui puo' eseguirla: la fase 2 di un tool la
+                # completa l'agente che l'ha chiesta. Dirlo, invece di
+                # far credere che sia partita.
+                self._tg_say(
+                    tg,
+                    f"✅ Approvata ({rid}). Non e' ancora partita: "
+                    "la completa l'agente che l'ha richiesta.",
+                    f"✅ Approved ({rid}). Not sent yet: the agent "
+                    "that asked for it completes the send.")
+                return
             self.execute_approved()
             h = rs.get_handled(row["rule_id"], row["message_id"]) or {}
             ok = h.get("status") == "sent"
@@ -869,12 +885,22 @@ class Watcher:
             return
         if action == "r":
             policy.store().reject(rid, by=who)
-            rs.set_status(row["rule_id"], row["message_id"], "rejected")
+            if da_regola:
+                rs.set_status(row["rule_id"], row["message_id"], "rejected")
             self._tg_say(tg, f"❌ Rifiutata ({rid}). Nessun invio.",
                          f"❌ Rejected ({rid}). Nothing sent.")
             return
         if action == "m":
             rs.kv_set("tg_await_feedback", rid)
+            if not da_regola:
+                self._tg_say(
+                    tg,
+                    f"✏️ Scrivi qui cosa vuoi cambiare in {rid}: "
+                    "annullo questa richiesta e riporto la nota "
+                    "all'agente.",
+                    f"✏️ Type what to change in {rid}: I will cancel "
+                    "this request and pass your note to the agent.")
+                return
             self._tg_say(tg,
                          f"✏️ Scrivi qui le modifiche che vuoi alla bozza {rid}: "
                          "la rifaccio e te la ripropongo.",
@@ -884,8 +910,22 @@ class Watcher:
     def _tg_retry(self, tg, rid: str, feedback: str, rs) -> None:
         row = rs.find_by_request(rid)
         rec = policy.store().get(rid)
-        if not row or not rec:
+        if not rec:
             self._tg_say(tg, f"{rid}: richiesta sconosciuta.", f"{rid}: unknown request.")
+            return
+        if not row:
+            # Richiesta di un tool: non c'e' nessuna bozza da rifare
+            # qui. La si annulla e la nota resta nell'audit, da
+            # riportare all'agente — come fa il bottone Modifica sul PC.
+            if rec["status"] == policy.PENDING and not rec["expired"]:
+                policy.store().reject(
+                    rid, by=f"telegram:{tg.chat_id} modifica: {feedback[:200]}")
+            policy.audit("approval", {"request_id": rid}, "edit_requested",
+                         detail=feedback[:200])
+            self._tg_say(
+                tg,
+                f"✏️ Annullata ({rid}). Nota registrata: {feedback[:200]}",
+                f"✏️ Cancelled ({rid}). Note recorded: {feedback[:200]}")
             return
         if not feedback:
             self._tg_say(tg, "Modifiche vuote: nessuna azione.", "Empty changes: nothing done.")
