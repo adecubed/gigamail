@@ -466,6 +466,49 @@ def toast_actions(request_id: str) -> List[tuple]:
     ]
 
 
+# Telegram taglia a 4096 caratteri; sotto quel tetto ci sta una mail
+# vera con intestazioni e corpo.
+_TG_TEXT_MAX = 3500
+
+
+def full_preview_text(tool: str, preview: Dict[str, Any],
+                      limit: int = _TG_TEXT_MAX) -> str:
+    """L'anteprima INTERA, per i canali che possono mostrarla.
+
+    La toast resta corta perche' ha il bottone Leggi, che apre tutto.
+    Telegram quel secondo passo non ce l'ha: se il corpo non e' nel
+    messaggio non lo si vede da nessuna parte, e si finisce ad
+    approvare una mail di cui si e' letto solo l'oggetto.
+    """
+    it = user_lang() == "it"
+    righe = []
+    intestazioni = (("from", "Da"), ("to", "A"), ("cc", "Cc"),
+                    ("bcc", "Ccn"), ("subject", "Oggetto"))
+    for chiave, etichetta in intestazioni:
+        v = preview.get(chiave)
+        if v:
+            righe.append(f"{etichetta}: {v if not isinstance(v, list) else ', '.join(map(str, v))}")
+    allegati = preview.get("attachments") or []
+    if allegati:
+        nomi = [a.get("name", "?") if isinstance(a, dict) else str(a)
+                for a in allegati]
+        righe.append(("Allegati: " if it else "Attachments: ")
+                     + ", ".join(nomi))
+    rispondendo = preview.get("replying_to")
+    if rispondendo:
+        righe.append(f"In risposta a: {rispondendo}")
+    testa = chr(10).join(righe)
+    corpo = str(preview.get("body") or "")
+    if not testa and not corpo:
+        return _summarize_preview(preview)
+    avanzo = max(200, limit - len(testa) - 40)
+    if len(corpo) > avanzo:
+        corpo = corpo[:avanzo] + ("… [troncato]" if it else "… [truncated]")
+    if corpo:
+        return testa + chr(10) + chr(10) + corpo
+    return testa
+
+
 def telegram_buttons(request_id: str):
     """Gli stessi tre bottoni delle bozze da regola, anche per le
     richieste nate da un tool: senza, il messaggio Telegram arrivava
@@ -523,7 +566,11 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
             # safe_html: in un'approvazione l'unica cosa tappabile non
             # deve essere il mailto' del destinatario (apre il client di
             # posta e chiede un login). Tappabili solo i bottoni.
-            testo_tg = telegram_channel.Telegram.safe_html(text)
+            # Su Telegram va l'anteprima intera: `text` e' il riassunto
+            # per la toast, che pero' ha Leggi. Se una regola ha gia'
+            # scritto il suo messaggio (`message`), quello vince.
+            lungo = text if message else full_preview_text(tool, preview)
+            testo_tg = telegram_channel.Telegram.safe_html(lungo)
             threading.Thread(
                 target=lambda: tg.send(testo_tg, buttons=buttons,
                                        html=True),
