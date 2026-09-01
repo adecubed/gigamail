@@ -11,3 +11,6 @@ NOTES.dev.md
 .token_cache.json
 node_modules/
 POST_DRAFTS.md
+# Interprete Python che l'installer della console impacchetta: si rigenera
+# con lo script di preparazione, pesa centinaia di MB, non va versionato.
+console/python-embedded/
