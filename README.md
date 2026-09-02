@@ -57,6 +57,18 @@ The human reviews and sends — or edits the instruction and regenerates.*
 
 ## Quick start
 
+GigaMail ships through two channels:
+
+- **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
+  and the console's local HTTP backend. No graphical app — the right
+  channel when your agent is the interface.
+- **Windows desktop app (beta)** — the human console packaged with an
+  embedded Python: one installer, no prerequisites. Today it is built from
+  source (`console/prepare-python.ps1`, then `npm run dist`); prebuilt
+  installers arrive with 0.3.0.
+
+Everything below covers the pip channel.
+
 ```bash
 pip install "gigamail[all]"
 
@@ -246,6 +258,18 @@ rigenera.*
 
 ## Setup rapido
 
+GigaMail si installa da due canali:
+
+- **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
+  e il backend HTTP locale della console. Nessuna app grafica — è il
+  canale giusto quando l'interfaccia è il tuo agente.
+- **App desktop Windows (beta)** — la console umana con Python embedded:
+  un solo installer, nessun prerequisito. Oggi si builda dai sorgenti
+  (`console/prepare-python.ps1`, poi `npm run dist`); gli installer
+  precompilati arrivano con la 0.3.0.
+
+Tutto quello che segue riguarda il canale pip.
+
 ```bash
 pip install "gigamail[all]"
 
@@ -413,6 +437,16 @@ titolare del copyright.
   注入无法添加账户或读取任何机密
 
 ## 快速开始
+
+GigaMail 通过两个渠道发布：
+
+- **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
+  控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
+- **Windows 桌面应用（beta）** — 面向人的控制台，内置 Python，一个安装包、
+  无需任何前置依赖。目前需从源码构建（`console/prepare-python.ps1`，然后
+  `npm run dist`）；预编译安装包将随 0.3.0 发布。
+
+下文内容均针对 pip 渠道。
 
 ```bash
 pip install "gigamail[all]"

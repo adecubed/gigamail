@@ -166,7 +166,7 @@ def registered_command_ok(val: str) -> bool:
 
 
 def register_protocol_machine() -> bool:
-    """Scrive HKLM\Software\Classes\gigamail con un PowerShell elevato
+    r"""Scrive HKLM\Software\Classes\gigamail con un PowerShell elevato
     (prompt UAC: e' l'utente a dire si'). Ritorna True se dopo la
     registrazione risulta corretta. Idempotente."""
     if sys.platform != "win32":
