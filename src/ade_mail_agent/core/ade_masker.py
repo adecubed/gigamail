@@ -23,7 +23,7 @@ Validator v1 (5 killer):
 import os
 import re
 import sqlite3
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CODICE FISCALE — DPR 605/1973, D.M. 12 marzo 1974
@@ -177,7 +177,7 @@ _SOC_STOP = {
     'per', 'con', 'alla', 'alle', 'allo', 'della', 'delle', 'dello', 'come',
     'tipo', 'tua', 'tuo', 'sono', 'era', 'fondato', 'aperto',
     'anche', 'e', 'ed', 'ma', 'poi', 'quindi', 'inoltre', 'presso', 'oggi',
-    'ieri', 'oggi', 'cioe', 'cioè', 'ossia', 'nonche', 'nonché', 'che', 'chi',
+    'ieri', 'cioe', 'cioè', 'ossia', 'nonche', 'nonché', 'che', 'chi',
     'spettabile', 'spett', 'spettle', 'egregia', 'egregio', 'gentile',
     'gentfilissima', 'gentilissimo', 'chiarissimo', 'preg', 'pregma',
 }

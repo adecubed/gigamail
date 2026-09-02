@@ -105,6 +105,7 @@ def test_senza_copia_ne_allegati_anteprima_invariata():
 
 def test_i_campi_della_regola_sono_vuoti_di_default():
     import inspect
+
     from ade_mail_agent.core import rules
     firma = inspect.signature(rules.RuleStore.create)
     assert firma.parameters["cc"].default is None

@@ -6,12 +6,11 @@ Thread background aggiorna ogni REFRESH_INTERVAL secondi.
 smart_draft legge il JSON locale invece di chiamare IMAP ogni volta.
 """
 
-import os
 import json
 import threading
 import time
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 from .data_paths import cache_dir as _resolve_cache_dir
 

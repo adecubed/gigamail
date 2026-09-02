@@ -106,8 +106,8 @@ def run(prompt: str, timeout: int | None = None) -> str:
             timeout=timeout or cfg["timeout"],
             shell=False,
         )
-    except subprocess.TimeoutExpired:
-        raise AgentUnavailable("L'agente non ha risposto entro il timeout.")
+    except subprocess.TimeoutExpired as e:
+        raise AgentUnavailable("L'agente non ha risposto entro il timeout.") from e
     out = (proc.stdout or b"").decode("utf-8", errors="replace").strip()
     if proc.returncode != 0 and not out:
         err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()

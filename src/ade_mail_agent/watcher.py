@@ -33,11 +33,16 @@ from typing import Any, Dict, List, Optional
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import accounts as core_accounts
-from ade_mail_agent.core import approval_pin
+from ade_mail_agent.core import (
+    approval_pin,
+    file_extractor,
+    mail_guard,
+    mail_router,
+    observer,
+    telegram_channel,
+)
 from ade_mail_agent.core import attachments as attachments_mod
-from ade_mail_agent.core import file_extractor, mail_guard, mail_router, observer
 from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent.core import telegram_channel
 
 TOOL = "reply_mail"
 

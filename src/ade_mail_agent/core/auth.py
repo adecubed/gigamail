@@ -3,8 +3,9 @@ auth.py — Microsoft Graph OAuth2 via MSAL.
 Gestisce login, token refresh, persistenza token in locale.
 """
 
-import os
 import json
+import os
+
 import msal
 from dotenv import load_dotenv
 

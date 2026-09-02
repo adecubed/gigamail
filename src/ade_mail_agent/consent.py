@@ -77,7 +77,10 @@ def _run_winrt(op):
 def _win_available() -> bool:
     try:
         from winrt.windows.security.credentials.ui import (  # type: ignore
-            UserConsentVerifier, UserConsentVerifierAvailability as A,
+            UserConsentVerifier,
+        )
+        from winrt.windows.security.credentials.ui import (
+            UserConsentVerifierAvailability as A,
         )
     except ImportError:
         return False
@@ -89,8 +92,11 @@ def _win_available() -> bool:
 
 
 def _win_ask(reason: str) -> bool:
+    from winrt.windows.security.credentials.ui import (
+        UserConsentVerificationResult as R,
+    )
     from winrt.windows.security.credentials.ui import (  # type: ignore
-        UserConsentVerifier, UserConsentVerificationResult as R,
+        UserConsentVerifier,
     )
     # Il messaggio e' mostrato dentro il dialogo di Windows Hello.
     r = _run_winrt(UserConsentVerifier.request_verification_async(reason))
@@ -114,6 +120,7 @@ def _mac_available() -> bool:
 
 def _mac_ask(reason: str) -> bool:
     import threading
+
     import LocalAuthentication  # type: ignore
     ctx = LocalAuthentication.LAContext.alloc().init()
     # Nessun riuso della verifica precedente: ogni approvazione e' una

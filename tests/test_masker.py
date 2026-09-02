@@ -1,7 +1,6 @@
 """ade_masker: detect / mask / unmask round-trip."""
 from ade_mail_agent.core import ade_masker
 
-
 TESTO = (
     "Buongiorno, l'IBAN e' IT60X0542811101000000123456, "
     "mi chiami al 333 1234567 o scriva a mario.rossi@example.it. "

@@ -137,7 +137,10 @@ def test_decisione_concorrente_una_sola_vince():
         esiti.append(("reject", policy.store().reject(r["request_id"], by="cli:test")))
 
     t1, t2 = threading.Thread(target=approva), threading.Thread(target=rifiuta)
-    t1.start(); t2.start(); t1.join(); t2.join()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 
     assert sum(1 for _, ok in esiti if ok) == 1
 

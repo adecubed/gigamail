@@ -9,14 +9,12 @@ superficie admin non esiste, e i "token" trovati nelle mail non valgono.
 """
 import asyncio
 import json
-import os
 
 import pytest
 
-from ade_mail_agent import policy
 import ade_mail_agent.server as srv
+from ade_mail_agent import policy
 from ade_mail_agent.core import mail_router
-
 
 HOSTILE_MAIL = {
     "id": "666",
@@ -179,5 +177,5 @@ def test_dryrun_blocca_esecuzione_anche_con_conferma(monkeypatch, no_side_effect
     assert out.get("dryrun") is True
     assert no_side_effects == []  # send_message mai chiamato
     with open(policy._audit_path(), encoding="utf-8") as f:
-        last = [json.loads(l) for l in f if l.strip()][-1]
+        last = [json.loads(ln) for ln in f if ln.strip()][-1]
     assert last["outcome"] == "dryrun_executed"

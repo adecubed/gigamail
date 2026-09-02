@@ -11,7 +11,6 @@ let mainWindow;
 let serverProcess;
 let notifPoller = null;
 let lastUnreadCounts = {};
-let lastFollowupCheck = 0;
 
 // Token di sessione per il backend console: generato qui, passato al processo
 // Python via env, allegato a OGNI richiesta verso il backend (sia dal main

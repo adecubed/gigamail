@@ -238,7 +238,7 @@ function byId(id) { return document.getElementById(id); }
 function suggestKeywordsFromFolderName(name) {
   const raw = String(name || '').toLowerCase();
   const normalized = raw
-    .replace(/[\/\\|]+/g, ' ')
+    .replace(/[/\\|]+/g, ' ')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

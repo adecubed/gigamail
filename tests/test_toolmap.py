@@ -1,5 +1,4 @@
 """La mappa tool documentata deve coincidere con i tool reali del server."""
-from pathlib import Path
 
 from ade_mail_agent import gen_toolmap
 
@@ -15,6 +14,7 @@ def test_mappa_allineata_al_server():
 
 def test_classificazione_dangerous_da_schema():
     import asyncio
+
     from ade_mail_agent.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
     by_name = {t.name: t for t in tools}
@@ -36,6 +36,7 @@ def test_qualita_descrizioni_tool():
     descrizione sostanziosa in inglese, le annotations MCP e TUTTI i
     parametri descritti nello schema."""
     import asyncio
+
     from ade_mail_agent.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
     assert len(tools) == 24

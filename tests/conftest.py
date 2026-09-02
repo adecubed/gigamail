@@ -30,9 +30,9 @@ os.environ["GIGAMAIL_LANG"] = "it"
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-import ade_mail_agent  # noqa: E402,F401 — attiva lo shim per core/
-
 import pytest  # noqa: E402
+
+import ade_mail_agent  # noqa: E402,F401 — attiva lo shim per core/
 
 
 @pytest.fixture()

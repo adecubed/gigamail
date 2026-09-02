@@ -170,6 +170,7 @@ def test_url_dei_bottoni_accettati_dal_parser():
     `open-url` riconosce: un bottone che apre un URL non gestito darebbe
     "URL non riconosciuto" invece dell'azione."""
     import re
+
     from ade_mail_agent import cli
     src = io.open(cli.__file__.replace(".pyc", ".py"), encoding="utf-8").read()
     verbi = re.search(r"gigamail://\(([a-z|]+)\)/", src).group(1).split("|")

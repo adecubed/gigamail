@@ -1,7 +1,7 @@
 /**
  * preload_mail.js — preload per mail_window.html
  */
-const { contextBridge, ipcRenderer, shell } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('mailWindowAPI', {
   onLoadMail:    (cb) => ipcRenderer.on('load-mail', (_, data) => cb(data)),

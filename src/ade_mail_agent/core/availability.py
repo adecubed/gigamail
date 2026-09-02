@@ -8,7 +8,7 @@ deterministico e restituita gia' pronta, con etichette in italiano.
 Sorgente eventi: Microsoft Graph (calendario primario) e, se configurato
 per l'account, CalDAV.
 """
-from datetime import datetime, date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional
 
 try:

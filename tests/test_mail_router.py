@@ -3,7 +3,6 @@ import pytest
 
 from ade_mail_agent.core import mail_router
 
-
 MS_ACCOUNT = {"id": 10, "type": "microsoft", "email": "ms@example.com"}
 IMAP_ACCOUNT = {
     "id": 20, "type": "imap", "email": "imap@example.com",

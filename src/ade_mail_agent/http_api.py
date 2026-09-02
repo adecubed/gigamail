@@ -14,32 +14,33 @@ Sicurezza:
   inietta nelle finestre); senza variabile, nessun controllo (dev mode)
 - porta: ADE_CONSOLE_PORT (default 8002 per compatibilita con la UI)
 """
-import os
 import json
+import os
 import sqlite3
 import threading
-from typing import Optional, List
+from typing import List, Optional
 
-from ade_mail_agent.core import accounts as core_accounts
-from ade_mail_agent.core import auth as core_auth
-from ade_mail_agent.core import (
-    mail_router,
-    mail_memory,
-    ms_calendar,
-    observer,
-    ade_masker,
-    identity_reader,
-    availability,
-)
-from ade_mail_agent import agent_bridge, policy
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ade_mail_agent import agent_bridge, policy
+from ade_mail_agent.core import accounts as core_accounts
+from ade_mail_agent.core import (
+    ade_masker,
+    availability,
+    identity_reader,
+    mail_memory,
+    mail_router,
+    ms_calendar,
+    observer,
+)
+from ade_mail_agent.core import auth as core_auth
+
 CONSOLE_TOKEN = os.environ.get("ADE_CONSOLE_TOKEN", "")
 PORT = int(os.environ.get("ADE_CONSOLE_PORT", "8002"))
 
-from ade_mail_agent.core.data_paths import data_root as _data_root
+from ade_mail_agent.core.data_paths import data_root as _data_root  # noqa: E402
 
 _ADE_MAIL_DIR = str(_data_root())
 ADDR_DB = os.path.join(_ADE_MAIL_DIR, ".addresses.db")
@@ -641,7 +642,7 @@ def _run_agent(prompt: str) -> dict:
     try:
         return {"draft": agent_bridge.run(prompt), "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, str(e)) from e
 
 
 _APPUNTAMENTO_KW = (
@@ -777,7 +778,7 @@ def mail_ask(req: MailAskRequest):
     try:
         return {"answer": agent_bridge.run(prompt), "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, str(e)) from e
 
 
 class SenderSummaryRequest(BaseModel):
@@ -796,7 +797,7 @@ def sender_summary(req: SenderSummaryRequest):
     try:
         return {"summary": agent_bridge.run(prompt), "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, str(e)) from e
 
 
 # ── OBSERVER + AUDIT ─────────────────────────────────────────────────
@@ -850,7 +851,7 @@ def approve_request(request_id: str):
     try:
         ok = consent.require_human(reason)
     except consent.ConsentUnavailable as e:
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, str(e)) from e
     if not ok:
         raise HTTPException(403, "Verifica utente non superata o annullata")
     if not policy.store().approve(request_id, by=_who()):
@@ -908,7 +909,7 @@ def _require_human_or_http(reason: str) -> None:
     try:
         ok = consent.require_human(reason)
     except consent.ConsentUnavailable as e:
-        raise HTTPException(503, str(e))
+        raise HTTPException(503, str(e)) from e
     if not ok:
         raise HTTPException(403, "Verifica utente non superata o annullata")
 
@@ -933,6 +934,7 @@ def list_rules():
 def create_rule(body: RuleCreate):
     """Crea una regola. Hello obbligatorio: e' una pre-approvazione."""
     import time as _t
+
     from ade_mail_agent.core import rules as rules_mod
     aid = body.account_id or _active_id()
     if not aid:
@@ -977,6 +979,7 @@ def pause_rule(rule_id: str):
 def resume_rule(rule_id: str):
     """Riattivare = ri-approvare: Hello."""
     import time as _t
+
     from ade_mail_agent.core import rules as rules_mod
     if not rules_mod.store().get(rule_id):
         raise HTTPException(404, "Regola inesistente")
@@ -1031,6 +1034,7 @@ def watch_start(interval: int = 60):
     console), log in app_root()/watch.log."""
     import subprocess
     import sys as _sys
+
     from ade_mail_agent.core.data_paths import app_root
     st = _watch_state()
     if st["running"]:
@@ -1071,7 +1075,7 @@ def watch_stop():
                 import signal
                 os.kill(pid, signal.SIGTERM)
         except Exception as e:
-            raise HTTPException(500, f"stop fallito: {e}")
+            raise HTTPException(500, f"stop fallito: {e}") from e
     rs.kv_set("watch_pid", "0")
     rs.kv_set("watch_heartbeat", "0")
     policy.audit("watch", {"pid": pid}, "watch_stopped", detail=_who())
@@ -1085,7 +1089,7 @@ def watch_log(lines: int = 60):
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8", errors="replace") as f:
-        return [l.rstrip("\n") for l in f.readlines()[-int(lines):]]
+        return [ln.rstrip("\n") for ln in f.readlines()[-int(lines):]]
 
 
 # --- notifiche / agente -----------------------------------------------------

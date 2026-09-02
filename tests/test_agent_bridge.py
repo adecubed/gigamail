@@ -7,7 +7,6 @@ import pytest
 
 from ade_mail_agent import agent_bridge
 
-
 PY = sys.executable
 
 

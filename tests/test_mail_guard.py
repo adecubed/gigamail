@@ -2,7 +2,6 @@
 reply=False → non si risponde; auto_ok=False → al massimo semi."""
 from ade_mail_agent.core import mail_guard
 
-
 CLEAN_MSG = {
     "from": {"emailAddress": {"address": "cliente@fidato.it"}},
     "subject": "Info",

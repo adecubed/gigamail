@@ -143,7 +143,7 @@ def _read_audit():
     p = policy._audit_path()
     if not p.exists():
         return []
-    return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+    return [json.loads(ln) for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
 def test_audit_e_riga_riportano_la_risposta_del_provider(monkeypatch):
