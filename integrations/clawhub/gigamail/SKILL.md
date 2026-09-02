@@ -96,7 +96,7 @@ Repository: https://github.com/adecubed/gigamail. The GigaMail server is
 AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
 Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
-Requires gigamail ≥ 0.2.1 (approval via OS-level user verification;
+Requires gigamail ≥ 0.2.4 (approval via OS-level user verification;
 GIGAMAIL_* environment variables; reply rules and the watcher).
 
 ## Setup (once)
