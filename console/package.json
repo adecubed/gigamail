@@ -11,6 +11,7 @@
   "homepage": "https://adecubed.com",
   "scripts": {
     "start": "electron .",
+    "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never"
   },
   "dependencies": {
