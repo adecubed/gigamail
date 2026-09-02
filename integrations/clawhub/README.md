@@ -33,3 +33,10 @@ under the repository LICENSE.
 The skill version follows its own semver (it is text, it changes at a
 different pace than the server). Keep `version:` in the SKILL.md
 frontmatter and `--version` in sync.
+
+**Do not bump the skill version during a server release.** Releases 0.2.3
+and 0.2.4 raised `version:` in the frontmatter without changing a word of
+the skill, which left the repository claiming 0.2.4 while ClawHub served an
+identical 0.2.2 — a listing that looks stale but is not. Bump and publish
+only when the skill text actually changes; leave it behind the server
+number otherwise.
