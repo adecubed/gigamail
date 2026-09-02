@@ -11,22 +11,22 @@ Struttura:
 Nessuna dipendenza da Brain. Lite e portabile.
 """
 
-import os
-import re
 import json
-import struct
+import re
 import sqlite3
+import struct
 import threading
+
 try:
     import numpy as np  # opzionale: solo per ricerca semantica (embeddings)
 except ImportError:
     np = None
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Tuple
-from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 # Path del DB in una cartella scrivibile utente, non nella directory app.
 from .data_paths import db_path as _db_path
+
 _DB_PATH = str(_db_path('.mail_memory.db'))
 _LOCK = threading.Lock()
 
@@ -155,7 +155,7 @@ init_db()
 # 2. Ollama nomic-embed-text (768 dim, zero costo, locale)
 # 3. Fallback: None (semantic search disabilitata, FTS5 usato)
 
-import os as _os
+import os as _os  # noqa: E402 — sezione con setup a monte
 
 _OPENAI_API_KEY = _os.getenv("OPENAI_API_KEY", "")
 _OLLAMA_URL = _os.getenv("OLLAMA_URL", "http://localhost:11434")
@@ -344,7 +344,7 @@ def store_embeddings_batch(items: List[Tuple[int, int, str]]) -> int:
     saved = 0
     with _LOCK:
         with _get_conn() as conn:
-            for (thread_id, account_id, _), result in zip(items, results):
+            for (thread_id, account_id, _), result in zip(items, results, strict=False):
                 if not result:
                     continue
                 blob, dim, model = result
@@ -850,7 +850,7 @@ def build_context_prompt(context: Dict) -> str:
 # Stima tempi:
 #   10.000 mail × 3 agenti = ~15-20 minuti vs ~3 ore con 1 agente
 
-import queue as _queue
+import queue as _queue  # noqa: E402 — sezione con setup a monte
 
 NUM_AGENTS = 3          # connessioni IMAP parallele — sicuro su tutti i provider
 CHUNK_SIZE = 100        # mail per chunk per agente
@@ -894,51 +894,6 @@ def get_stats() -> Dict:
     }
 
 
-def delete_account_data(account_id: int) -> Dict:
-    """
-    Cancella TUTTI i dati indicizzati di un account: threads, embeddings,
-    indexer_state, patterns + voci FTS5 collegate.
-    Usato quando l'utente elimina un account dall'app.
-    Ritorna conteggio righe cancellate per categoria.
-    """
-    deleted = {"threads": 0, "embeddings": 0, "patterns": 0, "indexer_state": 0, "fts": 0}
-    with _get_conn() as conn:
-        # Recupera i rowid di threads per account_id (servono per pulire FTS prima del DELETE)
-        thread_ids = [r[0] for r in conn.execute(
-            "SELECT id FROM threads WHERE account_id=?", (account_id,)
-        ).fetchall()]
-        # FTS5 non ha trigger DELETE: pulisco manualmente per ogni rowid
-        if thread_ids:
-            placeholders = ",".join("?" * len(thread_ids))
-            cur = conn.execute(
-                f"DELETE FROM threads_fts WHERE rowid IN ({placeholders})",
-                thread_ids,
-            )
-            deleted["fts"] = cur.rowcount or 0
-        # Embeddings (tabella separata, riferimento per account_id)
-        cur = conn.execute("DELETE FROM embeddings WHERE account_id=?", (account_id,))
-        deleted["embeddings"] = cur.rowcount or 0
-        # Threads
-        cur = conn.execute("DELETE FROM threads WHERE account_id=?", (account_id,))
-        deleted["threads"] = cur.rowcount or 0
-        # Patterns
-        cur = conn.execute("DELETE FROM patterns WHERE account_id=?", (account_id,))
-        deleted["patterns"] = cur.rowcount or 0
-        # Indexer state
-        cur = conn.execute("DELETE FROM indexer_state WHERE account_id=?", (account_id,))
-        deleted["indexer_state"] = cur.rowcount or 0
-        conn.commit()
-    # Svuota anche la cache in-memory dello stato indexer per quell'account
-    try:
-        with _indexer_lock:
-            _indexer_state_cache.pop(account_id, None)
-            _indexer_counters.pop(account_id, None)
-    except Exception:
-        pass
-    print(f"[MAIL MEMORY] delete_account_data({account_id}): {deleted}")
-    return deleted
-
-
 def run_all_indexers(mail_router, get_all_accounts_fn, num_agents: int = NUM_AGENTS) -> Dict:
     """
     Avvia indicizzazione per TUTTI gli account configurati in sequenza.
@@ -951,8 +906,6 @@ def run_all_indexers(mail_router, get_all_accounts_fn, num_agents: int = NUM_AGE
 
     if not accounts:
         return {"started": False, "reason": "Nessun account configurato"}
-
-    started = []
 
     def _run_all():
         for acc in accounts:
@@ -1085,7 +1038,6 @@ def _count_folder_messages(account_id: int, mail_router, folder: str, timeout_s:
     Per IMAP usa get_all_uids (conta reale).
     Per Microsoft usa fetch paginata fino a 1000.
     """
-    import time as _time
     try:
         # IMAP: conta tramite UID list — accurata su tutta la mailbox
         if hasattr(mail_router, 'get_all_uids'):
@@ -1402,7 +1354,7 @@ def _index_folder(account_id: int, mail_router, folder: str, batch_size: int) ->
     while True:
         try:
             messages = mail_router.get_messages(account_id, folder=folder, top=batch_size, skip=skip)
-        except Exception as e:
+        except Exception:
             break
         if not messages:
             break
@@ -1630,7 +1582,7 @@ def sender_history(account_id: int, sender_email: str, limit: int = 10) -> dict:
             stop = {
                 "re", "fwd", "fw", "r", "i", "e", "il", "la", "le", "lo", "gli", "un", "una",
                 "di", "da", "del", "della", "per", "con", "che", "the", "to", "of", "for",
-                "and", "your", "you", "tua", "tuo", "your", "il", "su", "in", "a", "al",
+                "and", "your", "you", "tua", "tuo", "su", "in", "a", "al",
                 "ade", "mail", "email", "messaggio", "ciao", "buongiorno", "salve",
             }
             freq = {}
@@ -1650,10 +1602,11 @@ def sender_history(account_id: int, sender_email: str, limit: int = 10) -> dict:
 def delete_account_data(account_id: int) -> dict:
     """
     Cancella TUTTI i dati indicizzati di un account: threads, indice FTS,
-    embeddings, indexer_state. Usata dalla DELETE /accounts/{id}.
+    embeddings, patterns, indexer_state (+ cache in-memory dell'indexer).
+    Usata dalla DELETE /accounts/{id}.
     Le mail sui server (Microsoft/IMAP) non vengono toccate.
     """
-    deleted = {"threads": 0, "embeddings": 0}
+    deleted = {"threads": 0, "embeddings": 0, "patterns": 0}
     try:
         with _get_conn() as conn:
             row = conn.execute(
@@ -1667,13 +1620,19 @@ def delete_account_data(account_id: int) -> dict:
 
             conn.execute("DELETE FROM embeddings WHERE account_id=?", (account_id,))
             conn.execute("DELETE FROM threads WHERE account_id=?", (account_id,))
+            cur = conn.execute("DELETE FROM patterns WHERE account_id=?", (account_id,))
+            deleted["patterns"] = cur.rowcount or 0
             conn.execute("DELETE FROM indexer_state WHERE account_id=?", (account_id,))
             # L'FTS (external content) non ha delete-trigger: rebuild per
             # eliminare le righe orfane dall'indice di ricerca.
             conn.execute("INSERT INTO threads_fts(threads_fts) VALUES('rebuild')")
             conn.commit()
+        with _indexer_lock:
+            _indexer_state_cache.pop(account_id, None)
+            _indexer_counters.pop(account_id, None)
         print(f"[MAIL MEMORY] delete_account_data account {account_id}: "
-              f"{deleted['threads']} threads, {deleted['embeddings']} embeddings rimossi")
+              f"{deleted['threads']} threads, {deleted['embeddings']} embeddings, "
+              f"{deleted['patterns']} patterns rimossi")
     except Exception as e:
         print(f"[MAIL MEMORY] delete_account_data error: {e}")
     return deleted
