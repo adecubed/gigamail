@@ -3,21 +3,22 @@ imap_client.py — Lettura e invio mail via IMAP/SMTP.
 Discovery automatica cartelle IMAP. Compatibile con Aruba, Gmail, Outlook,
 Libero, custom.
 """
-import imaplib
-import smtplib
 import email
 import email.header
-import ssl
-import re
+import imaplib
 import os
-import time
+import re
+import smtplib
+import ssl
 import threading
-from email.mime.text import MIMEText
+import time
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .addresses import split_addresses
+
 # Alias canonici → nomi IMAP comuni
 _FOLDER_ALIASES = {
     "inbox": ["INBOX", "Inbox"],
@@ -150,6 +151,24 @@ def _decode_header(value) -> str:
         else:
             decoded.append(str(part))
     return " ".join(decoded)
+
+
+def _parse_addr_list(header_val: str) -> list:
+    result = []
+    for part in (header_val or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "<" in part:
+            n = _decode_header(part.split("<")[0].strip())
+            a = part.split("<")[-1].strip(">").strip()
+        else:
+            n = ""
+            a = _decode_header(part)
+        result.append({"emailAddress": {"name": n, "address": a}})
+    return result
+
+
 def _get_body(msg):
     html_body = ""
     plain_body = ""
@@ -1119,21 +1138,6 @@ def get_message(
                 plain_preview = _re.sub(r"\s+", " ", plain_preview).strip()[:4000]
             else:
                 plain_preview = body[:4000]
-            def _parse_addr_list(header_val: str) -> list:
-                result = []
-                for part in (header_val or "").split(","):
-                    part = part.strip()
-                    if not part:
-                        continue
-                    if "<" in part:
-                        n = _decode_header(part.split("<")[0].strip())
-                        a = part.split("<")[-1].strip(">").strip()
-                    else:
-                        n = ""
-                        a = _decode_header(part)
-                    result.append({"emailAddress": {"name": n, "address": a}})
-                return result
-
             return {
                 "id": message_id,
                 "subject": _decode_header(msg.get("Subject", "")),
@@ -1265,8 +1269,8 @@ def send_message(
     con certificato self-signed l'account puo' dichiarare insecure_tls=True
     (opt-in esplicito, per quell'account soltanto)."""
     import base64
-    from email.mime.base import MIMEBase
     from email import encoders
+    from email.mime.base import MIMEBase
     from email.utils import formatdate
     msg = MIMEMultipart()
     msg["From"] = email_addr
