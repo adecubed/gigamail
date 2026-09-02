@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GigaMail — the email layer for AI agents</title>
-<meta name="description" content="Open-source email for AI agents. Your agent reads, searches and drafts; nothing is sent or deleted without your approval. Microsoft Graph + IMAP, local data, AGPL-3.0.">
+<meta name="description" content="Open-source email for AI agents. Your agent reads, searches, drafts and can even reply by itself inside a fence you set; nothing leaves without approval you gave in person. Microsoft Graph + IMAP, local data, AGPL-3.0.">
 <style>
   /* ── tokens: light is the base, both dark states redefine only tokens ── */
   :root {
@@ -212,6 +212,7 @@
     <div class="brand">Giga<span>Mail</span></div>
     <nav>
       <a href="#real">How it works</a>
+      <a href="#rules">Autopilot</a>
       <a href="#tools">Tools</a>
       <a href="#redteam">Red team</a>
       <a href="#start">Get started</a>
@@ -227,15 +228,17 @@
         <h1 style="margin-top:.7rem">The email layer for AI&nbsp;agents.</h1>
         <p class="lede">
           Your agent reads your mail, searches it, and writes replies using your own
-          documents and calendar. <strong>It cannot send or delete anything without
-          your approval.</strong> Runs on your machine, next to the inbox you already use.
+          documents and calendar. Declare a rule and it answers routine mail by
+          itself, inside a fence you set. <strong>It cannot send or delete anything
+          without an approval you gave in person.</strong> Runs on your machine,
+          next to the inbox you already use.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/adecubed/gigamail">View on GitHub</a>
           <a class="btn btn-ghost" href="#start">Get started</a>
         </div>
         <p class="agents">
-          Works with <b>Claude</b>, <b>Codex</b>, <b>Hermes</b>, or your own agent — ours is Sofia.
+          Works with <b>Claude</b>, <b>Codex</b>, <b>OpenClaw</b>, <b>Hermes</b>, or your own agent — ours is Sofia.
           No built-in LLM: the intelligence is whatever agent you bring.
         </p>
       </div>
@@ -260,7 +263,7 @@
             <span class="marker">2</span>
             <div>
               <h3>Everything stops here</h3>
-              <p>Approval happens somewhere the agent cannot reach: your console, or a shell command. No prompt injection gets there.</p>
+              <p>Approval happens somewhere the agent cannot reach: the console, the CLI, a Telegram button or a Windows toast — and every yes ends in Windows Hello or Touch ID, a prompt a process can open but cannot pass.</p>
               <span class="halt">● awaiting human approval</span>
             </div>
           </div>
@@ -296,6 +299,62 @@
           with a bot in another window.
         </figcaption>
       </figure>
+    </div>
+  </section>
+
+  <section id="rules">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Since 0.2</p>
+        <h2>Autopilot, behind a fence you built.</h2>
+        <p style="color:var(--muted)">
+          Tell GigaMail: mail from these senders, or in this folder, gets a reply
+          drafted from these documents. Propose it for approval (<em>semi</em>) or
+          send it within limits (<em>auto</em>). The drafting is done by your own
+          agent — there is still no LLM in GigaMail.
+        </p>
+      </div>
+      <div class="tools">
+        <div class="tool-card reveal">
+          <p class="eyebrow">Rules exist behind the OS prompt</p>
+          <p style="font-size:.9rem; color:var(--muted); margin-top:.6rem">
+            Created and reactivated only from the console or CLI, each time behind
+            Windows Hello / Touch ID. <b>No MCP tool can touch rules</b>, so a prompt
+            injection cannot switch the autopilot on. Mandatory expiry, daily cap,
+            per-sender cooldown.
+          </p>
+        </div>
+        <div class="tool-card reveal">
+          <p class="eyebrow">Injection has no exit channel</p>
+          <p style="font-size:.9rem; color:var(--muted); margin-top:.6rem">
+            The drafter produces the body and nothing else: recipient, subject and
+            thread come from the incoming message — always the authenticated sender,
+            never Reply-To, never an address written inside the draft.
+          </p>
+        </div>
+        <div class="tool-card reveal">
+          <p class="eyebrow">Deterministic barriers, no LLM judge</p>
+          <p style="font-size:.9rem; color:var(--muted); margin-top:.6rem">
+            DMARC not passing → never auto. Auto-generated mail, lists, no-reply
+            senders, the provider's spam verdict, executable attachments → no reply
+            at all. First contact always goes through you. A burst of matches
+            pauses the rule by itself.
+          </p>
+        </div>
+        <div class="tool-card reveal">
+          <p class="eyebrow">Approve from wherever you are</p>
+          <p style="font-size:.9rem; color:var(--muted); margin-top:.6rem">
+            Drafts arrive as a Windows toast and a Telegram message with
+            approve / reject / "redo it like this" buttons — accepted only from
+            your own chat, with an audit line saying exactly who decided what.
+          </p>
+        </div>
+      </div>
+      <p class="rule">
+        <em>auto</em> is pre-approval, not self-approval: the request is born approved
+        by the rule you created in person, for a precise scope, with an expiry —
+        <span style="font-family:var(--display)">decided_by automode:&lt;rule_id&gt;</span> in the audit log.
+      </p>
     </div>
   </section>
 
@@ -364,8 +423,9 @@
         </div>
         <p class="rule">
           The structural half of that suite runs in CI on every push — Windows and
-          Linux, Python 3.10 / 3.12 / 3.13, 94 tests. Because "trust me, it's safe"
-          is not a security model.
+          Linux, Python 3.10 / 3.12 / 3.13, 279 tests. Several of them exist because
+          strangers on r/mcp found real holes; each fix ships with their name in the
+          changelog. Because "trust me, it's safe" is not a security model.
         </p>
       </div>
       <figure>
