@@ -25,8 +25,9 @@ API bound to 127.0.0.1.)
 configuration **on your machine** — we run no service and receive nothing.
 Mail content your agent reads is, of course, handled by that agent and its
 model provider under their own data policies. Choose your agent
-accordingly; the masker (coming) lets you hide sensitive fields before the
-agent ever sees them.
+accordingly; the masker lets you hide sensitive fields (tax codes, VAT
+numbers, IBANs, emails, phone numbers — validated deterministically, no AI)
+before the agent ever sees them.
 
 ![The human console: a draft written by the agent — real figures from the
 account's documents, the right floor plans attached, and appointment slots
@@ -211,8 +212,10 @@ opzionale, aggiunge una API HTTP locale su 127.0.0.1.)
 e configurazione **sul tuo computer** — noi non gestiamo alcun servizio e
 non riceviamo nulla. Il contenuto delle mail che il tuo agente legge è
 ovviamente trattato da quell'agente e dal suo fornitore di modello secondo
-le loro policy. Scegli l'agente di conseguenza; il masker (in arrivo)
-permette di nascondere i dati sensibili prima che l'agente li veda.
+le loro policy. Scegli l'agente di conseguenza; il masker permette di
+nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
+telefoni — validati in modo deterministico, senza AI) prima che l'agente
+li veda.
 
 ![La console umana: una bozza scritta dall'agente — dati reali dai documenti
 dell'account, planimetrie giuste in allegato e orari presi dal calendario.

@@ -143,7 +143,7 @@ async function checkNewMail() {
 function showMailNotification(accountName, count) {
   if (!Notification.isSupported()) return;
   const notif = new Notification({
-    title: `ADE Mail — ${accountName}`,
+    title: `GigaMail — ${accountName}`,
     body: `${count} nuov${count === 1 ? 'a mail' : 'e mail'}`,
     silent: false,
   });
@@ -273,7 +273,7 @@ function createWindow() {
     height: 820,
     frame: false,
     backgroundColor: '#E8EEF4',
-    title: 'ADE Mail',
+    title: 'GigaMail',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -330,8 +330,12 @@ function waitForBackend(maxMs = 20000) {
 app.whenReady().then(async () => {
   startPythonServer();
 
+  // Whitelist esplicita: solo il microfono serve alle pagine (dettatura in
+  // voice_mail.js). Le notifiche desktop partono dal main process e non
+  // passano da qui; tutto il resto (geolocation, clipboard-read, ...) è negato.
+  const ALLOWED_PERMISSIONS = new Set(['media', 'audioCapture']);
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(true);
+    callback(ALLOWED_PERMISSIONS.has(permission));
   });
 
   // Header token su OGNI richiesta delle finestre verso il backend console:
@@ -345,11 +349,20 @@ app.whenReady().then(async () => {
   });
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Solo per le risposte del backend locale: se un allegato HTML venisse
+    // aperto come documento, script-src 'none' gli impedisce di eseguire
+    // codice. Le finestre file:// hanno la loro meta-CSP nell'HTML e le
+    // risorse remote (font, API) tengono i loro header: onHeadersReceived
+    // intercetta anche file:// e una CSP aggiunta qui si sommerebbe in
+    // intersezione con quella dei meta tag, bloccando gli script locali.
+    const isBackend = details.url.startsWith(`http://127.0.0.1:${API_PORT}/`)
+                   || details.url.startsWith(`http://localhost:${API_PORT}/`);
+    if (!isBackend) { callback({}); return; }
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob: cid:",
+          "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'self'",
         ],
       },
     });
@@ -473,7 +486,7 @@ ipcMain.on('open-mail-window', (event, data) => {
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
-    title: 'ADE Mail',
+    title: 'GigaMail',
     webPreferences: {
       preload: path.join(__dirname, 'preload_mail.js'),
       contextIsolation: true,

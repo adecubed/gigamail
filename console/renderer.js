@@ -295,7 +295,7 @@ async function openMail(id, overrideFolder = null) {
         } catch {}
         // Iframe sandboxed per HTML nativo (Gmail, Outlook, newsletter)
         const iframe = document.createElement('iframe');
-        iframe.sandbox = 'allow-same-origin allow-popups allow-popups-to-escape-sandbox';
+        iframe.sandbox = 'allow-same-origin allow-popups';
         iframe.style.cssText = 'width:100%;border:none;min-height:400px;display:block;background:#fff;';
         iframe.scrolling = 'no';
         mailBodyEl.appendChild(iframe);

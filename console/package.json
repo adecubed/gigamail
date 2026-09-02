@@ -1,7 +1,8 @@
 {
-  "name": "ade-mail",
-  "version": "1.0.0",
-  "description": "ADE Mail — AI Email Assistant",
+  "name": "gigamail",
+  "productName": "GigaMail",
+  "version": "0.2.4",
+  "description": "GigaMail — secure agentic email console",
   "main": "main.js",
   "author": {
     "name": "Adecubed",
