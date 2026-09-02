@@ -27,7 +27,6 @@ Configurazione: blocco "telegram" in notify.json (accanto ad agent.json):
 Nessuna libreria Telegram: quattro chiamate HTTP con `requests`.
 """
 import json
-import time
 from typing import Any, Dict, List, Optional
 
 import requests

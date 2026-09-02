@@ -3,13 +3,15 @@ accounts.py — Gestione multi-account ADE Mail.
 Salva account Microsoft e IMAP in SQLite locale cifrato.
 DB e KEY in %APPDATA%\ADE\mail\ per persistenza tra riavvii.
 """
-import os
 import json
+import os
 import sqlite3
-import base64
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
+
 from cryptography.fernet import Fernet
+
 from .data_paths import data_root as _data_root
+
 _ADE_DATA = str(_data_root())
 DB_PATH  = os.path.join(_ADE_DATA, '.accounts.db')
 KEY_PATH = os.path.join(_ADE_DATA, '.accounts.key')

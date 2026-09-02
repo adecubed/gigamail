@@ -25,8 +25,9 @@ from ade_mail_agent.core import accounts as _core_accounts  # noqa: F401
 
 def cmd_login(_args) -> int:
     import requests as _requests
-    from ade_mail_agent.core import auth
+
     from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import auth
 
     data = auth.get_login_url()
     print(f"\nApri: {data['verification_uri']}")
@@ -156,6 +157,7 @@ def cmd_identity_set(args) -> int:
 
 def cmd_identity_add_file(args) -> int:
     import os
+
     from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
@@ -184,6 +186,7 @@ def cmd_identity_add_file(args) -> int:
 
 def cmd_identity_remove_file(args) -> int:
     import os
+
     from ade_mail_agent.core import accounts as core_accounts
     aid = _resolve_account_id(args.account_id)
     if not aid:
@@ -249,7 +252,7 @@ def cmd_approvals_approve(args) -> int:
     superare il prompt. Niente `--yes`: era la scorciatoia che un agente
     avrebbe usato. Se la macchina non ha un backend di consenso, il
     comando rifiuta e indica la console."""
-    from ade_mail_agent import policy, consent
+    from ade_mail_agent import consent, policy
     rec = policy.store().get(args.request_id)
     if not rec:
         print(f"Richiesta '{args.request_id}' inesistente.")
@@ -285,6 +288,7 @@ def _hello_or_refuse(reason: str):
     il timestamp della verifica, o None (e spiega) se negata/impossibile.
     Fail-closed: senza backend di consenso le regole non si creano da CLI."""
     import time as _t
+
     from ade_mail_agent import consent
     try:
         ok = consent.require_human(reason)
@@ -304,6 +308,7 @@ def cmd_rules_add(args) -> int:
     Hello / Touch ID: una regola e' una pre-approvazione, e nasce solo
     dalle mani dell'utente fisico."""
     import os as _os
+
     from ade_mail_agent.core import accounts as core_accounts
     from ade_mail_agent.core import rules as rules_mod
 
@@ -445,6 +450,7 @@ def cmd_rules_add(args) -> int:
 
 def cmd_rules_list(_args) -> int:
     import time as _t
+
     from ade_mail_agent.core import rules as rules_mod
     rows = rules_mod.store().list_all()
     if not rows:
@@ -565,6 +571,7 @@ def cmd_telegram_setup(args) -> int:
     Hello) di approvazione. Il token si digita a video e NON e' un
     argomento: niente cronologia di shell, niente agente che lo vede."""
     import json as _json
+
     from ade_mail_agent.core import telegram_channel
     existing = telegram_channel.load_config() or {}
     # chat_id: dal blocco telegram esistente, o dal vecchio comando curl
@@ -639,6 +646,7 @@ def cmd_desktop_setup(args) -> int:
     collegamento Start Menu con l'AppID. Senza, le toast arrivano senza
     bottoni e si approva da CLI/console/Telegram."""
     import sys as _sys
+
     from ade_mail_agent.core import desktop_notify
     if _sys.platform != "win32":
         print("Solo Windows: su macOS/Linux la notifica e' solo informativa.")
@@ -799,8 +807,7 @@ def cmd_watch(args) -> int:
 
 def cmd_index(args) -> int:
     from ade_mail_agent.core import accounts as core_accounts
-    from ade_mail_agent.core import mail_memory
-    from ade_mail_agent.core import mail_router
+    from ade_mail_agent.core import mail_memory, mail_router
     mail_memory.init_db()
     if args.account_id:
         result = mail_memory.run_indexer(args.account_id, mail_router)

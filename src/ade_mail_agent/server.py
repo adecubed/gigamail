@@ -25,6 +25,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from ade_mail_agent import policy
+from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import (
     attachments,
     availability,
@@ -35,7 +36,6 @@ from ade_mail_agent.core import (
     ms_calendar,
     observer,
 )
-from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.policy import audit
 
 

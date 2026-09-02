@@ -3,8 +3,7 @@ import os
 
 import pytest
 
-from ade_mail_agent.core import identity_reader
-from ade_mail_agent.core import file_extractor
+from ade_mail_agent.core import file_extractor, identity_reader
 
 
 @pytest.fixture()

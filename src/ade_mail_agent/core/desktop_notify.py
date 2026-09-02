@@ -327,7 +327,8 @@ def _win_toast(title: str, body: str,
     try:
         from winrt.windows.data.xml.dom import XmlDocument  # type: ignore
         from winrt.windows.ui.notifications import (  # type: ignore
-            ToastNotification, ToastNotificationManager,
+            ToastNotification,
+            ToastNotificationManager,
         )
     except ImportError:
         return _win_toast_powershell(title, body)

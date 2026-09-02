@@ -62,7 +62,6 @@ def test_backend_windows_nega_tutto_tranne_verified(monkeypatch):
     """Qualunque esito diverso da VERIFIED (annullato, occupato, tentativi
     esauriti...) e' un NO: fail-closed per costruzione."""
     monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
-    import asyncio
     for esito, atteso in ((0, True), (1, False), (2, False), (4, False), (5, False)):
         async def fake_request(_reason, _e=esito):
             return _e

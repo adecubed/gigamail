@@ -251,7 +251,7 @@ async function openIdentityModal(accountId, accountName) {
             // È una cartella — usa il path del file corrispondente per risalire alla dir
             const f = item.getAsFile();
             if (f && f.path) {
-              // f.path sarà tipo C:\Cartellaile.txt — prendi la cartella
+              // f.path sarà tipo C:/Cartella/file.txt — prendi la cartella
               const dirPath = f.path.replace(/[/\\][^/\\]+$/, '');
               addFilePathFromString(dirPath);
               handled = true;

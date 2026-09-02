@@ -4,8 +4,7 @@ Supporta: .txt .md .csv .xlsx .xls .pdf .docx
 Usato da smart_draft per iniettare contesto nel prompt LLM.
 """
 import os
-import re
-from typing import List, Dict
+from typing import Dict, List
 
 MAX_FILE_CHARS = 3000   # max caratteri per file singolo
 MAX_TOTAL_CHARS = 12000  # max totale per tutti i file

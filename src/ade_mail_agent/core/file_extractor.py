@@ -26,7 +26,7 @@ def extract_text(file_path: str, original_filename: str = '') -> Tuple[str, str]
         try:
             return _extract_text(file_path), 'text'
         except Exception:
-            raise ValueError(f'Formato non supportato: {ext}')
+            raise ValueError(f'Formato non supportato: {ext}') from None
 
 
 def _extract_pdf(path: str) -> str:
@@ -40,7 +40,7 @@ def _extract_pdf(path: str) -> str:
                     text.append(t)
         return '\n'.join(text).strip()
     except ImportError:
-        raise ValueError('pdfplumber non installato. Esegui: pip install pdfplumber')
+        raise ValueError('pdfplumber non installato. Esegui: pip install pdfplumber') from None
 
 
 def _extract_word(path: str) -> str:

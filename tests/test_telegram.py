@@ -9,9 +9,8 @@ import pytest
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import mail_router
+from ade_mail_agent.core import mail_router, telegram_channel
 from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent.core import telegram_channel
 
 CHAT = 1484306713
 DMARC_PASS = {"authentication-results": ["mx; dmarc=pass header.from=fidato.it"]}
@@ -142,8 +141,8 @@ def test_poll_parsing(monkeypatch):
 def test_bottoni_senza_approve_non_hanno_approva():
     b = telegram_channel.Telegram.action_buttons("req_1", "it", can_approve=False)
     labels = [x["text"] for x in b[0]]
-    assert not any("Approva" in l for l in labels)
-    assert any("Rifiuta" in l for l in labels) and any("Modifica" in l for l in labels)
+    assert not any("Approva" in lbl for lbl in labels)
+    assert any("Rifiuta" in lbl for lbl in labels) and any("Modifica" in lbl for lbl in labels)
     b = telegram_channel.Telegram.action_buttons("req_1", "en", can_approve=True)
     assert b[0][0]["callback_data"] == "a:req_1"
 
@@ -186,7 +185,7 @@ def test_tap_rifiuta_non_invia(world):
 
 
 def test_modifica_rifa_la_bozza_col_feedback(world):
-    rid_rule = _rule(mode="auto")  # anche su regola auto, il retry e' semi
+    _rule(mode="auto")  # anche su regola auto, il retry e' semi
     world["unread"] = [_msg()]
     w = watcher_mod.Watcher()
     w.tick()
@@ -236,7 +235,7 @@ def test_chat_sconosciuta_ignorata_e_auditata(world):
     assert policy.store().get(rid)["status"] == policy.PENDING
     assert world["replies"] == []
     with open(policy._audit_path(), encoding="utf-8") as f:
-        outs = [json.loads(l)["outcome"] for l in f if l.strip()]
+        outs = [json.loads(ln)["outcome"] for ln in f if ln.strip()]
     assert outs.count("telegram_unauthorized") >= 2
 
 
@@ -431,7 +430,8 @@ def test_il_log_non_dichiara_attiva_un_approvazione_spenta(world, monkeypatch, c
 
 
 def _con_pin(pin="739104"):
-    from ade_mail_agent.core import approval_pin, rules as rules_mod
+    from ade_mail_agent.core import approval_pin
+    from ade_mail_agent.core import rules as rules_mod
     rs = rules_mod.store()
     rs.kv_set("tg_approve_pin", approval_pin.hash_pin(pin))
     rs.kv_set("tg_pin_fails", "0")

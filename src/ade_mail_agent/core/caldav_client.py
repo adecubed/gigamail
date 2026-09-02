@@ -7,15 +7,14 @@ Autodiscovery URL:
 - Generic:   https://{host}/.well-known/caldav
 """
 
-import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 try:
-    import caldav
+    import caldav  # noqa: F401 — sonda di disponibilita' del pacchetto
     from caldav import DAVClient
-    from icalendar import Calendar, Event, vText, vDatetime
+    from icalendar import Calendar, Event, vDatetime, vText
     _CALDAV_AVAILABLE = True
 except ImportError:
     _CALDAV_AVAILABLE = False

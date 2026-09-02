@@ -11,6 +11,7 @@
   "homepage": "https://adecubed.com",
   "scripts": {
     "start": "electron .",
+    "lint": "eslint .",
     "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never"
   },
@@ -19,8 +20,10 @@
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "electron": "^30.5.1",
-    "electron-builder": "^24.13.0"
+    "electron-builder": "^24.13.0",
+    "eslint": "^9.39.5"
   },
   "build": {
     "appId": "com.adecubed.gigamail",

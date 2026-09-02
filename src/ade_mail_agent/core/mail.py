@@ -1,10 +1,13 @@
 """
 mail.py — Lettura, invio e gestione mail via Microsoft Graph API.
 """
+from typing import Dict, List
+
 import requests
+
 from .addresses import split_addresses
 from .auth import get_token
-from typing import Optional, List, Dict
+
 GRAPH_URL = 'https://graph.microsoft.com/v1.0'
 def _headers() -> dict:
     return {'Authorization': f'Bearer {get_token()}', 'Content-Type': 'application/json'}

@@ -5,11 +5,10 @@ Salva in SQLite locale i pattern di modifica e li usa per migliorare le bozze fu
 v2: aggiunto template learning per mail simili (per dominio mittente + keywords oggetto).
 """
 
-import os
 import re
 import sqlite3
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .data_paths import db_path as _db_path
 
@@ -279,7 +278,6 @@ def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "")
     - pattern di stile appresi
     - template suggerito se disponibile
     """
-    import json as _json
 
     with sqlite3.connect(DB_PATH) as conn:
         patterns = conn.execute('''
@@ -317,7 +315,7 @@ def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "")
     # Esempi recenti
     if interactions:
         lines.append('\n[ESEMPI RISPOSTE RECENTI]:')
-        for orig, final, instr in interactions[:3]:
+        for _orig, final, instr in interactions[:3]:
             if instr:
                 lines.append(f'  Istruzione: {instr}')
             lines.append(f'  Risposta inviata: {(final or "")[:200]}')
@@ -332,7 +330,7 @@ def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "")
                 "domain_only": "stesso dominio",
             }.get(tmpl["match_type"], "simile")
             lines.append(f'\n[TEMPLATE SUGGERITO — usato {tmpl["frequency"]} volte, match: {match_label}]:')
-            lines.append(f'Usa questa risposta come base e adattala al contesto attuale:')
+            lines.append('Usa questa risposta come base e adattala al contesto attuale:')
             lines.append(tmpl["template_text"][:600])
             if tmpl["instruction"]:
                 lines.append(f'Istruzione originale: {tmpl["instruction"]}')

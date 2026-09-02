@@ -12,10 +12,10 @@ import time
 
 import pytest
 
-from ade_mail_agent import policy, watcher as watcher_mod
+from ade_mail_agent import agent_bridge, policy
+from ade_mail_agent import watcher as watcher_mod
 from ade_mail_agent.core import mail_router
 from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent import agent_bridge
 
 DMARC_PASS = {"authentication-results": ["mx; dmarc=pass header.from=fidato.it"]}
 DMARC_FAIL = {"authentication-results": ["mx; dmarc=fail header.from=fidato.it"]}

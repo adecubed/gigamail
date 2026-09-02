@@ -5,13 +5,15 @@ Microsoft → usa auth.py (token cache MSAL)
 IMAP      → usa email + password cifrata in accounts.py
 Calendar  → Google Calendar via OAuth2 (calendar_client.py)
 """
-from typing import List, Dict, Optional
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from typing import Dict, List, Optional
+
 from . import accounts as acc
 from . import auth as ms_auth
-from . import mail as ms_mail
 from . import imap_client as imap
+from . import mail as ms_mail
+
 try:
     import calendar_client as gcal
     _GCAL_OK = True
