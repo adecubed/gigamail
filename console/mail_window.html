@@ -185,7 +185,8 @@ if (window.mailWindowAPI) {
   });
 }
 
-async function loadMail(id, folder, accountId) {
+// `preloadedMsg`: il messaggio gia' in mano (test e2e), salta il fetch.
+async function loadMail(id, folder, accountId, preloadedMsg = null) {
   // Salva per dockBack
   window._mailId        = id;
   window._mailFolder    = folder;
@@ -200,7 +201,7 @@ async function loadMail(id, folder, accountId) {
     if (folder)    params.push(`folder=${encodeURIComponent(folder)}`);
     if (params.length) url += '?' + params.join('&');
 
-    const msg = await apiJson(url);
+    const msg = preloadedMsg || await apiJson(url);
 
     const sender     = msg.from?.emailAddress?.address || '?';
     const senderName = msg.from?.emailAddress?.name || sender;
@@ -353,7 +354,8 @@ async function loadMail(id, folder, accountId) {
     } else {
       const div = document.createElement('div');
       div.className = 'mail-body-text';
-      div.innerHTML = (bodyText||'(messaggio vuoto)').replace(/\n/g,'<br>');
+      // Testo semplice: escapato PRIMA dei <br>, e' contenuto della rete.
+      div.innerHTML = esc(bodyText||'(messaggio vuoto)').replace(/\n/g,'<br>');
       bodyWrap.appendChild(div);
     }
 
@@ -432,13 +434,8 @@ async function loadMail(id, folder, accountId) {
         // Estrai testo leggibile: se la mail è HTML, strippa i tag; altrimenti usa il testo
         let cleanBody = bodyText || '';
         if (isHtml && rawHtml) {
-          const tmp = document.createElement('div');
-          tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:600px;';
-          tmp.innerHTML = rawHtml;
-          tmp.querySelectorAll('style, script, head, meta, link').forEach(el => el.remove());
-          document.body.appendChild(tmp);
-          cleanBody = (tmp.innerText || tmp.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
-          document.body.removeChild(tmp);
+          // Documento inerte (mail_render.js), mai innerHTML sul DOM vivo.
+          cleanBody = MailRender.htmlToText(rawHtml);
         }
         const fwdBody = [
           '', '',

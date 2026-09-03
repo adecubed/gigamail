@@ -19,6 +19,7 @@ function load() {
     function fmtDate(d){ return d ? 'DATA' : ''; }
     function cleanFolder(f){ return f || ''; }
   `, ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'mail_render.js'), 'utf-8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'renderer_mail.js'), 'utf-8'), ctx);
   return dom.window;
 }

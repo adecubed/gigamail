@@ -91,13 +91,9 @@ const MailView = (() => {
 
   /** Testo semplice da HTML di posta, per citare/inoltrare. Documento inerte:
    *  niente esecuzione di script o handler, niente caricamento di risorse. */
+  /** Testo semplice da HTML di posta: la pipeline condivisa (mail_render.js). */
   function htmlToText(html) {
-    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
-    doc.querySelectorAll('style, script, head, meta, link, noscript, template').forEach(el => el.remove());
-    // <br> e blocchi diventano a capo, come faceva innerText sull'elemento vivo
-    doc.querySelectorAll('br').forEach(el => el.replaceWith('\n'));
-    doc.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote, pre').forEach(el => el.append('\n'));
-    return (doc.body ? doc.body.textContent : '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    return MailRender.htmlToText(html);
   }
 
   return { senderLabel, hasAttachments, listItemHtml, detailHeaderHtml, attachmentChipsHtml, htmlToText };

@@ -99,6 +99,21 @@ without reading the README.
   through folder switching, the IMAP modal and the event editor.
   renderer.js: 466 lines (2,055 this morning).
 
+- **Secondary windows closed too.** A second external review found what
+  the first pass had left: the mail window put a plain-text body into
+  `innerHTML` unescaped and, on "Forward", parsed the original HTML in an
+  element attached to the live document; the calendar window rendered
+  event ids and locations unescaped and put attendee addresses inside an
+  inline `onclick` string with an `esc()` that did not cover the quote.
+  All fixed (`esc()` before `<br>`, the shared inert `htmlToText`, data
+  attributes instead of inline JS). `shell.openExternal` is now reachable
+  only through one main-process function that accepts `http`, `https`
+  and `mailto` — the main-window preload used to call it directly, the
+  mail-window IPC forwarded anything — and every window gets the same
+  popup/navigation hardening. The e2e opens the mail and calendar
+  windows, injects hostile messages and events, and asserts nothing
+  runs; it also asserts `openExternal('file:...')` is refused.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
