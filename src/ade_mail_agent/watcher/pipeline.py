@@ -49,6 +49,16 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                      detail=reason)
         return "skipped"
 
+    # Quanti tentativi di bozza sono gia' falliti per questa mail.
+    # Va letto ADESSO: record() qui sotto fa INSERT OR REPLACE e
+    # riscrive reason a NULL, cioe' cancella proprio il campo in cui
+    # il conteggio vive. Leggendolo dopo si ripartiva da 1 a ogni
+    # giro: la regola riprovava all'infinito senza mai raggiungere la
+    # soglia che avvisa l'umano, e un agente rotto restava invisibile.
+    _prev = rs.get_handled(rule_id, message_id) or {}
+    _m = re.match(r"^draft-attempt:(\d+)$", str(_prev.get("reason") or ""))
+    tentativi_falliti = int(_m.group(1)) if _m else 0
+
     # 6. RAFFICA (fail-closed, prima di tutto): il match si conta
     # comunque, e se il volume in finestra supera la soglia la regola
     # si pausa da sola e riparte solo con Hello.
@@ -126,9 +136,7 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         # della mail. Si riprova ai giri successivi, fino a
         # _DRAFT_ATTEMPTS; poi si dichiara il fallimento all'umano
         # (misurato dal vivo 22/08: claude -p oltre i 180 s sotto carico).
-        prev = rs.get_handled(rule_id, message_id) or {}
-        m_att = re.match(r"^draft-attempt:(\d+)$", str(prev.get("reason") or ""))
-        attempt = (int(m_att.group(1)) if m_att else 0) + 1
+        attempt = tentativi_falliti + 1
         policy.audit("watch_rule", {"rule_id": rule_id,
                                     "message_id": message_id}, "draft_failed",
                      detail=f"attempt {attempt}: {str(e)[:160]}")

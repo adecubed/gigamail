@@ -93,11 +93,22 @@ def run(prompt: str, timeout: int | None = None) -> str:
         cmd.append(prompt)
     exe = cmd[0]
     if shutil.which(exe) is None and not os.path.exists(exe):
-        raise AgentUnavailable(
-            f"Agente non trovato ('{exe}'). Installa Claude Code oppure configura "
-            f"il comando in {_config_path()} "
-            '(es. {"command": ["claude", "-p", "{prompt}"]}).'
-        )
+        # Claude Code si aggiorna da solo e cancella la cartella della
+        # versione precedente: un comando risolto poco prima punta a un
+        # percorso che non esiste piu'. Prima di dichiarare l'agente
+        # assente si prova a ri-risolverlo, altrimenti un
+        # aggiornamento silenzioso ferma le bozze finche' qualcuno non
+        # se ne accorge — e nessuno se ne accorge.
+        fresco = _find_claude()
+        if fresco != exe and (shutil.which(fresco) is not None
+                              or os.path.exists(fresco)):
+            cmd[0] = exe = fresco
+        else:
+            raise AgentUnavailable(
+                f"Agente non trovato ('{exe}'). Installa Claude Code oppure configura "
+                f"il comando in {_config_path()} "
+                '(es. {"command": ["claude", "-p", "{prompt}"]}).'
+            )
     try:
         proc = subprocess.run(
             cmd,
