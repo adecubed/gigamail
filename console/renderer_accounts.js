@@ -80,7 +80,7 @@ async function deleteCurrentAccount(accountId) {
   if (!ok) return;
 
   try {
-    const r = await fetch(`http://127.0.0.1:8002/accounts/${accountId}`, { method: 'DELETE' });
+    const r = await fetch(`${window.GIGAMAIL_API}/accounts/${accountId}`, { method: 'DELETE' });
     if (!r.ok) {
       const err = await r.text();
       alert(`Errore eliminazione: ${err.slice(0, 200)}`);

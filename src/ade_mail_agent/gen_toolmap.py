@@ -5,7 +5,7 @@ unica: mcp.list_tools). Uso:
     python -m ade_mail_agent.gen_toolmap --check  # exit 1 se divergente (CI)
 
 La classe di rischio e' derivata dal server stesso: DANGEROUS = il tool ha il
-parametro confirm_token (due fasi); WRITE_SAFE = azioni reversibili note;
+request_id fuori banda (due fasi); WRITE_SAFE = azioni reversibili note;
 il resto e' READ.
 """
 import asyncio

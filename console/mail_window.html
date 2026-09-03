@@ -152,7 +152,7 @@
 <script src="features.js"></script>
 <script src="mail_render.js"></script>
 <script>
-const API = 'http://127.0.0.1:8002';
+const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 const featuresReady = Features.load(API);
 
 function esc(s) {

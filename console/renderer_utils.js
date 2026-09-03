@@ -739,7 +739,7 @@ async function renderDashboard() {
   if (!dash) return;
 
   const DOT_COLORS = ['#185FA5','#A32D2D','#1A7F4B','#7C3AED','#B45309'];
-  const API = 'http://127.0.0.1:8002';
+  const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 
   function card(content) {
     return `<div style="background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.12);padding:12px 14px;">${content}</div>`;

@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   async function applySnooze(wakeAtTs){
     if(!ctxTarget) return;
     try {
-      const r = await fetch('http://localhost:8002/snooze', {
+      const r = await fetch(`${window.GIGAMAIL_API}/snooze`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const folder = getActiveFolder();
     if(!accId) return;
     try {
-      const r = await fetch(`http://localhost:8002/snooze/snoozed_uids?account_id=${accId}&folder=${encodeURIComponent(folder)}`);
+      const r = await fetch(`${window.GIGAMAIL_API}/snooze/snoozed_uids?account_id=${accId}&folder=${encodeURIComponent(folder)}`);
       const d = await r.json();
       snoozedUids = new Set((d.uids||[]).map(String));
       applySnoozedFilterToList();
@@ -873,7 +873,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const accId = ctxTarget?.accountId;
       if(id){
         const endpoint = action === 'mark-read' ? 'read' : 'unread';
-        let url = `http://127.0.0.1:8002/mail/${encodeURIComponent(id)}/${endpoint}`;
+        let url = `${window.GIGAMAIL_API}/mail/${encodeURIComponent(id)}/${endpoint}`;
         const params = [];
         if(accId) params.push(`account_id=${accId}`);
         if(folder) params.push(`folder=${encodeURIComponent(folder)}`);

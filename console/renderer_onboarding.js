@@ -9,7 +9,7 @@
 // AI. Il flag "fatto" vive nel backend, non in localStorage: un reinstall
 // della console non la ripropone a chi ha gia' tutto.
 (function () {
-  const API = 'http://127.0.0.1:8002';
+  const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
   const STEPS = ['welcome', 'account', 'identity', 'agent', 'done'];
   const MCP_SNIPPET = '{\n  "mcpServers": {\n    "gigamail": { "command": "gigamail-server" }\n  }\n}';
   const TG_COMMAND = 'gigamail telegram setup';

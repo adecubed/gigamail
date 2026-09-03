@@ -361,7 +361,7 @@
 <input type="file" id="folderInput" webkitdirectory multiple accept="image/*" style="display:none"/>
 
 <script>
-const API = 'http://127.0.0.1:8002';
+const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 let _bulkRecipients = [];
 let _bulkPollingInterval = null;
 
