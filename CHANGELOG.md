@@ -151,6 +151,13 @@ without reading the README.
   `pyproject.toml`, and `MAPPA_MCP.md` finally describes the
   out-of-band `request_id` flow instead of the old `confirm_token`.
 
+- **A way back from a custom folder.** Inside a custom folder (say
+  "idealista") the only route to the inbox was the sidebar icon, which
+  does not read as "back", and the panel title kept saying "Inbox". Now
+  the folder row starts with an "Inbox" chip, the active chip clicked
+  again returns to the inbox, and the title follows the folder you are
+  in (standard folders translated, custom ones by name).
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
