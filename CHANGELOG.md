@@ -141,6 +141,16 @@ without reading the README.
   22); `npm test` runs `node --test` with the default pattern, which
   works on Node 20, 22 and 24 alike.
 
+- **`ADE_CONSOLE_PORT` works end to end.** The main process knew the
+  port; the renderers had `8002` written in 27 places across 17 files.
+  Now every window receives the backend base URL from the main process
+  (`additionalArguments` → preload → `window.GIGAMAIL_API`) and no
+  renderer carries the port any more; the e2e runs on port 8012 in CI
+  to prove it. `ade_mail_agent.__version__` comes from the package
+  metadata (it had been stuck at 0.1.2) with a test against
+  `pyproject.toml`, and `MAPPA_MCP.md` finally describes the
+  out-of-band `request_id` flow instead of the old `confirm_token`.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

@@ -7,7 +7,7 @@
  * mostra solo l'esito. Il token Telegram NON si inserisce qui (CLI).
  */
 (function () {
-  const API = 'http://127.0.0.1:8002';
+  const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
   const $ = (id) => document.getElementById(id);
   const lang = () => (localStorage.getItem('ade_lang') || 'it');
   const T = (it, en, zh) =>

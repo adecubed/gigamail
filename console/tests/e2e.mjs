@@ -133,6 +133,11 @@ async function main() {
     }
     check(booted, 'console avviata (backend raggiunto, moduli caricati)');
 
+    console.log('\n[porta del backend: dal main ai renderer]');
+    const expectedApi = `http://127.0.0.1:${process.env.ADE_CONSOLE_PORT || '8002'}`;
+    check((await cdp.evaluate('window.GIGAMAIL_API')) === expectedApi, `window.GIGAMAIL_API = ${expectedApi} (ADE_CONSOLE_PORT rispettata)`);
+    check(await cdp.evaluate("Features.known === true"), 'il gate di capability ha letto il backend su quella porta');
+
     console.log('\n[isolamento renderer / preload]');
     check(await cdp.evaluate("typeof require === 'undefined'"), 'require non esiste nel renderer (nodeIntegration off)');
     check(await cdp.evaluate("typeof process === 'undefined'"), 'process non esiste nel renderer');
@@ -345,7 +350,7 @@ async function main() {
     await ak.evaluate("window.close(); 'c'"); ak.close();
 
     console.log('\n[onboarding]');
-    const ob = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");
+    const ob = await cdp.evaluate("fetch(window.GIGAMAIL_API + '/onboarding').then(r => r.json()).catch(() => null)");
     if (ob && ob.accounts === 0 && !ob.done) {
       check(!(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')")), 'guida aperta da sola al primo avvio');
       await cdp.evaluate("document.getElementById('obNext').click(); 'n'");
@@ -359,7 +364,7 @@ async function main() {
       await sleep(2000);
       check(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')"), 'chiusura senza account: guida nascosta');
       check(await cdp.evaluate("!!document.querySelector('.ob-empty')"), 'dashboard: empty state con CTA');
-      const st = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json())");
+      const st = await cdp.evaluate("fetch(window.GIGAMAIL_API + '/onboarding').then(r => r.json())");
       check(st.done === false, 'flag "fatto" non scritto (nessun account)');
     } else {
       console.log('  – backend con account gia\' configurati: controlli primo avvio saltati (usa E2E_FRESH_APPDATA)');

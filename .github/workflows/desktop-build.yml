@@ -60,6 +60,7 @@ jobs:
         working-directory: console
         env:
           E2E_FRESH_APPDATA: ${{ runner.temp }}\gigamail-e2e
+          ADE_CONSOLE_PORT: "8012"   # non la default: prova che arrivi fino ai renderer
         run: npm run test:e2e
       - name: Log Electron dell'E2E (solo se fallisce)
         if: failure()

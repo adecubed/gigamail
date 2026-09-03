@@ -202,7 +202,7 @@
 </div>
 
 <script>
-const API = 'http://127.0.0.1:8002';
+const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 const SEND_DELAY = 5000;
 let mailData = null;
 let attachments = [];

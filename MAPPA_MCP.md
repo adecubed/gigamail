@@ -21,9 +21,13 @@ Ogni tool ha una **classe di rischio** che determina la policy:
 | `DANGEROUS` | conferma a due fasi + audit log | invio, risposta, cancellazione, eventi calendario |
 | `ADMIN` | **solo CLI, mai esposta all'agente** | login, credenziali, gestione account |
 
-La conferma a due fasi funziona così: la prima chiamata (senza token) NON esegue e
-restituisce un'anteprima completa + `confirm_token` monouso (validità 5 minuti);
-l'agente mostra l'anteprima all'umano e riesegue con il token per confermare.
+La conferma a due fasi funziona così: la prima chiamata (senza `request_id`) NON
+esegue e restituisce un'anteprima completa più un `request_id` **inerte** (validità
+15 minuti, `GIGAMAIL_APPROVAL_TTL`). L'approvazione avviene **fuori banda** — console,
+CLI o Telegram, dietro Windows Hello / Touch ID — mai attraverso l'agente: l'agente
+mostra l'anteprima, aspetta che l'umano approvi, poi richiama lo stesso tool con il
+`request_id`. Viene eseguito il payload approvato, non quello ripassato dall'agente;
+una richiesta approvata e non ancora eseguita si può revocare.
 
 ---
 

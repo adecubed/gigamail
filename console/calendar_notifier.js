@@ -8,7 +8,7 @@
 const { Notification } = require('electron');
 const http = require('http');
 
-const API_BASE       = 'http://127.0.0.1:8002';
+const API_BASE       = `http://127.0.0.1:${parseInt(process.env.ADE_CONSOLE_PORT || '8002', 10)}`;
 const NOTIFY_MINUTES = 20;          // minuti prima dell'appuntamento
 const WINDOW_MINUTES = 2;           // finestra tolleranza (±1 minuto)
 const CHECK_DAYS     = 1;           // quanti giorni di eventi caricare

@@ -305,6 +305,7 @@ function createWindow() {
     backgroundColor: '#E8EEF4',
     title: 'GigaMail',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -505,6 +506,7 @@ ipcMain.on('open-mail-window', (event, data) => {
     backgroundColor: '#00000000',
     title: 'GigaMail',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_mail.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -550,6 +552,7 @@ ipcMain.on('mail-window-open-reply', (event, data) => {
     backgroundColor: '#00000000',
     title: 'Nuova risposta',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_reply.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -582,6 +585,7 @@ ipcMain.on('open-new-mail-window', (event, data) => {
     resizable: true,
     title: 'Nuova mail',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_new_mail.js'),
       contextIsolation: true, nodeIntegration: false,
     },
@@ -611,6 +615,7 @@ ipcMain.on('open-reply-window', (event, data) => {
     resizable: true,
     title: 'Nuova risposta',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_reply.js'),
       contextIsolation: true, nodeIntegration: false,
     },
@@ -668,6 +673,7 @@ ipcMain.on('open-calendar-window', () => {
     frame: false, transparent: true, backgroundColor: '#00000000',
     title: 'ADE Calendario',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_calendar.js'),
       contextIsolation: true, nodeIntegration: false,
     },
@@ -693,6 +699,7 @@ ipcMain.on('open-marketing-window', () => {
     frame: false, transparent: true, backgroundColor: '#00000000',
     title: 'ADE Marketing',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_marketing.js'),
       contextIsolation: true, nodeIntegration: false,
     },
@@ -723,6 +730,7 @@ ipcMain.on('open-ask-window', (event, data) => {
     frame: false, transparent: true, backgroundColor: '#00000000',
     title: 'Chiedi alle mail',
     webPreferences: {
+      additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_ask.js'),
       contextIsolation: true, nodeIntegration: false,
     },

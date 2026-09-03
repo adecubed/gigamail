@@ -158,7 +158,7 @@ function bindCalendarEvents() {
     const id = byId('eventId')?.value || '';
     if (!id || !confirm('Eliminare questo evento?')) return;
     try {
-      const r = await fetch(`http://127.0.0.1:8002/calendar/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const r = await fetch(`${window.GIGAMAIL_API}/calendar/${encodeURIComponent(id)}`, { method: 'DELETE' });
       let data = {};
       try { data = await r.json(); } catch {}
       if (!r.ok || data.success === false) {

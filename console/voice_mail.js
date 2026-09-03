@@ -11,7 +11,7 @@
  * 5. Se testo inizia con "ade" → processa comando
  */
 
-const VOICE_BACKEND    = 'http://localhost:8002';
+const VOICE_BACKEND    = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 const SILENCE_DELAY    = 1200;  // ms silenzio prima di inviare
 const VOICE_THRESHOLD  = 8;     // volume minimo per rilevare voce
 const PLAYBACK_STOP_THRESHOLD = 22; // soglia piu alta durante la lettura audio

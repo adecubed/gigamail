@@ -134,7 +134,7 @@ async function deleteMail(id, folder) {
     const params = new URLSearchParams();
     if (activeAccountId) params.append('account_id', activeAccountId);
     if (folder) params.append('folder', folder);
-    const res = await fetch(`http://localhost:8002/mail/${encodeURIComponent(id)}?${params}`, {
+    const res = await fetch(`${window.GIGAMAIL_API}/mail/${encodeURIComponent(id)}?${params}`, {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error(await res.text());
@@ -398,7 +398,7 @@ async function openMail(id, overrideFolder = null) {
         const params = new URLSearchParams();
         if (activeAccountId) params.append('account_id', activeAccountId);
         if (folder) params.append('folder', folder);
-        const res = await fetch(`http://127.0.0.1:8002/mail/${encodeURIComponent(id)}/not_spam?${params}`, { method: 'POST' });
+        const res = await fetch(`${window.GIGAMAIL_API}/mail/${encodeURIComponent(id)}/not_spam?${params}`, { method: 'POST' });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         const moved = data.moved || 1;
@@ -422,7 +422,7 @@ async function openMail(id, overrideFolder = null) {
     byId('btnMarkUnread')?.addEventListener('click', async () => {
       try {
         const folderValue = selectedMailFolder || getCurrentFolderRequestValue();
-        await fetch(`http://127.0.0.1:8002/mail/${encodeURIComponent(selectedMailId)}/unread?account_id=${activeAccountId}&folder=${encodeURIComponent(folderValue||'')}`, { method: 'POST' });
+        await fetch(`${window.GIGAMAIL_API}/mail/${encodeURIComponent(selectedMailId)}/unread?account_id=${activeAccountId}&folder=${encodeURIComponent(folderValue||'')}`, { method: 'POST' });
         // Rimarca come unread nel DOM
         document.querySelectorAll('.mail-item').forEach(el => {
           if (el.dataset.id === selectedMailId) el.classList.add('unread');
@@ -588,7 +588,7 @@ function openForwardComposer(msg) {
 function bindMailEvents() {
   on('btnRefreshMail', 'click', async () => {
     try {
-      await fetch('http://127.0.0.1:8002/cache/clear', { method: 'POST' });
+      await fetch(`${window.GIGAMAIL_API}/cache/clear`, { method: 'POST' });
       showToast('🔄 Cache identity svuotata');
     } catch(e) {}
     await refreshCurrentFolder();

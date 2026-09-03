@@ -308,7 +308,7 @@ async function waitForBackend(timeoutMs = 30000, intervalMs = 200) {
   const deadline = performance.now() + timeoutMs;
   while (performance.now() < deadline) {
     try {
-      const r = await fetch('http://127.0.0.1:8002/health', { cache: 'no-store' });
+      const r = await fetch(`${window.GIGAMAIL_API}/health`, { cache: 'no-store' });
       if (r.ok) return true;
     } catch (_) { /* porta non ancora aperta: backend in avvio */ }
     await new Promise(res => setTimeout(res, intervalMs));
@@ -320,11 +320,11 @@ async function bootstrap() {
   const ready = await waitForBackend();
   if (!ready) {
     setText('authLabel', 'BACKEND NON RAGGIUNGIBILE');
-    console.error('[ADE MAIL] backend 8002 non risponde entro il timeout');
+    console.error('[ADE MAIL] backend non risponde entro il timeout:', window.GIGAMAIL_API);
     return;
   }
   // Cosa sa fare il backend: i bottoni senza endpoint spariscono.
-  await Features.load('http://127.0.0.1:8002');
+  await Features.load(window.GIGAMAIL_API);
   await init();
   Features.apply();
   if (window.startOnboardingIfNeeded) window.startOnboardingIfNeeded();

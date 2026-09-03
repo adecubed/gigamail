@@ -355,7 +355,7 @@ async function openIdentityModal(accountId, accountName) {
       btnExtract.textContent = '⏳ Estrazione...';
       if (extractStatus) extractStatus.textContent = 'Analisi in corso...';
       try {
-        const res = await fetch('http://localhost:8002/identity/extract_from_url', {
+        const res = await fetch(`${window.GIGAMAIL_API}/identity/extract_from_url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
