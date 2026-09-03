@@ -14,6 +14,11 @@
 # che scarica il binario gia' compilato per la ABI di Electron.
 
 $ErrorActionPreference = "Stop"
+# MAI il site-packages utente (%APPDATA%\Python\PythonXY): con "import site"
+# attivo l'embeddable lo vede, pip considera le dipendenze gia' soddisfatte
+# e non le installa qui — e l'installer parte senza. Trovato dallo smoke
+# test dell'app impacchettata su un profilo vergine.
+$env:PYTHONNOUSERSITE = "1"
 
 $VER = "3.12.9"
 $OUT = Join-Path $PSScriptRoot "python-embedded"
@@ -52,8 +57,17 @@ if (Test-Path (Join-Path $OUT "Scripts\pip.exe")) {
     Remove-Item $gp
 }
 
-Write-Host "[4/4] installazione gigamail[all]..."
-& (Join-Path $OUT "python.exe") -m pip install "gigamail[all]" --no-warn-script-location --quiet
+# Dal sorgente del repo, non da PyPI: l'installer deve portare il codice e
+# le dipendenze DI QUESTO commit (una dipendenza nuova in pyproject deve
+# esserci), e i metadati di versione devono coincidere con pyproject.toml.
+$REPO = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+# Il Python embeddable isola sys.path (._pth): l'ambiente di build che pip
+# creerebbe non e' visibile e hatchling "non si importa". Quindi hatchling
+# installato a mano e --no-build-isolation.
+Write-Host "[4/4] installazione gigamail[all] da $REPO ..."
+& (Join-Path $OUT "python.exe") -m pip install hatchling --no-warn-script-location --quiet
+if ($LASTEXITCODE -ne 0) { throw "pip install hatchling fallito (exit $LASTEXITCODE)" }
+& (Join-Path $OUT "python.exe") -m pip install --no-build-isolation "$REPO[all]" --no-warn-script-location --quiet
 if ($LASTEXITCODE -ne 0) { throw "pip install fallito (exit $LASTEXITCODE)" }
 
 & (Join-Path $OUT "python.exe") -c "import ade_mail_agent, fastapi, uvicorn, mcp; import importlib.metadata as m; print('  gigamail', m.version('gigamail'), '| mcp', m.version('mcp'), '| import OK')"

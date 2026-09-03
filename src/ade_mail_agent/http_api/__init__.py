@@ -46,7 +46,8 @@ async def _require_token(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "gigamail-console"}
+    from ade_mail_agent import __version__
+    return {"status": "ok", "service": "gigamail-console", "version": __version__}
 
 
 # Un router per dominio: stessi path di prima, nessun prefisso.
