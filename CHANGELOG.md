@@ -114,6 +114,15 @@ without reading the README.
   windows, injects hostile messages and events, and asserts nothing
   runs; it also asserts `openExternal('file:...')` is refused.
 
+- **`webSecurity` back on everywhere.** Calendar, marketing and ask ran
+  with `webSecurity: false`, which switches off the same-origin policy
+  for the whole window (a page could read `file://` and call any host).
+  Removed from all three; the backend already answers `file://` origins
+  through CORS, so nothing needed it. `api.anthropic.com` is gone from
+  every window's CSP. The e2e proves `fetch('file:///…')` is refused in
+  the main, calendar, marketing and ask windows and that the calendar
+  still reaches the backend.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

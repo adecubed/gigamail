@@ -670,7 +670,6 @@ ipcMain.on('open-calendar-window', () => {
     webPreferences: {
       preload: path.join(__dirname, 'preload_calendar.js'),
       contextIsolation: true, nodeIntegration: false,
-      webSecurity: false,
     },
   });
   calendarWindow.loadFile(path.join(__dirname, 'calendar_window.html'));
@@ -696,7 +695,6 @@ ipcMain.on('open-marketing-window', () => {
     webPreferences: {
       preload: path.join(__dirname, 'preload_marketing.js'),
       contextIsolation: true, nodeIntegration: false,
-      webSecurity: false,
     },
   });
   marketingWindow.loadFile(path.join(__dirname, 'marketing_window.html'));
@@ -727,7 +725,6 @@ ipcMain.on('open-ask-window', (event, data) => {
     webPreferences: {
       preload: path.join(__dirname, 'preload_ask.js'),
       contextIsolation: true, nodeIntegration: false,
-      webSecurity: false,
     },
   });
   askWindow.loadFile(path.join(__dirname, 'ask_window.html'));
