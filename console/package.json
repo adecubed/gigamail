@@ -12,19 +12,19 @@
   "scripts": {
     "start": "electron .",
     "lint": "eslint .",
-    "test": "node --test tests/",
+    "test": "node --test",
     "test:e2e": "node tests/e2e.mjs",
     "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never"
   },
   "dependencies": {
-    "better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
-    "electron": "^30.5.1",
-    "electron-builder": "^24.13.0",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.39.5",
     "jsdom": "^24.1.3"
   },
