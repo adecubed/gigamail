@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Adecubed
 # Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Quando l'agente non scrive la bozza, il fallimento deve emergere."""
-import os
 
 import pytest
 
