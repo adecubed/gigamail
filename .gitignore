@@ -15,3 +15,6 @@ POST_DRAFTS.md
 # con lo script di preparazione, pesa centinaia di MB, non va versionato.
 console/python-embedded/
 console/e2e-electron.log
+
+# Claude Code: file locali della sessione (launch.json, settings.local.json, worktree)
+.claude/
