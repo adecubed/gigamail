@@ -76,6 +76,13 @@ without reading the README.
   that main.js denies — dead code replaced by a delegation to the real
   mail window. renderer.js goes from 2,055 to 1,465 lines.
 
+- **Composition leaves renderer.js too.** `renderer_compose.js` holds
+  the reply modal, the new-mail panel, attachments and the recipient
+  autocomplete; the pure parts (`ComposeView`: attachment chips,
+  autocomplete items, suggested-attachment rows, address split/merge)
+  are unit-tested with hostile names and addresses. renderer.js is now
+  894 lines, down from 2,055 this morning.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
