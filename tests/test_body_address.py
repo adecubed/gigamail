@@ -130,7 +130,7 @@ def test_un_watcher_alla_volta(monkeypatch):
         def active(self):
             return [{"rule_id": "rule_x"}]
 
-    monkeypatch.setattr(watcher, "pid_alive", lambda pid: True)
+    monkeypatch.setattr(watcher.process_state, "pid_alive", lambda pid: True)
 
     # battito fresco: vivo
     monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
@@ -143,7 +143,7 @@ def test_un_watcher_alla_volta(monkeypatch):
     assert watcher.running_state()["running"] is False
 
     # nessun processo: fermo, e il pid non viene spacciato per buono
-    monkeypatch.setattr(watcher, "pid_alive", lambda pid: False)
+    monkeypatch.setattr(watcher.process_state, "pid_alive", lambda pid: False)
     monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
     st = watcher.running_state()
     assert st["running"] is False and st["pid"] is None

@@ -43,6 +43,18 @@ without reading the README.
   on a pristine profile — that onboarding opens by itself. The e2e runs
   in CI on Windows before every installer build.
 
+- **The watcher is a package.** `watcher.py` had grown to 1,150 lines
+  doing polling, rule matching, drafting, addressing, approvals,
+  notifications, Telegram commands and execution in one file. It is
+  now `ade_mail_agent/watcher/` with one module per responsibility
+  (ingestion, drafting, addressing, approvals, notify, pipeline,
+  execution, telegram, process_state, runner) behind the same facade:
+  `from ade_mail_agent import watcher` and every public name still
+  work, the CLI and the console did not change. The `except: pass`
+  around the heartbeat and the Telegram trust warning now log through
+  `logging` ("gigamail.watcher") instead of vanishing — a heartbeat
+  that fails is exactly what makes the console launch a second watcher.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

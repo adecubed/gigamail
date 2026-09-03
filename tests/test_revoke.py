@@ -71,8 +71,8 @@ def test_la_revoca_finisce_nell_audit():
     rid = _richiesta()
     policy.store().approve(rid, by="test")
     policy.store().revoke(rid, by="telegram:123")
-    righe = [json.loads(l) for l in
-             open(policy._audit_path(), encoding="utf-8") if l.strip()]
+    righe = [json.loads(ln) for ln in
+             open(policy._audit_path(), encoding="utf-8") if ln.strip()]
     nostre = [r for r in righe
               if r.get("args", {}).get("request_id") == rid
               and r.get("outcome") == "revoked"]
@@ -89,8 +89,8 @@ def test_l_audit_dice_quale_richiesta():
     import json
     rid = _richiesta()
     policy.store().approve(rid, by="test")
-    righe = [json.loads(l) for l in
-             open(policy._audit_path(), encoding="utf-8") if l.strip()]
+    righe = [json.loads(ln) for ln in
+             open(policy._audit_path(), encoding="utf-8") if ln.strip()]
     approvate = [r for r in righe
                  if r.get("outcome") == "approved"
                  and r.get("args", {}).get("request_id") == rid]
