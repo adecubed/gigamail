@@ -126,7 +126,11 @@ def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
     entry = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "tool": tool,
-        "args": {k: v for k, v in args.items() if k not in ("body", "request_id")},
+        # Si toglie il corpo (puo' essere lunghissimo e contiene la mail
+        # stessa), NON la request_id: senza, una riga "approved" non dice
+        # COSA e' stato approvato, e ricostruire chi ha deciso cosa
+        # diventa impossibile proprio nel log che esiste per quello.
+        "args": {k: v for k, v in args.items() if k != "body"},
         "outcome": outcome,
     }
     if detail:
@@ -302,6 +306,38 @@ class ApprovalStore:
         audit("approval", {"request_id": request_id, "by": by,
                            "for_tool": (rec or {}).get("tool")},
               "rejected" if ok else "reject_failed")
+        return ok
+
+    def revoke(self, request_id: str, by: str = "unknown") -> bool:
+        """Ritira un'approvazione GIA' DATA ma non ancora eseguita.
+
+        Serve al caso piu' banale e piu' frequente: si approva, e un
+        secondo dopo ci si accorge che la mail era sbagliata. Senza
+        questo l'unica difesa era aspettare i 15 minuti di scadenza,
+        con la richiesta eseguibile per tutta la finestra.
+
+        Va nella direzione sicura — impedisce un'azione, non la
+        autorizza — quindi non chiede Hello: e' la stessa asimmetria
+        per cui su Telegram si puo' rifiutare ma non approvare.
+
+        Atomica rispetto a consume_approved(): entrambe passano da una
+        UPDATE condizionale sullo stato, quindi se revoca ed esecuzione
+        arrivano insieme una delle due perde e lo sa. Cio' che e' gia'
+        EXECUTED non si tocca: quella mail e' partita, e fingere di
+        annullarla sarebbe peggio che dire di no."""
+        rec = self.get(request_id)
+        now = time.time()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE approvals SET status=?, decided_at=?, decided_by=?"
+                " WHERE request_id=? AND status IN (?,?)",
+                (REJECTED, now, by, request_id, PENDING, APPROVED),
+            )
+            ok = cur.rowcount == 1
+        audit("approval", {"request_id": request_id, "by": by,
+                           "was": (rec or {}).get("status"),
+                           "for_tool": (rec or {}).get("tool")},
+              "revoked" if ok else "revoke_failed")
         return ok
 
     def consume_approved(self, request_id: str, tool: str) -> Optional[Dict[str, Any]]:
