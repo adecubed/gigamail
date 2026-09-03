@@ -144,6 +144,13 @@ function bindUpload() {
 // ============================================================
 
 function bindStaticEvents() {
+  // Ogni modulo lega i propri bottoni; qui restano login, office e
+  // navigazione verso le finestre native.
+  bindMailEvents();
+  bindComposeEvents();
+  bindCalendarEvents();
+  bindAccountEvents();
+
   on('btnLogin',          'click', () => setHidden('loginOverlay', false));
   on('btnCloseLogin',     'click', () => setHidden('loginOverlay', true));
 
@@ -173,133 +180,9 @@ function bindStaticEvents() {
     } catch (e) { showToast(`Errore: ${e}`); }
   });
 
-  on('btnRefreshMail', 'click', async () => {
-    try {
-      await fetch('http://127.0.0.1:8002/cache/clear', { method: 'POST' });
-      showToast('🔄 Cache identity svuotata');
-    } catch(e) {}
-    await refreshCurrentFolder();
-  });
-
-  on('btnPriority', 'click', () => {
-    priorityMode = !priorityMode;
-    byId('btnPriority')?.classList.toggle('active', priorityMode);
-    if (currentFolder === 'inbox') refreshCurrentFolder();
-  });
-
-  on('btnSearchMail', 'click', async () => {
-    const q = byId('mailSearch')?.value.trim() || '';
-    if (!q) { await refreshCurrentFolder(); return; }
-    try {
-      const results = await api.searchMail(q, activeAccountId);
-      console.log('[SEARCH DEBUG] type:', typeof results, 'isArray:', Array.isArray(results), 'value:', JSON.stringify(results)?.slice(0, 200));
-      renderMailList(results);
-      setText('statMail', Array.isArray(results) ? results.length : 0);
-    } catch (e) { console.error('searchMail:', e); }
-  });
-  on('mailSearch', 'keydown', (e) => { if (e.key === 'Enter') byId('btnSearchMail')?.click(); });
-
-  // Folder menu
-  on('btnMore', 'click', (e) => { e.stopPropagation(); byId('moreDropdown')?.classList.toggle('hidden'); });
-
-  on('btnShowInbox', 'click', async () => {
-    await openFolder('inbox', 'btnShowInbox');
-  });
-  on('btnShowSent', 'click', async () => {
-    await openFolder('sent', 'btnShowSent');
-  });
-  on('btnShowDrafts', 'click', async () => {
-    await openFolder('drafts', 'btnShowDrafts');
-  });
-  on('btnShowSpam', 'click', async () => {
-    await openFolder('spam', 'btnShowSpam');
-  });
-  on('btnShowDeleted', 'click', async () => {
-    await openFolder('deleted', 'btnShowDeleted');
-  });
-
-  // Calendario → finestra nativa
-  on('btnShowCalendar', 'click', () => {
-    window.electronAPI?.openCalendarWindow?.();
-  });
-
   // Marketing → finestra nativa
   on('btnShowMarketing', 'click', () => {
     window.electronAPI?.openMarketingWindow?.();
-  });
-
-  // Voce in sidebar — gestita da voice_mail.js/bindVoice()
-
-  // Nuova mail
-  on('btnNewMail', 'click', () => {
-    if (window.electronAPI?.openNewMailWindow) {
-      window.electronAPI.openNewMailWindow({ account_id: activeAccountId });
-    } else {
-      setHidden('newMailPanel', false);
-    }
-  });
-
-
-  on('btnCloseNewMail',    'click', () => setHidden('newMailPanel', true));
-  on('btnGenerateNewMail', 'click', generateNewMailDraft);
-  on('btnSendNewMail',     'click', sendNewMail);
-  on('newMailTo',          'input', () => handleAddressAutocomplete('newMailTo', 'toAutocomplete'));
-  on('newMailCc',          'input', () => handleAddressAutocomplete('newMailCc', 'ccAutocomplete'));
-  on('newMailBcc',         'input', () => handleAddressAutocomplete('newMailBcc', 'bccAutocomplete'));
-  on('btnAttachFile',      'click', () => byId('newMailFileInput')?.click());
-  byId('newMailFileInput')?.addEventListener('change', handleNewMailAttachment);
-
-  // Calendario
-  on('calDays',       'change', loadEvents);
-  on('btnRefreshCal', 'click',  loadEvents);
-
-  on('btnClearEvent', 'click', () => {
-    selectedEventId = null;
-    ['eventId','eventSubject','eventStart','eventEnd','eventLocation','eventAttendees','eventBody']
-      .forEach(id => { if (byId(id)) byId(id).value = ''; });
-    byId('btnDeleteEvent')?.classList.add('hidden');
-    setText('eventStatus', '');
-  });
-
-  on('btnSaveEvent', 'click', async () => {
-    const id        = byId('eventId')?.value || '';
-    const subject   = byId('eventSubject')?.value.trim() || '';
-    const start     = byId('eventStart')?.value || '';
-    const end       = byId('eventEnd')?.value || '';
-    const location  = byId('eventLocation')?.value || '';
-    const body      = byId('eventBody')?.value || '';
-    const attendees = (byId('eventAttendees')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (!subject || !start || !end) { setText('eventStatus', '✕ Compila titolo, inizio e fine'); return; }
-    try {
-      if (id) { await api.updateEvent(id, {subject, start, end, location, body, attendees}); setText('eventStatus', '✓ Evento aggiornato'); }
-      else    { await api.createEvent({subject, start, end, location, body, attendees}); setText('eventStatus', '✓ Evento creato'); }
-      await loadEvents();
-    } catch (e) { setText('eventStatus', `✕ Errore: ${e}`); }
-  });
-
-  on('btnDeleteEvent', 'click', async () => {
-    const id = byId('eventId')?.value || '';
-    if (!id || !confirm('Eliminare questo evento?')) return;
-    try {
-      const r = await fetch(`http://127.0.0.1:8002/calendar/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      let data = {};
-      try { data = await r.json(); } catch {}
-      if (!r.ok || data.success === false) {
-        const msg = data.error || `HTTP ${r.status}`;
-        console.error('[CALENDAR DELETE] fallita:', id, data);
-        setText('eventStatus', `✕ Eliminazione fallita: ${msg}`);
-        return;
-      }
-      setText('eventStatus', '✓ Evento eliminato');
-      byId('btnClearEvent')?.click();
-      await loadEvents();
-    }
-    catch (e) { setText('eventStatus', `✕ ${e}`); }
-  });
-
-  on('btnSpeakToday', 'click', async () => {
-    try { const audio = new Audio(api.getCalendarTtsUrl()); await audio.play(); }
-    catch (e) { showToast(`Errore TTS: ${e}`); }
   });
 
   // Office
@@ -334,100 +217,6 @@ function bindStaticEvents() {
       if (status) status.textContent = '✓ File creato';
       if (result) { result.textContent = `📁 ${res.filename}\n${res.path}`; result.classList.remove('hidden'); }
     } catch (e) { if (status) status.textContent = `✕ Errore: ${e}`; }
-  });
-
-  // Account
-  on('accountSelect', 'change', async (e) => {
-    const id = parseInt(e.target.value, 10);
-    if (!id) return;
-    try {
-      await api.switchAccount(id);
-      activeAccountId = id;
-      customFolderCountsRequestId += 1;
-      customFolderNewCounts = new Map();
-      mailFolderCache = [];
-      currentFolder = 'inbox';
-      currentFolderLabel = 'inbox';
-      renderCustomFolders();
-      selectedMailId = null;
-      currentMailIndex = -1;
-      currentMailList = [];
-      updateVoiceContext?.(null, -1);
-      document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
-      resetMailDetail();
-      await loadMailFolders(false);
-      await refreshCurrentFolder();
-      await loadEvents();
-    }
-    catch (e) { console.error('switchAccount:', e); }
-  });
-
-  on('btnAddAccount',   'click', () => setHidden('imapOverlay', false));
-  on('btnCloseImap',    'click', () => setHidden('imapOverlay', true));
-
-  // Bottone 👤 ID per configurare identity account
-  const _acSel = byId('accountSelect');
-  const _btnIdExisting = byId('btnIdentityAccount');
-  if (_btnIdExisting && _acSel) {
-    _btnIdExisting.addEventListener('click', () => {
-      const selId = parseInt(_acSel.value, 10);
-      const selName = _acSel.options[_acSel.selectedIndex]?.text || '';
-      if (selId) openIdentityModal(selId, selName);
-    });
-  }
-  on('btnCreateFolder', 'click', openCreateFolderPanel);
-  on('btnAddFolder',    'click', openCreateFolderPanel);
-  on('btnCloseFolderPanel', 'click', () => setHidden('folderPanel', true));
-  on('btnSaveFolder', 'click', saveFolder);
-  on('folderNameInput', 'input', () => refreshFolderKeywordSuggestion());
-  on('folderKeywordsInput', 'input', () => { folderKeywordsDirty = true; });
-  on('btnRefreshCustomFolders', 'click', async () => {
-    await refreshCurrentFolder();
-    showToast('📬 Aggiornato');
-  });
-  on('btnCloseMoveMailPanel', 'click', () => setHidden('moveMailPanel', true));
-  on('btnRefreshFolders', 'click', () => loadMailFolders(false));
-  on('btnConfirmMoveMail', 'click', moveSelectedMail);
-  on('imapProvider',    'change', (e) => {
-    const custom = byId('imapCustomFields');
-    if (custom) custom.style.display = e.target.value === 'custom' ? 'block' : 'none';
-  });
-  on('btnAddMicrosoft', 'click', () => { setHidden('imapOverlay', true); setHidden('loginOverlay', false); });
-
-  on('btnAddGmail', 'click', () => {
-    // Precompila campi IMAP per Gmail
-    const prov = document.getElementById('imapProvider');
-    if (prov) { prov.value = 'gmail'; prov.dispatchEvent(new Event('change')); }
-    const host = document.getElementById('imapHost');
-    const sport = document.getElementById('smtpHost');
-    // Mostra hint password app
-    const status = document.getElementById('imapStatus');
-    if (status) status.innerHTML = '<span style="color:rgba(180,40,30,0.8)">Gmail richiede una <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent)">password per le app</a> (non la password Google normale)</span>';
-    const nameEl = document.getElementById('imapName');
-    if (nameEl && !nameEl.value) nameEl.placeholder = 'Es: Gmail Lavoro';
-    const emailEl = document.getElementById('imapEmail');
-    if (emailEl) emailEl.focus();
-  });
-  on('btnSaveImap',     'click', saveImapAccount);
-
-  // Click fuori chiude dropdown
-  document.addEventListener('click', (e) => {
-    const more    = byId('moreDropdown');
-    const btnMore = byId('btnMore');
-    if (more && !more.contains(e.target) && btnMore && !btnMore.contains(e.target)) {
-      more.classList.add('hidden');
-    }
-    [
-      ['newMailTo', 'toAutocomplete'],
-      ['newMailCc', 'ccAutocomplete'],
-      ['newMailBcc', 'bccAutocomplete'],
-    ].forEach(([inputId, boxId]) => {
-      const input = byId(inputId);
-      const box = byId(boxId);
-      if (box && input && !box.contains(e.target) && !input.contains(e.target)) {
-        box.classList.add('hidden');
-      }
-    });
   });
 }
 

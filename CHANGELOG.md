@@ -91,6 +91,14 @@ without reading the README.
   its own palette and an undefined `--mono`; it now uses the console's
   `.overlay > .modal`. renderer.js is at 678 lines.
 
+- **Every console module binds its own buttons.** `bindStaticEvents`
+  was a 290-line list of every click handler in the main window; now
+  mail, compose, calendar and accounts each have a `bind*Events()` and
+  renderer.js keeps login, office and window navigation. The 52 bound
+  ids are asserted identical before and after, and the e2e clicks
+  through folder switching, the IMAP modal and the event editor.
+  renderer.js: 466 lines (2,055 this morning).
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

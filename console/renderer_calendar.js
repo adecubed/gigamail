@@ -120,3 +120,62 @@ function _openEventEditor(event) {
   byId('eventSubject')?.scrollIntoView({behavior:'smooth', block:'center'});
   byId('eventSubject')?.focus();
 }
+
+// ── Binding della vista calendario e dell'editor evento ──────────────────────
+function bindCalendarEvents() {
+  // Calendario → finestra nativa
+  on('btnShowCalendar', 'click', () => {
+    window.electronAPI?.openCalendarWindow?.();
+  });
+  on('calDays',       'change', loadEvents);
+  on('btnRefreshCal', 'click',  loadEvents);
+
+  on('btnClearEvent', 'click', () => {
+    selectedEventId = null;
+    ['eventId','eventSubject','eventStart','eventEnd','eventLocation','eventAttendees','eventBody']
+      .forEach(id => { if (byId(id)) byId(id).value = ''; });
+    byId('btnDeleteEvent')?.classList.add('hidden');
+    setText('eventStatus', '');
+  });
+
+  on('btnSaveEvent', 'click', async () => {
+    const id        = byId('eventId')?.value || '';
+    const subject   = byId('eventSubject')?.value.trim() || '';
+    const start     = byId('eventStart')?.value || '';
+    const end       = byId('eventEnd')?.value || '';
+    const location  = byId('eventLocation')?.value || '';
+    const body      = byId('eventBody')?.value || '';
+    const attendees = (byId('eventAttendees')?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!subject || !start || !end) { setText('eventStatus', '✕ Compila titolo, inizio e fine'); return; }
+    try {
+      if (id) { await api.updateEvent(id, {subject, start, end, location, body, attendees}); setText('eventStatus', '✓ Evento aggiornato'); }
+      else    { await api.createEvent({subject, start, end, location, body, attendees}); setText('eventStatus', '✓ Evento creato'); }
+      await loadEvents();
+    } catch (e) { setText('eventStatus', `✕ Errore: ${e}`); }
+  });
+
+  on('btnDeleteEvent', 'click', async () => {
+    const id = byId('eventId')?.value || '';
+    if (!id || !confirm('Eliminare questo evento?')) return;
+    try {
+      const r = await fetch(`http://127.0.0.1:8002/calendar/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      let data = {};
+      try { data = await r.json(); } catch {}
+      if (!r.ok || data.success === false) {
+        const msg = data.error || `HTTP ${r.status}`;
+        console.error('[CALENDAR DELETE] fallita:', id, data);
+        setText('eventStatus', `✕ Eliminazione fallita: ${msg}`);
+        return;
+      }
+      setText('eventStatus', '✓ Evento eliminato');
+      byId('btnClearEvent')?.click();
+      await loadEvents();
+    }
+    catch (e) { setText('eventStatus', `✕ ${e}`); }
+  });
+
+  on('btnSpeakToday', 'click', async () => {
+    try { const audio = new Audio(api.getCalendarTtsUrl()); await audio.play(); }
+    catch (e) { showToast(`Errore TTS: ${e}`); }
+  });
+}

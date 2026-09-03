@@ -133,3 +133,65 @@ async function deleteCurrentAccount(accountId) {
     setTimeout(() => document.addEventListener('click', close), 0);
   });
 })();
+
+// ── Binding del selettore account e della modale IMAP ────────────────────────
+function bindAccountEvents() {
+  on('accountSelect', 'change', async (e) => {
+    const id = parseInt(e.target.value, 10);
+    if (!id) return;
+    try {
+      await api.switchAccount(id);
+      activeAccountId = id;
+      customFolderCountsRequestId += 1;
+      customFolderNewCounts = new Map();
+      mailFolderCache = [];
+      currentFolder = 'inbox';
+      currentFolderLabel = 'inbox';
+      renderCustomFolders();
+      selectedMailId = null;
+      currentMailIndex = -1;
+      currentMailList = [];
+      updateVoiceContext?.(null, -1);
+      document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
+      resetMailDetail();
+      await loadMailFolders(false);
+      await refreshCurrentFolder();
+      await loadEvents();
+    }
+    catch (e) { console.error('switchAccount:', e); }
+  });
+
+  on('btnAddAccount',   'click', () => setHidden('imapOverlay', false));
+  on('btnCloseImap',    'click', () => setHidden('imapOverlay', true));
+
+  // Bottone 👤 ID per configurare identity account
+  const _acSel = byId('accountSelect');
+  const _btnIdExisting = byId('btnIdentityAccount');
+  if (_btnIdExisting && _acSel) {
+    _btnIdExisting.addEventListener('click', () => {
+      const selId = parseInt(_acSel.value, 10);
+      const selName = _acSel.options[_acSel.selectedIndex]?.text || '';
+      if (selId) openIdentityModal(selId, selName);
+    });
+  }
+
+  on('imapProvider',    'change', (e) => {
+    const custom = byId('imapCustomFields');
+    if (custom) custom.style.display = e.target.value === 'custom' ? 'block' : 'none';
+  });
+  on('btnAddMicrosoft', 'click', () => { setHidden('imapOverlay', true); setHidden('loginOverlay', false); });
+
+  on('btnAddGmail', 'click', () => {
+    // Precompila campi IMAP per Gmail
+    const prov = document.getElementById('imapProvider');
+    if (prov) { prov.value = 'gmail'; prov.dispatchEvent(new Event('change')); }
+    // Mostra hint password app
+    const status = document.getElementById('imapStatus');
+    if (status) status.innerHTML = '<span style="color:rgba(180,40,30,0.8)">Gmail richiede una <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--accent)">password per le app</a> (non la password Google normale)</span>';
+    const nameEl = document.getElementById('imapName');
+    if (nameEl && !nameEl.value) nameEl.placeholder = 'Es: Gmail Lavoro';
+    const emailEl = document.getElementById('imapEmail');
+    if (emailEl) emailEl.focus();
+  });
+  on('btnSaveImap',     'click', saveImapAccount);
+}
