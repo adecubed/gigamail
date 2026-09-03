@@ -205,6 +205,37 @@ async function main() {
       console.log('  – nessuna mail nella lista: controllo saltato');
     }
 
+    console.log('\n[binding dei bottoni per modulo]');
+    const accountsN = await cdp.evaluate("document.querySelectorAll('#accountSelect option[value]:not([value=\"\"])').length");
+    if (accountsN > 0) {
+      await cdp.evaluate("document.getElementById('btnShowSent').click(); 's'");
+      await sleep(1500);
+      check((await cdp.evaluate('currentFolder')) === 'sent', 'btnShowSent → cartella "sent" (renderer_mail)');
+      await cdp.evaluate("document.getElementById('btnShowInbox').click(); 'i'");
+      await sleep(1500);
+      check((await cdp.evaluate('currentFolder')) === 'inbox', 'btnShowInbox → cartella "inbox"');
+      // bottoni opzionali (presenti solo in alcune viste): si prova se ci sono
+      const has = async (id) => cdp.evaluate(`!!document.getElementById('${id}')`);
+      if (await has('btnPriority')) {
+        const before = await cdp.evaluate('priorityMode');
+        await cdp.evaluate("document.getElementById('btnPriority').click(); 'p'");
+        check((await cdp.evaluate('priorityMode')) === !before, 'btnPriority commuta priorityMode');
+        await cdp.evaluate("document.getElementById('btnPriority').click(); 'p'");
+      }
+      if (await has('btnAddAccount') && await has('btnCloseImap')) {
+        await cdp.evaluate("document.getElementById('btnAddAccount').click(); 'a'");
+        check(!(await cdp.evaluate("document.getElementById('imapOverlay').classList.contains('hidden')")), 'btnAddAccount apre la modale IMAP (renderer_accounts)');
+        await cdp.evaluate("document.getElementById('btnCloseImap').click(); 'c'");
+        check(await cdp.evaluate("document.getElementById('imapOverlay').classList.contains('hidden')"), 'btnCloseImap la chiude');
+      }
+      if (await has('btnClearEvent')) {
+        await cdp.evaluate("document.getElementById('btnClearEvent').click(); 'e'");
+        check((await cdp.evaluate("document.getElementById('eventStatus')?.textContent ?? ''")) === '', 'btnClearEvent azzera lo stato evento (renderer_calendar)');
+      }
+    } else {
+      console.log('  – nessun account: controlli sui binding saltati');
+    }
+
     console.log('\n[onboarding]');
     const ob = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");
     if (ob && ob.accounts === 0 && !ob.done) {

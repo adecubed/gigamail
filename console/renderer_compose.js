@@ -602,3 +602,37 @@ async function handleAddressAutocomplete(inputId = 'newMailTo', boxId = 'toAutoc
 }
 
 // Voice command — vedi voice_mail.js
+
+// ── Binding del pannello nuova mail ──────────────────────────────────────────
+function bindComposeEvents() {
+  on('btnNewMail', 'click', () => {
+    if (window.electronAPI?.openNewMailWindow) {
+      window.electronAPI.openNewMailWindow({ account_id: activeAccountId });
+    } else {
+      setHidden('newMailPanel', false);
+    }
+  });
+  on('btnCloseNewMail',    'click', () => setHidden('newMailPanel', true));
+  on('btnGenerateNewMail', 'click', generateNewMailDraft);
+  on('btnSendNewMail',     'click', sendNewMail);
+  on('newMailTo',          'input', () => handleAddressAutocomplete('newMailTo', 'toAutocomplete'));
+  on('newMailCc',          'input', () => handleAddressAutocomplete('newMailCc', 'ccAutocomplete'));
+  on('newMailBcc',         'input', () => handleAddressAutocomplete('newMailBcc', 'bccAutocomplete'));
+  on('btnAttachFile',      'click', () => byId('newMailFileInput')?.click());
+  byId('newMailFileInput')?.addEventListener('change', handleNewMailAttachment);
+
+  // Click fuori chiude i menu di autocomplete
+  document.addEventListener('click', (e) => {
+    [
+      ['newMailTo', 'toAutocomplete'],
+      ['newMailCc', 'ccAutocomplete'],
+      ['newMailBcc', 'bccAutocomplete'],
+    ].forEach(([inputId, boxId]) => {
+      const input = byId(inputId);
+      const box = byId(boxId);
+      if (box && input && !box.contains(e.target) && !input.contains(e.target)) {
+        box.classList.add('hidden');
+      }
+    });
+  });
+}

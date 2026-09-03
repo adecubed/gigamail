@@ -583,3 +583,63 @@ function openForwardComposer(msg) {
     byId('newMailTo')?.focus();
   }
 }
+
+// ── Binding dei bottoni della lista, delle cartelle e della ricerca ─────────
+function bindMailEvents() {
+  on('btnRefreshMail', 'click', async () => {
+    try {
+      await fetch('http://127.0.0.1:8002/cache/clear', { method: 'POST' });
+      showToast('🔄 Cache identity svuotata');
+    } catch(e) {}
+    await refreshCurrentFolder();
+  });
+
+  on('btnPriority', 'click', () => {
+    priorityMode = !priorityMode;
+    byId('btnPriority')?.classList.toggle('active', priorityMode);
+    if (currentFolder === 'inbox') refreshCurrentFolder();
+  });
+
+  on('btnSearchMail', 'click', async () => {
+    const q = byId('mailSearch')?.value.trim() || '';
+    if (!q) { await refreshCurrentFolder(); return; }
+    try {
+      const results = await api.searchMail(q, activeAccountId);
+      renderMailList(results);
+      setText('statMail', Array.isArray(results) ? results.length : 0);
+    } catch (e) { console.error('searchMail:', e); }
+  });
+  on('mailSearch', 'keydown', (e) => { if (e.key === 'Enter') byId('btnSearchMail')?.click(); });
+
+  // Folder menu
+  on('btnMore', 'click', (e) => { e.stopPropagation(); byId('moreDropdown')?.classList.toggle('hidden'); });
+  on('btnShowInbox',   'click', async () => { await openFolder('inbox',   'btnShowInbox'); });
+  on('btnShowSent',    'click', async () => { await openFolder('sent',    'btnShowSent'); });
+  on('btnShowDrafts',  'click', async () => { await openFolder('drafts',  'btnShowDrafts'); });
+  on('btnShowSpam',    'click', async () => { await openFolder('spam',    'btnShowSpam'); });
+  on('btnShowDeleted', 'click', async () => { await openFolder('deleted', 'btnShowDeleted'); });
+
+  // Cartelle personalizzate e spostamento
+  on('btnCreateFolder', 'click', openCreateFolderPanel);
+  on('btnAddFolder',    'click', openCreateFolderPanel);
+  on('btnCloseFolderPanel', 'click', () => setHidden('folderPanel', true));
+  on('btnSaveFolder', 'click', saveFolder);
+  on('folderNameInput', 'input', () => refreshFolderKeywordSuggestion());
+  on('folderKeywordsInput', 'input', () => { folderKeywordsDirty = true; });
+  on('btnRefreshCustomFolders', 'click', async () => {
+    await refreshCurrentFolder();
+    showToast('📬 Aggiornato');
+  });
+  on('btnCloseMoveMailPanel', 'click', () => setHidden('moveMailPanel', true));
+  on('btnRefreshFolders', 'click', () => loadMailFolders(false));
+  on('btnConfirmMoveMail', 'click', moveSelectedMail);
+
+  // Click fuori chiude il menu cartelle
+  document.addEventListener('click', (e) => {
+    const more    = byId('moreDropdown');
+    const btnMore = byId('btnMore');
+    if (more && !more.contains(e.target) && btnMore && !btnMore.contains(e.target)) {
+      more.classList.add('hidden');
+    }
+  });
+}
