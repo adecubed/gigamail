@@ -283,70 +283,15 @@ async function openMail(id, overrideFolder = null) {
     const mailBodyEl = byId('mailBody');
     if (mailBodyEl) {
       if (isHtmlBody) {
-        let _html = effectiveHtml || rawHtml;
-        // Risolvi le immagini inline cid: PRIMA di scrivere l'iframe, cosi
-        // Chromium non tenta mai di caricare lo schema cid: (niente errori).
-        try {
-          const _atts = msg.attachments || [];
-          _html = _html.replace(/(["'])cid:([^"']+)\1/gi, (m, q, rawCid) => {
-            const cid = decodeURIComponent(rawCid).replace(/[<>]/g, '');
-            const guess = (cid.split('@')[0] || '').toLowerCase();
-            let att = _atts.find(a => String(a.contentId || '').replace(/[<>]/g, '') === cid)
-                   || _atts.find(a => String(a.name || '').toLowerCase() === guess)
-                   || (guess && _atts.find(a => String(a.name || '').toLowerCase().includes(guess)));
-            if (!att && _atts.length === 1) att = _atts[0];
-            if (att) return q + api.getAttachmentUrl(id, att.name, activeAccountId, folderValue) + q;
-            // nessun match: pixel trasparente, niente icona rotta ne' errori
-            return q + 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' + q;
-          });
-        } catch {}
-        // Iframe sandboxed per HTML nativo (Gmail, Outlook, newsletter)
-        const iframe = document.createElement('iframe');
-        iframe.sandbox = 'allow-same-origin allow-popups';
-        iframe.style.cssText = 'width:100%;border:none;min-height:400px;display:block;background:#fff;';
-        iframe.scrolling = 'no';
-        mailBodyEl.appendChild(iframe);
-        const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-        iDoc.open();
-        iDoc.write(_html || rawHtml);
-        iDoc.close();
-        // Auto-altezza dopo render + intercetta link per aprirli nel browser
-        setTimeout(() => {
-          try {
-            const h = iDoc.body?.scrollHeight || 400;
-            iframe.style.height = Math.min(h + 20, 12400) + 'px';
-          } catch {}
-          // Risolvi immagini inline cid: -> endpoint allegati del backend
-          try {
-            const _atts = msg.attachments || [];
-            iDoc.querySelectorAll('img[src^="cid:"]').forEach(img => {
-              const cid = decodeURIComponent(img.getAttribute('src').slice(4)).replace(/[<>]/g, '');
-              const guess = (cid.split('@')[0] || '').toLowerCase();
-              let att = _atts.find(a => String(a.contentId || '').replace(/[<>]/g, '') === cid)
-                     || _atts.find(a => String(a.name || '').toLowerCase() === guess)
-                     || (guess && _atts.find(a => String(a.name || '').toLowerCase().includes(guess)));
-              if (!att && _atts.length === 1) att = _atts[0];
-              if (att) {
-                img.src = api.getAttachmentUrl(id, att.name, activeAccountId, folderValue);
-              } else {
-                img.style.display = 'none'; // evita icona immagine rotta
-              }
-            });
-          } catch {}
-          // Intercetta tutti i link nell'iframe e li apre nel browser esterno
-          try {
-            iDoc.querySelectorAll('a[href]').forEach(a => {
-              a.setAttribute('target', '_blank');
-              a.addEventListener('click', (e) => {
-                const href = a.getAttribute('href');
-                if (href && (href.startsWith('http') || href.startsWith('mailto'))) {
-                  e.preventDefault();
-                  window.open(href, '_blank');
-                }
-              });
-            });
-          } catch {}
-        }, 200);
+        // Pipeline unica (mail_render.js): sanitizzazione strutturale,
+        // iframe sandbox senza script, cid: risolti sugli allegati, link
+        // al browser esterno. Stessa strada della finestra mail.
+        window.MailRender.renderMailHtml(mailBodyEl, effectiveHtml || rawHtml, {
+          attachments: msg.attachments || [],
+          attachmentUrl: (att) => api.getAttachmentUrl(id, att.name, activeAccountId, folderValue),
+          openExternal: (href) => window.electronAPI?.openExternal?.(href),
+          autoHeight: true,
+        });
       } else {
         mailBodyEl.innerHTML = bodyHtml || '<p class="mail-paragraph mail-empty-body">(messaggio senza contenuto testuale)</p>';
       }

@@ -23,11 +23,12 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: console/package-lock.json
-      - name: ESLint (console)
+      - name: ESLint + unit test (console)
         working-directory: console
         run: |
           npm ci --ignore-scripts
           npx eslint .
+          npm test
 
   test:
     strategy:

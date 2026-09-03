@@ -43,6 +43,25 @@ jobs:
       - name: Python embedded
         run: powershell -ExecutionPolicy Bypass -File console/prepare-python.ps1
 
+      # E2E nell'Electron vero, PRIMA di impacchettare: in dev main.js lancia
+      # il backend da ../.venv, quindi ne serve uno con il pacchetto dentro.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: venv per il backend di sviluppo
+        run: |
+          python -m venv .venv
+          .venv\Scripts\pip install -e ".[all]" --quiet
+      - name: E2E console (XSS, isolamento renderer, primo avvio)
+        working-directory: console
+        env:
+          E2E_FRESH_APPDATA: ${{ runner.temp }}\gigamail-e2e
+        run: npm run test:e2e
+      - name: Log Electron dell'E2E (solo se fallisce)
+        if: failure()
+        run: Get-Content console/e2e-electron.log -Tail 80
+        shell: pwsh
+
       - name: Build installer
         working-directory: console
         run: npm run dist
