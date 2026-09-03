@@ -747,3 +747,59 @@ body {
 .auto-body::-webkit-scrollbar-track { background:rgba(0,0,0,0.05); border-radius:6px; }
 .auto-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.28); border-radius:6px; border:2px solid transparent; background-clip:content-box; }
 .auto-body::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.45); background-clip:content-box; }
+
+
+/* ── ONBOARDING (guida iniziale) — stessi token del resto della console ── */
+.ob-modal { max-width:600px; }
+.ob-hdr-left { display:flex; align-items:baseline; gap:10px; min-width:0; }
+.ob-hdr-right { display:flex; align-items:center; gap:12px; }
+.ob-step-label { font-size:10px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:rgba(0,0,0,0.5); white-space:nowrap; }
+.ob-dots { display:flex; gap:5px; }
+.ob-dot { width:7px; height:7px; border-radius:50%; background:rgba(0,0,0,0.15); border:1px solid rgba(0,0,0,0.35); transition:all 0.2s; }
+.ob-dot.done { background:rgba(0,0,0,0.55); }
+.ob-dot.active { background:#fff; border:1.5px solid rgba(0,0,0,0.75); transform:scale(1.25); }
+.ob-body { gap:12px; min-height:300px; }
+.ob-step { display:flex; flex-direction:column; gap:10px; animation:fadeIn 0.18s; }
+.ob-hero { display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0 4px; }
+.ob-logo { width:56px; height:56px; border-radius:14px; border:1.5px solid rgba(0,0,0,0.75); box-shadow:0 4px 16px rgba(0,0,0,0.25); background:linear-gradient(135deg,#eeb9dd,#b0c7f4); padding:6px; }
+.ob-hero-title { font-size:22px; font-weight:700; letter-spacing:2px; color:rgba(0,0,0,0.85); margin-top:6px; }
+.ob-hero-sub { font-size:12px; color:rgba(0,0,0,0.5); }
+.ob-p { font-size:13px; line-height:1.55; color:rgba(0,0,0,0.65); margin:0; }
+.ob-muted { font-size:11.5px; color:rgba(0,0,0,0.45); line-height:1.45; }
+.ob-lang-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.ob-lang.active { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); color:rgba(0,0,0,0.85); }
+.ob-choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ob-choice { text-align:left; padding:14px; background:rgba(255,255,255,0.6); border:1.5px solid rgba(0,0,0,0.75); border-radius:var(--radius-md); box-shadow:0 4px 16px rgba(0,0,0,0.1); cursor:pointer; font-family:var(--font); transition:all 0.18s; }
+.ob-choice:hover { background:linear-gradient(135deg,rgba(238,185,221,0.35),rgba(176,199,244,0.35)); transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,0.18); }
+.ob-choice-icon { font-size:20px; margin-bottom:6px; }
+.ob-choice-title { font-size:13.5px; font-weight:600; color:rgba(0,0,0,0.85); }
+.ob-choice-sub { font-size:11px; color:rgba(0,0,0,0.5); margin-top:3px; line-height:1.4; }
+.ob-panel { display:flex; flex-direction:column; gap:10px; padding:12px; background:rgba(255,255,255,0.55); border:1.5px solid rgba(0,0,0,0.75); border-radius:var(--radius-md); box-shadow:0 4px 14px rgba(0,0,0,0.1); }
+.ob-custom { display:flex; flex-direction:column; gap:8px; }
+.ob-hint { margin:0; font-family:var(--font); font-size:11px; color:rgba(0,0,0,0.5); line-height:1.4; }
+.ob-cta { margin:0; width:100%; }
+.ob-cta-inline { margin:0; width:auto; padding:8px 18px; }
+.ob-cancel { align-self:flex-start; }
+.ob-btn-row { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+.ob-link { color:rgba(0,0,0,0.75); font-size:13px; font-weight:600; word-break:break-all; text-decoration:underline; cursor:pointer; }
+.ob-code { font-size:26px; font-weight:700; letter-spacing:6px; color:rgba(0,0,0,0.85); text-align:center; padding:14px; background:linear-gradient(135deg,rgba(238,185,221,0.35),rgba(176,199,244,0.35)); border:1.5px solid rgba(0,0,0,0.75); border-radius:var(--radius-sm); font-family:monospace; user-select:all; }
+.ob-status { font-size:11.5px; min-height:14px; color:rgba(0,0,0,0.5); }
+.ob-status.ok { color:#1A7F4B; }
+.ob-status.warn { color:#B45309; }
+.ob-status.err { color:#dc2626; }
+.ob-list { display:flex; flex-direction:column; gap:6px; }
+.ob-account, .ob-file { display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,255,255,0.7); border:1px solid rgba(0,0,0,0.12); border-radius:var(--radius-sm); font-size:12px; color:rgba(0,0,0,0.75); }
+.ob-account-name { font-weight:600; }
+.ob-account-email { color:rgba(0,0,0,0.45); margin-left:auto; font-size:11px; }
+.ob-file-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ob-check { display:inline-flex; width:18px; height:18px; align-items:center; justify-content:center; border-radius:50%; background:#1A7F4B; color:#fff; font-size:11px; font-weight:700; flex-shrink:0; }
+.ob-check.off { background:rgba(0,0,0,0.15); color:rgba(0,0,0,0.5); }
+.ob-code-box { position:relative; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.12); border-radius:var(--radius-sm); padding:10px 12px; }
+.ob-code-box pre { margin:0; font-family:monospace; font-size:11.5px; color:rgba(0,0,0,0.8); white-space:pre-wrap; word-break:break-all; padding-right:70px; }
+.ob-copy { position:absolute; top:8px; right:8px; padding:4px 9px; font-size:10.5px; }
+.ob-ftr { gap:8px; }
+.ob-spacer { flex:1; }
+.ob-empty { display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 8px; text-align:center; }
+.ob-empty-title { font-size:13px; font-weight:600; color:rgba(0,0,0,0.8); }
+.ob-empty-body { font-size:11.5px; color:rgba(0,0,0,0.5); max-width:360px; line-height:1.45; }
+.list-empty { padding:24px 12px; text-align:center; font-size:12px; color:rgba(0,0,0,0.35); }

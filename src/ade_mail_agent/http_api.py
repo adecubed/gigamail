@@ -148,37 +148,90 @@ def delete_account(account_id: int):
     return {"success": True}
 
 
+# Provider IMAP noti: la console manda la chiave, qui si risolvono gli host.
+# Outlook/Microsoft 365 via IMAP usa SMTP 587 + STARTTLS (send_message lo
+# gestisce: 465 = SSL implicito, altro = STARTTLS).
+IMAP_PROVIDERS = {
+    "aruba":   {"name": "Aruba", "imap_host": "imaps.aruba.it", "imap_port": 993,
+                "smtp_host": "smtps.aruba.it", "smtp_port": 465},
+    "gmail":   {"name": "Gmail", "imap_host": "imap.gmail.com", "imap_port": 993,
+                "smtp_host": "smtp.gmail.com", "smtp_port": 465},
+    "outlook": {"name": "Outlook / Microsoft 365", "imap_host": "outlook.office365.com",
+                "imap_port": 993, "smtp_host": "smtp.office365.com", "smtp_port": 587},
+    "libero":  {"name": "Libero", "imap_host": "imapmail.libero.it", "imap_port": 993,
+                "smtp_host": "smtp.libero.it", "smtp_port": 465},
+}
+
+
 @app.get("/accounts/providers")
 def imap_providers():
-    return [
-        {"name": "Aruba", "imap_host": "imaps.aruba.it", "imap_port": 993,
-         "smtp_host": "smtps.aruba.it", "smtp_port": 465},
-        {"name": "Gmail", "imap_host": "imap.gmail.com", "imap_port": 993,
-         "smtp_host": "smtp.gmail.com", "smtp_port": 465},
-        {"name": "Libero", "imap_host": "imapmail.libero.it", "imap_port": 993,
-         "smtp_host": "smtp.libero.it", "smtp_port": 465},
-        {"name": "Altro (manuale)", "imap_host": "", "imap_port": 993,
-         "smtp_host": "", "smtp_port": 465},
-    ]
+    out = [{"key": k, **v} for k, v in IMAP_PROVIDERS.items()]
+    out.append({"key": "custom", "name": "Altro (manuale)", "imap_host": "",
+                "imap_port": 993, "smtp_host": "", "smtp_port": 465})
+    return out
 
 
 class ImapAccountRequest(BaseModel):
     name: str
     email: str
     password: str
-    imap_host: str
-    imap_port: int = 993
-    smtp_host: str
-    smtp_port: int = 465
+    provider: Optional[str] = None      # chiave di IMAP_PROVIDERS, oppure "custom"
+    imap_host: Optional[str] = None
+    imap_port: Optional[int] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+
+
+def _resolve_imap_hosts(req: ImapAccountRequest) -> dict:
+    """Host espliciti vincono; altrimenti vengono dal provider. Un provider
+    sconosciuto o un 'custom' senza host e' un errore dell'utente (400),
+    non un account salvato a meta'."""
+    base = dict(IMAP_PROVIDERS.get((req.provider or "").lower(), {}))
+    if req.provider and not base and req.provider.lower() != "custom":
+        raise HTTPException(400, f"provider sconosciuto: {req.provider}")
+    hosts = {
+        "imap_host": (req.imap_host or base.get("imap_host") or "").strip(),
+        "imap_port": int(req.imap_port or base.get("imap_port") or 993),
+        "smtp_host": (req.smtp_host or base.get("smtp_host") or "").strip(),
+        "smtp_port": int(req.smtp_port or base.get("smtp_port") or 465),
+    }
+    if not hosts["imap_host"] or not hosts["smtp_host"]:
+        raise HTTPException(400, "host IMAP e SMTP obbligatori (o scegli un provider)")
+    return hosts
+
+
+def _verify_imap_login(host: str, port: int, email: str, password: str) -> None:
+    """Prova il login IMAP prima di salvare: una password sbagliata deve
+    fallire qui, nell'onboarding, non alla prima sincronizzazione."""
+    from ade_mail_agent.core import imap_client
+    try:
+        conn = imap_client._connect(host, port, email, password)
+    except Exception as e:
+        msg = str(e) or e.__class__.__name__
+        low = msg.lower()
+        if "authenticat" in low or "login" in low or "credential" in low or "password" in low:
+            raise HTTPException(400, f"login rifiutato da {host}: controlla email e password "
+                                     f"(Gmail/Outlook richiedono una password per le app)") from e
+        raise HTTPException(400, f"impossibile raggiungere {host}:{port}: {msg}") from e
+    try:
+        conn.logout()
+    except Exception:
+        pass
 
 
 @app.post("/accounts/imap")
 def add_imap(req: ImapAccountRequest):
-    acc_id = core_accounts.add_imap_account(
-        req.name, req.email, req.password,
-        imap_host=req.imap_host, imap_port=req.imap_port,
-        smtp_host=req.smtp_host, smtp_port=req.smtp_port,
-    )
+    name = (req.name or "").strip()
+    email = (req.email or "").strip()
+    if not name or not email or not req.password:
+        raise HTTPException(400, "nome, email e password obbligatori")
+    hosts = _resolve_imap_hosts(req)
+    _verify_imap_login(hosts["imap_host"], hosts["imap_port"], email, req.password)
+    acc_id = core_accounts.add_imap_account(name, email, req.password, **hosts)
+    # Il primo account diventa attivo: senza, la console resta senza
+    # selezione finche' l'utente non ne sceglie uno a mano.
+    if len(core_accounts.get_accounts()) == 1:
+        core_accounts.set_active_account(acc_id)
     return {"success": True, "account_id": acc_id}
 
 
@@ -1127,6 +1180,27 @@ def notify_desktop_setup():
     ok = desktop_notify.register_protocol_machine()
     policy.audit("notify", {"buttons": ok}, "desktop_setup", detail=_who())
     return {"buttons": ok}
+
+
+# ── ONBOARDING ───────────────────────────────────────────────────────
+# La console apre la guida iniziale al primo avvio (nessun account, flag
+# non ancora scritto) e la puo' riaprire quando vuole; il flag vive nel
+# KV di %APPDATA%/ADE, non nel localStorage di Electron, cosi' un
+# reinstall della console non la ripropone a chi ha gia' tutto.
+
+@app.get("/onboarding")
+def onboarding_status():
+    from ade_mail_agent.core import rules as rules_mod
+    done = rules_mod.store().kv_get("onboarding_done", "") == "1"
+    return {"done": done, "accounts": len(core_accounts.get_accounts()),
+            "platform": os.name}
+
+
+@app.post("/onboarding/done")
+def onboarding_done():
+    from ade_mail_agent.core import rules as rules_mod
+    rules_mod.store().kv_set("onboarding_done", "1")
+    return {"done": True}
 
 
 def main() -> None:

@@ -816,7 +816,14 @@ async function renderDashboard() {
     }));
 
     const accGrid = byId('dash-accounts');
-    if (accGrid) accGrid.innerHTML = accCards.join('');
+    if (accGrid) {
+      accGrid.innerHTML = accCards.length ? accCards.join('') : card(`
+        <div class="ob-empty">
+          <div class="ob-empty-title">${T('ob_empty_title','Nessun account collegato')}</div>
+          <div class="ob-empty-body">${T('ob_empty_body','Collega una casella per iniziare.')}</div>
+          <button class="compose-btn ob-cta-inline" onclick="window.openOnboarding&&window.openOnboarding()">${T('ob_empty_cta','Configura GigaMail')}</button>
+        </div>`).replace('<div style="background:white', '<div style="grid-column:1/-1;background:white');
+    }
   } catch(e) {
     const accGrid = byId('dash-accounts');
     if (accGrid) accGrid.innerHTML = card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;">${T('account_load_error','Errore caricamento account')}</div>`);

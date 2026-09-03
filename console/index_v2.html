@@ -155,7 +155,7 @@
             <div class="ai-card">
               <div class="ai-card-title" data-i18n="agent_title">Agente che scrive le bozze</div>
               <div class="ai-card-sub" data-i18n="agent_desc">GigaMail non ha un LLM interno: le bozze le scrive il tuo agente (default: Claude Code, `claude -p`). Cambialo in agent.json.</div>
-              <div class="ai-card-row"><span class="ai-card-status" id="agentStatus">…</span></div>
+              <div class="ai-card-row"><span class="ai-card-status" id="agentStatus">…</span><button class="chip-btn" id="btnOnboarding" data-i18n="ob_reopen" onclick="window.openOnboarding&&window.openOnboarding()">Guida iniziale</button></div>
               <div class="ai-card-title" style="margin-top:12px" data-i18n="consent_title">Verifica umana (Hello / Touch ID)</div>
               <div class="ai-card-row"><span class="ai-card-status" id="consentStatus">…</span></div>
               <div class="ai-card-title" style="margin-top:12px" data-i18n="desktop_title">Notifiche sul PC</div>
@@ -336,7 +336,6 @@
         <div class="field-row"><label class="field-label">SMTP Port</label><input type="number" id="smtpPort" class="field-input" value="465"/></div>
       </div>
       <div id="imapStatus" class="hint"></div>
-      <div id="loginUrl" style="display:none"><a href="https://microsoft.com/devicelogin" id="loginUrlLink" style="color:var(--accent);font-size:12px">Apri pagina login Microsoft</a></div>
     </div>
     <div class="modal-ftr" style="flex-direction:column;gap:8px;align-items:stretch">
       <!-- OAuth buttons -->
@@ -349,6 +348,145 @@
         <button class="chip-btn" id="btnCloseLogin" data-i18n="cancel">Annulla</button>
         <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnSaveImap" data-i18n="connect_imap">Connetti IMAP</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ONBOARDING (guida iniziale, stesso pattern del login) -->
+<div class="overlay hidden" id="onboardingOverlay">
+  <div class="modal ob-modal">
+    <div class="modal-hdr">
+      <div class="ob-hdr-left"><span class="modal-title" id="obTitle">Benvenuto in GigaMail</span><span class="ob-step-label" id="obStepLabel"></span></div>
+      <div class="ob-hdr-right"><span class="ob-dots" id="obDots"></span><button class="icon-btn" id="obClose" data-i18n-title="close" title="Chiudi">✕</button></div>
+    </div>
+    <div class="modal-body ob-body">
+
+      <div id="ob-step-welcome" class="ob-step">
+        <div class="ob-hero">
+          <img src="../docs/brand/gigamail.ico" alt="" class="ob-logo" onerror="this.style.display='none'"/>
+          <div class="ob-hero-title">GigaMail</div>
+          <div class="ob-hero-sub" data-i18n="ob_welcome_tag">La posta per il tuo agente AI</div>
+        </div>
+        <p class="ob-p" data-i18n="ob_welcome_p1">L'agente legge, cerca e prepara risposte usando i tuoi documenti e il tuo calendario.</p>
+        <p class="ob-p" data-i18n="ob_welcome_p2">Non invia e non cancella nulla senza la tua approvazione. Tutto resta su questo computer: nessun servizio nostro in mezzo.</p>
+        <div class="ob-lang-row">
+          <span class="field-label" data-i18n="ob_welcome_lang">Lingua</span>
+          <button class="chip-btn ob-lang" data-lang="it">Italiano</button>
+          <button class="chip-btn ob-lang" data-lang="en">English</button>
+          <button class="chip-btn ob-lang" data-lang="zh">中文</button>
+        </div>
+      </div>
+
+      <div id="ob-step-account" class="ob-step hidden">
+        <div id="obAccountsBox" class="hidden">
+          <div class="field-label" data-i18n="ob_accounts_added">Account collegati</div>
+          <div id="obAccountList" class="ob-list"></div>
+          <button class="chip-btn" id="obAddAnother" data-i18n="ob_add_another">+ Aggiungi un altro account</button>
+        </div>
+        <div id="obChoices">
+          <div class="field-label" data-i18n="ob_choose_provider">Scegli come collegare la casella</div>
+          <div class="ob-choice-grid">
+            <button class="ob-choice" id="obChoiceMs">
+              <div class="ob-choice-icon">⚡</div>
+              <div class="ob-choice-title" data-i18n="ob_ms_title">Microsoft 365</div>
+              <div class="ob-choice-sub" data-i18n="ob_ms_sub">Login nel browser con il tuo account aziendale o Outlook.com</div>
+            </button>
+            <button class="ob-choice" id="obChoiceImap">
+              <div class="ob-choice-icon">✉</div>
+              <div class="ob-choice-title" data-i18n="ob_imap_title">IMAP</div>
+              <div class="ob-choice-sub" data-i18n="ob_imap_sub">Gmail, Aruba, Libero, Outlook o qualunque server IMAP</div>
+            </button>
+          </div>
+        </div>
+        <div id="obMsPanel" class="ob-panel hidden">
+          <div id="obMsStep1">
+            <p class="ob-p" data-i18n="ob_ms_intro">Il login avviene nel browser, con Microsoft: GigaMail non vede mai la tua password.</p>
+            <button class="compose-btn ob-cta" id="obMsStart" data-i18n="ob_ms_start">Avvia login Microsoft</button>
+          </div>
+          <div id="obMsStep2" class="hidden">
+            <p class="ob-p" data-i18n="ob_ms_go">Vai su questo indirizzo e inserisci il codice:</p>
+            <a href="#" id="obMsLink" class="ob-link">https://microsoft.com/devicelogin</a>
+            <div class="ob-code" id="obMsCode"></div>
+            <div class="ob-btn-row">
+              <button class="chip-btn" id="obMsOpen" data-i18n="ob_ms_open">Apri nel browser</button>
+              <button class="compose-btn ob-cta-inline" id="obMsComplete" data-i18n="ob_ms_done">Ho inserito il codice</button>
+            </div>
+          </div>
+          <div class="ob-status" id="obMsStatus"></div>
+          <button class="chip-btn ob-cancel" id="obMsCancel" data-i18n="cancel">Annulla</button>
+        </div>
+        <div id="obImapPanel" class="ob-panel hidden">
+          <div class="field-row"><label class="field-label" data-i18n="provider_label">Provider</label>
+            <select id="obImapProvider" class="field-input">
+              <option value="gmail">Gmail</option>
+              <option value="aruba">Aruba</option>
+              <option value="libero">Libero</option>
+              <option value="outlook">Outlook / Microsoft 365 (IMAP)</option>
+              <option value="custom" data-i18n="custom">Personalizzato</option>
+            </select>
+          </div>
+          <div class="hint ob-hint" id="obImapHint" style="display:none"></div>
+          <div class="field-row"><label class="field-label" data-i18n="name_label">Nome</label><input type="text" id="obImapName" class="field-input" data-i18n-ph="ob_imap_name_ph" placeholder="Es: Lavoro"/></div>
+          <div class="field-row"><label class="field-label" data-i18n="email_label">Email</label><input type="email" id="obImapEmail" class="field-input" autocomplete="off"/></div>
+          <div class="field-row"><label class="field-label" data-i18n="password_label">Password</label><input type="password" id="obImapPassword" class="field-input" autocomplete="new-password"/></div>
+          <div id="obImapCustom" class="hidden ob-custom">
+            <div class="field-row"><label class="field-label">IMAP Host</label><input type="text" id="obImapHost" class="field-input"/></div>
+            <div class="field-row"><label class="field-label">IMAP Port</label><input type="number" id="obImapPort" class="field-input" value="993"/></div>
+            <div class="field-row"><label class="field-label">SMTP Host</label><input type="text" id="obSmtpHost" class="field-input"/></div>
+            <div class="field-row"><label class="field-label">SMTP Port</label><input type="number" id="obSmtpPort" class="field-input" value="465"/></div>
+          </div>
+          <div class="ob-status" id="obImapStatus"></div>
+          <div class="ob-btn-row">
+            <button class="chip-btn" id="obImapCancel" data-i18n="cancel">Annulla</button>
+            <button class="compose-btn ob-cta-inline" id="obImapSave" data-i18n="ob_imap_connect">Collega</button>
+          </div>
+        </div>
+        <div class="ob-status" id="obAccountStatus"></div>
+      </div>
+
+      <div id="ob-step-identity" class="ob-step hidden">
+        <p class="ob-p" data-i18n="ob_identity_intro">L'agente risponde a nome tuo: dagli il contesto minimo. Puoi cambiarlo quando vuoi dal bottone ID accanto all'account.</p>
+        <div class="ob-muted"><span data-i18n="ob_identity_for">Identità per</span> <b id="obIdentityAccount"></b></div>
+        <div class="field-row"><label class="field-label" data-i18n="ob_who">Chi sono</label><input type="text" id="obWho" class="field-input" data-i18n-ph="ob_who_ph" placeholder="Es: Simone, titolare di Studio Rossi"/></div>
+        <div class="field-row"><label class="field-label" data-i18n="ob_what">Cosa faccio</label><input type="text" id="obWhat" class="field-input" data-i18n-ph="ob_what_ph" placeholder="Es: vendo e affitto appartamenti a Milano"/></div>
+        <div class="field-row"><label class="field-label" data-i18n="ob_tone">Tono delle risposte</label><input type="text" id="obTone" class="field-input" data-i18n-ph="ob_tone_ph" placeholder="Es: cordiale ma diretto, del lei"/></div>
+        <div class="field-row"><label class="field-label" data-i18n="ob_keyinfo">Info chiave</label><textarea id="obKeyInfo" class="field-input" rows="3" data-i18n-ph="ob_keyinfo_ph" placeholder="Orari, condizioni, note ricorrenti…"></textarea></div>
+        <div class="field-label" data-i18n="ob_docs">Documenti di conoscenza</div>
+        <div class="ob-muted" data-i18n="ob_docs_sub">Listini, cataloghi, planimetrie: l'agente li usa per rispondere con dati veri.</div>
+        <div id="obFileList" class="ob-list"></div>
+        <button class="chip-btn" id="obPickDocs" data-i18n="ob_docs_add">Aggiungi documenti</button>
+        <div class="ob-status" id="obIdentityStatus"></div>
+      </div>
+
+      <div id="ob-step-agent" class="ob-step hidden">
+        <p class="ob-p" data-i18n="ob_agent_intro">GigaMail non ha un'AI propria: l'intelligenza è l'agente che colleghi (Claude, Codex, Hermes o il tuo).</p>
+        <div class="ob-status" id="obAgentStatus"></div>
+        <div class="field-label" data-i18n="ob_agent_mcp">Registra GigaMail nel client MCP (Claude Desktop / Claude Code):</div>
+        <div class="ob-code-box"><pre id="obMcpSnippet"></pre><button class="chip-btn ob-copy" id="obCopyMcp" data-i18n="ob_copy">Copia</button></div>
+        <div id="obNotifyBox" class="ob-panel hidden">
+          <div class="field-label" data-i18n="ob_notify_title">Notifiche di approvazione</div>
+          <div class="ob-muted" id="obNotifyText"></div>
+          <button class="chip-btn" id="obNotifySetup" data-i18n="ob_notify_setup">Attiva i bottoni</button>
+        </div>
+        <div class="ob-panel">
+          <div class="field-label" data-i18n="ob_tg_title">Dal telefono (opzionale)</div>
+          <div class="ob-muted" data-i18n="ob_tg_body">Per approvare da Telegram, nel terminale:</div>
+          <div class="ob-code-box"><pre id="obTgCommand"></pre><button class="chip-btn ob-copy" id="obCopyTg" data-i18n="ob_copy">Copia</button></div>
+        </div>
+      </div>
+
+      <div id="ob-step-done" class="ob-step hidden">
+        <p class="ob-p" data-i18n="ob_done_intro">GigaMail è configurato. Ecco il riepilogo:</p>
+        <div id="obSummary" class="ob-list"></div>
+        <div class="ob-muted" data-i18n="ob_done_hint">Puoi riaprire questa guida da Automazioni → AI, o dalla dashboard quando non ci sono account.</div>
+      </div>
+
+    </div>
+    <div class="modal-ftr ob-ftr">
+      <button class="chip-btn" id="obBack" data-i18n="ob_back">Indietro</button>
+      <span class="ob-spacer"></span>
+      <button class="chip-btn" id="obSkip" data-i18n="ob_skip" style="display:none">Salta</button>
+      <button class="compose-btn ob-cta-inline" id="obNext" data-i18n="ob_start">Iniziamo</button>
     </div>
   </div>
 </div>
@@ -498,6 +636,7 @@
 <script src="renderer_sender_history.js" defer></script>
 <script src="renderer_automations.js" defer></script>
 <script src="popup_bridge.js"      defer></script>
+<script src="renderer_onboarding.js" defer></script>
 <script>
 function makeDraggable(el,handle){
   let drag=false,sx,sy,ox,oy;

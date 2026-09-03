@@ -43,8 +43,15 @@ async function checkAuth() {
     const label    = byId('authLabel');
     const btnLogin  = byId('btnLogin');
     const btnLogout = byId('btnLogout');
+    // /auth/status guarda solo il token Microsoft: un'installazione con
+    // soli account IMAP e' comunque "connessa" e deve caricare gli account.
+    let hasAccounts = false;
+    try {
+      const accs = await api.getAccounts();
+      hasAccounts = Array.isArray(accs) && accs.length > 0;
+    } catch (_) { /* backend non pronto: si riprova al prossimo giro */ }
 
-    if (status.logged_in) {
+    if (status.logged_in || hasAccounts) {
       if (dot)   dot.className = 'status-dot online';
       if (label) label.textContent = 'CONNESSO';
       btnLogin?.classList.add('hidden');
@@ -1513,11 +1520,9 @@ function bindStaticEvents() {
   on('btnStartLogin', 'click', async () => {
     try {
       const data  = await api.startLogin();
-      const urlEl = byId('loginUrlLink');
-      if (urlEl) { urlEl.textContent = data.verification_uri || 'https://microsoft.com/devicelogin'; urlEl.href = data.verification_uri || 'https://microsoft.com/devicelogin'; }
-      // Mostra anche l'URL nel loginStep2
-      const loginUrlDiv = byId('loginUrl');
-      if (loginUrlDiv) loginUrlDiv.style.display = '';
+      const uri   = data.verification_uri || 'https://microsoft.com/devicelogin';
+      const urlEl = byId('loginUrl');
+      if (urlEl) { urlEl.textContent = uri; urlEl.href = uri; }
       setText('loginCode', data.user_code || '');
       setHidden('loginStep1', true); setHidden('loginStep2', false);
     } catch (e) { showToast(`Errore avvio login: ${e}`); }
@@ -1963,6 +1968,7 @@ async function bootstrap() {
     return;
   }
   await init();
+  if (window.startOnboardingIfNeeded) window.startOnboardingIfNeeded();
   setInterval(checkAuth, 30000);
   setInterval(autosaveDraft, 30000);
 }
