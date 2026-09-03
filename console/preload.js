@@ -1,4 +1,4 @@
-const { contextBridge, shell, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 const API = 'http://127.0.0.1:8002';
 
@@ -36,7 +36,7 @@ async function apiBlob(url, options = {}) {
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  openExternal:   (url) => shell.openExternal(url),
+  openExternal:   (url) => ipcRenderer.invoke('open-external', url),  // whitelist nel main
   onOpenMail:     (callback) => ipcRenderer.on('open-mail', (_, data) => callback(data)),
   onNewMail:      (callback) => ipcRenderer.on('new-mail',  (_, data) => callback(data)),
   closeWindow:    () => ipcRenderer.send('window-close'),

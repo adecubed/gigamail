@@ -397,7 +397,7 @@ async function loadEvents() {
   } catch(err) {
     console.error('[CAL] loadEvents error:', err);
     _events = [];
-    if (list) list.innerHTML = `<div class="loading">Errore caricamento: ${err.message}</div>`;
+    if (list) list.innerHTML = `<div class="loading">Errore caricamento: ${esc(err.message)}</div>`;
   }
   renderUpcoming();
   renderCalendar();
@@ -456,13 +456,13 @@ function renderUpcoming() {
   list.innerHTML = filtered.map(e => {
     const dt = e.start?.dateTime || e.start?.date || '';
     const loc = e.location ? `📍 ${typeof e.location === 'object' ? e.location.displayName || '' : e.location}` : '';
-    return `<div class="upcoming-item" data-id="${e.id||''}">
+    return `<div class="upcoming-item" data-id="${esc(e.id||'')}">
       <div class="upcoming-dot"></div>
       <div class="upcoming-info">
         <div class="upcoming-title">${esc(e.subject||e.title||'(senza titolo)')}</div>
-        <div class="upcoming-meta">${loc}</div>
+        <div class="upcoming-meta">${esc(loc)}</div>
       </div>
-      <div class="upcoming-date">${fmtDateTime(dt)}</div>
+      <div class="upcoming-date">${esc(fmtDateTime(dt))}</div>
     </div>`;
   }).join('');
 
@@ -564,7 +564,7 @@ function makeCell(day, month, otherMonth, isToday = false) {
 }
 
 function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ── ATTENDEES ──
@@ -574,12 +574,16 @@ function renderAttendees() {
   const list = document.getElementById('eventAttendeesList');
   if (!list) return;
   if (!_attendees.length) { list.innerHTML = ''; return; }
+  // Niente JS inline con dati dentro: l'indirizzo vive in un data-attribute
+  // e il click e' legato qui.
   list.innerHTML = _attendees.map(email =>
     `<div class="attendee-chip">
       ${esc(email)}
-      <button class="attendee-chip-x" onclick="removeAttendee('${esc(email)}')">✕</button>
+      <button class="attendee-chip-x" data-email="${esc(email)}" type="button">✕</button>
     </div>`
   ).join('');
+  list.querySelectorAll('.attendee-chip-x').forEach(b =>
+    b.addEventListener('click', () => window.removeAttendee(b.dataset.email)));
 }
 
 window.removeAttendee = (email) => {

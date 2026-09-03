@@ -53,6 +53,28 @@ async function waitForTarget(timeoutMs) {
   throw new Error('finestra principale non trovata via CDP');
 }
 
+async function waitForTargetUrl(substr, timeoutMs) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) {
+    try {
+      const targets = await getJson(`http://127.0.0.1:${PORT}/json`);
+      const page = targets.find((t) => t.type === 'page' && t.url.includes(substr));
+      if (page) return page;
+    } catch (_) { /* non ancora su */ }
+    await sleep(300);
+  }
+  throw new Error(`finestra ${substr} non trovata via CDP`);
+}
+
+async function waitUntil(fn, timeoutMs) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) {
+    try { if (await fn()) return true; } catch (_) { /* pagina non pronta */ }
+    await sleep(300);
+  }
+  return false;
+}
+
 class Cdp {
   constructor(url) { this.ws = new WebSocket(url); this.id = 0; this.pending = new Map(); }
   open() { return new Promise((res, rej) => { this.ws.on('open', res); this.ws.on('error', rej); this.ws.on('message', (m) => this._onMsg(m)); }); }
@@ -235,6 +257,53 @@ async function main() {
     } else {
       console.log('  – nessun account: controlli sui binding saltati');
     }
+
+    console.log('\n[uscite verso il sistema]');
+    check((await cdp.evaluate("window.electronAPI.openExternal('file:///C:/Windows/System32/calc.exe')")) === false, 'openExternal(file:) rifiutato dal main');
+    check((await cdp.evaluate("window.electronAPI.openExternal('javascript:alert(1)')")) === false, 'openExternal(javascript:) rifiutato');
+    check((await cdp.evaluate("window.electronAPI.openExternal('ms-settings:')")) === false, 'openExternal(ms-settings:) rifiutato');
+
+    console.log('\n[finestra mail: mail ostile iniettata senza rete]');
+    const HOSTILE = '<img src=x onerror="window.__xss=1">"&';
+    const HOSTILE_MSG = {
+      id: 'e2e', subject: HOSTILE,
+      from: { emailAddress: { name: HOSTILE, address: 'a@b.it' } },
+      body: { contentType: 'text', content: '' },
+      body_text: 'ciao\n<img src=x onerror="window.__xss=1"><script>window.__xss=1</script>',
+      attachments: [{ name: HOSTILE + '.pdf', size: 10 }],
+    };
+    const firstMail = await cdp.evaluate("(() => { const el = document.querySelector('.mail-item'); return el ? { id: el.dataset.id, folder: el.dataset.folder || null, account_id: el.dataset.accountId || null } : { id: 'e2e', folder: null, account_id: null }; })()");
+    await cdp.evaluate(`window.electronAPI.openMailWindow(${JSON.stringify(firstMail)}); 'o'`);
+    const mailPage = await waitForTargetUrl('mail_window', 20000);
+    const mw = new Cdp(mailPage.webSocketDebuggerUrl); await mw.open();
+    check(await waitUntil(() => mw.evaluate("typeof loadMail === 'function' && typeof MailRender === 'object'"), 15000), 'finestra mail aperta con mail_render.js caricato');
+    await mw.evaluate(`window.__xss = false; loadMail('e2e', null, null, ${JSON.stringify(HOSTILE_MSG)})`);
+    await sleep(800);
+    check((await mw.evaluate('window.__xss')) === false, 'finestra mail: mail di testo ostile non esegue');
+    check((await mw.evaluate("document.querySelectorAll('.mail-body-text img, .mail-body-text script').length")) === 0, 'finestra mail: corpo testo escapato (niente <img>/<script>)');
+    check((await mw.evaluate("(document.querySelector('.mail-subject')?.textContent || '')")).includes('<img src=x'), 'finestra mail: oggetto ostile reso come testo');
+    check((await mw.evaluate("document.querySelector('.mail-body-text')?.innerHTML.includes('<br>')")) === true, 'finestra mail: gli a-capo restano <br>');
+    check((await mw.evaluate("MailRender.htmlToText('<p>a</p><img src=x onerror=\"window.__xss=1\"><b>b</b>')")) === 'a\nb', 'finestra mail: inoltro usa htmlToText inerte');
+    check((await mw.evaluate('window.__xss')) === false, 'finestra mail: htmlToText non ha eseguito nulla');
+    check((await mw.evaluate("window.mailWindowAPI.openExternal('file:///C:/x.exe')")) === false, 'finestra mail: openExternal(file:) rifiutato');
+    await mw.evaluate("window.close(); 'c'"); mw.close();
+
+    console.log('\n[finestra calendario: evento e partecipante ostili]');
+    await cdp.evaluate("window.electronAPI.openCalendarWindow(); 'o'");
+    const calPage = await waitForTargetUrl('calendar_window', 20000);
+    const cw = new Cdp(calPage.webSocketDebuggerUrl); await cw.open();
+    check(await waitUntil(() => cw.evaluate("typeof renderUpcoming === 'function' && typeof renderAttendees === 'function' && typeof _events !== 'undefined'"), 15000), 'finestra calendario aperta');
+    const HOSTILE_EVENT = { id: 'ev"><img src=x onerror="window.__xss=1">', subject: HOSTILE, start: { dateTime: '2099-01-01T10:00:00' }, end: { dateTime: '2099-01-01T11:00:00' }, location: { displayName: HOSTILE } };
+    const HOSTILE_ATTENDEE = "x@y.it');window.__xss=1;//";
+    await cw.evaluate(`window.__xss = false; _events = [${JSON.stringify(HOSTILE_EVENT)}]; _upcomingFilter = 'all'; renderUpcoming(); _attendees = [${JSON.stringify(HOSTILE_ATTENDEE)}]; renderAttendees(); 'r'`);
+    await sleep(500);
+    check((await cw.evaluate('window.__xss')) === false, 'finestra calendario: evento/partecipante ostili non eseguono');
+    check((await cw.evaluate("document.querySelectorAll('#upcomingList img, #upcomingList script').length")) === 0, 'finestra calendario: titolo, location e id escapati');
+    check((await cw.evaluate("document.querySelector('#upcomingList .upcoming-item')?.dataset.id")) === HOSTILE_EVENT.id, 'finestra calendario: data-id integro dopo l\'escape');
+    await cw.evaluate("document.querySelector('.attendee-chip-x')?.click(); 'k'");
+    await sleep(200);
+    check((await cw.evaluate('_attendees.length')) === 0 && (await cw.evaluate('window.__xss')) === false, 'finestra calendario: X partecipante rimuove via data-email, niente JS inline');
+    await cw.evaluate("window.close(); 'c'"); cw.close();
 
     console.log('\n[onboarding]');
     const ob = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");

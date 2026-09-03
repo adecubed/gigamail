@@ -173,7 +173,18 @@
     return iframe;
   }
 
-  const MailRender = { sanitizeHtml, renderMailHtml, matchAttachment, BLANK_GIF, IFRAME_CSP };
+  /** Testo semplice da HTML di posta, per citare/inoltrare. Documento inerte:
+   *  niente esecuzione di script o handler, niente caricamento di risorse.
+   *  Condiviso da finestra principale e finestra mail. */
+  function htmlToText(html) {
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    doc.querySelectorAll('style, script, head, meta, link, noscript, template').forEach((el) => el.remove());
+    doc.querySelectorAll('br').forEach((el) => el.replaceWith('\n'));
+    doc.querySelectorAll('p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote, pre').forEach((el) => el.append('\n'));
+    return (doc.body ? doc.body.textContent : '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  const MailRender = { sanitizeHtml, renderMailHtml, matchAttachment, htmlToText, BLANK_GIF, IFRAME_CSP };
   if (typeof window !== 'undefined') window.MailRender = MailRender;
   if (typeof module !== 'undefined' && module.exports) module.exports = MailRender;
 })();

@@ -33,6 +33,37 @@ function loadOrCreateToken() {
 }
 const API_TOKEN = loadOrCreateToken();
 
+// ── Uscite verso il sistema ────────────────────────────────────────────────
+// Solo http/https/mailto possono lasciare l'app. Qualunque altro schema
+// chiesto da una pagina — file:, ms-*, javascript: — resta dentro: una
+// pagina compromessa da una mail non deve poter far partire un eseguibile
+// (shell.openExternal su file:// lo farebbe).
+const SAFE_EXTERNAL = /^(https?:|mailto:)/i;
+function openExternalSafe(url) {
+  const u = String(url || '').trim();
+  if (!SAFE_EXTERNAL.test(u)) {
+    console.warn('[GIGAMAIL] openExternal rifiutato:', u.slice(0, 120));
+    return false;
+  }
+  shell.openExternal(u);
+  return true;
+}
+
+// Ogni finestra, nessuna esclusa: niente popup, niente navigazione fuori
+// dai file locali; i link esterni sicuri vanno al browser di sistema.
+function hardenWindow(win) {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalSafe(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url)) return; // backend: non e' un link
+    openExternalSafe(url);
+  });
+}
+
 // ── Menu contesto copia/taglia/incolla per tutti i campi di testo ──
 // Si applica a ogni finestra (presente e futura). Dove un HTML ha già un
 // contextmenu custom con preventDefault (masker, allegati), quello vince.
@@ -282,20 +313,7 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'index_v2.html'));
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http') || url.startsWith('mailto')) shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('file://')) return;
-    if (url.startsWith('http://localhost') || url.startsWith('https://localhost')) {
-      event.preventDefault();
-      return;
-    }
-    event.preventDefault();
-    shell.openExternal(url);
-  });
+  hardenWindow(mainWindow);
 
   if (app.isPackaged) {
     setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 3000);
@@ -495,10 +513,7 @@ ipcMain.on('open-mail-window', (event, data) => {
 
   win.loadFile(path.join(__dirname, 'mail_window.html'));
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http') || url.startsWith('mailto')) shell.openExternal(url);
-    return { action: 'deny' };
-  });
+  hardenWindow(win);
 
   win.webContents.once('did-finish-load', () => {
     win.webContents.send('load-mail', data);
@@ -542,6 +557,7 @@ ipcMain.on('mail-window-open-reply', (event, data) => {
   });
 
   win.loadFile(path.join(__dirname, 'reply_window.html'));
+  hardenWindow(win);
   win.webContents.once('did-finish-load', () => {
     win.webContents.send('load-reply', data);
   });
@@ -571,6 +587,7 @@ ipcMain.on('open-new-mail-window', (event, data) => {
     },
   });
   win.loadFile(path.join(__dirname, 'new_mail_window.html'));
+  hardenWindow(win);
   win.webContents.once('did-finish-load', () => {
     win.webContents.send('load-new-mail', data || {});
   });
@@ -599,13 +616,13 @@ ipcMain.on('open-reply-window', (event, data) => {
     },
   });
   win.loadFile(path.join(__dirname, 'reply_window.html'));
+  hardenWindow(win);
   win.webContents.once('did-finish-load', () => {
     win.webContents.send('load-reply', data);
   });
 });
-ipcMain.handle('mail-window-open-external', (event, url) => {
-  shell.openExternal(url);
-});
+ipcMain.handle('mail-window-open-external', (_event, url) => openExternalSafe(url));
+ipcMain.handle('open-external', (_event, url) => openExternalSafe(url));
 
 // ── Allegati mail: apri / salva con nome ──
 const os = require('os');
@@ -657,6 +674,7 @@ ipcMain.on('open-calendar-window', () => {
     },
   });
   calendarWindow.loadFile(path.join(__dirname, 'calendar_window.html'));
+  hardenWindow(calendarWindow);
   calendarWindow.on('closed', () => { calendarWindow = null; });
 });
 ipcMain.on('calendar-window-close',    (event) => { BrowserWindow.fromWebContents(event.sender)?.close(); });
@@ -682,6 +700,7 @@ ipcMain.on('open-marketing-window', () => {
     },
   });
   marketingWindow.loadFile(path.join(__dirname, 'marketing_window.html'));
+  hardenWindow(marketingWindow);
   marketingWindow.on('closed', () => { marketingWindow = null; });
 });
 ipcMain.on('marketing-window-close',    (event) => { BrowserWindow.fromWebContents(event.sender)?.close(); });
@@ -712,6 +731,7 @@ ipcMain.on('open-ask-window', (event, data) => {
     },
   });
   askWindow.loadFile(path.join(__dirname, 'ask_window.html'));
+  hardenWindow(askWindow);
   askWindow.webContents.once('did-finish-load', () => {
     askWindow.webContents.send('load-ask', data || {});
   });
