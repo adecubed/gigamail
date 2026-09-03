@@ -6,12 +6,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 function load() {
   const dom = new JSDOM('<!DOCTYPE html><body><div id="host"></div></body>', { runScripts: 'outside-only' });
   const src = fs.readFileSync(path.join(__dirname, '..', 'mail_render.js'), 'utf-8');
-  dom.window.eval(src);
+  // Esegue mail_render.js nel contesto della finestra jsdom (niente eval).
+  vm.runInContext(src, dom.getInternalVMContext());
   return dom.window;
 }
 

@@ -65,7 +65,7 @@ class Cdp {
     this.ws.send(JSON.stringify({ id, method, params }));
     return new Promise((res) => this.pending.set(id, res));
   }
-  async eval(expression) {
+  async evaluate(expression) {
     const r = await this.call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
     if (r.result?.exceptionDetails) throw new Error('eval: ' + JSON.stringify(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text));
     return r.result?.result?.value;
@@ -100,19 +100,19 @@ async function main() {
     const bootEnd = Date.now() + 90000;
     let booted = false;
     while (Date.now() < bootEnd) {
-      booted = await cdp.eval("typeof window.MailRender === 'object' && typeof window.openOnboarding === 'function' && document.getElementById('authLabel')?.textContent !== 'BACKEND NON RAGGIUNGIBILE' && !!document.getElementById('ade-dashboard')");
+      booted = await cdp.evaluate("typeof window.MailRender === 'object' && typeof window.openOnboarding === 'function' && document.getElementById('authLabel')?.textContent !== 'BACKEND NON RAGGIUNGIBILE' && !!document.getElementById('ade-dashboard')");
       if (booted) break;
       await sleep(1000);
     }
     check(booted, 'console avviata (backend raggiunto, moduli caricati)');
 
     console.log('\n[isolamento renderer / preload]');
-    check(await cdp.eval("typeof require === 'undefined'"), 'require non esiste nel renderer (nodeIntegration off)');
-    check(await cdp.eval("typeof process === 'undefined'"), 'process non esiste nel renderer');
-    const apiKeys = await cdp.eval('Object.keys(window.ademail || {})');
+    check(await cdp.evaluate("typeof require === 'undefined'"), 'require non esiste nel renderer (nodeIntegration off)');
+    check(await cdp.evaluate("typeof process === 'undefined'"), 'process non esiste nel renderer');
+    const apiKeys = await cdp.evaluate('Object.keys(window.ademail || {})');
     check(Array.isArray(apiKeys) && apiKeys.length > 10, `window.ademail espone ${apiKeys.length} metodi`);
     check(!apiKeys.some((k) => /token|secret|password/i.test(k)), 'nessun metodo che esponga token o segreti');
-    const eaKeys = await cdp.eval('Object.keys(window.electronAPI || {})');
+    const eaKeys = await cdp.evaluate('Object.keys(window.electronAPI || {})');
     check(!eaKeys.some((k) => /^(send|invoke|ipcRenderer|shell|exec)$/i.test(k)), 'electronAPI non espone ipcRenderer/shell grezzi');
 
     console.log('\n[XSS nell iframe della mail]');
@@ -128,7 +128,7 @@ async function main() {
       '<meta http-equiv="refresh" content="0;url=https://example.com/">',
       '<img src="cid:logo@x">',
     ].join('');
-    await cdp.eval(`(() => {
+    await cdp.evaluate(`(() => {
       window.__xss = false; window.__opened = [];
       const host = document.createElement('div'); host.id = 'e2e-host'; document.body.appendChild(host);
       window.MailRender.renderMailHtml(host, ${JSON.stringify(PAYLOAD)}, {
@@ -138,8 +138,8 @@ async function main() {
         autoHeight: true,
       }); return 'ok'; })()`);
     await sleep(1500);
-    check((await cdp.eval('window.__xss')) === false, 'nessun payload ha eseguito codice nel padre');
-    const frameInfo = await cdp.eval(`(() => {
+    check((await cdp.evaluate('window.__xss')) === false, 'nessun payload ha eseguito codice nel padre');
+    const frameInfo = await cdp.evaluate(`(() => {
       const f = document.querySelector('#e2e-host iframe');
       const d = f.contentDocument;
       return {
@@ -167,20 +167,20 @@ async function main() {
     // chiamante (file://...): cio' che conta e' che non sia remoto.
     check(!/^https?:/i.test(frameInfo.location), `l'iframe non ha navigato su un URL remoto (${String(frameInfo.location).slice(0, 40)})`);
     // click sul link esterno: intercettato → openExternal, nessuna navigazione
-    await cdp.eval("document.querySelector('#e2e-host iframe').contentDocument.getElementById('ext').click(); 'clicked'");
+    await cdp.evaluate("document.querySelector('#e2e-host iframe').contentDocument.getElementById('ext').click(); 'clicked'");
     await sleep(300);
-    const opened = await cdp.eval('window.__opened');
+    const opened = await cdp.evaluate('window.__opened');
     check(Array.isArray(opened) && opened[0] === 'https://example.com/x', 'click su link → openExternal, non navigazione');
-    check(!/^https?:/i.test(await cdp.eval("document.querySelector('#e2e-host iframe').contentWindow.location.href")), 'iframe non navigato dopo il click');
+    check(!/^https?:/i.test(await cdp.evaluate("document.querySelector('#e2e-host iframe').contentWindow.location.href")), 'iframe non navigato dopo il click');
 
     console.log('\n[integrazione: apertura mail dalla lista]');
-    const hasMail = await cdp.eval("document.querySelectorAll('.mail-item').length > 0");
+    const hasMail = await cdp.evaluate("document.querySelectorAll('.mail-item').length > 0");
     if (hasMail) {
-      await cdp.eval("document.querySelector('.mail-item').click(); 'c'");
+      await cdp.evaluate("document.querySelector('.mail-item').click(); 'c'");
       const end = Date.now() + 15000;
       let body = null;
       while (Date.now() < end) {
-        body = await cdp.eval(`(() => {
+        body = await cdp.evaluate(`(() => {
           const b = document.getElementById('mailBody');
           if (!b || !b.childNodes.length) return null;
           const f = b.querySelector('iframe');
@@ -201,29 +201,29 @@ async function main() {
     }
 
     console.log('\n[onboarding]');
-    const ob = await cdp.eval("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");
+    const ob = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");
     if (ob && ob.accounts === 0 && !ob.done) {
-      check(!(await cdp.eval("document.getElementById('onboardingOverlay').classList.contains('hidden')")), 'guida aperta da sola al primo avvio');
-      await cdp.eval("document.getElementById('obNext').click(); 'n'");
+      check(!(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')")), 'guida aperta da sola al primo avvio');
+      await cdp.evaluate("document.getElementById('obNext').click(); 'n'");
       await sleep(500);
-      check(!(await cdp.eval("document.getElementById('obChoices').classList.contains('hidden')")), 'passo account: scelte Microsoft/IMAP visibili');
-      await cdp.eval("document.getElementById('obNext').click(); 'n'");
+      check(!(await cdp.evaluate("document.getElementById('obChoices').classList.contains('hidden')")), 'passo account: scelte Microsoft/IMAP visibili');
+      await cdp.evaluate("document.getElementById('obNext').click(); 'n'");
       await sleep(300);
-      check((await cdp.eval("document.getElementById('obAccountStatus').textContent")).length > 0, 'senza account non si avanza');
-      check((await cdp.eval("document.getElementById('obTitle').textContent")) !== '', 'titolo passo presente');
-      await cdp.eval("document.getElementById('obClose').click(); 'c'");
+      check((await cdp.evaluate("document.getElementById('obAccountStatus').textContent")).length > 0, 'senza account non si avanza');
+      check((await cdp.evaluate("document.getElementById('obTitle').textContent")) !== '', 'titolo passo presente');
+      await cdp.evaluate("document.getElementById('obClose').click(); 'c'");
       await sleep(2000);
-      check(await cdp.eval("document.getElementById('onboardingOverlay').classList.contains('hidden')"), 'chiusura senza account: guida nascosta');
-      check(await cdp.eval("!!document.querySelector('.ob-empty')"), 'dashboard: empty state con CTA');
-      const st = await cdp.eval("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json())");
+      check(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')"), 'chiusura senza account: guida nascosta');
+      check(await cdp.evaluate("!!document.querySelector('.ob-empty')"), 'dashboard: empty state con CTA');
+      const st = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json())");
       check(st.done === false, 'flag "fatto" non scritto (nessun account)');
     } else {
       console.log('  – backend con account gia\' configurati: controlli primo avvio saltati (usa E2E_FRESH_APPDATA)');
-      check(await cdp.eval("document.getElementById('onboardingOverlay').classList.contains('hidden')"), 'guida NON aperta con account esistenti');
-      await cdp.eval("window.openOnboarding(); 'o'");
+      check(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')"), 'guida NON aperta con account esistenti');
+      await cdp.evaluate("window.openOnboarding(); 'o'");
       await sleep(300);
-      check(!(await cdp.eval("document.getElementById('onboardingOverlay').classList.contains('hidden')")), 'guida riapribile a comando');
-      await cdp.eval("setHidden('onboardingOverlay', true); 'h'");
+      check(!(await cdp.evaluate("document.getElementById('onboardingOverlay').classList.contains('hidden')")), 'guida riapribile a comando');
+      await cdp.evaluate("setHidden('onboardingOverlay', true); 'h'");
     }
   } catch (e) {
     failures += 1;
