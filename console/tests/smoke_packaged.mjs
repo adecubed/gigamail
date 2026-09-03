@@ -11,7 +11,7 @@
 //
 // Il backend, per design, sopravvive alla chiusura dell'app (detached):
 // qui viene fermato esplicitamente a fine prova.
-import { spawn, execSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -74,9 +74,10 @@ class Cdp {
 function killPort(port) {
   if (process.platform !== 'win32') return;
   try {
-    const out = execSync(`netstat -ano -p tcp`, { encoding: 'utf-8' });
+    const out = spawnSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf-8' }).stdout || '';
     const pids = new Set(out.split('\n').filter((l) => l.includes(`:${port} `) && l.includes('LISTENING')).map((l) => l.trim().split(/\s+/).pop()));
-    for (const pid of pids) if (pid && pid !== '0') { try { execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' }); console.log(`  – backend sulla porta ${port} fermato (pid ${pid})`); } catch (_) { /* gia' morto */ } }
+    // argomenti come array, mai una riga di shell composta con dati
+    for (const pid of pids) if (/^\d+$/.test(pid) && pid !== '0') { spawnSync('taskkill', ['/PID', pid, '/T', '/F'], { stdio: 'ignore' }); console.log(`  – backend sulla porta ${port} fermato (pid ${pid})`); }
   } catch (_) { /* netstat assente */ }
 }
 
@@ -134,7 +135,7 @@ async function main() {
       b.close();
       await sleep(1500);
     } catch (_) { /* gia' chiusa o muta */ }
-    try { if (process.platform === 'win32') execSync(`taskkill /PID ${child.pid} /T /F`, { stdio: 'ignore' }); else child.kill(); } catch (_) { /* */ }
+    try { if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); else child.kill(); } catch (_) { /* */ }
     killPort(API_PORT);
     try { fs.rmSync(fresh, { recursive: true, force: true }); } catch (_) { /* file in uso */ }
   }
