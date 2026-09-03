@@ -97,6 +97,21 @@ jobs:
           }
           Write-Host "install OK: $dir"
 
+      - name: L'app installata parte (profilo vergine, backend embedded, onboarding)
+        shell: pwsh
+        working-directory: console
+        # Non l'Electron di sviluppo: l'exe che arriva all'utente, con il
+        # Python di resources/ e il token generato dal main. Porta non
+        # standard per non incrociare il backend dell'e2e precedente.
+        run: |
+          $dir = Join-Path $env:ProgramFiles "GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
+          $env:GIGAMAIL_EXE = Join-Path $dir "GigaMail.exe"
+          $env:ADE_CONSOLE_PORT = "8022"
+          $env:GIGAMAIL_EXPECTED_VERSION = (Select-String -Path ../pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          npm run test:packaged
+          if ($LASTEXITCODE -ne 0) { throw "smoke test dell'app installata fallito" }
+
       - name: Il backend impacchettato si importa
         shell: pwsh
         # Stesso layout che usa main.js da packaged: codice del repo in

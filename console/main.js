@@ -254,6 +254,7 @@ function startPythonServer() {
   const startBackend = () => {
     console.log('[GIGAMAIL] Avvio backend console...');
     serverProcess = spawn(pythonPath, [
+      '-s',   // mai il site-packages utente: solo cio' che l'installer porta
       '-X', 'utf8', '-c', 'from ade_mail_agent.http_api import main; main()',
     ], {
       windowsHide: true,
@@ -261,6 +262,7 @@ function startPythonServer() {
       env: {
         ...process.env,
         PYTHONPATH: srcDir,
+        PYTHONNOUSERSITE: '1',
         ADE_CONSOLE_TOKEN: API_TOKEN,
         ADE_CONSOLE_PORT: String(API_PORT),
       },

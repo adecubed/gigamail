@@ -158,6 +158,23 @@ without reading the README.
   again returns to the inbox, and the title follows the folder you are
   in (standard folders translated, custom ones by name).
 
+- **The installed app is started in CI, not just installed.** The e2e
+  runs on the development Electron with the backend from the venv; the
+  installer was built, installed and uninstalled, but the exe a user
+  gets was never launched. `npm run test:packaged` now starts the
+  packaged app on a pristine profile, waits for the embedded Python
+  backend (`/health` reports the version), checks the token, the
+  renderer, the onboarding, the capability gate and `webSecurity`, and
+  the desktop workflow runs it after installing. It found a real one:
+  the embedded Python, with `import site` on, saw the building
+  machine's user site-packages, so pip skipped dependencies that were
+  "already there" and the installer shipped without them — the backend
+  started on the developer's PC and died on a clean one. Provisioning
+  and runtime now ignore the user site (`PYTHONNOUSERSITE=1`, `python
+  -s`), and the embedded Python is installed from the repository source
+  rather than from PyPI, so the installer carries this commit's code and
+  dependencies.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
