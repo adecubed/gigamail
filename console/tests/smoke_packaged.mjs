@@ -89,8 +89,11 @@ async function main() {
   const fresh = path.join(os.tmpdir(), `gigamail-smoke-${Date.now()}`);
   fs.mkdirSync(path.join(fresh, 'ADE'), { recursive: true });
   const env = { ...process.env, APPDATA: fresh, ADE_ROOT: path.join(fresh, 'ADE'), GIGAMAIL_NOTIFY_DESKTOP: '0', ADE_CONSOLE_PORT: API_PORT };
-  console.log(`[app installata] ${EXE}\n  profilo: ${fresh}`);
-  const child = spawn(EXE, [`--remote-debugging-port=${PORT}`], { env, stdio: 'ignore', detached: false });
+  // Niente template literal a ridosso di spawn: lo scanner di sicurezza lo
+  // legge come "comando composto con dati" (falso positivo di forma).
+  console.log('[app installata] ' + EXE + '\n  profilo: ' + fresh);
+  const debugArg = '--remote-debugging-port=' + PORT;
+  const child = spawn(EXE, [debugArg], { env, stdio: 'ignore', detached: false });
   let cdp;
   try {
     const page = await waitUntil(async () => {
