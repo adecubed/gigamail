@@ -132,6 +132,15 @@ without reading the README.
   offers it. The marketing window's direct, key-less call to the LLM
   provider is gone — that is the agent's job, through MCP.
 
+- **Electron 44, electron-builder 26, better-sqlite3 13.** `npm audit`
+  went from 1 critical + 9 high (Electron itself: context-isolation
+  bypass and sandboxed-iframe escape; `tar`, `extract-zip` and
+  electron-builder at build time) to zero. better-sqlite3 has prebuilt
+  binaries for the Electron 44 ABI, so nothing is compiled on the
+  machine. Building the console now needs Node 22 or newer (CI uses
+  22); `npm test` runs `node --test` with the default pattern, which
+  works on Node 20, 22 and 24 alike.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

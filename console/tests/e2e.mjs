@@ -265,9 +265,12 @@ async function main() {
     check(await cdp.evaluate("document.getElementById('btnVoiceCommand').classList.contains('hidden')"), 'comando vocale nascosto (nessun backend voce)');
     check(await cdp.evaluate("!!document.getElementById('btnShowAsk') && !document.getElementById('btnShowAsk').classList.contains('hidden')"), 'Chiedi alle mail visibile (/mail_ask esiste)');
     if (hasMail) {
+      // il cambio cartella di poco fa ha azzerato il pannello: riapri la prima mail
+      await cdp.evaluate("document.querySelector('.mail-item')?.click(); 'c'");
+      await waitUntil(() => cdp.evaluate("!!document.getElementById('btnShowReply')"), 15000);
       check(await cdp.evaluate("!!document.getElementById('btnAscolta') && document.getElementById('btnAscolta').classList.contains('hidden')"), 'dettaglio mail: ASCOLTA nascosto (nessun TTS)');
       check(await cdp.evaluate("!!document.getElementById('btnRiassumi') && document.getElementById('btnRiassumi').classList.contains('hidden')"), 'dettaglio mail: RIASSUMI nascosto (nessun endpoint summary)');
-      check(await cdp.evaluate("!document.getElementById('btnShowReply').classList.contains('hidden')"), 'dettaglio mail: RISPONDI resta visibile');
+      check(await cdp.evaluate("!!document.getElementById('btnShowReply') && !document.getElementById('btnShowReply').classList.contains('hidden')"), 'dettaglio mail: RISPONDI resta visibile');
     }
 
     console.log('\n[webSecurity attivo]');
