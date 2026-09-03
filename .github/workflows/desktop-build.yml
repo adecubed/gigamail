@@ -36,9 +36,13 @@ jobs:
         working-directory: console
         # better-sqlite3 non va compilato per Node (servirebbe Visual Studio):
         # install-app-deps scarica il prebuilt per la ABI di Electron.
+        # --ignore-scripts salta anche il postinstall di electron, cioe' il
+        # download del binario: electron-builder non ne ha bisogno, ma
+        # l'e2e lancia `electron .` e senza binario muore subito.
         run: |
           npm ci --ignore-scripts
           npx electron-builder install-app-deps
+          node node_modules/electron/install.js
 
       - name: Python embedded
         run: powershell -ExecutionPolicy Bypass -File console/prepare-python.ps1
