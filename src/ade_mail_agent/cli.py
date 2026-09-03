@@ -274,6 +274,34 @@ def cmd_approvals_approve(args) -> int:
     return 1
 
 
+def cmd_approvals_revoke(args) -> int:
+    """Ritira un'approvazione non ancora eseguita.
+
+    Non chiede Hello di proposito: revocare impedisce un'azione, non
+    ne autorizza una. Chiedere una verifica per fermare qualcosa
+    significa che, con Hello non disponibile, la mail sbagliata parte
+    lo stesso."""
+    from ade_mail_agent import policy
+    rec = policy.store().get(args.request_id)
+    if not rec:
+        print(f"Richiesta '{args.request_id}' inesistente.")
+        return 1
+    if rec["status"] == policy.EXECUTED:
+        print("Gia' ESEGUITA: quell'azione e' stata compiuta e non si "
+              "annulla da qui.")
+        return 1
+    if rec["status"] == policy.REJECTED:
+        print("Gia' rifiutata: niente da revocare.")
+        return 0
+    print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}")
+    if policy.store().revoke(args.request_id, by=_cli_who()):
+        print(f"Revocata ({args.request_id}). Non e' partita e non "
+              "partira'.")
+        return 0
+    print("Non revocabile: nel frattempo e' stata eseguita.")
+    return 1
+
+
 def cmd_approvals_reject(args) -> int:
     from ade_mail_agent import policy
     if policy.store().reject(args.request_id, by=_cli_who()):
@@ -773,8 +801,19 @@ def cmd_open_url(args) -> int:
     if action == "edit":
         rc = cmd_open_url_edit(rid)
     else:
-        rc = (cmd_approvals_approve(_A) if action == "approve"
-              else cmd_approvals_reject(_A))
+        if action == "reject":
+            # Su una richiesta gia' approvata il bottone Rifiuta vale
+            # come revoca: e' quello che l'umano intende premendolo, e
+            # rispondergli "gia' decisa" mentre la mail e' ancora
+            # eseguibile e' inutile quanto vero.
+            from ade_mail_agent import policy as _pol
+            _rec = _pol.store().get(rid)
+            if _rec and _rec["status"] == _pol.APPROVED:
+                rc = cmd_approvals_revoke(_A)
+            else:
+                rc = cmd_approvals_reject(_A)
+        else:
+            rc = cmd_approvals_approve(_A)
         if rc == 0 and action == "approve":
             print("Il watcher la invia al prossimo giro (entro l'intervallo di polling).")
     input("Premi INVIO per chiudere... ")
@@ -874,6 +913,10 @@ def main(argv=None) -> int:
     p_no = appr_sub.add_parser("reject")
     p_no.add_argument("request_id")
     p_no.set_defaults(fn=cmd_approvals_reject)
+    p_rev = appr_sub.add_parser(
+        "revoke", help="ritira un'approvazione non ancora eseguita")
+    p_rev.add_argument("request_id")
+    p_rev.set_defaults(fn=cmd_approvals_revoke)
 
     p_rules = sub.add_parser(
         "rules", help="regole di risposta semi-auto/auto (creazione dietro Hello)")

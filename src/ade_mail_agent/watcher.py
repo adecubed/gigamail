@@ -874,6 +874,23 @@ class Watcher:
                 "again.")
             tg.clear_buttons(message_id)
             return
+        if rec["status"] == policy.APPROVED and action == "r":
+            # Approvata ma non ancora eseguita: il rifiuto qui vale
+            # come REVOCA. E' il caso piu' frequente in assoluto — si
+            # approva e un secondo dopo ci si accorge dell'errore — e
+            # prima l'unica difesa era aspettare la scadenza con la
+            # richiesta eseguibile per tutta la finestra.
+            ok = policy.store().revoke(rid, by=f"telegram:{tg.chat_id}")
+            if da_regola and ok:
+                rs.set_status(row["rule_id"], row["message_id"], "rejected")
+            self._tg_say(
+                tg,
+                f"\u21a9 Approvazione revocata ({rid}). Non e' partita."
+                if ok else f"{rid}: troppo tardi, e' gia' stata eseguita.",
+                f"\u21a9 Approval revoked ({rid}). Nothing was sent."
+                if ok else f"{rid}: too late, it has been executed.")
+            tg.clear_buttons(message_id)
+            return
         if rec["status"] != policy.PENDING:
             self._tg_say(
                 tg,
