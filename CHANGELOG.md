@@ -55,6 +55,15 @@ without reading the README.
   `logging` ("gigamail.watcher") instead of vanishing — a heartbeat
   that fails is exactly what makes the console launch a second watcher.
 
+- **The console API is a package of routers.** `http_api.py` (1,200
+  lines, 81 endpoints) is now `ade_mail_agent/http_api/` with one
+  FastAPI router per domain — accounts, addresses, mail, calendar,
+  mask, agent, approvals, rules/watch, notify/onboarding — behind the
+  same `app`, the same paths and the same token middleware (kept in the
+  facade so `importlib.reload` in tests still re-reads the token).
+  `python -m ade_mail_agent.http_api` and the `gigamail-console-api`
+  entry point are unchanged.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
