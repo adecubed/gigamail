@@ -323,7 +323,16 @@ function renderCustomFolders() {
     box.innerHTML = '<div class="list-empty">'+T('no_personal_folder','Nessuna cartella personale.')+'</div>';
     return;
   }
-  box.innerHTML = folders.map(folder => {
+  // In testa: la via di ritorno. Dentro una cartella personalizzata l'unica
+  // strada verso la posta in arrivo era l'icona nella sidebar, che non si
+  // legge come "indietro".
+  const homeChip = `
+      <span class="custom-folder-row">
+        <button class="custom-folder-chip custom-folder-home ${currentFolder === 'inbox' ? 'active' : ''}" data-home="1">
+          <span class="custom-folder-chip-label">📥 ${T('inbox','Posta in arrivo')}</span>
+        </button>
+      </span>`;
+  box.innerHTML = homeChip + folders.map(folder => {
     const id = String(folder.id || normalizeFolderName(folder));
     const label = normalizeFolderName(folder) || id;
     const active = currentFolder === `custom:${id}` ? 'active' : '';
@@ -340,8 +349,11 @@ function renderCustomFolders() {
   }).join('');
   box.querySelectorAll('.custom-folder-chip').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.dataset.home) { openFolder('inbox', 'btnShowInbox'); return; }
       const folderId = btn.getAttribute('data-folder-id') || '';
       const label = btn.getAttribute('data-folder-label') || folderId;
+      // ri-click sulla cartella gia' aperta = torna alla posta in arrivo
+      if (currentFolder === `custom:${folderId}`) { openFolder('inbox', 'btnShowInbox'); return; }
       openCustomFolder(folderId, label);
     });
   });
@@ -907,6 +919,24 @@ function setFolderActive(btnId) {
   ['btnShowInbox', 'btnShowSent', 'btnShowDrafts', 'btnShowSpam', 'btnShowDeleted'].forEach(id => byId(id)?.classList.remove('active'));
   byId(btnId)?.classList.add('active');
   document.querySelectorAll('.custom-folder-chip').forEach(el => el.classList.remove('active'));
+  document.querySelector('.custom-folder-home')?.classList.toggle('active', btnId === 'btnShowInbox');
+}
+
+const FOLDER_TITLE_KEYS = { inbox: 'inbox', sent: 'sent_items', drafts: 'drafts', spam: 'spam', deleted: 'trash' };
+
+/** Titolo del pannello lista: cartella standard (tradotta) o etichetta della
+ *  cartella personalizzata. Prima restava "Posta in arrivo" ovunque. */
+function setFolderTitle(folder, label) {
+  const el = byId('currentFolderLabel');
+  if (!el) return;
+  const key = FOLDER_TITLE_KEYS[folder];
+  if (key) {
+    el.setAttribute('data-i18n', key);
+    el.textContent = T(key, label || folder);
+  } else {
+    el.removeAttribute('data-i18n');   // applyLang non deve sovrascriverlo
+    el.textContent = label || folder;
+  }
 }
 
 function renderMailListStatus(message) {
@@ -952,6 +982,7 @@ async function openFolder(folder, btnId) {
   selectedMailFolder = null;
   currentFolderLabel = folder;
   setFolderActive(btnId);
+  setFolderTitle(folder);
   setHidden('moreDropdown', true);
   selectedMailId = null;
   updateVoiceContext?.(null, -1);
@@ -970,6 +1001,7 @@ async function openCustomFolder(folderId, label) {
   currentFolder = `custom:${folderId}`;
   currentFolderLabel = label || folderId;
   setFolderActive('');
+  setFolderTitle(currentFolder, currentFolderLabel);
   document.querySelectorAll('.custom-folder-chip').forEach(el => {
     el.classList.toggle('active', (el.getAttribute('data-folder-id') || '') === folderId);
   });

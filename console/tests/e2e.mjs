@@ -241,6 +241,18 @@ async function main() {
       await cdp.evaluate("document.getElementById('btnShowInbox').click(); 'i'");
       await sleep(1500);
       check((await cdp.evaluate('currentFolder')) === 'inbox', 'btnShowInbox → cartella "inbox"');
+      if (await cdp.evaluate("!!document.querySelector('.custom-folder-chip:not(.custom-folder-home)')")) {
+        await cdp.evaluate("document.querySelector('.custom-folder-chip:not(.custom-folder-home)').click(); 'c'");
+        await sleep(1500);
+        const inCustom = await cdp.evaluate("currentFolder.startsWith('custom:')");
+        const title = await cdp.evaluate("document.getElementById('currentFolderLabel').textContent");
+        check(inCustom && title === (await cdp.evaluate('currentFolderLabel')), `cartella personalizzata: titolo del pannello = "${title}"`);
+        check(await cdp.evaluate("!document.querySelector('.custom-folder-home').classList.contains('active')"), 'chip "Posta in arrivo" presente e non attivo');
+        await cdp.evaluate("document.querySelector('.custom-folder-home').click(); 'h'");
+        await sleep(1500);
+        check((await cdp.evaluate('currentFolder')) === 'inbox' && (await cdp.evaluate("document.querySelector('.custom-folder-home').classList.contains('active')")), 'chip "Posta in arrivo" riporta alla inbox');
+        check((await cdp.evaluate("document.getElementById('currentFolderLabel').textContent")) !== title, 'titolo tornato a Posta in arrivo');
+      }
       // bottoni opzionali (presenti solo in alcune viste): si prova se ci sono
       const has = async (id) => cdp.evaluate(`!!document.getElementById('${id}')`);
       if (await has('btnPriority')) {
@@ -270,7 +282,9 @@ async function main() {
     check(await cdp.evaluate("document.getElementById('btnVoiceCommand').classList.contains('hidden')"), 'comando vocale nascosto (nessun backend voce)');
     check(await cdp.evaluate("!!document.getElementById('btnShowAsk') && !document.getElementById('btnShowAsk').classList.contains('hidden')"), 'Chiedi alle mail visibile (/mail_ask esiste)');
     if (hasMail) {
-      // il cambio cartella di poco fa ha azzerato il pannello: riapri la prima mail
+      // il cambio cartella di poco fa ha azzerato il pannello e la lista puo'
+      // essere ancora in caricamento: aspetta le voci, poi riapri la prima mail
+      await waitUntil(() => cdp.evaluate("document.querySelectorAll('.mail-item').length > 0"), 20000);
       await cdp.evaluate("document.querySelector('.mail-item')?.click(); 'c'");
       await waitUntil(() => cdp.evaluate("!!document.getElementById('btnShowReply')"), 15000);
       check(await cdp.evaluate("!!document.getElementById('btnAscolta') && document.getElementById('btnAscolta').classList.contains('hidden')"), 'dettaglio mail: ASCOLTA nascosto (nessun TTS)');
