@@ -123,6 +123,15 @@ without reading the README.
   the main, calendar, marketing and ask windows and that the calendar
   still reaches the backend.
 
+- **The console shows only what the backend can do.** Marketing, voice,
+  "Listen", "Summarize", the calendar TTS and the draft autosave all
+  called endpoints that no longer exist and answered with 404s. The
+  console now reads `/openapi.json` at start-up and every button
+  declares the endpoint it needs (`data-requires="/path"`); a missing
+  path hides the button, and it comes back by itself the day the backend
+  offers it. The marketing window's direct, key-less call to the LLM
+  provider is gone — that is the agent's job, through MCP.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the

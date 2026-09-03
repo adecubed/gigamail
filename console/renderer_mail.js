@@ -71,11 +71,11 @@ const MailView = (() => {
           ${(msg.ccRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">CC: ${addressList(msg.ccRecipients)}</div>` : ''}
           <div class="mail-detail-actions">
             <audio id="mailAudio" src="${esc(ttsUrl)}" style="display:none"></audio>
-            <button class="btn" id="btnAscolta">◉ ${T('listen','ASCOLTA')}</button>
+            <button class="btn" id="btnAscolta" data-requires="/mail/{message_id}/tts">◉ ${T('listen','ASCOLTA')}</button>
             <button class="btn" id="btnShowReply">↩ ${T('reply_upper','RISPONDI')}</button>
             <button class="btn" id="btnShowReplyAll">↩↩ ${T('all_upper','TUTTI')}</button>
             <button class="btn" id="btnForward">↪ ${T('forward_upper','INOLTRA')}</button>
-            <button class="btn" id="btnRiassumi">📋 ${T('summarize_upper','RIASSUMI')}</button>
+            <button class="btn" id="btnRiassumi" data-requires="/mail/{message_id}/summary">📋 ${T('summarize_upper','RIASSUMI')}</button>
             <button class="btn" id="btnMove">📁 ${T('move_upper','SPOSTA')}</button>
             ${inSpam
               ? `<button class="btn" id="btnNotSpam">✅ ${T('not_spam_upper','NON È SPAM')}</button>`
@@ -85,7 +85,7 @@ const MailView = (() => {
             <button class="btn" id="btnMarkUnread">● ${T('unread_upper','NON LETTA')}</button>
           </div>
         </div>
-        <div class="mail-summary-box" id="mailSummaryBox" style="background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;margin:10px 15px 0;padding:9px 12px;font-size:11px;color:rgba(0,0,0,0.75);box-shadow:0 4px 14px rgba(0,0,0,0.35);">📋 ${T('press_summarize','Premi RIASSUMI per generare il riassunto.')}</div>
+        <div class="mail-summary-box" id="mailSummaryBox" data-requires="/mail/{message_id}/summary" style="background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;margin:10px 15px 0;padding:9px 12px;font-size:11px;color:rgba(0,0,0,0.75);box-shadow:0 4px 14px rgba(0,0,0,0.35);">📋 ${T('press_summarize','Premi RIASSUMI per generare il riassunto.')}</div>
         <div class="mail-suggestion-box hidden" id="mailSuggestionBox"></div>${attachmentChipsHtml(msg.attachments)}`;
   }
 
@@ -213,6 +213,8 @@ async function openMail(id, overrideFolder = null) {
 
     // i18n: bottoni mail appena creati, applica lingua corrente
     if (window.i18n) window.i18n.applyLang();
+    // Bottoni che dipendono da endpoint assenti nel backend: via.
+    if (window.Features) Features.apply(detail);
 
     // Proattivo: mostra lo storico con questo mittente (modulo esterno, slegato da Brain)
     if (window.renderSenderHistory) {
@@ -338,7 +340,9 @@ async function openMail(id, overrideFolder = null) {
       } catch (e) { showToast(`Errore TTS: ${e}`); }
     });
 
-    loadFolderSuggestion(id, detail).catch(e => console.error('loadFolderSuggestion:', e));
+    if (!window.Features || Features.has('/mail/{message_id}/folder_suggestion')) {
+      loadFolderSuggestion(id, detail).catch(e => console.error('loadFolderSuggestion:', e));
+    }
 
     // SUGGERIMENTO RISPOSTA PROATTIVO
     if (msg._reply_suggestion?.has_suggestion) {

@@ -258,6 +258,18 @@ async function main() {
       console.log('  – nessun account: controlli sui binding saltati');
     }
 
+    console.log('\n[gate di capability: solo cio\' che il backend offre]');
+    check(await cdp.evaluate('Features.known === true'), 'openapi.json letto dal backend');
+    check(await cdp.evaluate("Features.has('/accounts') && !Features.has('/voice/transcribe')"), 'Features distingue endpoint presenti e assenti');
+    check(await cdp.evaluate("document.getElementById('btnShowMarketing').classList.contains('hidden')"), 'Marketing nascosto (nessun backend bulk)');
+    check(await cdp.evaluate("document.getElementById('btnVoiceCommand').classList.contains('hidden')"), 'comando vocale nascosto (nessun backend voce)');
+    check(await cdp.evaluate("!!document.getElementById('btnShowAsk') && !document.getElementById('btnShowAsk').classList.contains('hidden')"), 'Chiedi alle mail visibile (/mail_ask esiste)');
+    if (hasMail) {
+      check(await cdp.evaluate("!!document.getElementById('btnAscolta') && document.getElementById('btnAscolta').classList.contains('hidden')"), 'dettaglio mail: ASCOLTA nascosto (nessun TTS)');
+      check(await cdp.evaluate("!!document.getElementById('btnRiassumi') && document.getElementById('btnRiassumi').classList.contains('hidden')"), 'dettaglio mail: RIASSUMI nascosto (nessun endpoint summary)');
+      check(await cdp.evaluate("!document.getElementById('btnShowReply').classList.contains('hidden')"), 'dettaglio mail: RISPONDI resta visibile');
+    }
+
     console.log('\n[webSecurity attivo]');
     const FILE_PROBE = "fetch('file:///C:/Windows/win.ini').then(r => r.text()).then(t => 'READ:' + t.length).catch(e => 'BLOCKED')";
     check((await cdp.evaluate(FILE_PROBE)) === 'BLOCKED', 'finestra principale: fetch(file://) bloccata');
@@ -290,6 +302,7 @@ async function main() {
     check((await mw.evaluate("MailRender.htmlToText('<p>a</p><img src=x onerror=\"window.__xss=1\"><b>b</b>')")) === 'a\nb', 'finestra mail: inoltro usa htmlToText inerte');
     check((await mw.evaluate('window.__xss')) === false, 'finestra mail: htmlToText non ha eseguito nulla');
     check((await mw.evaluate("window.mailWindowAPI.openExternal('file:///C:/x.exe')")) === false, 'finestra mail: openExternal(file:) rifiutato');
+    check(await mw.evaluate("document.getElementById('btnAscolta')?.classList.contains('hidden') && document.getElementById('btnSummary')?.classList.contains('hidden')"), 'finestra mail: Ascolta/Riassumi nascosti (gate di capability)');
     await mw.evaluate("window.close(); 'c'"); mw.close();
 
     console.log('\n[finestra calendario: evento e partecipante ostili]');

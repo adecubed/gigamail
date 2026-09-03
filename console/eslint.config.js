@@ -56,7 +56,7 @@ module.exports = [
     },
   },
   {
-    files: ['renderer*.js', 'i18n.js', 'voice_mail.js', 'popup_bridge.js', 'mail_render.js'],
+    files: ['renderer*.js', 'i18n.js', 'voice_mail.js', 'popup_bridge.js', 'mail_render.js', 'features.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

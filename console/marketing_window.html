@@ -621,62 +621,15 @@ function renderImgGrid(aiPickedIdx = null) {
 }
 
 // ── AI SCEGLIE ──
-document.getElementById('btnAiPick')?.addEventListener('click', async () => {
-  if (!_loadedImages.length) return;
-  const mailText = document.getElementById('bulkBodyHtml')?.value || document.getElementById('bulkBodyPlain')?.value || '';
-  const subject  = document.getElementById('bulkSubject')?.value || '';
-  const status   = document.getElementById('aiImgStatus');
-  const btn      = document.getElementById('btnAiPick');
-
-  if (!mailText && !subject) { status.textContent = '⚠ Scrivi prima il testo della mail'; return; }
-
-  btn.disabled = true;
-  status.textContent = '✦ AI sta analizzando le immagini…';
-
-  try {
-    // Prepara messaggio con immagini (max 10 per token limit)
-    const sample = _loadedImages.slice(0, 10);
-    const imageBlocks = sample.map((img, i) => ({
-      type: 'image',
-      source: { type: 'base64', media_type: img.mimeType, data: img.dataUrl.split(',')[1] }
-    }));
-
-    const textBlock = {
-      type: 'text',
-      text: `Hai ${sample.length} immagini numerate da 0 a ${sample.length-1}.
-Oggetto mail: "${subject}"
-Testo/HTML mail: "${mailText.slice(0, 800)}"
-
-Scegli l'immagine più adatta per questa mail di marketing. Rispondi SOLO con il numero dell'immagine scelta (es: 2). Nient'altro.`
-    };
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 10,
-        messages: [{ role: 'user', content: [...imageBlocks, textBlock] }]
-      })
-    });
-
-    const data = await response.json();
-    const answer = data.content?.[0]?.text?.trim() || '';
-    const picked = parseInt(answer);
-
-    if (!isNaN(picked) && picked >= 0 && picked < _loadedImages.length) {
-      _selectedImgIdx = picked;
-      renderImgGrid(picked);
-      document.getElementById('btnInsertImg').disabled = false;
-      status.textContent = `✦ AI ha scelto: ${_loadedImages[picked].name}`;
-    } else {
-      status.textContent = '⚠ Risposta AI non valida — scegli manualmente';
-    }
-  } catch(err) {
-    status.textContent = '✗ Errore AI: ' + err.message;
-  } finally {
-    btn.disabled = false;
-  }
+// Niente LLM interno: la scelta AI dell'immagine passava da una chiamata
+// diretta al provider LLM, senza chiave (rotta) e fuori dal modello
+// "l'intelligenza e' il tuo agente". Finche' il backend non offre una via
+// mediata dall'agente, il bottone spiega e basta.
+document.getElementById('btnAiPick')?.addEventListener('click', () => {
+  const status = document.getElementById('aiImgStatus');
+  const msg = window.i18n ? window.i18n.t('bulk_generate_unavailable')
+    : 'Generazione AI non disponibile in questa versione: usa il tuo agente via MCP.';
+  if (status) status.textContent = msg;
 });
 
 // ── INSERISCI IMMAGINE SCELTA ──
