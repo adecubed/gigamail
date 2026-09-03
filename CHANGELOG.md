@@ -83,6 +83,14 @@ without reading the README.
   are unit-tested with hostile names and addresses. renderer.js is now
   894 lines, down from 2,055 this morning.
 
+- **Accounts and calendar leave renderer.js.** `renderer_accounts.js`
+  (selector, IMAP modal, delete with context menu) and
+  `renderer_calendar.js` (event list, quick popup, editor), with the
+  pure parts (`AccountsView`, `CalendarView`) unit-tested with hostile
+  names. The event quick popup was one of the hand-built overlays with
+  its own palette and an undefined `--mono`; it now uses the console's
+  `.overlay > .modal`. renderer.js is at 678 lines.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
