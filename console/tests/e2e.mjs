@@ -258,6 +258,10 @@ async function main() {
       console.log('  – nessun account: controlli sui binding saltati');
     }
 
+    console.log('\n[webSecurity attivo]');
+    const FILE_PROBE = "fetch('file:///C:/Windows/win.ini').then(r => r.text()).then(t => 'READ:' + t.length).catch(e => 'BLOCKED')";
+    check((await cdp.evaluate(FILE_PROBE)) === 'BLOCKED', 'finestra principale: fetch(file://) bloccata');
+
     console.log('\n[uscite verso il sistema]');
     check((await cdp.evaluate("window.electronAPI.openExternal('file:///C:/Windows/System32/calc.exe')")) === false, 'openExternal(file:) rifiutato dal main');
     check((await cdp.evaluate("window.electronAPI.openExternal('javascript:alert(1)')")) === false, 'openExternal(javascript:) rifiutato');
@@ -293,6 +297,11 @@ async function main() {
     const calPage = await waitForTargetUrl('calendar_window', 20000);
     const cw = new Cdp(calPage.webSocketDebuggerUrl); await cw.open();
     check(await waitUntil(() => cw.evaluate("typeof renderUpcoming === 'function' && typeof renderAttendees === 'function' && typeof _events !== 'undefined'"), 15000), 'finestra calendario aperta');
+    check((await cw.evaluate(FILE_PROBE)) === 'BLOCKED', 'finestra calendario: fetch(file://) bloccata (webSecurity attivo)');
+    if (accountsN > 0) {
+      const loaded = await waitUntil(() => cw.evaluate("!(document.getElementById('upcomingList')?.textContent || '').includes('Caricamento')"), 15000);
+      check(loaded && !(await cw.evaluate("(document.getElementById('upcomingList')?.textContent || '').includes('Errore')")), 'finestra calendario: il backend risponde con webSecurity attivo (CORS ok)');
+    }
     const HOSTILE_EVENT = { id: 'ev"><img src=x onerror="window.__xss=1">', subject: HOSTILE, start: { dateTime: '2099-01-01T10:00:00' }, end: { dateTime: '2099-01-01T11:00:00' }, location: { displayName: HOSTILE } };
     const HOSTILE_ATTENDEE = "x@y.it');window.__xss=1;//";
     await cw.evaluate(`window.__xss = false; _events = [${JSON.stringify(HOSTILE_EVENT)}]; _upcomingFilter = 'all'; renderUpcoming(); _attendees = [${JSON.stringify(HOSTILE_ATTENDEE)}]; renderAttendees(); 'r'`);
@@ -304,6 +313,20 @@ async function main() {
     await sleep(200);
     check((await cw.evaluate('_attendees.length')) === 0 && (await cw.evaluate('window.__xss')) === false, 'finestra calendario: X partecipante rimuove via data-email, niente JS inline');
     await cw.evaluate("window.close(); 'c'"); cw.close();
+
+    console.log('\n[finestre marketing e ask: si aprono senza webSecurity:false]');
+    await cdp.evaluate("window.electronAPI.openMarketingWindow(); 'o'");
+    const mkPage = await waitForTargetUrl('marketing_window', 20000);
+    const mk = new Cdp(mkPage.webSocketDebuggerUrl); await mk.open();
+    check(await waitUntil(() => mk.evaluate("document.readyState === 'complete' && document.body.children.length > 0"), 15000), 'finestra marketing caricata');
+    check((await mk.evaluate(FILE_PROBE)) === 'BLOCKED', 'finestra marketing: fetch(file://) bloccata');
+    await mk.evaluate("window.close(); 'c'"); mk.close();
+    await cdp.evaluate("window.electronAPI.openAskWindow({}); 'o'");
+    const askPage = await waitForTargetUrl('ask_window', 20000);
+    const ak = new Cdp(askPage.webSocketDebuggerUrl); await ak.open();
+    check(await waitUntil(() => ak.evaluate("document.readyState === 'complete' && document.body.children.length > 0"), 15000), 'finestra ask caricata');
+    check((await ak.evaluate(FILE_PROBE)) === 'BLOCKED', 'finestra ask: fetch(file://) bloccata');
+    await ak.evaluate("window.close(); 'c'"); ak.close();
 
     console.log('\n[onboarding]');
     const ob = await cdp.evaluate("fetch('http://127.0.0.1:8002/onboarding').then(r => r.json()).catch(() => null)");
