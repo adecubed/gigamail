@@ -68,7 +68,9 @@
         }
       ],
       "icon": "../docs/brand/gigamail.ico",
-      "publisherName": "Adecubed"
+      "signtoolOptions": {
+        "publisherName": "Adecubed"
+      }
     },
     "nsis": {
       "oneClick": false,
