@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.3.0 — in progress
+
+The desktop console grows up. 0.2 shipped it as a beta next to the pip
+package; 0.3 is about making it something a person can install and use
+without reading the README.
+
+- **Onboarding on first launch.** A fresh console no longer opens on an
+  empty window: a guided setup inside the main window — same style as
+  every other panel, no separate popups — connects a mailbox (Microsoft
+  365 device flow or IMAP), fills the account identity and knowledge
+  files, shows how to register GigaMail in the agent's MCP client and
+  enables notification buttons. It is skippable, reopenable from
+  Automations → AI (and from the dashboard while no account exists),
+  and its "done" flag lives in the backend, so reinstalling the console
+  does not bring it back. Italian, English and Chinese.
+
+- **IMAP accounts are verified before they are saved.** The console
+  sent a `provider` key the backend did not know and required hosts it
+  did not have, so Gmail/Aruba/Libero saves failed with a 422 — and a
+  wrong password was stored silently, to fail at the first sync.
+  `POST /accounts/imap` now resolves the provider to its hosts (Outlook
+  over IMAP included, SMTP 587 + STARTTLS), attempts a real IMAP login
+  and answers 400 with a readable reason instead of writing the account.
+  The first account becomes the active one.
+
+- **IMAP-only installs load their accounts.** The console treated
+  "connected" as "has a Microsoft token", so a console with only IMAP
+  accounts never populated the account selector.
+
+- **Console hardening.** Electron permissions are an explicit whitelist
+  (microphone only, for dictation), every window carries a CSP without
+  `unsafe-eval`, the mail iframe no longer lets popups escape the
+  sandbox, and backend responses forbid scripts.
+
+- **One version.** `console/package.json` follows `pyproject.toml`
+  automatically at build time; the installer, the Python package and
+  the release notes cannot disagree again.
+
+- **Lint in CI**, and two bugs it found: a `NameError` silently dropping
+  every message in the IMAP UID listing, and account deletion leaving
+  the learned reply patterns behind.
+
 ## v0.2.4 — 2026-09-01
 
 A day of using GigaMail on real mail, which is where the rest of these
