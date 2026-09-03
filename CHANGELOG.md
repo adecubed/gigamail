@@ -64,6 +64,18 @@ without reading the README.
   `python -m ade_mail_agent.http_api` and the `gigamail-console-api`
   entry point are unchanged.
 
+- **Mail list and detail leave renderer.js.** `renderer_mail.js` holds
+  the list, the message detail with its actions and attachments, and the
+  forward composer; the pure parts (`MailView`: list item, detail header,
+  HTML→text) are unit-tested with hostile subjects, senders, addresses
+  and attachment names. Two things fixed on the way: the forward path
+  extracted text by assigning raw mail HTML to an element attached to
+  the live document (an `onerror` would fire in the main window), now
+  it parses into an inert `DOMParser` document; and the old
+  `openMailWindow` built an unescaped HTML page for a `window.open`
+  that main.js denies — dead code replaced by a delegation to the real
+  mail window. renderer.js goes from 2,055 to 1,465 lines.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
