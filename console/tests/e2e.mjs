@@ -84,7 +84,13 @@ async function main() {
   }
   const logPath = path.join(CONSOLE_DIR, 'e2e-electron.log');
   const log = fs.openSync(logPath, 'w');
-  const startedAt = Date.now();
+  // Porta gia' in ascolto = un'altra istanza con il debugger: si fermerebbe
+  // a interrogare quella, non la nostra. Meglio dirlo subito.
+  try {
+    await getJson(`http://127.0.0.1:${PORT}/json/version`);
+    console.log(`  ✗ porta ${PORT} gia' occupata da un'altra istanza Electron: chiudila e riprova`);
+    process.exit(1);
+  } catch (_) { /* libera: bene */ }
   const child = spawn(ELECTRON, ['.', '--enable-logging', `--remote-debugging-port=${PORT}`], {
     cwd: CONSOLE_DIR, env, stdio: ['ignore', log, log], shell: process.platform === 'win32',
   });
@@ -92,7 +98,6 @@ async function main() {
   let cdp;
   try {
     const page = await waitForTarget(60000);
-    if (Date.now() - startedAt < 1500) throw new Error(`porta ${PORT} gia' occupata da un'altra istanza Electron: chiudila e riprova`);
     cdp = new Cdp(page.webSocketDebuggerUrl);
     await cdp.open();
 
