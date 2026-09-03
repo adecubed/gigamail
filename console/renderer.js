@@ -296,9 +296,9 @@ async function init() {
   bindTabs();
   bindStaticEvents();
   bindUpload();
-  bindVoice();
+  if (Features.has('/voice/transcribe')) bindVoice();
   bindKeyboardNav();
-  initBulkTab();
+  if (Features.has('/mail/bulk/status')) initBulkTab();
   setFolderActive('btnShowInbox');
   checkAuth().catch(e => console.error('init checkAuth:', e));
 }
@@ -323,10 +323,13 @@ async function bootstrap() {
     console.error('[ADE MAIL] backend 8002 non risponde entro il timeout');
     return;
   }
+  // Cosa sa fare il backend: i bottoni senza endpoint spariscono.
+  await Features.load('http://127.0.0.1:8002');
   await init();
+  Features.apply();
   if (window.startOnboardingIfNeeded) window.startOnboardingIfNeeded();
   setInterval(checkAuth, 30000);
-  setInterval(autosaveDraft, 30000);
+  if (Features.has('/mail/draft/save')) setInterval(autosaveDraft, 30000);
 }
 
 bootstrap();
