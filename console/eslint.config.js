@@ -34,7 +34,7 @@ const BROWSER_GLOBALS = {
 module.exports = [
   { ignores: ['node_modules/**', 'dist/**', 'python-embedded/**'] },
   {
-    files: ['main.js', 'preload*.js', 'calendar_notifier.js', 'sync-version.js'],
+    files: ['main.js', 'preload*.js', 'calendar_notifier.js', 'sync-version.js', 'tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -47,11 +47,20 @@ module.exports = [
     },
   },
   {
-    files: ['renderer*.js', 'i18n.js', 'voice_mail.js', 'popup_bridge.js'],
+    files: ['tests/**/*.mjs'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: NODE_GLOBALS },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ['renderer*.js', 'i18n.js', 'voice_mail.js', 'popup_bridge.js', 'mail_render.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
-      globals: BROWSER_GLOBALS,
+      globals: { ...BROWSER_GLOBALS, module: 'readonly' },
     },
     rules: {
       ...js.configs.recommended.rules,

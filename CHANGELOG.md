@@ -29,6 +29,20 @@ without reading the README.
   "connected" as "has a Microsoft token", so a console with only IMAP
   accounts never populated the account selector.
 
+- **One way to render a mail, tested with hostile mail.** The HTML of a
+  message went into an iframe by two different code paths (main window
+  and mail window) with two different rules; now `mail_render.js` is the
+  only one: structural sanitisation via DOMParser (scripts, frames,
+  objects, forms, meta, base, links, every `on*` attribute, `javascript:`
+  and `vbscript:` URLs, CSS `expression()`), an iframe sandbox with
+  neither scripts nor popups, its own CSP, and link clicks that go to the
+  system browser instead of navigating the frame. Seventeen known XSS
+  payloads run through it in unit tests (jsdom) and in the real Electron
+  (`npm run test:e2e`, Chrome DevTools Protocol), which also checks that
+  the renderer has no Node, that the preload exposes no secrets, and —
+  on a pristine profile — that onboarding opens by itself. The e2e runs
+  in CI on Windows before every installer build.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
