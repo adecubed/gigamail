@@ -26,7 +26,7 @@
     "brandColor": "#0B2B5C",
     "composerIcon": "./docs/brand/gigamail-logo-256.png",
     "logo": "./docs/brand/gigamail-logo-256.png",
-    "screenshots": ["./docs/console-draft.png"],
+    "screenshots": ["./docs/demo/poster.png"],
     "websiteURL": "https://gigamail.ai",
     "privacyPolicyURL": "https://github.com/adecubed/gigamail/blob/main/SECURITY.md",
     "termsOfServiceURL": "https://github.com/adecubed/gigamail/blob/main/LICENSE"

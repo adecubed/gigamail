@@ -29,13 +29,12 @@ accordingly; the masker lets you hide sensitive fields (tax codes, VAT
 numbers, IBANs, emails, phone numbers — validated deterministically, no AI)
 before the agent ever sees them.
 
-![The human console: a draft written by the agent — real figures from the
-account's documents, the right floor plans attached, and appointment slots
-taken from the actual calendar. Nothing is sent until you approve it.](docs/console-draft.png)
+[![Ninety seconds of the human console on a demo mailbox](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
 
-*A real draft: the agent pulled the figures from the account's documents,
-picked the floor plans to attach, and proposed slots from the calendar.
-The human reviews and sends — or edits the instruction and regenerates.*
+*The human console in ninety seconds, on a demo mailbox: dashboard, reading
+a mail, a reply drafted by the agent from a one-line instruction, folders,
+calendar, "ask your mail", automation rules and the first-run guide. The
+human reviews and sends — or edits the instruction and regenerates.*
 
 ## Why
 
@@ -56,10 +55,6 @@ The human reviews and sends — or edits the instruction and regenerates.*
   accounts or read secrets
 
 ## Quick start
-
-[![Watch the 90-second demo of the desktop console](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
-
-*90 seconds of the desktop console, on a demo mailbox: dashboard, reading, a reply drafted by the agent, folders, calendar, "ask your mail", automation rules and the first-run guide.*
 
 GigaMail ships through two channels:
 
@@ -236,14 +231,13 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
-![La console umana: una bozza scritta dall'agente — dati reali dai documenti
-dell'account, planimetrie giuste in allegato e orari presi dal calendario.
-Niente parte finché non approvi.](docs/console-draft.png)
+[![Novanta secondi di console umana su una casella dimostrativa](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
 
-*Una bozza vera: l'agente ha preso i dati dai documenti collegati
-all'account, scelto le planimetrie da allegare e proposto gli orari liberi
-dal calendario. L'umano rivede e invia — oppure corregge l'istruzione e
-rigenera.*
+*La console umana in novanta secondi, su una casella dimostrativa:
+dashboard, lettura di una mail, una risposta scritta dall'agente da
+un'istruzione di una riga, cartelle, calendario, "chiedi alle mail", regole
+di automazione e guida iniziale. L'umano rivede e invia — oppure corregge
+l'istruzione e rigenera.*
 
 ## Perché
 
@@ -264,10 +258,6 @@ rigenera.*
   leggere segreti
 
 ## Setup rapido
-
-[![Guarda la demo di 90 secondi della console](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
-
-*90 secondi di console desktop su una casella dimostrativa: dashboard, lettura, una risposta scritta dall'agente, cartelle, calendario, "chiedi alle mail", regole di automazione e guida iniziale.*
 
 GigaMail si installa da due canali:
 
@@ -437,6 +427,12 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
+[![演示邮箱上的 90 秒控制台演示](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+
+*演示邮箱上的人工控制台 90 秒：仪表盘、阅读邮件、代理根据一行指令起草的回复、
+文件夹、日历、“询问邮件”、自动化规则和首次运行向导。人工审阅后发送 ——
+或者修改指令后重新生成。*
+
 ## 为什么
 
 - **混合搜索**：提供商搜索（Graph/IMAP）+ 本地 SQLite 索引，快速且支持离线
@@ -451,10 +447,6 @@ titolare del copyright.
   注入无法添加账户或读取任何机密
 
 ## 快速开始
-
-[![观看桌面控制台 90 秒演示](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
-
-*演示邮箱上的桌面控制台 90 秒：仪表盘、阅读邮件、由代理起草的回复、文件夹、日历、“询问邮件”、自动化规则和首次运行向导。*
 
 GigaMail 通过两个渠道发布：
 

@@ -152,6 +152,8 @@
   section { padding: clamp(3rem, 7vw, 5rem) 0; border-top: 1px solid var(--line); }
   .sec-head { display: grid; gap: .6rem; margin-bottom: 2.2rem; max-width: 60ch; }
   figure { margin: 0; }
+  figure video { width: 100%; display: block; background: #000; }
+  figure video,
   figure img {
     width: 100%; height: auto; display: block; border-radius: 10px;
     border: 1px solid var(--line); box-shadow: var(--shadow);
@@ -282,7 +284,7 @@
   <section id="real">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Not a demo</p>
+        <p class="eyebrow">See it work</p>
         <h2>This answers our clients every day.</h2>
         <p style="color:var(--muted)">
           We build and sell apartments. A prospect writes asking about a unit —
@@ -292,11 +294,13 @@
         </p>
       </div>
       <figure>
-        <img src="console-draft.png" alt="The GigaMail console: a reply drafted by the agent listing three apartments with real sizes and prices, mentioning attached floor plans, and proposing three appointment times, with an instruction field and a Generate button at the bottom.">
+        <video controls muted playsinline preload="metadata" poster="demo/poster.png"
+               src="demo/gigamail-console-0.3.0.mp4"
+               aria-label="Ninety-second tour of the GigaMail console on a demo mailbox: dashboard, reading a mail, a reply drafted by the agent from a one-line instruction, folders, calendar, ask your mail, automation rules and the first-run guide."></video>
         <figcaption>
-          The human console. You direct the agent from your own inbox — write an
-          instruction, read what came back, edit it, send it. You are not chatting
-          with a bot in another window.
+          The human console in ninety seconds, on a demo mailbox. You direct the
+          agent from your own inbox — write an instruction, read what came back,
+          edit it, send it. You are not chatting with a bot in another window.
         </figcaption>
       </figure>
     </div>
