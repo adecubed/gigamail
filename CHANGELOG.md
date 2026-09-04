@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.1 — in progress
+## v0.3.1 — 2026-09-04
 
 Small things noticed while recording the 0.3.0 demo.
 
