@@ -175,6 +175,18 @@ without reading the README.
   rather than from PyPI, so the installer carries this commit's code and
   dependencies.
 
+- **The installer ships with the release, and the app updates itself.**
+  `release.yml` gained a Windows job that, when a GitHub Release is
+  published (after the test suite of the PyPI job passes), builds the
+  installer, checks its version against the tag and attaches `GigaMail
+  Setup X.Y.Z.exe`, its `.blockmap` and `latest.yml` to the Release.
+  electron-builder's publish provider is `github`, so electron-updater
+  reads that feed and the installed app picks up the next version. A
+  downloaded update is announced with a notification and installed at
+  the next quit; it no longer quits the app on a five-second timer.
+  `publisherName` is out of the build config until the installer is
+  signed — with it set, electron-updater refuses unsigned updates.
+
 - **Console hardening.** Electron permissions are an explicit whitelist
   (microphone only, for dictation), every window carries a CSP without
   `unsafe-eval`, the mail iframe no longer lets popups escape the
