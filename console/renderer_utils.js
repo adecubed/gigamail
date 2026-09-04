@@ -758,7 +758,7 @@ async function renderDashboard() {
     return `<div style="background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.12);padding:12px 14px;">${content}</div>`;
   }
   function secLabel(t) {
-    return `<div style="font-size:9px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:4px;">${t}</div>`;
+    return `<div style="font-size:9px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:rgba(0,0,0,0.55);margin-bottom:4px;">${t}</div>`;
   }
 
   // Scheletro solo la prima volta: poi l'ultima dashboard resta a video
@@ -770,12 +770,12 @@ async function renderDashboard() {
   } else {
     dash.innerHTML = secLabel(T('account_label','Account')) +
       `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="dash-accounts">` +
-      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">${loading}</div>`) +
-      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">${loading}</div>`) +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:12px 0;">${loading}</div>`) +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:12px 0;">${loading}</div>`) +
       `</div>` +
       secLabel(T('calendar','Calendario')) +
       `<div id="dash-calendar">` +
-      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:8px 0;">${loading}</div>`) +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:8px 0;">${loading}</div>`) +
       `</div>`;
   }
 
@@ -819,19 +819,19 @@ async function renderDashboard() {
           <div style="width:9px;height:9px;border-radius:50%;background:${dotColor};border:1.5px solid rgba(0,0,0,0.2);flex-shrink:0;"></div>
           <div style="font-size:12px;font-weight:500;color:rgba(0,0,0,0.82);flex:1;">${provider}</div>
         </div>
-        <div style="font-size:10px;color:rgba(0,0,0,0.4);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${email}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${email}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px;">
           <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:7px 9px;">
             <div style="font-size:20px;font-weight:500;line-height:1;color:${unread>0?'#993556':'rgba(0,0,0,0.82)'};">${unread}</div>
-            <div style="font-size:9px;color:rgba(0,0,0,0.4);margin-top:2px;">${T('unread','Non lette')}</div>
+            <div style="font-size:9px;color:rgba(0,0,0,0.55);margin-top:2px;">${T('unread','Non lette')}</div>
           </div>
           <div style="background:rgba(0,0,0,0.04);border-radius:8px;padding:7px 9px;">
             <div style="font-size:20px;font-weight:500;line-height:1;color:rgba(0,0,0,0.82);">${sentToday}</div>
-            <div style="font-size:9px;color:rgba(0,0,0,0.4);margin-top:2px;">${T('sent_today','Inviate oggi')}</div>
+            <div style="font-size:9px;color:rgba(0,0,0,0.55);margin-top:2px;">${T('sent_today','Inviate oggi')}</div>
           </div>
         </div>
-        ${lastMail ? `<div style="font-size:10px;color:rgba(0,0,0,0.4);background:rgba(0,0,0,0.04);border-radius:7px;padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">↙ ${lastMail}</div>` : ''}
-        <div style="font-size:10px;color:rgba(0,0,0,0.4);text-align:right;margin-top:6px;">${T('goto_account',"Vai all'account →")}</div>
+        ${lastMail ? `<div style="font-size:10px;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.04);border-radius:7px;padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">↙ ${lastMail}</div>` : ''}
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);text-align:right;margin-top:6px;">${T('goto_account',"Vai all'account →")}</div>
       </div>`;
     }));
 
@@ -846,7 +846,7 @@ async function renderDashboard() {
     }
   } catch(e) {
     const accGrid = byId('dash-accounts');
-    if (accGrid) accGrid.innerHTML = card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;">${T('account_load_error','Errore caricamento account')}</div>`);
+    if (accGrid) accGrid.innerHTML = card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;">${T('account_load_error','Errore caricamento account')}</div>`);
   }
 
   // Carica calendario
@@ -871,24 +871,24 @@ async function renderDashboard() {
       `<div onclick="window.electronAPI?.openCalendarWindow?.()" style="display:flex;align-items:center;gap:8px;padding:6px 9px;background:rgba(0,0,0,0.04);border-radius:8px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.08)'" onmouseout="this.style.background='rgba(0,0,0,0.04)'">
         <div style="width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1px solid rgba(0,0,0,0.2);flex-shrink:0;"></div>
         <div style="font-size:11px;color:rgba(0,0,0,0.82);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.subject||e.title||'Evento'}</div>
-        <div style="font-size:10px;color:rgba(0,0,0,0.4);white-space:nowrap;">${fmtEvDate(e.start?.dateTime||e.start?.date)}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);white-space:nowrap;">${fmtEvDate(e.start?.dateTime||e.start?.date)}</div>
       </div>`
-    ).join('') : '<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:8px 0;">'+T('no_upcoming','Nessun appuntamento in arrivo')+'</div>';
+    ).join('') : '<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:8px 0;">'+T('no_upcoming','Nessun appuntamento in arrivo')+'</div>';
 
     const calDiv = byId('dash-calendar');
     if (calDiv) calDiv.innerHTML = card(`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
         <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📅</div>
         <div style="font-size:12px;font-weight:500;color:rgba(0,0,0,0.82);flex:1;">${T('cal_upcoming','Prossimi appuntamenti')}</div>
-        <div style="font-size:10px;color:rgba(0,0,0,0.4);">${now.toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);">${now.toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;">${evRows}</div>
-      <div style="font-size:10px;color:rgba(0,0,0,0.4);text-align:right;margin-top:8px;cursor:pointer;"
+      <div style="font-size:10px;color:rgba(0,0,0,0.55);text-align:right;margin-top:8px;cursor:pointer;"
         onclick="window.electronAPI?.openCalendarWindow?.()">${T('open_calendar','Apri calendario →')}</div>
     `);
   } catch {
     const calDiv = byId('dash-calendar');
-    if (calDiv) calDiv.innerHTML = card('<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;">'+T('no_calendar','Nessun calendario configurato')+'</div>');
+    if (calDiv) calDiv.innerHTML = card('<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;">'+T('no_calendar','Nessun calendario configurato')+'</div>');
   }
   if (dash.isConnected) renderDashboard._last = { html: dash.innerHTML, lang: window.i18n?.lang || 'it' };
 }

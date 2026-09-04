@@ -404,7 +404,7 @@ function renderTodo() {
     const icon   = isFile ? fileIcon(item.text) : '📝';
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;background:${item.done?'rgba(0,0,0,0.03)':'rgba(0,0,0,0.04)'};border-radius:8px;border:0.5px solid rgba(0,0,0,0.08);${item.done?'opacity:0.5':''}">
       <span style="font-size:13px;flex-shrink:0;">${icon}</span>
-      <span style="flex:1;font-size:11px;color:rgba(0,0,0,0.8);${item.done?'text-decoration:line-through;color:rgba(0,0,0,0.4)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.text}</span>
+      <span style="flex:1;font-size:11px;color:rgba(0,0,0,0.8);${item.done?'text-decoration:line-through;color:rgba(0,0,0,0.55)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.text}</span>
       <button onclick="window._todoToggle('${item.id}')" style="background:none;border:none;cursor:pointer;font-size:13px;flex-shrink:0;opacity:0.5;" title="${item.done?T('reactivate','Riattiva'):T('done','Fatto')}">${item.done?'↩':'✓'}</button>
       <button onclick="window._todoDelete('${item.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;flex-shrink:0;opacity:0.35;" title="${T('delete','Elimina')}">✕</button>
     </div>`;
@@ -413,7 +413,7 @@ function renderTodo() {
   const listHtml = pending.length || done.length ? `
     <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">
       ${pending.map(itemHtml).join('')}
-      ${done.length ? `<div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:rgba(0,0,0,0.3);margin:4px 0 2px;">${T('completed','Completati')}</div>${done.slice(0,3).map(itemHtml).join('')}` : ''}
+      ${done.length ? `<div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:rgba(0,0,0,0.55);margin:4px 0 2px;">${T('completed','Completati')}</div>${done.slice(0,3).map(itemHtml).join('')}` : ''}
     </div>` : '';
 
   wrap.innerHTML = `<div style="${cardStyle}">${inputHtml}${listHtml}</div>`;

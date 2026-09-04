@@ -52,7 +52,7 @@
   .field-row:last-child{border-bottom:none;}
   .field-label{font-size:11px;font-weight:700;color:rgba(0,0,0,0.75);width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
   .field-input{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
-  .field-input::placeholder{color:rgba(0,0,0,0.28);}
+  .field-input::placeholder{color:rgba(0,0,0,0.55);}
 
   /* ── BODY con drop zone ── */
   .body-area{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
@@ -61,7 +61,7 @@
     padding:14px 16px;font-size:12.5px;font-family:var(--font);
     color:rgba(0,0,0,0.82);line-height:1.65;
   }
-  .body-textarea::placeholder{color:rgba(0,0,0,0.28);}
+  .body-textarea::placeholder{color:rgba(0,0,0,0.55);}
   .drop-overlay{
     display:none;position:absolute;inset:0;
     background:rgba(176,199,244,0.35);
@@ -82,7 +82,7 @@
     box-shadow:0 4px 14px rgba(0,0,0,0.35);
   }
   .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
-  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.3);font-size:12px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
   .attach-chip-rm:hover{color:#dc2626;}
 
   .toolbar{
@@ -109,7 +109,7 @@
     padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
     box-sizing:border-box;
   }
-  .instruction::placeholder{color:rgba(0,0,0,0.3);}
+  .instruction::placeholder{color:rgba(0,0,0,0.55);}
   .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
   .ctx-badge{
     display:none;position:absolute;top:-8px;right:4px;
@@ -120,7 +120,7 @@
   }
   .ctx-badge.visible{display:block;}
 
-  .status{font-size:10.5px;color:rgba(0,0,0,0.4);font-family:monospace;padding:2px 4px;}
+  .status{font-size:10.5px;color:rgba(0,0,0,0.55);font-family:monospace;padding:2px 4px;}
   .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:160px;overflow-y:auto;}
   .autocomplete-box.hidden{display:none;}
   .autocomplete-item{padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
@@ -509,7 +509,7 @@ function askLabel(selected, suggested) {
     ov.innerHTML = `
       <div style="background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
         <div style="font-size:13px;margin-bottom:4px">Maschera <b>${escMaskNM(selected)}</b></div>
-        <div style="font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px">Etichetta (modificabile):</div>
+        <div style="font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:8px">Etichetta (modificabile):</div>
         <input id="maskLabelInput" type="text" value="${escMaskNM(suggested)}" style="width:100%;padding:8px 10px;border:1.5px solid rgba(0,0,0,0.4);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"/>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
           <button id="maskLabelCancel" style="padding:7px 14px;border:1px solid rgba(0,0,0,0.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px">Annulla</button>
