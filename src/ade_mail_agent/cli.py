@@ -265,7 +265,10 @@ def cmd_approvals_approve(args) -> int:
         print(f"Impossibile approvare da CLI: {e}")
         return 2
     if not ok:
-        print("Verifica non superata o annullata: la richiesta resta in attesa.")
+        motivo = consent.last_reason()
+        print("Verifica non superata"
+              + (f": {motivo}." if motivo else " o annullata.")
+              + " La richiesta resta in attesa e non e' partito nulla.")
         return 1
     if policy.store().approve(args.request_id, by=_cli_who()):
         print("Approvata. L'agente puo' ora completare l'azione.")
@@ -324,7 +327,10 @@ def _hello_or_refuse(reason: str):
         print(f"Impossibile: {e}")
         return None
     if not ok:
-        print("Verifica non superata o annullata: nessuna modifica.")
+        motivo = consent.last_reason()
+        print("Verifica non superata"
+              + (f": {motivo}." if motivo else " o annullata.")
+              + " Nessuna modifica.")
         return None
     return _t.time()
 

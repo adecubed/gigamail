@@ -91,7 +91,31 @@ def _win_available() -> bool:
         return False
 
 
+# Perche' Windows ha detto di no. Tutti restano un NO — la sicurezza
+# non cambia — ma "hai annullato" e "su questo PC Hello non e'
+# configurato" richiedono due azioni diverse, e appiattirli sulla
+# stessa frase lascia l'utente a indovinare quale dei due sia.
+_MOTIVI_WIN = {
+    0: "verificato",
+    1: "su questo PC non e' configurato nessun metodo Hello (PIN, "
+       "impronta o volto)",
+    2: "Windows Hello non e' disponibile su questo dispositivo",
+    3: "dispositivo occupato: un'altra verifica e' gia' in corso",
+    4: "tentativi esauriti",
+    5: "annullata",
+}
+
+_ultimo_motivo = ""
+
+
+def last_reason() -> str:
+    """Perche' l'ultima richiesta di conferma e' stata respinta.
+    Vuoto se l'ultima e' andata a buon fine o non ce n'e' stata."""
+    return _ultimo_motivo
+
+
 def _win_ask(reason: str) -> bool:
+    global _ultimo_motivo
     from winrt.windows.security.credentials.ui import (
         UserConsentVerificationResult as R,
     )
@@ -100,9 +124,10 @@ def _win_ask(reason: str) -> bool:
     )
     # Il messaggio e' mostrato dentro il dialogo di Windows Hello.
     r = _run_winrt(UserConsentVerifier.request_verification_async(reason))
-    # Tutto cio' che non e' VERIFIED (CANCELED, DEVICE_BUSY,
-    # RETRIES_EXHAUSTED, NOT_CONFIGURED_FOR_USER, ...) e' un NO.
-    return int(r) == int(R.VERIFIED)
+    ok = int(r) == int(R.VERIFIED)
+    _ultimo_motivo = "" if ok else _MOTIVI_WIN.get(
+        int(r), f"esito {int(r)} non riconosciuto")
+    return ok
 
 
 # -------------------------------------------------------------------- macOS
@@ -178,6 +203,8 @@ def require_human(reason: str) -> bool:
     Solleva ConsentUnavailable se nessun backend puo' chiedere: il
     chiamante deve trattarlo come un NO e indicare la console.
     """
+    global _ultimo_motivo
+    _ultimo_motivo = ""
     override = _test_override()
     if override is not None:
         return override(reason)
