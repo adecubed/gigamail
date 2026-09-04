@@ -35,7 +35,7 @@ test('gradiente rosa-blu solo su avatar, logo, voce e iconcine', () => {
 test('nessuna ombra pesante', () => {
   const bad = [];
   for (const f of FILES) {
-    const n = (read(f).match(/box-shadow:\s*0 [46]px (?:1[46]|20)px rgba\((?:0,\s*0,\s*0|7, 7, 7|18, 18, 18|57, 56, 56|13, 13, 13),\s*0\.(?:35|4|5|6)\)/g) || []).length;
+    const n = (read(f).match(/box-shadow:\s*0 [46]px (?:1[46]|20)px rgba\((?:0,\s*0,\s*0|7, 7, 7|18, 18, 18|57, 56, 56|13, 13, 13),\s*0\.(?:35|4|42|5|6)\)/g) || []).length;
     if (n) bad.push(`${path.basename(f)}: ${n}`);
   }
   assert.deepStrictEqual(bad, []);
