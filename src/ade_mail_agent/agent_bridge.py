@@ -83,12 +83,35 @@ def status() -> dict:
     return {"available": found, "command": cfg["command"][0], "timeout": cfg["timeout"]}
 
 
+# Limite pratico della riga di comando su Windows. CreateProcess si
+# ferma a 32767 caratteri, ma un wrapper .cmd o .bat — ed e' cosi' che
+# npm installa `claude` — passa da cmd.exe, che si ferma a 8191. Si usa
+# la soglia piu' bassa con un margine, perche' sbagliare per eccesso
+# significa un processo che muore invece di una bozza.
+_MAX_RIGA_COMANDO = 6000
+
+
+def _riga_troppo_lunga(cmd: list) -> bool:
+    return sum(len(a) + 3 for a in cmd) > _MAX_RIGA_COMANDO
+
+
 def run(prompt: str, timeout: int | None = None) -> str:
     """Esegue l'agente headless con il prompt e restituisce il testo prodotto."""
     cfg = get_config()
     cmd = list(cfg["command"])
+    da_stdin = None
     if any("{prompt}" in a for a in cmd):
-        cmd = [a.replace("{prompt}", prompt) for a in cmd]
+        pieno = [a.replace("{prompt}", prompt) for a in cmd]
+        if _riga_troppo_lunga(pieno):
+            # Il prompt porta identity, listino e il corpo della mail:
+            # su Windows una riga di comando cosi' sfonda il limite e il
+            # processo muore con "La riga di comando e' troppo lunga".
+            # Il segnaposto sparisce e il prompt entra da stdin, che
+            # limiti non ne ha.
+            cmd = [a for a in cmd if "{prompt}" not in a]
+            da_stdin = prompt.encode("utf-8")
+        else:
+            cmd = pieno
     else:
         cmd.append(prompt)
     exe = cmd[0]
@@ -99,9 +122,14 @@ def run(prompt: str, timeout: int | None = None) -> str:
         # assente si prova a ri-risolverlo, altrimenti un
         # aggiornamento silenzioso ferma le bozze finche' qualcuno non
         # se ne accorge — e nessuno se ne accorge.
-        fresco = _find_claude()
-        if fresco != exe and (shutil.which(fresco) is not None
-                              or os.path.exists(fresco)):
+        # Solo per un comando che avremmo risolto noi: se l'utente ha
+        # configurato un agente suo e quello manca, sostituirglielo di
+        # nascosto con un altro sarebbe peggio dell'errore. Meglio dire
+        # che il SUO comando non c'e'.
+        nostro = os.path.basename(exe).lower().startswith("claude")
+        fresco = _find_claude() if nostro else exe
+        if nostro and fresco != exe and (shutil.which(fresco) is not None
+                                         or os.path.exists(fresco)):
             cmd[0] = exe = fresco
         else:
             raise AgentUnavailable(
@@ -113,7 +141,8 @@ def run(prompt: str, timeout: int | None = None) -> str:
         proc = subprocess.run(
             cmd,
             capture_output=True,
-            stdin=subprocess.DEVNULL,
+            input=da_stdin,
+            stdin=None if da_stdin is not None else subprocess.DEVNULL,
             timeout=timeout or cfg["timeout"],
             shell=False,
         )
