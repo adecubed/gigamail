@@ -72,3 +72,53 @@ def test_i_tentativi_falliti_si_accumulano(tmp_path, monkeypatch):
         attempt = letti_prima + 1
         assert attempt == atteso, f"tentativo {attempt}, atteso {atteso}"
         rs.set_status(RULE, MSG, "retry", f"draft-attempt:{attempt}")
+
+
+def test_un_prompt_lungo_passa_da_stdin(monkeypatch):
+    """Il prompt porta identity, listino e il corpo della mail: come
+    argomento sfonda il limite della riga di comando e il processo muore
+    con "La riga di comando e' troppo lunga". Visto dal vivo il
+    2026-09-04, e peggiorato dal fatto che npm installa `claude` come
+    .CMD: quel wrapper passa da cmd.exe, che si ferma a 8191 caratteri."""
+    visto = {}
+
+    def _finta_run(cmd, **kw):
+        visto["cmd"] = cmd
+        visto["input"] = kw.get("input")
+        class R:
+            returncode = 0
+            stdout = b"bozza"
+            stderr = b""
+        return R()
+
+    monkeypatch.setattr(agent_bridge, "get_config", lambda: {
+        "command": ["claude", "-p", "{prompt}", "--allowedTools", "x"],
+        "timeout": 5})
+    monkeypatch.setattr(agent_bridge.shutil, "which", lambda x: "claude")
+    monkeypatch.setattr(agent_bridge.subprocess, "run", _finta_run)
+
+    agent_bridge.run("x" * 30000)
+    assert "{prompt}" not in " ".join(visto["cmd"])
+    assert visto["input"] == b"x" * 30000      # il prompt e' su stdin
+    assert not any(len(a) > 1000 for a in visto["cmd"])
+
+    # un prompt corto resta argomento: nessun cambio di comportamento
+    agent_bridge.run("ciao")
+    assert "ciao" in visto["cmd"]
+    assert visto["input"] is None
+
+
+def test_un_agente_configurato_da_te_non_viene_sostituito(monkeypatch):
+    """La ri-risoluzione vale solo per il comando che avremmo scelto noi.
+    Se l'utente ha configurato un agente suo e quello manca, scambiarlo di
+    nascosto con un altro sarebbe peggio dell'errore: farebbe scrivere le
+    mail a un programma che non ha scelto."""
+    monkeypatch.setattr(agent_bridge, "_find_claude",
+                        lambda: r"C:\npm\claude.CMD")
+    monkeypatch.setattr(agent_bridge, "get_config", lambda: {
+        "command": ["mio-agente-inesistente", "{prompt}"], "timeout": 5})
+    monkeypatch.setattr(agent_bridge.shutil, "which",
+                        lambda x: None if "mio-agente" in x else x)
+    with pytest.raises(agent_bridge.AgentUnavailable) as e:
+        agent_bridge.run("ciao")
+    assert "mio-agente-inesistente" in str(e.value)
