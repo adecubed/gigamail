@@ -104,13 +104,20 @@ jobs:
         run: npm run dist
       - name: La versione dell'installer deve coincidere col tag
         shell: pwsh
+        # In dry run (workflow_dispatch) non c'e' un tag: si usa la versione di
+        # pyproject.toml, cioe' quella che il tag DOVRA' avere.
         run: |
-          $tag = "${{ github.event.release.tag_name }}".TrimStart("v")
+          $tag = if ("${{ github.event_name }}" -eq "release") {
+            "${{ github.event.release.tag_name }}".TrimStart("v")
+          } else {
+            (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          }
           $exe = "console/dist/GigaMail Setup $tag.exe"
           if (-not (Test-Path $exe)) { Get-ChildItem console/dist; throw "installer per $tag non trovato (tag e pyproject divergono?)" }
           if (-not (Test-Path console/dist/latest.yml)) { throw "latest.yml non generato: manca publish.provider=github?" }
           Write-Host "OK: $exe + latest.yml"
       - name: Allega alla Release
+        if: github.event_name == 'release'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,3 +133,13 @@ jobs:
           $files | ForEach-Object { Write-Host "  allego $_" }
           gh release upload $tag @files --clobber
           gh release view $tag --json assets -q '.assets[].name'
+      - name: Dry run — artifact al posto degli asset
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dry-run
+          path: |
+            console/dist/GigaMail Setup *.exe
+            console/dist/*.blockmap
+            console/dist/latest.yml
+          if-no-files-found: error
