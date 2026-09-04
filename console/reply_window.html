@@ -25,7 +25,7 @@
     height:34px;flex-shrink:0;
     display:flex;align-items:center;padding:0 14px;
     background:l#
-    border-bottom:1.5px solid rgba(0,0,0,0.75);
+    border-bottom:1px solid rgba(0,0,0,0.14);
     -webkit-app-region:drag;user-select:none;
     border-radius:6px 6px 0 0;
   }
@@ -33,14 +33,14 @@
   .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
   .tb-btn{
     width:28px;height:28px;border-radius:7px;
-    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
-    border:1.5px solid rgba(0,0,0,0.75);
+    background:transparent;
+    border:none;
     display:flex;align-items:center;justify-content:center;
     font-size:14px;font-weight:700;cursor:pointer;
     color:rgba(0,0,0,0.6);transition:all 0.15s;flex-shrink:0;
-    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    box-shadow:none;
   }
-  .tb-btn:hover{box-shadow:0 4px 16px rgba(0,0,0,0.6);}
+  .tb-btn:hover{ background:rgba(0,0,0,0.06); }
   .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
   .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
   .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
@@ -75,35 +75,35 @@
   .attachments{padding:0 14px 4px;display:flex;flex-wrap:wrap;gap:5px;}
   .attach-chip{
     display:inline-flex;align-items:center;gap:4px;
-    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
-    border:1.5px solid rgba(0,0,0,0.75);border-radius:20px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);border-radius:20px;
     padding:3px 9px;font-size:10.5px;color:rgba(0,0,0,0.6);
-    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
   }
   .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
   .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
   .attach-chip-rm:hover{color:#dc2626;}
-  #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 4px 14px rgba(0,0,0,0.35);}
+  #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.14);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
 
   .toolbar{
-    padding:8px 12px;flex-shrink:0;border-top:1.5px solid rgba(0,0,0,0.75);
-    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    padding:8px 12px;flex-shrink:0;border-top:1px solid rgba(0,0,0,0.14);
+    background:#f3e6f0;
     display:flex;align-items:center;gap:6px;border-radius:0 0 6px 6px;
   }
   .tool-btn{
     padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.8);
-    border:1.5px solid rgba(0,0,0,0.75);color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
-    cursor:pointer;transition:all 0.15s;box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    border:1px solid rgba(0,0,0,0.14);color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
+    cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.07);
   }
-  .tool-btn:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);box-shadow:0 4px 16px rgba(0,0,0,0.6);}
-  .tool-btn.ai{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);box-shadow:0 4px 14px rgba(0,0,0,0.35);}
-  .tool-btn.active{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
+  .tool-btn:hover{background:#f3e6f0;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .tool-btn.ai{background:#f3e6f0;border:1px solid rgba(0,0,0,0.14);box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .tool-btn.active{background:#f3e6f0;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
 
   /* ── INSTRUCTION con drop zone ── */
   .instruction-wrap{flex:1;min-width:0;position:relative;}
   .instruction{
     width:100%;background:rgba(255,255,255,0.7);
-    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
     padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
     box-sizing:border-box;
   }
@@ -111,7 +111,7 @@
   .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
   .ctx-badge{
     display:none;position:absolute;top:-8px;right:4px;
-    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    background:#f3e6f0;
     border:1px solid rgba(0,0,0,0.5);border-radius:10px;
     padding:1px 7px;font-size:9px;color:rgba(0,0,0,0.6);
     white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;
@@ -120,18 +120,18 @@
 
   .fu-dropdown{
     position:absolute;bottom:42px;left:0;background:white;
-    border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
     box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:100;overflow:hidden;min-width:90px;display:none;
   }
   .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
-  .fu-opt:hover{background:linear-gradient(135deg,#eeb9dd,#b0c7f4);}
+  .fu-opt:hover{background:#f3e6f0;}
 
   .send-btn{
     position:relative;padding:7px 18px;border-radius:20px;
-    background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+    background:#f3e6f0;
     color:rgba(0,0,0,0.7);font-size:12px;font-weight:600;font-family:var(--font);
-    cursor:pointer;border:1.5px solid rgba(0,0,0,0.75);
-    box-shadow:0 4px 14px rgba(0,0,0,0.35);white-space:nowrap;overflow:hidden;
+    cursor:pointer;border:1px solid rgba(0,0,0,0.14);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);white-space:nowrap;overflow:hidden;
   }
   .send-btn:disabled{opacity:0.5;cursor:not-allowed;}
   .send-btn .btn-label{position:relative;z-index:1;}
@@ -156,7 +156,7 @@
   <div class="reply-row" style="position:relative;">
     <span class="reply-label" data-i18n="to_label">A:</span>
     <input type="text" id="replyTo" class="reply-field" data-i18n-ph="recipient_ph" placeholder="destinatario@email.it" autocomplete="off"/>
-    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
+    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
   </div>
   <div class="field-sep"></div>
   <div class="reply-row">
@@ -239,7 +239,7 @@ async function fetchAddressSuggestions(q) {
       </div>`).join('');
     replyToBox.style.display = 'block';
     replyToBox.querySelectorAll('[data-email]').forEach(item => {
-      item.addEventListener('mouseenter', () => item.style.background = 'linear-gradient(135deg,#eeb9dd,#b0c7f4)');
+      item.addEventListener('mouseenter', () => item.style.background = '#f3e6f0');
       item.addEventListener('mouseleave', () => item.style.background = '');
       item.addEventListener('click', () => {
         replyToInput.value = item.dataset.email;
@@ -654,10 +654,10 @@ function openMaskPanel() {
   closeMaskPanel();
   const panel = document.createElement('div');
   panel.id = 'maskPanel';
-  panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;width:min(560px,94vw);max-height:82vh;display:flex;flex-direction:column;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.4);font-family:inherit;overflow:hidden;';
+  panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;width:min(560px,94vw);max-height:82vh;display:flex;flex-direction:column;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.4);font-family:inherit;overflow:hidden;';
 
   panel.innerHTML = `
-    <div style="padding:12px 16px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div style="padding:12px 16px;background:#f3e6f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <strong style="font-size:13px">🔒 Controlla i dati prima di generare</strong>
       <button id="maskPanelClose" style="border:none;background:rgba(255,255,255,0.4);border-radius:6px;width:24px;height:24px;cursor:pointer;font-weight:700">✕</button>
     </div>
@@ -762,13 +762,13 @@ function askLabel(selected, suggested) {
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;';
     ov.innerHTML = `
-      <div style="background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
+      <div style="background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
         <div style="font-size:13px;margin-bottom:4px">Maschera <b>${escMask(selected)}</b></div>
         <div style="font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:8px">Etichetta (modificabile):</div>
         <input id="maskLabelInput" type="text" value="${escMask(suggested)}" style="width:100%;padding:8px 10px;border:1.5px solid rgba(0,0,0,0.4);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"/>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
           <button id="maskLabelCancel" style="padding:7px 14px;border:1px solid rgba(0,0,0,0.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px">Annulla</button>
-          <button id="maskLabelOk" style="padding:7px 14px;border:none;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Maschera</button>
+          <button id="maskLabelOk" style="padding:7px 14px;border:none;background:#f3e6f0;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Maschera</button>
         </div>
       </div>`;
     document.body.appendChild(ov);
@@ -815,7 +815,7 @@ function showMaskCtxMenu(x, y, selectedText) {
   hideMaskCtxMenu();
   const m = document.createElement('div');
   m.id = 'maskCtxMenu';
-  m.style.cssText = 'position:fixed;z-index:100000;min-width:180px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;';
+  m.style.cssText = 'position:fixed;z-index:100000;min-width:180px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;';
   m.innerHTML = '<div class="mask-ctx-item" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">🔒 Maschera selezione</div>';
   document.body.appendChild(m);
   const rect = m.getBoundingClientRect();

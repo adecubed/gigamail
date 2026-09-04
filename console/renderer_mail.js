@@ -85,7 +85,7 @@ const MailView = (() => {
             <button class="btn" id="btnMarkUnread">● ${T('unread_upper','NON LETTA')}</button>
           </div>
         </div>
-        <div class="mail-summary-box" id="mailSummaryBox" data-requires="/mail/{message_id}/summary" style="background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;margin:10px 15px 0;padding:9px 12px;font-size:11px;color:rgba(0,0,0,0.75);box-shadow:0 4px 14px rgba(0,0,0,0.35);">📋 ${T('press_summarize','Premi RIASSUMI per generare il riassunto.')}</div>
+        <div class="mail-summary-box" id="mailSummaryBox" data-requires="/mail/{message_id}/summary" style="background:#f3e6f0;border:1px solid rgba(0,0,0,0.14);border-radius:10px;margin:10px 15px 0;padding:9px 12px;font-size:11px;color:rgba(0,0,0,0.75);box-shadow:0 2px 8px rgba(0,0,0,0.07);">📋 ${T('press_summarize','Premi RIASSUMI per generare il riassunto.')}</div>
         <div class="mail-suggestion-box hidden" id="mailSuggestionBox"></div>${attachmentChipsHtml(msg.attachments)}`;
   }
 
@@ -196,11 +196,11 @@ async function openMail(id, overrideFolder = null) {
         <div style="
           height:36px;flex-shrink:0;
           display:flex;align-items:center;padding:0 12px;gap:8px;
-          background:linear-gradient(135deg,#eeb9dd,#b0c7f4);
+          background:#f3e6f0;
           border-bottom:1px solid rgba(0,0,0,0.08);
           user-select:none;
         ">
-          <button id="btnPopOut" title="${T('open_in_window','Apri in finestra')}" style="-webkit-app-region:no-drag;width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:rgba(0,0,0,0.6);box-shadow:0 4px 14px rgba(0,0,0,0.35);flex-shrink:0;">⤢</button>
+          <button id="btnPopOut" title="${T('open_in_window','Apri in finestra')}" style="-webkit-app-region:no-drag;width:28px;height:28px;border-radius:7px;background:#f3e6f0;border:1px solid rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:rgba(0,0,0,0.6);box-shadow:0 2px 8px rgba(0,0,0,0.07);flex-shrink:0;">⤢</button>
           <div style="flex:1;font-size:11px;font-weight:500;color:rgba(0,0,0,0.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(msg.subject || '(nessun oggetto)')}</div>
         </div>
         <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0;">
@@ -265,7 +265,7 @@ async function openMail(id, overrideFolder = null) {
         hideMenu();
         const m = document.createElement('div');
         m.id = 'attachCtxMenu';
-        m.style.cssText = 'position:fixed;z-index:99999;min-width:160px;background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;font-family:inherit';
+        m.style.cssText = 'position:fixed;z-index:99999;min-width:160px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;font-family:inherit';
         m.innerHTML = '<div class="att-ctx-item" data-act="open" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">📂 Apri</div><div class="att-ctx-item" data-act="save" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">💾 Salva con nome…</div>';
         document.body.appendChild(m);
         const rect = m.getBoundingClientRect();
