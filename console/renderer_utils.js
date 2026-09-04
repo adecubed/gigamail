@@ -755,7 +755,7 @@ async function renderDashboard() {
   const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
 
   function card(content) {
-    return `<div style="background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.12);padding:12px 14px;">${content}</div>`;
+    return `<div style="background:white;border:1px solid rgba(0,0,0,0.14);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:12px 14px;">${content}</div>`;
   }
   function secLabel(t) {
     return `<div style="font-size:9px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:rgba(0,0,0,0.55);margin-bottom:4px;">${t}</div>`;
@@ -811,9 +811,9 @@ async function renderDashboard() {
       const provider = email.includes('microsoft')||email.includes('outlook')||email.includes('hotmail') ? 'Microsoft' :
                        email.includes('gmail') ? 'Gmail' : name;
 
-      return `<div style="background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.12);padding:12px 14px;cursor:pointer;transition:box-shadow 0.15s;min-width:0;overflow:hidden;"
+      return `<div style="background:white;border:1px solid rgba(0,0,0,0.14);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:12px 14px;cursor:pointer;transition:box-shadow 0.15s;min-width:0;overflow:hidden;"
         onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,0.22)'"
-        onmouseout="this.style.boxShadow='0 4px 14px rgba(0,0,0,0.12)'"
+        onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.07)'"
         onclick="window._switchAccount && window._switchAccount(${acc.id}, '${provider}')">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
           <div style="width:9px;height:9px;border-radius:50%;background:${dotColor};border:1.5px solid rgba(0,0,0,0.2);flex-shrink:0;"></div>
@@ -878,7 +878,7 @@ async function renderDashboard() {
     const calDiv = byId('dash-calendar');
     if (calDiv) calDiv.innerHTML = card(`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
-        <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📅</div>
+        <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1px solid rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📅</div>
         <div style="font-size:12px;font-weight:500;color:rgba(0,0,0,0.82);flex:1;">${T('cal_upcoming','Prossimi appuntamenti')}</div>
         <div style="font-size:10px;color:rgba(0,0,0,0.55);">${now.toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'})}</div>
       </div>

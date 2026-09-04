@@ -10,6 +10,17 @@ Small things noticed while recording the 0.3.0 demo.
   `--text-secondary` token is 60%, and `--text-muted` — used but never
   defined — exists. A test scans the console sources so it cannot regress.
   Pointed out on r/UXDesign by **u/Mrmasseno**. Thank you.
+- **A calmer look, same identity.** Card and list borders go from black at
+  75% to a light grey; corners from 16/28px to 10/16px; shadows from heavy
+  to barely there; six pixels of air between messages; the window buttons
+  top-right are bare icons like the sidebar; the mail body sits in a rounded
+  white card. Text never sits on a gradient any more: active chips, the
+  selected message, title bars and the "New mail" button use a flat tint,
+  and the pink-blue gradient stays only on the avatar, the logo and the
+  microphone states. Every one of these came from r/UXDesign:
+  **u/AbilityRadiant2342** (the list) and **u/el_paro** (text over
+  gradients). Two tests keep the dark borders and the gradients from
+  creeping back.
 - **Dates and calendar follow the UI language.** Every date, time, month and
   weekday name was formatted with the Italian locale regardless of the
   language chosen; the calendar window title and its "+ Event" button were

@@ -381,7 +381,7 @@ function renderTodo() {
   }
 
   // Card container
-  const cardStyle = `background:white;border:1.5px solid rgba(0,0,0,0.75);border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.12);padding:12px 14px;`;
+  const cardStyle = `background:white;border:1px solid rgba(0,0,0,0.14);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:12px 14px;`;
 
   // Input area
   const inputHtml = `
@@ -389,9 +389,9 @@ function renderTodo() {
       <div id="todo-drop-overlay" style="display:none;position:absolute;inset:0;border-radius:10px;background:linear-gradient(135deg,rgba(238,185,221,0.9),rgba(176,199,244,0.9));border:2px dashed rgba(0,0,0,0.4);z-index:10;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:rgba(0,0,0,0.6);">📎 Rilascia il file</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <input id="todo-input" type="text" placeholder="${T('add_note_ph','Aggiungi nota… o trascina un file')}"
-          style="flex:1;border:1.5px solid rgba(0,0,0,0.75);border-radius:8px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.08);"
+          style="flex:1;border:1px solid rgba(0,0,0,0.14);border-radius:8px;padding:7px 10px;font-size:12px;font-family:inherit;outline:none;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.08);"
           onkeydown="if(event.key==='Enter')window._todoAdd()"/>
-        <button onclick="window._todoAdd()" style="padding:6px 12px;border-radius:8px;border:1.5px solid rgba(0,0,0,0.75);background:linear-gradient(135deg,#eeb9dd,#b0c7f4);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);">+</button>
+        <button onclick="window._todoAdd()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.14);background:#f3e6f0;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);">+</button>
       </div>
     </div>`;
 
