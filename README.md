@@ -29,7 +29,11 @@ accordingly; the masker lets you hide sensitive fields (tax codes, VAT
 numbers, IBANs, emails, phone numbers — validated deterministically, no AI)
 before the agent ever sees them.
 
-[![Ninety seconds of the human console on a demo mailbox](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+
+
+https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56
+
+
 
 *The human console in ninety seconds, on a demo mailbox: dashboard, reading
 a mail, a reply drafted by the agent from a one-line instruction, folders,
@@ -231,7 +235,7 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
-[![Novanta secondi di console umana su una casella dimostrativa](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56
 
 *La console umana in novanta secondi, su una casella dimostrativa:
 dashboard, lettura di una mail, una risposta scritta dall'agente da
@@ -427,7 +431,7 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
-[![演示邮箱上的 90 秒控制台演示](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+[![演示邮箱上的 90 秒控制台演示](docs/demo/poster.png)][(https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)](https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56)
 
 *演示邮箱上的人工控制台 90 秒：仪表盘、阅读邮件、代理根据一行指令起草的回复、
 文件夹、日历、“询问邮件”、自动化规则和首次运行向导。人工审阅后发送 ——
