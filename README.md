@@ -63,9 +63,12 @@ GigaMail ships through two channels:
   and the console's local HTTP backend. No graphical app — the right
   channel when your agent is the interface.
 - **Windows desktop app (beta)** — the human console packaged with an
-  embedded Python: one installer, no prerequisites. Today it is built from
-  source (`console/prepare-python.ps1`, then `npm run dist`); prebuilt
-  installers arrive with 0.3.0.
+  embedded Python: one installer, no prerequisites. Download
+  `GigaMail-Setup-<version>.exe` from the [latest release](https://github.com/adecubed/gigamail/releases/latest);
+  the app then updates itself from there. The installer is not code-signed
+  yet, so Windows SmartScreen warns on first run — compare the SHA-256
+  digest GitHub shows next to the asset. To build it yourself: Node 22+,
+  `console/prepare-python.ps1`, then `npm run dist`.
 
 Everything below covers the pip channel.
 
@@ -264,9 +267,12 @@ GigaMail si installa da due canali:
   e il backend HTTP locale della console. Nessuna app grafica — è il
   canale giusto quando l'interfaccia è il tuo agente.
 - **App desktop Windows (beta)** — la console umana con Python embedded:
-  un solo installer, nessun prerequisito. Oggi si builda dai sorgenti
-  (`console/prepare-python.ps1`, poi `npm run dist`); gli installer
-  precompilati arrivano con la 0.3.0.
+  un solo installer, nessun prerequisito. Scarica
+  `GigaMail-Setup-<versione>.exe` dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest); da lì
+  l'app si aggiorna da sola. L'installer non è ancora firmato, quindi
+  Windows SmartScreen avvisa al primo avvio — confronta il digest SHA-256
+  che GitHub mostra accanto al file. Per buildarlo in casa: Node 22+,
+  `console/prepare-python.ps1`, poi `npm run dist`.
 
 Tutto quello che segue riguarda il canale pip.
 
@@ -443,8 +449,11 @@ GigaMail 通过两个渠道发布：
 - **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
   控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
 - **Windows 桌面应用（beta）** — 面向人的控制台，内置 Python，一个安装包、
-  无需任何前置依赖。目前需从源码构建（`console/prepare-python.ps1`，然后
-  `npm run dist`）；预编译安装包将随 0.3.0 发布。
+  无需任何前置依赖。从[最新版本](https://github.com/adecubed/gigamail/releases/latest)下载
+  `GigaMail-Setup-<版本>.exe`，之后应用会自动从那里更新。安装包尚未代码签名，
+  首次运行时 Windows SmartScreen 会提示警告 — 请核对 GitHub 在文件旁显示的
+  SHA-256 摘要。自行构建：Node 22+，`console/prepare-python.ps1`，然后
+  `npm run dist`。
 
 下文内容均针对 pip 渠道。
 

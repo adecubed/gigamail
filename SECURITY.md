@@ -52,6 +52,11 @@ to know:
   when a token is configured, or the token leaking.
 - **Prompt injection that defeats the above** — email content that causes
   any of these outcomes rather than merely persuading the agent to *ask*.
+- **The desktop console's renderer.** HTML from a message running script
+  in the console, a link inside a message opening anything other than
+  `http`, `https` or `mailto`, a renderer window reaching Node, the
+  filesystem or a `file://` URL, or the console talking to any host other
+  than its own local backend. See "The desktop console" below.
 
 ## Out of scope
 
@@ -205,6 +210,34 @@ and neither survives in a deleted database.
   with a sharpening from **u/anderson_the_one** on binding approval to the
   exact operation shown. Thank you both.
 
+## The desktop console
+
+The Windows app (0.3) renders mail written by strangers, so its renderer is
+treated as hostile ground:
+
+- **One rendering pipeline.** Every message body — main window, detached
+  mail window, forward/quote — passes through the same sanitizer
+  (`console/mail_render.js`): scripts, event handlers, forms and `javascript:`
+  URLs are stripped, and the result is shown in a sandboxed iframe with a
+  Content-Security-Policy that allows no script at all.
+- **No Node in any renderer.** Context isolation is on, `nodeIntegration`
+  off, `webSecurity` on; the only bridge is a preload exposing the backend
+  URL and a handful of typed IPC calls. Every window has a CSP meta tag,
+  and the backend's responses carry a CSP header as well.
+- **Links go through a whitelist.** `shell.openExternal` is never called
+  directly: links are routed through one function that accepts only
+  `http`, `https` and `mailto`. New windows and navigations are denied.
+- **The backend is local and token-gated.** The console spawns its own
+  Python on `127.0.0.1` with a per-install random token; the renderer gets
+  the URL from the main process, never from a hardcoded port.
+- **Features follow the backend.** Buttons whose endpoint the running
+  backend does not expose are hidden (`data-requires`), so a console paired
+  with a smaller backend cannot call into a void.
+- **Not yet code-signed.** Installers are built in CI from the tagged
+  commit and attached to the GitHub Release together with `latest.yml`, the
+  auto-update feed. Until they are signed, verify the SHA-256 digest shown
+  on the Release page before running one.
+
 ## How we test this ourselves
 
 Structural anti-injection tests run in CI on every push
@@ -213,6 +246,15 @@ feeds hostile emails to a real agent with every tool enabled
 ([scripts/injection_e2e.py](scripts/injection_e2e.py)); it runs with a
 dry-run guard, so confirmed destructive actions are audited and never
 executed.
+
+For the console: unit tests fire XSS payloads at the sanitizer
+([console/tests](console/tests)); an end-to-end run drives the real
+Electron app over the DevTools protocol and checks isolation, the link
+whitelist, `file://` access and the capability gate
+([console/tests/e2e.mjs](console/tests/e2e.mjs)); and every push builds the
+installer, installs it on a clean Windows runner, launches the installed
+app and repeats the core checks against it
+([console/tests/smoke_packaged.mjs](console/tests/smoke_packaged.mjs)).
 
 ## Supported versions
 
