@@ -15,7 +15,7 @@
   "scripts": {
     "start": "electron .",
     "lint": "eslint .",
-    "test": "node --test",
+    "test": "node --test \"tests/*.test.js\"",
     "test:e2e": "node tests/e2e.mjs",
     "test:packaged": "node tests/smoke_packaged.mjs",
     "predist": "node sync-version.js",

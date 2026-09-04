@@ -66,8 +66,8 @@ const MailView = (() => {
     return `
         <div class="mail-detail-header">
           <div class="mail-detail-subject">${esc(msg.subject || '(nessun oggetto)')}</div>
-          <div class="mail-detail-meta">Da: ${esc(senderName)} &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime || msg.sentDateTime))}</div>
-          ${(msg.toRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">A: ${addressList(msg.toRecipients)}</div>` : ''}
+          <div class="mail-detail-meta">${T('from_label','Da')}: ${esc(senderName)} &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime || msg.sentDateTime))}</div>
+          ${(msg.toRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">${T('to_label','A:')} ${addressList(msg.toRecipients)}</div>` : ''}
           ${(msg.ccRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">CC: ${addressList(msg.ccRecipients)}</div>` : ''}
           <div class="mail-detail-actions">
             <audio id="mailAudio" src="${esc(ttsUrl)}" style="display:none"></audio>

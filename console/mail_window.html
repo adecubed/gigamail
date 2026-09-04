@@ -163,8 +163,9 @@ function fmtDate(d) {
   if (!d) return '';
   try {
     const dt = new Date(d);
-    return dt.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}) +
-           ', ' + dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    const loc = (window.i18n && window.i18n.locale) || 'it-IT';
+    return dt.toLocaleDateString(loc,{day:'2-digit',month:'short',year:'numeric'}) +
+           ', ' + dt.toLocaleTimeString(loc,{hour:'2-digit',minute:'2-digit'});
   } catch { return d; }
 }
 

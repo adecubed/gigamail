@@ -680,7 +680,14 @@
   }
 
   // espone API globale
-  window.i18n = { t, applyLang, toggleLang, get lang() { return currentLang; } };
+  // Locale per Intl (date, ore, nomi di mesi e giorni): segue la lingua
+  // della UI, non quella del sistema. Prima era 'it-IT' fisso ovunque.
+  const LOCALES = { it: 'it-IT', en: 'en-GB', zh: 'zh-CN' };
+  window.i18n = {
+    t, applyLang, toggleLang,
+    get lang() { return currentLang; },
+    get locale() { return LOCALES[currentLang] || 'it-IT'; },
+  };
 
   // applica al caricamento
   if (document.readyState === 'loading') {

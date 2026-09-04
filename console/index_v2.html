@@ -770,7 +770,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       });
       const d = await r.json();
       if(d.success){
-        const wakeStr = new Date(wakeAtTs*1000).toLocaleString('it-IT', {
+        const wakeStr = new Date(wakeAtTs*1000).toLocaleString((window.i18n && window.i18n.locale) || 'it-IT', {
           day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
         });
         // toast

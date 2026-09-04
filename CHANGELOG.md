@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.1 — in progress
+
+Small things noticed while recording the 0.3.0 demo.
+
+- **Dates and calendar follow the UI language.** Every date, time, month and
+  weekday name was formatted with the Italian locale regardless of the
+  language chosen; the calendar window title and its "+ Event" button were
+  Italian too. Formatting now uses the locale of the active language
+  (`it-IT`, `en-GB`, `zh-CN`) and month/day names come from `Intl`.
+- **"From:" / "To:" in the mail detail** were hardcoded in Italian.
+- **Dashboard no longer flashes "Loading…"** on every folder change: the
+  last rendered dashboard stays on screen while the data refreshes.
+- **Reply and new-mail windows are children of the main window**, so they
+  cannot end up behind a maximized main window (they had to be fished out
+  of the taskbar).
+- **A 90-second demo video** of the console lives in `docs/demo/` and is
+  linked from the README.
+- `npm test` only runs `tests/*.test.js` (it used to pick up any `.js`
+  under the console folder, including the embedded Python's own test files).
+
 ## v0.3.0 — 2026-09-04
 
 The desktop console grows up. 0.2 shipped it as a beta next to the pip
