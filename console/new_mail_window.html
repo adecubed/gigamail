@@ -11,6 +11,11 @@
     --font:'Saira','Segoe UI',-apple-system,sans-serif;
   }
   *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
   body{
     font-family:var(--font);
     background:rgba(255,255,255,0.97);
@@ -18,7 +23,6 @@
     overflow:hidden;display:flex;flex-direction:column;
     -webkit-font-smoothing:antialiased;
     border:1px solid rgba(0,0,0,0.14);
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
     border-radius:8px;
   }
   .titlebar{
@@ -121,14 +125,14 @@
   .ctx-badge.visible{display:block;}
 
   .status{font-size:10.5px;color:rgba(0,0,0,0.55);font-family:monospace;padding:2px 4px;}
-  .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1px solid rgba(0,0,0,0.14);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:160px;overflow-y:auto;}
+  .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1px solid rgba(0,0,0,0.14);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.07);max-height:160px;overflow-y:auto;}
   .autocomplete-box.hidden{display:none;}
   .autocomplete-item{padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
   .autocomplete-item:hover{background:#f3e6f0;}
   .fu-dropdown{
     position:absolute;bottom:42px;left:0;background:white;
     border:1px solid rgba(0,0,0,0.14);border-radius:8px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:100;overflow:hidden;min-width:90px;display:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:100;overflow:hidden;min-width:90px;display:none;
   }
   .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
   .fu-opt:hover{background:#f3e6f0;}
@@ -589,7 +593,7 @@ function showMaskCtxMenu(x, y) {
 
   const m = document.createElement('div');
   m.id = 'maskCtxMenu';
-  m.style.cssText = 'position:fixed;z-index:99999;min-width:190px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;font-family:inherit;';
+  m.style.cssText = 'position:fixed;z-index:99999;min-width:190px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:5px;font-family:inherit;';
   if (isPlaceholder) {
     m.innerHTML =
       '<div class="mask-ctx-item" data-act="unmask" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">↩️ Rimuovi maschera (ripristina)</div>' +

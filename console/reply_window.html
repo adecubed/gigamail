@@ -11,6 +11,11 @@
     --font:'Saira','Segoe UI',-apple-system,sans-serif;
   }
   *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
   body{
     font-family:var(--font);
     background:rgba(235,242,250,0.97);
@@ -19,7 +24,6 @@
     -webkit-font-smoothing:antialiased;
     border:2px solid rgba(0,0,0,0.85);
     border-radius:8px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
   }
   .titlebar{
     height:34px;flex-shrink:0;
@@ -121,7 +125,7 @@
   .fu-dropdown{
     position:absolute;bottom:42px;left:0;background:white;
     border:1px solid rgba(0,0,0,0.14);border-radius:8px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:100;overflow:hidden;min-width:90px;display:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:100;overflow:hidden;min-width:90px;display:none;
   }
   .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
   .fu-opt:hover{background:#f3e6f0;}
@@ -156,7 +160,7 @@
   <div class="reply-row" style="position:relative;">
     <span class="reply-label" data-i18n="to_label">A:</span>
     <input type="text" id="replyTo" class="reply-field" data-i18n-ph="recipient_ph" placeholder="destinatario@email.it" autocomplete="off"/>
-    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
+    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
   </div>
   <div class="field-sep"></div>
   <div class="reply-row">
@@ -815,7 +819,7 @@ function showMaskCtxMenu(x, y, selectedText) {
   hideMaskCtxMenu();
   const m = document.createElement('div');
   m.id = 'maskCtxMenu';
-  m.style.cssText = 'position:fixed;z-index:100000;min-width:180px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;';
+  m.style.cssText = 'position:fixed;z-index:100000;min-width:180px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:5px;';
   m.innerHTML = '<div class="mask-ctx-item" style="padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer">🔒 Maschera selezione</div>';
   document.body.appendChild(m);
   const rect = m.getBoundingClientRect();
