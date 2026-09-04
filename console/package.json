@@ -9,6 +9,9 @@
     "email": "info@adecubed.com"
   },
   "homepage": "https://adecubed.com",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "start": "electron .",
     "lint": "eslint .",

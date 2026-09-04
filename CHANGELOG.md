@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.0 — in progress
+## v0.3.0 — 2026-09-04
 
 The desktop console grows up. 0.2 shipped it as a beta next to the pip
 package; 0.3 is about making it something a person can install and use
