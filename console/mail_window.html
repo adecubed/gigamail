@@ -12,6 +12,11 @@
     --font: 'Saira','Segoe UI',-apple-system,sans-serif;
   }
   *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
   body {
     font-family: var(--font);
     background: #f3e6f0;
@@ -19,7 +24,6 @@
     overflow:hidden; display:flex; flex-direction:column;
     -webkit-font-smoothing:antialiased;
     border:1px solid rgba(0,0,0,0.14);
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
     border-radius:8px;
   }
 
@@ -95,7 +99,7 @@
   .attach-menu {
     position:fixed; z-index:9999; min-width:160px;
     background:#fff; border:1px solid rgba(0,0,0,0.14);
-    border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,0.35);
+    border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.07);
     padding:5px; font-family:inherit;
   }
   .attach-menu-item {

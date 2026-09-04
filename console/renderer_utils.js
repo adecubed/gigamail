@@ -612,7 +612,7 @@ function setSummaryBoxState(target, text, isLoading = false, actions = []) {
           padding:4px 10px;border-radius:14px;font-size:10.5px;font-family:var(--font,sans-serif);
           background:rgba(255,255,255,0.7);border:1.5px solid rgba(0,0,0,0.55);
           color:rgba(0,0,0,0.7);cursor:pointer;transition:all 0.15s;
-          box-shadow:0 2px 8px rgba(0,0,0,0.2);">⚡ ${esc(a)}</button>`
+          box-shadow:0 2px 8px rgba(0,0,0,0.07);">⚡ ${esc(a)}</button>`
       ).join('') +
     `</div>`;
   }
