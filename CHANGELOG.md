@@ -13,8 +13,10 @@ Small things noticed while recording the 0.3.0 demo.
 - **A calmer look, same identity.** Card and list borders go from black at
   75% to a light grey; corners from 16/28px to 10/16px; shadows from heavy
   to barely there; six pixels of air between messages; the window buttons
-  top-right are bare icons like the sidebar; the mail body sits in a rounded
-  white card. Text never sits on a gradient any more: active chips, the
+  top-right match the pop-out button (flat tint, light border, soft
+  shadow); the mail body sits in a rounded white card. The secondary
+  windows lose a body shadow that had nowhere to go and smeared their
+  bottom edge, and get thin scrollbars like the main window. Text never sits on a gradient any more: active chips, the
   selected message, title bars and the "New mail" button use a flat tint,
   and the pink-blue gradient stays only on the avatar, the logo and the
   microphone states. Every one of these came from r/UXDesign:
