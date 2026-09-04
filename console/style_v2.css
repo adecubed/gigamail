@@ -329,7 +329,7 @@ body {
   display:flex; align-items:center; justify-content:center; transition:all 0.15s;
   border:1px solid rgba(0,0,0,0.14);
   border-radius:var(--radius-sm); padding:6px 10px;
-  box-shadow:0 4px 16px rgba(0,0,0,0.42);
+  box-shadow:0 2px 8px rgba(0,0,0,0.07);
 }
 .icon-btn-sm:hover { background:#f3e6f0; }
 
