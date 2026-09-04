@@ -8,6 +8,10 @@ const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
 let mainWindow;
+// Finestre di composizione come figlie della principale: Windows le tiene
+// sopra il genitore, cosi' una risposta aperta da una finestra massimizzata
+// non finisce dietro (prima capitava, e andava ripescata dalla barra).
+const childParent = () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined);
 let serverProcess;
 let notifPoller = null;
 let lastUnreadCounts = {};
@@ -553,6 +557,7 @@ ipcMain.on('mail-window-open-reply', (event, data) => {
     transparent: true,
     backgroundColor: '#00000000',
     title: 'Nuova risposta',
+    parent: childParent(),   // resta sopra la principale: non finisce dietro
     webPreferences: {
       additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_reply.js'),
@@ -586,6 +591,7 @@ ipcMain.on('open-new-mail-window', (event, data) => {
     frame: false, transparent: false, backgroundColor: '#EBF2FA',
     resizable: true,
     title: 'Nuova mail',
+    parent: childParent(),
     webPreferences: {
       additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_new_mail.js'),
@@ -616,6 +622,7 @@ ipcMain.on('open-reply-window', (event, data) => {
     frame: false, transparent: false, backgroundColor: '#EBF2FA',
     resizable: true,
     title: 'Nuova risposta',
+    parent: childParent(),   // resta sopra la principale: non finisce dietro
     webPreferences: {
       additionalArguments: [`--gigamail-api=${API}`],  // ADE_CONSOLE_PORT fino ai renderer
       preload: path.join(__dirname, 'preload_reply.js'),

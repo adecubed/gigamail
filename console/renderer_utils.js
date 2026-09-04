@@ -1,4 +1,5 @@
 function T(key, it){ return (window.i18n && window.i18n.t) ? window.i18n.t(key) : it; }
+function LOCALE(){ return (window.i18n && window.i18n.locale) || 'it-IT'; }
 // renderer_utils.js — Utility, toast, folder, dashboard, DOM helpers
 // Caricato prima di renderer.js in index_v2.html
 
@@ -222,7 +223,7 @@ function formatMailBodyHtml(text) {
 function fmtDate(iso) {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString('it-IT', {
+    return new Date(iso).toLocaleString(LOCALE(), {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
     });
   } catch { return '—'; }
@@ -449,7 +450,7 @@ function renderFolderOptions(folders) {
 
 async function loadMailFolders(selectFirst = false) {
   const status = byId('moveMailStatus');
-  if (status) status.textContent = 'Caricamento cartelle...';
+  if (status) status.textContent = T('loading','Caricamento…');
   try {
     const folders = await api.getMailFolders(activeAccountId);
     renderFolderOptions(folders);
@@ -576,7 +577,7 @@ async function ensureMailSummary(id, accountId, detailRoot = null, folder = null
     return cached;
   }
 
-  setSummaryBoxState(box, 'Caricamento riassunto...', true);
+  setSummaryBoxState(box, T('loading','Caricamento…'), true);
   try {
     const sumData = await api.getSummary(id, accountId, folder);
     const summary = sumData?.summary || 'Riassunto non disponibile.';
@@ -760,16 +761,23 @@ async function renderDashboard() {
     return `<div style="font-size:9px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:4px;">${t}</div>`;
   }
 
-  // Scheletro immediato
-  dash.innerHTML = secLabel(T('account_label','Account')) +
-    `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="dash-accounts">` +
-    card('<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">Caricamento…</div>') +
-    card('<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">Caricamento…</div>') +
-    `</div>` +
-    secLabel(T('calendar','Calendario')) +
-    `<div id="dash-calendar">` +
-    card('<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:8px 0;">Caricamento…</div>') +
-    `</div>`;
+  // Scheletro solo la prima volta: poi l'ultima dashboard resta a video
+  // mentre i dati si aggiornano (niente "Caricamento…" a ogni cartella).
+  const loading = T('loading','Caricamento…');
+  const stale = renderDashboard._last;
+  if (stale && stale.lang === (window.i18n?.lang || 'it')) {
+    dash.innerHTML = stale.html;
+  } else {
+    dash.innerHTML = secLabel(T('account_label','Account')) +
+      `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="dash-accounts">` +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">${loading}</div>`) +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:12px 0;">${loading}</div>`) +
+      `</div>` +
+      secLabel(T('calendar','Calendario')) +
+      `<div id="dash-calendar">` +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;padding:8px 0;">${loading}</div>`) +
+      `</div>`;
+  }
 
   // Carica account
   try {
@@ -854,8 +862,8 @@ async function renderDashboard() {
       if (!dt) return '';
       try {
         const d = new Date(dt);
-        return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}) + ' ' +
-               d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+        return d.toLocaleDateString(LOCALE(),{day:'2-digit',month:'short'}) + ' ' +
+               d.toLocaleTimeString(LOCALE(),{hour:'2-digit',minute:'2-digit'});
       } catch { return ''; }
     }
 
@@ -872,7 +880,7 @@ async function renderDashboard() {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
         <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1.5px solid rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📅</div>
         <div style="font-size:12px;font-weight:500;color:rgba(0,0,0,0.82);flex:1;">${T('cal_upcoming','Prossimi appuntamenti')}</div>
-        <div style="font-size:10px;color:rgba(0,0,0,0.4);">${now.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.4);">${now.toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;">${evRows}</div>
       <div style="font-size:10px;color:rgba(0,0,0,0.4);text-align:right;margin-top:8px;cursor:pointer;"
@@ -882,6 +890,7 @@ async function renderDashboard() {
     const calDiv = byId('dash-calendar');
     if (calDiv) calDiv.innerHTML = card('<div style="font-size:11px;color:rgba(0,0,0,0.3);text-align:center;">'+T('no_calendar','Nessun calendario configurato')+'</div>');
   }
+  if (dash.isConnected) renderDashboard._last = { html: dash.innerHTML, lang: window.i18n?.lang || 'it' };
 }
 
 // Switch account dalla dashboard
@@ -990,7 +999,7 @@ async function openFolder(folder, btnId) {
   currentMailList = [];
   document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
   resetMailDetail();
-  renderMailListStatus(`Caricamento ${folder}...`);
+  renderMailListStatus(T('loading','Caricamento…'));
   try {
     await refreshCurrentFolder();
   } catch {}
@@ -1011,7 +1020,7 @@ async function openCustomFolder(folderId, label) {
   currentMailList = [];
   document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
   resetMailDetail();
-  renderMailListStatus(`Caricamento ${currentFolderLabel}...`);
+  renderMailListStatus(T('loading','Caricamento…'));
   try {
     await refreshCurrentFolder();
   } catch {}

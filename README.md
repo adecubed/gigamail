@@ -57,6 +57,10 @@ The human reviews and sends — or edits the instruction and regenerates.*
 
 ## Quick start
 
+[![Watch the 90-second demo of the desktop console](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+
+*90 seconds of the desktop console, on a demo mailbox: dashboard, reading, a reply drafted by the agent, folders, calendar, "ask your mail", automation rules and the first-run guide.*
+
 GigaMail ships through two channels:
 
 - **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
@@ -261,6 +265,10 @@ rigenera.*
 
 ## Setup rapido
 
+[![Guarda la demo di 90 secondi della console](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+
+*90 secondi di console desktop su una casella dimostrativa: dashboard, lettura, una risposta scritta dall'agente, cartelle, calendario, "chiedi alle mail", regole di automazione e guida iniziale.*
+
 GigaMail si installa da due canali:
 
 - **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
@@ -443,6 +451,10 @@ titolare del copyright.
   注入无法添加账户或读取任何机密
 
 ## 快速开始
+
+[![观看桌面控制台 90 秒演示](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)
+
+*演示邮箱上的桌面控制台 90 秒：仪表盘、阅读邮件、由代理起草的回复、文件夹、日历、“询问邮件”、自动化规则和首次运行向导。*
 
 GigaMail 通过两个渠道发布：
 

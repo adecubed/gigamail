@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-inline'; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: http://127.0.0.1:* http://localhost:* https: http: data: blob:; connect-src http://127.0.0.1:* http://localhost:*; media-src 'self' file: blob: data: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
-<title>GIGA Calendario</title>
+<title>GigaMail</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
   :root {
@@ -268,7 +268,7 @@
   <div class="ctx-item danger" data-action="delete"><span class="ctx-ico">🗑️</span><span data-i18n="cal_delete">Cancella</span></div>
 </div>
 <div class="titlebar">
-  <div class="tb-title">📅 GIGA Calendario</div>
+  <div class="tb-title">📅 <span data-i18n="cal_title">GIGA Calendario</span></div>
   <div class="tb-buttons">
     <button class="tb-btn minimize" id="btnMin">▽</button>
     <button class="tb-btn maximize" id="btnMax">□</button>
@@ -300,7 +300,7 @@
     <div class="cal-month-label" id="calMonthLabel"></div>
     <button class="cal-today-btn" id="btnToday" data-i18n="cal_today">Oggi</button>
     <button class="cal-today-btn" id="btnRefreshCal" data-i18n-title="refresh" title="Aggiorna (Ctrl+R)">↻</button>
-    <button class="add-btn" id="btnAddEvent">+ Evento</button>
+    <button class="add-btn" id="btnAddEvent">+ <span data-i18n="cal_event">Evento</span></button>
   </div>
 
   <!-- GRIGLIA -->
@@ -383,12 +383,24 @@ let _events = [];
 let _currentYear  = new Date().getFullYear();
 let _currentMonth = new Date().getMonth(); // 0-based
 
-const DAYS_IT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+// Nomi di giorni e mesi nella lingua della UI (Intl), settimana da lunedi'.
+const LOCALE = () => (window.i18n && window.i18n.locale) || 'it-IT';
+const T = (k, it) => (window.i18n && window.i18n.t) ? window.i18n.t(k) : it;
+function dayNames() {
+  const f = new Intl.DateTimeFormat(LOCALE(), { weekday: 'short' });
+  return [1, 2, 3, 4, 5, 6, 7].map(d => {
+    const n = f.format(new Date(2024, 0, d)); // 1 gen 2024 = lunedi'
+    return n.charAt(0).toUpperCase() + n.slice(1).replace(/\.$/, '');
+  });
+}
+function monthName(m, y) {
+  const n = new Intl.DateTimeFormat(LOCALE(), { month: 'long' }).format(new Date(y, m, 1));
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
 
 async function loadEvents() {
   const list = document.getElementById('upcomingList');
-  if (list) list.innerHTML = '<div class="loading">Caricamento…</div>';
+  if (list) list.innerHTML = `<div class="loading">${T('loading','Caricamento…')}</div>`;
   try {
     const r = await fetch(`${API}/calendar?days=60`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -397,7 +409,7 @@ async function loadEvents() {
   } catch(err) {
     console.error('[CAL] loadEvents error:', err);
     _events = [];
-    if (list) list.innerHTML = `<div class="loading">Errore caricamento: ${esc(err.message)}</div>`;
+    if (list) list.innerHTML = `<div class="loading">${T('error','Errore')}: ${esc(err.message)}</div>`;
   }
   renderUpcoming();
   renderCalendar();
@@ -407,8 +419,8 @@ function fmtDateTime(dt) {
   if (!dt) return '';
   try {
     const d = new Date(dt);
-    return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}) + ' ' +
-           d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleDateString(LOCALE(),{day:'2-digit',month:'short'}) + ' ' +
+           d.toLocaleTimeString(LOCALE(),{hour:'2-digit',minute:'2-digit'});
   } catch { return dt; }
 }
 
@@ -481,12 +493,12 @@ function renderUpcoming() {
 // ── GRIGLIA CALENDARIO ──
 function renderCalendar() {
   const label = document.getElementById('calMonthLabel');
-  label.textContent = `${MONTHS_IT[_currentMonth]} ${_currentYear}`;
+  label.textContent = `${monthName(_currentMonth, _currentYear)} ${_currentYear}`;
 
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
-  DAYS_IT.forEach(d => {
+  dayNames().forEach(d => {
     const h = document.createElement('div');
     h.className = 'cal-day-header';
     h.textContent = d;
@@ -539,8 +551,8 @@ function makeCell(day, month, otherMonth, isToday = false) {
   dayEvents.slice(0, 3).forEach(ev => {
     const chip = document.createElement('div');
     chip.className = 'cal-event-chip';
-    const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '';
-    chip.textContent = (time ? time + ' ' : '') + (ev.subject||ev.title||'Evento');
+    const time = ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString(LOCALE(),{hour:'2-digit',minute:'2-digit'}) : '';
+    chip.textContent = (time ? time + ' ' : '') + (ev.subject||ev.title||T('cal_event','Evento'));
     chip.addEventListener('click', (e) => { e.stopPropagation(); openEventModal(ev); });
     chip.addEventListener('contextmenu', (e) => {
       e.preventDefault(); e.stopPropagation();
