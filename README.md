@@ -431,7 +431,7 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
-[![演示邮箱上的 90 秒控制台演示](docs/demo/poster.png)][(https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)](https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56)
+[![演示邮箱上的 90 秒控制台演示](docs/demo/poster.png). https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.0.mp4)](https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56)
 
 *演示邮箱上的人工控制台 90 秒：仪表盘、阅读邮件、代理根据一行指令起草的回复、
 文件夹、日历、“询问邮件”、自动化规则和首次运行向导。人工审阅后发送 ——
