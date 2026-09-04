@@ -753,8 +753,17 @@ ipcMain.on('ask-window-maximize', (event) => {
 
 // ── AUTO-UPDATER ──────────────────────────────────────────────────────────────
 autoUpdater.on('update-available', () => mainWindow?.webContents.send('update-available'));
-autoUpdater.on('update-downloaded', () => {
-  mainWindow?.webContents.send('update-downloaded');
-  setTimeout(() => autoUpdater.quitAndInstall(), 5000);
+autoUpdater.on('update-downloaded', (info) => {
+  // Niente quitAndInstall a tempo: l'utente puo' essere a meta' di una
+  // risposta. electron-updater installa da solo alla prossima chiusura
+  // (autoInstallOnAppQuit); qui si avvisa e basta.
+  mainWindow?.webContents.send('update-downloaded', { version: info?.version });
+  if (Notification.isSupported()) {
+    new Notification({
+      title: 'GigaMail',
+      body: `Aggiornamento ${info?.version || ''} pronto: si installa alla prossima chiusura.`,
+      silent: true,
+    }).show();
+  }
 });
 autoUpdater.on('error', (err) => console.error('[UPDATER]', err.message));

@@ -5,10 +5,13 @@ name: Release to PyPI
 # nell'environment "pypi".
 #
 # Come si rilascia:
-#   1. aggiorna version in pyproject.toml e __init__.py, aggiorna CHANGELOG
+#   1. aggiorna version in pyproject.toml (console e __version__ la seguono
+#      da soli), aggiorna CHANGELOG
 #   2. tag vX.Y.Z (immutabile: un numero bruciato non si ricicla)
 #   3. crea la Release su GitHub da quel tag
-#   -> questo workflow costruisce, verifica e pubblica
+#   -> questo workflow costruisce, verifica e pubblica su PyPI, e allega alla
+#      Release l'installer Windows con latest.yml (il feed dell'auto-update
+#      di electron-updater, provider github)
 
 on:
   release:
@@ -67,3 +70,59 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  # ── Installer Windows allegato alla Release ────────────────────────────
+  # Stessa catena della Desktop build (che ha gia' validato questo commit a
+  # ogni push: install, avvio dell'app installata, uninstall). Qui si builda
+  # e si allega: GigaMail Setup X.Y.Z.exe, il .blockmap e latest.yml, che
+  # electron-updater legge dagli asset della Release piu' recente.
+  installer:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write   # gh release upload
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Dipendenze console
+        working-directory: console
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+      - name: Python embedded
+        run: powershell -ExecutionPolicy Bypass -File console/prepare-python.ps1
+      - name: Build installer
+        working-directory: console
+        run: npm run dist
+      - name: La versione dell'installer deve coincidere col tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}".TrimStart("v")
+          $exe = "console/dist/GigaMail Setup $tag.exe"
+          if (-not (Test-Path $exe)) { Get-ChildItem console/dist; throw "installer per $tag non trovato (tag e pyproject divergono?)" }
+          if (-not (Test-Path console/dist/latest.yml)) { throw "latest.yml non generato: manca publish.provider=github?" }
+          Write-Host "OK: $exe + latest.yml"
+      - name: Allega alla Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          # latest.yml punta a "GigaMail-Setup-X.Y.Z.exe" (spazi -> trattini): gli
+          # asset devono chiamarsi cosi', altrimenti electron-updater non li trova
+          # (GitHub da solo trasformerebbe gli spazi in punti).
+          Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail Setup *" } | ForEach-Object {
+            Rename-Item $_.FullName ($_.Name -replace ' ', '-')
+          }
+          $files = Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail-Setup-*" -or $_.Name -eq "latest.yml" } | ForEach-Object { $_.FullName }
+          $files | ForEach-Object { Write-Host "  allego $_" }
+          gh release upload $tag @files --clobber
+          gh release view $tag --json assets -q '.assets[].name'

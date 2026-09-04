@@ -36,6 +36,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "adecubed",
+        "repo": "gigamail"
+      }
+    ],
     "files": [
       "**/*",
       "!dist/**",
@@ -68,10 +75,7 @@
           ]
         }
       ],
-      "icon": "../docs/brand/gigamail.ico",
-      "signtoolOptions": {
-        "publisherName": "Adecubed"
-      }
+      "icon": "../docs/brand/gigamail.ico"
     },
     "nsis": {
       "oneClick": false,
