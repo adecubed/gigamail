@@ -87,9 +87,9 @@
         .sh-icon{font-size:16px;flex-shrink:0;line-height:1.3;}
         .sh-text{flex:1;min-width:0;}
         .sh-line1{color:rgba(0,0,0,0.8);margin-bottom:2px;}
-        .sh-line2{color:rgba(0,0,0,0.5);font-size:11px;}
+        .sh-line2{color:rgba(0,0,0,0.6);font-size:11px;}
         .sh-themes{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
-        .sh-themes-label{color:rgba(0,0,0,0.45);font-size:11px;}
+        .sh-themes-label{color:rgba(0,0,0,0.6);font-size:11px;}
         .sh-chip{background:rgba(176,199,244,0.25);border-radius:6px;padding:1px 7px;font-size:11px;color:rgba(0,0,0,0.7);}
         .sh-summarize{flex-shrink:0;border:1px solid rgba(0,0,0,0.15);background:#fff;border-radius:8px;
           padding:5px 10px;font-size:11px;cursor:pointer;color:rgba(0,0,0,0.7);transition:all .15s;}

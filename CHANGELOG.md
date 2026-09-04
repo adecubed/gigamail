@@ -4,6 +4,12 @@
 
 Small things noticed while recording the 0.3.0 demo.
 
+- **Grey text meets WCAG AA.** Dates, captions, placeholders and every
+  secondary label sat at 30-45% black on white (2.1-3.4:1, below the 4.5:1
+  the AA level asks for). The floor is now 55% black (4.7:1), the
+  `--text-secondary` token is 60%, and `--text-muted` — used but never
+  defined — exists. A test scans the console sources so it cannot regress.
+  Pointed out on r/UXDesign by **u/Mrmasseno**. Thank you.
 - **Dates and calendar follow the UI language.** Every date, time, month and
   weekday name was formatted with the Italian locale regardless of the
   language chosen; the calendar window title and its "+ Event" button were

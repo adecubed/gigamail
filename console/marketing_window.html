@@ -113,7 +113,7 @@
   }
   .fmt-tab.active { background:linear-gradient(135deg,#eeb9dd,#b0c7f4); }
 
-  .hint { font-size:10px; color:rgba(0,0,0,0.4); font-family:monospace; }
+  .hint { font-size:10px; color:rgba(0,0,0,0.55); font-family:monospace; }
   .hint.ok { color:#1A7F4B; }
   .hint.err { color:#C0392B; }
   .hint.blue { color:rgba(26,108,245,0.8); }
@@ -164,7 +164,7 @@
   }
   .bulk-log {
     height:70px; overflow-y:auto; font-size:10px;
-    font-family:monospace; color:rgba(0,0,0,0.4);
+    font-family:monospace; color:rgba(0,0,0,0.55);
     background:rgba(0,0,0,0.03); border-radius:6px; padding:6px 8px;
     border:1px solid rgba(0,0,0,0.08);
   }
@@ -246,7 +246,7 @@
     padding:10px 16px; border-top:1px solid rgba(0,0,0,0.08);
     display:flex; gap:8px; align-items:center;
   }
-  .ai-status { flex:1; font-size:11px; color:rgba(0,0,0,0.5); font-family:monospace; }
+  .ai-status { flex:1; font-size:11px; color:rgba(0,0,0,0.6); font-family:monospace; }
 </style>
 </head>
 <body>
@@ -319,7 +319,7 @@
     <div id="bulkGenerateStatus" class="hint" style="flex-shrink:0"></div>
 
     <div class="img-toolbar" id="imgToolbar">
-      <span style="font-size:11px;color:rgba(0,0,0,0.4);font-weight:500;" data-i18n="images_label">IMMAGINI:</span>
+      <span style="font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;" data-i18n="images_label">IMMAGINI:</span>
       <button class="img-btn" id="btnDropInfo">📎 <span data-i18n="drag_image">Trascina immagine qui</span></button>
       <button class="img-btn" id="btnLoadFolder">📁 <span data-i18n="load_folder">Carica cartella</span></button>
     </div>
@@ -590,7 +590,7 @@ document.getElementById('folderInput')?.addEventListener('change', async (e) => 
   _loadedImages = [];
   _selectedImgIdx = null;
   const grid = document.getElementById('imgGrid');
-  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:rgba(0,0,0,0.4)">Caricamento immagini…</div>';
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:rgba(0,0,0,0.55)">Caricamento immagini…</div>';
   document.getElementById('imgPicker').classList.add('visible');
   document.getElementById('aiImgStatus').textContent = '';
   document.getElementById('btnInsertImg').disabled = true;

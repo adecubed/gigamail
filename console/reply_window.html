@@ -51,7 +51,7 @@
   .reply-row{display:flex;align-items:center;gap:8px;}
   .reply-label{font-size:11px;color:rgba(0,0,0,0.75);font-weight:700;width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
   .reply-field{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
-  .reply-field::placeholder{color:rgba(0,0,0,0.28);}
+  .reply-field::placeholder{color:rgba(0,0,0,0.55);}
   .field-sep{height:1px;background:rgba(0,0,0,0.06);margin:0;}
 
   /* ── BODY con drop zone ── */
@@ -60,7 +60,7 @@
     flex:1;background:rgba(255,255,255,0.95);border:none;outline:none;resize:none;
     padding:14px 16px;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);line-height:1.65;
   }
-  .reply-textarea::placeholder{color:rgba(0,0,0,0.28);}
+  .reply-textarea::placeholder{color:rgba(0,0,0,0.55);}
   .drop-overlay{
     display:none;position:absolute;inset:0;
     background:rgba(176,199,244,0.35);
@@ -81,7 +81,7 @@
     box-shadow:0 4px 14px rgba(0,0,0,0.35);
   }
   .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
-  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.3);font-size:12px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
   .attach-chip-rm:hover{color:#dc2626;}
   #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1.5px solid rgba(0,0,0,0.75);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 4px 14px rgba(0,0,0,0.35);}
 
@@ -107,7 +107,7 @@
     padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
     box-sizing:border-box;
   }
-  .instruction::placeholder{color:rgba(0,0,0,0.3);}
+  .instruction::placeholder{color:rgba(0,0,0,0.55);}
   .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
   .ctx-badge{
     display:none;position:absolute;top:-8px;right:4px;
@@ -661,9 +661,9 @@ function openMaskPanel() {
       <strong style="font-size:13px">🔒 Controlla i dati prima di generare</strong>
       <button id="maskPanelClose" style="border:none;background:rgba(255,255,255,0.4);border-radius:6px;width:24px;height:24px;cursor:pointer;font-weight:700">✕</button>
     </div>
-    <div style="font-size:11px;color:rgba(0,0,0,0.5);padding:8px 14px 4px;flex-shrink:0">Mail originale (i dati mascherati appaiono come <b>[ETICHETTA_N]</b>). Seleziona altro testo qui sotto e usa il tasto destro per mascherarlo.</div>
+    <div style="font-size:11px;color:rgba(0,0,0,0.6);padding:8px 14px 4px;flex-shrink:0">Mail originale (i dati mascherati appaiono come <b>[ETICHETTA_N]</b>). Seleziona altro testo qui sotto e usa il tasto destro per mascherarlo.</div>
     <div id="maskOrigBox" style="margin:0 14px;padding:10px 12px;background:rgba(248,250,252,0.9);border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow:auto;flex:1;min-height:120px;user-select:text;"></div>
-    <div style="font-size:11px;color:rgba(0,0,0,0.5);padding:8px 14px 4px;flex-shrink:0">Spunta = mascherato (non esce). Togli per lasciare in chiaro.</div>
+    <div style="font-size:11px;color:rgba(0,0,0,0.6);padding:8px 14px 4px;flex-shrink:0">Spunta = mascherato (non esce). Togli per lasciare in chiaro.</div>
     <div id="maskList" style="margin:0 14px 12px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;overflow:auto;max-height:160px;flex-shrink:0"></div>
   `;
   document.body.appendChild(panel);
@@ -720,10 +720,10 @@ function renderMaskPanel() {
         <input type="checkbox" data-mask-idx="${c.index}" ${checked} style="width:16px;height:16px;flex-shrink:0;cursor:pointer"/>
         <span style="font-weight:700;color:#2ea043;flex-shrink:0;min-width:78px">[${c.label_prefix}_]</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escMask(c.value)}</span>
-        <span style="font-size:10px;color:rgba(0,0,0,0.4)">${c.source==='user'?'tua regola':'auto'}</span>
+        <span style="font-size:10px;color:rgba(0,0,0,0.55)">${c.source==='user'?'tua regola':'auto'}</span>
         ${trash}
       </div>`;
-    }).join('') || '<div style="padding:14px;color:rgba(0,0,0,0.4);font-size:12px;text-align:center">Nessun dato rilevato. Seleziona testo sopra e tasto destro per mascherare.</div>';
+    }).join('') || '<div style="padding:14px;color:rgba(0,0,0,0.55);font-size:12px;text-align:center">Nessun dato rilevato. Seleziona testo sopra e tasto destro per mascherare.</div>';
     list.querySelectorAll('input[data-mask-idx]').forEach(cb => {
       cb.addEventListener('change', () => {
         const idx = parseInt(cb.dataset.maskIdx, 10);
@@ -764,7 +764,7 @@ function askLabel(selected, suggested) {
     ov.innerHTML = `
       <div style="background:#fff;border:1.5px solid rgba(0,0,0,0.75);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.4);width:min(360px,90vw);padding:16px;font-family:inherit">
         <div style="font-size:13px;margin-bottom:4px">Maschera <b>${escMask(selected)}</b></div>
-        <div style="font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px">Etichetta (modificabile):</div>
+        <div style="font-size:11px;color:rgba(0,0,0,0.6);margin-bottom:8px">Etichetta (modificabile):</div>
         <input id="maskLabelInput" type="text" value="${escMask(suggested)}" style="width:100%;padding:8px 10px;border:1.5px solid rgba(0,0,0,0.4);border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"/>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
           <button id="maskLabelCancel" style="padding:7px 14px;border:1px solid rgba(0,0,0,0.2);background:#fff;border-radius:8px;cursor:pointer;font-size:12px">Annulla</button>
