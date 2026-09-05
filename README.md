@@ -65,7 +65,7 @@ GigaMail ships through two channels:
 - **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
   and the console's local HTTP backend. No graphical app — the right
   channel when your agent is the interface.
-- **Windows desktop app (beta)** — the human console packaged with an
+- **Windows desktop app** — the human console packaged with an
   embedded Python: one installer, no prerequisites. Download
   `GigaMail-Setup-<version>.exe` from the [latest release](https://github.com/adecubed/gigamail/releases/latest);
   the app then updates itself from there. The installer is not code-signed
@@ -268,7 +268,7 @@ GigaMail si installa da due canali:
 - **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
   e il backend HTTP locale della console. Nessuna app grafica — è il
   canale giusto quando l'interfaccia è il tuo agente.
-- **App desktop Windows (beta)** — la console umana con Python embedded:
+- **App desktop Windows** — la console umana con Python embedded:
   un solo installer, nessun prerequisito. Scarica
   `GigaMail-Setup-<versione>.exe` dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest); da lì
   l'app si aggiorna da sola. L'installer non è ancora firmato, quindi
@@ -456,7 +456,7 @@ GigaMail 通过两个渠道发布：
 
 - **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
   控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
-- **Windows 桌面应用（beta）** — 面向人的控制台，内置 Python，一个安装包、
+- **Windows 桌面应用** — 面向人的控制台，内置 Python，一个安装包、
   无需任何前置依赖。从[最新版本](https://github.com/adecubed/gigamail/releases/latest)下载
   `GigaMail-Setup-<版本>.exe`，之后应用会自动从那里更新。安装包尚未代码签名，
   首次运行时 Windows SmartScreen 会提示警告 — 请核对 GitHub 在文件旁显示的
