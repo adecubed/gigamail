@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.2 — in progress
+
+- **Codex CLI as a first-class agent.** The console detects `codex` next to
+  `claude`, lets you pick the agent that writes the drafts (first-run guide
+  and Automations), stores the choice as `{"agent": "codex"}` in
+  `agent.json` and resolves the command at every start. Drafts run through
+  `codex exec` in a read-only sandbox, with the final answer read from a
+  file. The MCP registration snippet switches to `~/.codex/config.toml`
+  (or `codex mcp add`) when Codex is selected. Both directions verified on
+  Windows — see INTEGRATIONS.md, including the gate holding with Codex's
+  own approvals bypassed.
+- `.codex-plugin/plugin.json` follows the release version (it was still
+  0.2.4 at 0.3.1); `sync-version.js` and a test keep it aligned.
+
 ## v0.3.1 — 2026-09-04
 
 Small things noticed while recording the 0.3.0 demo.

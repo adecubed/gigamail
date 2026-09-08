@@ -52,3 +52,14 @@ def test_server_json_segue_pyproject():
         assert pkg["version"] == version
         pins = [a["value"] for a in pkg.get("runtimeArguments", []) if "==" in str(a.get("value", ""))]
         assert pins and all(p.endswith("==" + version) for p in pins), pins
+
+
+def test_plugin_manifest_segue_pyproject():
+    """.codex-plugin/plugin.json: sync-version.js lo aggiorna prima di ogni
+    build della console; qui si controlla che sia davvero allineato."""
+    import json
+
+    root = Path(__file__).resolve().parent.parent
+    version = re.search(r'^version\s*=\s*"([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    plugin = json.loads((root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert plugin["version"] == version

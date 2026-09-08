@@ -260,10 +260,21 @@
     try {
       const st = await api('/notify/status');
       const ag = st.agent || {};
+      const sel = $('agentSelect');
+      if (sel) {
+        sel.innerHTML = '';
+        (ag.agents || []).forEach((a) => {
+          const o = document.createElement('option');
+          o.value = a.id;
+          o.textContent = a.found ? a.label : `${a.label} — ${T('non trovato', 'not found')}`;
+          sel.appendChild(o);
+        });
+        if (ag.agent) sel.value = ag.agent;
+      }
       set('agentStatus', ag.available ? 'ok' : 'err',
         ag.available ? T(`pronto: ${ag.command}`, `ready: ${ag.command}`)
-                     : T('agente non trovato: installa Claude Code o configura agent.json',
-                         'agent not found: install Claude Code or configure agent.json'));
+                     : T('agente non trovato: installa Claude Code o Codex CLI, o configura agent.json',
+                         'agent not found: install Claude Code or Codex CLI, or configure agent.json'));
       set('consentStatus', st.consent_backend ? 'ok' : 'err',
         st.consent_backend || T('nessun backend: approvazioni solo da console? NO — fail-closed',
                                 'no backend: approvals fail closed'));
@@ -311,6 +322,14 @@
   // ------------------------------------------------------------ bind
   document.addEventListener('DOMContentLoaded', () => {
     $('btnShowAutomations')?.addEventListener('click', showView);
+    $('agentSelect')?.addEventListener('change', async (e) => {
+      try {
+        await api('/agent/select', { method: 'POST', body: JSON.stringify({ agent: e.target.value }) });
+      } catch (err) {
+        set('agentStatus', 'err', err.message);
+      }
+      refreshNotify();
+    });
     // qualunque altra voce della sidebar riporta alla posta
     document.querySelectorAll('.sidebar .s-item').forEach((item) => {
       if (item.id !== 'btnShowAutomations' && item.id !== 'langSwitch') {

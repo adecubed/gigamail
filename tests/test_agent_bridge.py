@@ -71,3 +71,56 @@ def test_status_riporta_comando(monkeypatch):
     st = agent_bridge.status()
     assert st["available"] is True
     assert st["command"] == PY
+
+
+# ── agenti noti: Claude Code e Codex CLI ──────────────────────────────────
+
+def test_comando_codex_ha_exec_output_e_prompt():
+    cmd = agent_bridge.AGENTS["codex"]["command"]("codex")
+    assert cmd[:2] == ["codex", "exec"]
+    assert "{prompt}" in cmd and "{output}" in cmd
+    assert "read-only" in cmd  # sandbox: scrive la bozza, non il disco
+
+
+def test_output_placeholder_letto_da_file(monkeypatch):
+    """Con {output} la risposta arriva dal file, non da stdout (Codex stampa
+    su stdout anche il resto della sessione)."""
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(
+        [PY, "-c", "import sys; open(sys.argv[1], 'w').write('RISPOSTA FINALE'); print('rumore su stdout')",
+         "{output}", "{prompt}"]))
+    assert agent_bridge.run("ciao") == "RISPOSTA FINALE"
+
+
+def test_select_agent_scrive_agent_json_e_status_lo_riporta(monkeypatch, tmp_ade_root):
+    monkeypatch.delenv("ADE_AGENT_CMD", raising=False)
+    cfg_path = agent_bridge._config_path()
+    try:
+        st = agent_bridge.select_agent("codex")
+        assert st["agent"] == "codex"
+        assert json.load(open(cfg_path, encoding="utf-8"))["agent"] == "codex"
+        assert agent_bridge.get_config()["command"][1] == "exec"
+        ids = [a["id"] for a in st["agents"]]
+        assert ids[:2] == ["claude", "codex"]
+        assert all("found" in a and "mcp" in a for a in st["agents"])
+    finally:
+        os.unlink(cfg_path)
+
+
+def test_select_agent_conserva_il_comando_custom(monkeypatch, tmp_ade_root):
+    monkeypatch.delenv("ADE_AGENT_CMD", raising=False)
+    cfg_path = agent_bridge._config_path()
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        json.dump({"command": ["mio", "{prompt}"], "timeout": 44}, f)
+    try:
+        assert agent_bridge.get_config()["agent"] == "custom"
+        agent_bridge.select_agent("claude")
+        saved = json.load(open(cfg_path, encoding="utf-8"))
+        assert saved["command_custom"] == ["mio", "{prompt}"] and saved["agent"] == "claude"
+        assert agent_bridge.get_config()["timeout"] == 44
+    finally:
+        os.unlink(cfg_path)
+
+
+def test_select_agent_sconosciuto():
+    with pytest.raises(ValueError):
+        agent_bridge.select_agent("skynet")

@@ -12,6 +12,14 @@
   const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
   const STEPS = ['welcome', 'account', 'identity', 'agent', 'done'];
   const MCP_SNIPPET = '{\n  "mcpServers": {\n    "gigamail": { "command": "gigamail-server" }\n  }\n}';
+  // Codex legge ~/.codex/config.toml; il comando `codex mcp add` scrive la
+  // stessa cosa senza aprire il file. GIGAMAIL_ROOT: la cartella dati della
+  // console, cosi' server e console vedono gli stessi account e approvazioni.
+  function codexSnippet(root) {
+    const r = String(root || '%APPDATA%\\ADE').replace(/\\/g, '\\\\');
+    return `codex mcp add gigamail --env GIGAMAIL_ROOT="${root || '%APPDATA%\\ADE'}" -- gigamail-server\n\n# or in ~/.codex/config.toml:\n[mcp_servers.gigamail]\ncommand = "gigamail-server"\n\n[mcp_servers.gigamail.env]\nGIGAMAIL_ROOT = "${r}"`;
+  }
+  let currentSnippet = MCP_SNIPPET;
   const TG_COMMAND = 'gigamail telegram setup';
 
   const api = window.ademail || {};
@@ -317,6 +325,24 @@
   }
 
   // ── passo agente ───────────────────────────────────────────────────
+  function renderAgentChoice(ag) {
+    const sel = $('obAgentSelect');
+    if (sel) {
+      sel.innerHTML = '';
+      (ag.agents || []).forEach((a) => {
+        const o = document.createElement('option');
+        o.value = a.id;
+        o.textContent = a.found ? a.label : `${a.label} — ${T('ob_agent_not_found', 'non trovato')}`;
+        sel.appendChild(o);
+      });
+      if (ag.agent) sel.value = ag.agent;
+    }
+    const isCodex = ag.agent === 'codex';
+    currentSnippet = isCodex ? codexSnippet(ag.root) : MCP_SNIPPET;
+    setText('obMcpSnippet', currentSnippet);
+    setText('obMcpLabel', T(isCodex ? 'ob_agent_mcp_codex' : 'ob_agent_mcp', ''));
+  }
+
   async function loadAgent() {
     setText('obMcpSnippet', MCP_SNIPPET);
     setText('obTgCommand', TG_COMMAND);
@@ -324,6 +350,7 @@
       const st = await apiJson('/notify/status');
       const ag = st.agent || {};
       agentReady = !!ag.available;
+      renderAgentChoice(ag);
       setStatus('obAgentStatus',
         agentReady ? `${T('ob_agent_found', '')} ${ag.command || ''}` : T('ob_agent_missing', ''),
         agentReady ? 'ok' : 'warn');
@@ -386,7 +413,15 @@
     on('obImapCancel', 'click', () => { setHidden('obImapPanel', true); setHidden('obChoices', false); });
     on('obImapPassword', 'keydown', (e) => { if (e.key === 'Enter') imapSave(); });
     on('obPickDocs', 'click', pickDocs);
-    on('obCopyMcp', 'click', (e) => copy(MCP_SNIPPET, e.currentTarget));
+    on('obCopyMcp', 'click', (e) => copy(currentSnippet, e.currentTarget));
+    on('obAgentSelect', 'change', async (e) => {
+      try {
+        await apiJson('/agent/select', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: e.target.value }) });
+        await loadAgent();
+      } catch (err) {
+        setStatus('obAgentStatus', `${T('ob_err', 'Errore:')} ${err.message || err}`, 'err');
+      }
+    });
     on('obCopyTg', 'click', (e) => copy(TG_COMMAND, e.currentTarget));
     on('obNotifySetup', 'click', desktopSetup);
     document.querySelectorAll('.ob-lang').forEach((b) => b.addEventListener('click', () => {
