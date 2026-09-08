@@ -815,7 +815,10 @@ def cmd_open_url(args) -> int:
     aperta finche' l'utente non preme INVIO, cosi' vede l'esito."""
     import re as _re
     _console_utf8()
-    m = _re.match(r"^gigamail://(approve|reject|show|edit)/(req_[0-9a-f]+)/?$",
+    # Largo come il tag della toast: un id che non combacia con la
+    # regex fa rispondere "URL non riconosciuto" a un bottone che
+    # l'utente ha appena premuto — l'errore sembra suo e non lo e'.
+    m = _re.match(r"^gigamail://(approve|reject|show|edit)/(req_[0-9A-Za-z]+)/?$",
                   (args.url or "").strip(), _re.I)
     if not m:
         print(f"URL non riconosciuto: {args.url}")

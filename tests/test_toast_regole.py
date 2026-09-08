@@ -58,3 +58,23 @@ def test_modifica_su_una_richiesta_di_un_tool_non_finge(monkeypatch):
 
     monkeypatch.setattr(rules_mod, "store", lambda: _RS())
     assert cli._retry_di_regola("req_1", "nota") is False
+
+
+def test_i_bottoni_e_il_gestore_accettano_gli_stessi_id():
+    """Il tag della toast accetta id alfanumerici, il gestore dell'URL solo
+    esadecimali: un id fuori formato faceva rispondere "URL non
+    riconosciuto" a un bottone appena premuto, e l'errore sembrava
+    dell'utente. Le due regex devono concordare."""
+    import re
+    import inspect
+    from ade_mail_agent import cli
+    from ade_mail_agent.core import desktop_notify as d
+
+    src = inspect.getsource(cli.cmd_open_url)
+    regex = re.search(r'r"(\^gigamail://[^"]+)"', src).group(1)
+    for rid in ("req_deadbeef", "req_prova9999", "req_A1b2C3"):
+        assert re.match(regex, f"gigamail://approve/{rid}"), rid
+        assert d._toast_tag([("x", f"gigamail://show/{rid}")]) == rid
+    # e resta chiuso a tutto il resto
+    assert not re.match(regex, "gigamail://approve/../../etc")
+    assert not re.match(regex, "gigamail://elimina/req_abc123")
