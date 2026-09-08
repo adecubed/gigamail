@@ -13,6 +13,8 @@ option) any later version. See the LICENSE file for details.
 
 **English** · [Italiano](#lang-it) · [中文](#lang-zh)
 
+[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+
 **MCP server that gives your agent — Claude, Codex, OpenClaw, Hermes, or any
 MCP client — safe, controlled access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
 local search index, sender memory, and an agent-aware permission model.
@@ -215,6 +217,8 @@ closed-source use are available from the copyright holder.
 # GigaMail — La posta per il tuo agente AI
 
 [English](#gigamail--mail-for-your-ai-agent) · **Italiano** · [中文](#lang-zh)
+
+[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
 
 
 **Server MCP che dà al tuo agente — Claude, Codex, OpenClaw, Hermes o
@@ -419,6 +423,8 @@ titolare del copyright.
 # GigaMail — 给你的 AI 代理的邮箱
 
 [English](#gigamail--mail-for-your-ai-agent) · [Italiano](#lang-it) · **中文**
+
+[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
 
 **一个 MCP 服务器，让你的代理 —— Claude、Codex、OpenClaw、Hermes 或任何
 兼容 MCP 的客户端 —— 安全、受控地访问你的真实邮箱** —— 多账户（Microsoft Graph + IMAP）、日历、本地搜索索引、发件人

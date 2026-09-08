@@ -218,6 +218,7 @@
       <a href="#tools">Tools</a>
       <a href="#redteam">Red team</a>
       <a href="#start">Get started</a>
+      <a href="https://github.com/adecubed/gigamail/releases/latest" id="nav-download">Download</a>
     </nav>
   </div>
 </header>
@@ -236,9 +237,14 @@
           next to the inbox you already use.
         </p>
         <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/adecubed/gigamail">View on GitHub</a>
+          <a class="btn btn-primary" id="btn-download" href="https://github.com/adecubed/gigamail/releases/latest">Download for Windows</a>
+          <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail">View on GitHub</a>
           <a class="btn btn-ghost" href="#start">Get started</a>
         </div>
+        <p class="agents" id="download-note" style="margin-top:.6rem">
+          Windows 10/11 installer, everything included. Unsigned for now: SmartScreen
+          will warn on first run. Agent only? <code>pip install "gigamail[all]"</code>.
+        </p>
         <p class="agents">
           Works with <b>Claude</b>, <b>Codex</b>, <b>OpenClaw</b>, <b>Hermes</b>, or your own agent — ours is Sofia.
           No built-in LLM: the intelligence is whatever agent you bring.
@@ -479,6 +485,28 @@ gigamail identity add-file ./floor-plans/</pre>
     </div>
   </section>
 </main>
+
+<script>
+  // Il bottone punta alla pagina della Release; se l'API di GitHub risponde,
+  // diventa il link diretto all'installer con il numero di versione.
+  (function () {
+    var btn = document.getElementById('btn-download');
+    if (!btn || !window.fetch) return;
+    fetch('https://api.github.com/repos/adecubed/gigamail/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rel) {
+        if (!rel || !rel.assets) return;
+        var exe = rel.assets.filter(function (a) { return /\.exe$/i.test(a.name); })[0];
+        if (!exe) return;
+        btn.href = exe.browser_download_url;
+        btn.textContent = 'Download GigaMail ' + String(rel.tag_name || '').replace(/^v/, '') + ' for Windows';
+        var mb = Math.round(exe.size / 1048576);
+        var note = document.getElementById('download-note');
+        if (note && mb) note.insertAdjacentText('afterbegin', mb + ' MB · ');
+      })
+      .catch(function () {});
+  })();
+</script>
 
 <footer>
   <div class="wrap foot-grid">
