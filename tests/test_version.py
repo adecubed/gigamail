@@ -32,3 +32,19 @@ def test_health_riporta_la_versione(monkeypatch):
     importlib.reload(http_api)
     assert r.status_code == 200
     assert r.json()["version"] == ade_mail_agent.__version__
+
+
+def test_server_json_segue_pyproject():
+    """Il manifest del registry MCP (server.json) porta la versione in tre
+    punti: server, pacchetto PyPI e pin di uvx. Alla 0.3.1 il pin era
+    rimasto a 0.2.4: chi installava dal registry prendeva il server vecchio."""
+    import json
+
+    root = Path(__file__).resolve().parent.parent
+    version = re.search(r'^version\s*=\s*"([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    doc = json.loads((root / "server.json").read_text(encoding="utf-8"))
+    assert doc["version"] == version
+    for pkg in doc["packages"]:
+        assert pkg["version"] == version
+        pins = [a["value"] for a in pkg.get("runtimeArguments", []) if "==" in str(a.get("value", ""))]
+        assert pins and all(p.endswith("==" + version) for p in pins), pins
