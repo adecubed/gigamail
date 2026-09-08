@@ -65,9 +65,17 @@ class Watcher:
 
     def tick(self) -> Dict[str, int]:
         stats = {"executed": 0, "processed": 0}
+        # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
+        # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
+        # soglia oltre la quale running_state() dichiara morto il watcher:
+        # cosi' un processo vivo e al lavoro risultava assente, e la
+        # guardia del launcher — che usa quello stesso controllo — poteva
+        # farne partire un secondo.
         self.heartbeat()
         stats["executed"] = self.execute_approved()
+        self.heartbeat()
         stats["processed"] += self.process_retries()
+        self.heartbeat()
         for rule in rules_mod.store().active():
             for message in self._poll_folder(rule):
                 if not self._matches(rule, message):
@@ -75,8 +83,10 @@ class Watcher:
                 message_id = str(message.get("id"))
                 if rules_mod.store().already_handled(rule["rule_id"], message_id):
                     continue
+                self.heartbeat()   # una bozza puo' durare minuti
                 self.process_message(rule, message)
                 stats["processed"] += 1
+                self.heartbeat()
         return stats
 
     # -- Telegram: tap e comandi dall'umano --------------------------------
