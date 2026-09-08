@@ -98,6 +98,12 @@
 
   /* ── hero ── */
   .hero { padding: clamp(3rem, 8vw, 5.5rem) 0 clamp(2.5rem, 6vw, 4rem); }
+  /* logo 3D (Three.js); il PNG resta sotto come fallback e finche' il canvas non e' pronto */
+  #giga-3d { position: relative; width: min(100%, 340px); aspect-ratio: 2.1 / 1; margin: -.6rem 0 .4rem -.4rem; }
+  #giga-3d img { position: absolute; left: 12%; top: 8%; width: 76%; height: auto; transition: opacity .6s ease; }
+  #giga-3d canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; opacity: 0; transition: opacity .8s ease; }
+  #giga-3d.ready img { opacity: 0; }
+  #giga-3d.ready canvas { opacity: 1; }
   .hero-grid { display: grid; gap: clamp(2rem, 5vw, 3.5rem); grid-template-columns: 1fr; align-items: start; }
   @media (min-width: 900px) { .hero-grid { grid-template-columns: 1.05fr .95fr; } }
   .lede { font-size: 1.16rem; color: var(--muted); margin-top: 1.1rem; }
@@ -206,6 +212,14 @@
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
   }
 </style>
+<!-- logo 3D (Three.js da jsDelivr) -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="giga-logo3d.js"></script>
 </head>
 <body>
 
@@ -227,6 +241,7 @@
   <div class="wrap hero">
     <div class="hero-grid">
       <div>
+        <div id="giga-3d" role="img" aria-label="GigaMail"><img src="brand/gigamail-logo-256.png" alt=""></div>
         <p class="eyebrow">Open source · AGPL-3.0</p>
         <h1 style="margin-top:.7rem">The email layer for AI&nbsp;agents.</h1>
         <p class="lede">
