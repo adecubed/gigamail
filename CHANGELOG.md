@@ -13,6 +13,11 @@
   own approvals bypassed.
 - `.codex-plugin/plugin.json` follows the release version (it was still
   0.2.4 at 0.3.1); `sync-version.js` and a test keep it aligned.
+- **An old notification says it is old.** Pressing a desktop toast after
+  its request has expired or been decided used to answer "request does
+  not exist", which reads like a fault. It now says the notification is
+  stale and lists what is actually waiting, if anything; and the window
+  no longer dies with a traceback when there is no standard input.
 
 ## v0.3.1 — 2026-09-04
 
