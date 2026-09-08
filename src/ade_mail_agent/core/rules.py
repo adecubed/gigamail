@@ -264,12 +264,25 @@ class RuleStore:
 
     # ----------------------------------------------------------- handled
 
+    # 'matched' e' uno stato di passaggio: viene scritto all'inizio del
+    # giro e sostituito appena la bozza c'e'. Se resta, il processo e'
+    # morto a meta' — PC spento, watcher riavviato — e la mail non va
+    # persa per sempre solo perche' era in mano a qualcuno che non c'e'
+    # piu'. Oltre questa soglia si rilavora.
+    MATCHED_ORFANO_SECONDI = 1800
+
     def already_handled(self, rule_id: str, message_id: str) -> bool:
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT 1 FROM handled WHERE rule_id=? AND message_id=?",
+                "SELECT status, ts FROM handled WHERE rule_id=? AND message_id=?",
                 (rule_id, str(message_id))).fetchone()
-        return row is not None
+        if row is None:
+            return False
+        if row["status"] == "matched" and (
+                time.time() - float(row["ts"] or 0)
+                > self.MATCHED_ORFANO_SECONDI):
+            return False
+        return True
 
     def record(self, rule_id: str, account_id: int, message_id: str,
                sender: str, status: str, reason: str = "",

@@ -19,7 +19,13 @@ class Watcher:
     _PIN_LOCK_SECONDS = telegram._PIN_LOCK_SECONDS
 
     def __init__(self, interval: int = 60, verbose: bool = False,
-                 unread_days: int = 2, unread_top: int = 25):
+                 unread_days: int = 7, unread_top: int = 25):
+        # 7 giorni, non 2: il perimetro serve a non far rispondere a
+        # posta vecchia quando nasce una regola, non a perdere le
+        # richieste arrivate mentre il PC era spento. Con due giorni
+        # un fine settimana via bastava a far sparire due clienti,
+        # senza una riga di log. Il limite vero resta la data di
+        # creazione della regola, che questo non puo' scavalcare.
         self.interval = max(int(interval), 10)
         self.verbose = verbose
         self.unread_days = unread_days

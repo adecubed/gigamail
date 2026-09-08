@@ -212,11 +212,12 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
             if tg:
                 buttons = tg.action_buttons(
                     request_id, policy.user_lang(), approve_allowed(tg))
-            it = policy.user_lang() == "it"
-            actions = [("✅ " + ("Approva" if it else "Approve"),
-                        f"gigamail://approve/{request_id}"),
-                       ("❌ " + ("Rifiuta" if it else "Reject"),
-                        f"gigamail://reject/{request_id}")]
+            # Gli stessi quattro bottoni di ogni altra approvazione. Qui
+            # ne comparivano due: su Telegram la bozza da regola aveva
+            # Modifica e sulla toast no, cioe' l'azione piu' utile —
+            # 'rifalla cosi'' — mancava proprio sul canale da cui si
+            # approva col PC davanti.
+            actions = policy.toast_actions(request_id)
             policy.notify_approval_requested(
                 request_id, TOOL, preview,
                 message=notify._semi_notify_text(rule, full, body, request_id),

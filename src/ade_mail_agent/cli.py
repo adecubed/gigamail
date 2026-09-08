@@ -744,6 +744,24 @@ def cmd_open_url_show(rid: str) -> int:
     return rc
 
 
+def _retry_di_regola(rid: str, nota: str) -> bool:
+    """Se la richiesta e' una bozza nata da una regola, la rimette in
+    coda con la nota: il watcher la riscrive e la ripropone. E'
+    quello che significa "Modifica" per una bozza — annullarla e
+    basta lascerebbe il cliente senza risposta. Torna False per le
+    richieste che una regola non ha prodotto."""
+    try:
+        from ade_mail_agent.core import rules as rules_mod
+        rs = rules_mod.store()
+        row = rs.find_by_request(rid)
+        if not row:
+            return False
+        rs.request_retry(row["rule_id"], row["message_id"], nota)
+        return True
+    except Exception:
+        return False
+
+
 def cmd_open_url_edit(rid: str) -> int:
     """gigamail://edit — il bottone "Modifica". Non esiste un modo sicuro
     di riscrivere qui il testo che l'agente ha proposto: la richiesta e'
@@ -764,12 +782,17 @@ def cmd_open_url_edit(rid: str) -> int:
     if not nota:
         print("Nessuna modifica: la richiesta resta in attesa.")
         return 0
-    if not policy.store().reject(rid, by=f"{_cli_who()} modifica: {nota[:200]}"):
-        print("Non modificabile: gia' decisa o scaduta.")
+    if not policy.store().revoke(rid, by=f"{_cli_who()} modifica: {nota[:200]}"):
+        print("Non modificabile: gia' eseguita.")
         return 1
     print()
-    print("Richiesta annullata. Riporta questa nota all'agente:")
-    print(f"  {nota}")
+    if _retry_di_regola(rid, nota):
+        print("Bozza annullata e rimessa in coda con la tua nota:")
+        print(f"  {nota}")
+        print("Il watcher la riscrive al prossimo giro e te la ripropone.")
+    else:
+        print("Richiesta annullata. Riporta questa nota all'agente:")
+        print(f"  {nota}")
     return 0
 
 

@@ -577,6 +577,8 @@ def reply_mail(
         description="File names to attach, as shown by "
                     "list_knowledge_files. Same rule as send_mail: "
                     "only files registered in the account identity.")] = None,
+    cc: Annotated[Optional[list[str]], Field(
+        description="CC addresses. The reply still goes only to the From address of the original message; cc adds recipients in copy.")] = None,
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
@@ -587,7 +589,7 @@ def reply_mail(
                          + ", ".join(mancanti)
                          + ". Niente e' stato inviato."}
     args = {"message_id": message_id, "body": body, "account_id": account_id,
-            "attachments": allegati}
+            "attachments": allegati, "cc": cc}
 
     def _preview():
         original = mail_router.get_message(
@@ -600,6 +602,7 @@ def reply_mail(
             },
             "body": body,
             "attachments": _attachments_preview(allegati),
+            "cc": cc or [],
         }
 
     return policy.execute_dangerous(
