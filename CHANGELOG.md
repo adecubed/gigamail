@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.2 — in progress
+## v0.3.2 — 2026-09-08
 
 - **Codex CLI as a first-class agent.** The console detects `codex` next to
   `claude`, lets you pick the agent that writes the drafts (first-run guide
