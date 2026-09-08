@@ -1,7 +1,7 @@
 ---
 name: gigamail
 description: Email and calendar for your OpenClaw agent through the GigaMail MCP server — read, search, draft, reply, schedule — with every destructive action (send, delete, calendar write) held for out-of-band human approval that the agent cannot grant itself. 给你的 OpenClaw 代理一个真实邮箱和日历：读信、搜索、起草自由，发送与删除必须由人带外批准，代理无法批准自己。
-version: 0.2.4
+version: 0.3.0
 metadata:
   openclaw:
     emoji: "📬"
@@ -74,6 +74,9 @@ Windows Hello / Touch ID 的系统级验证。代理没有任何批准的工具�
 下每封草稿都等你批准；全自动（auto）有每日上限、按发件人冷却和强制过期。
 Telegram 一键批准/拒绝/要求修改：`gigamail telegram setup --approve`。
 
+0.3 起，桌面控制台是一个可安装的 Windows 应用（GitHub Releases 提供安装包，
+自带 Python，首次启动有引导）：人在这里读信、审批、管理规则；代理通过 pip
+安装的 MCP 服务器工作，两者共用同一个数据目录。
 README 和桌面控制台界面均提供中文（界面为初翻，欢迎打磨：console/i18n.js）。
 仓库：https://github.com/adecubed/gigamail
 
@@ -97,7 +100,8 @@ AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
 Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
 Requires gigamail ≥ 0.2.4 (approval via OS-level user verification;
-GIGAMAIL_* environment variables; reply rules and the watcher).
+GIGAMAIL_* environment variables; reply rules and the watcher). Current
+server release: 0.3.1, same 24 tools.
 
 ## Setup (once)
 
@@ -149,7 +153,15 @@ GIGAMAIL_* environment variables; reply rules and the watcher).
    gigamail identity add-file C:\docs\pricelist.xlsx
    ```
 
-5. Optional — get the approval to the user where the agent lives. Add to
+5. Optional — the human side as a desktop app. Since 0.3 the GigaMail
+   console ships as a Windows installer (GitHub Releases: `GigaMail Setup
+   <version>.exe`, own embedded Python, guided first run). The user reads
+   mail, approves your requests and manages reply rules there. It does
+   **not** provide `gigamail-server` for OpenClaw — the MCP server still
+   comes from `pip` (step 1) — and the two must share the data directory
+   (`%APPDATA%\ADE` by default, or the same `GIGAMAIL_ROOT`).
+
+6. Optional — get the approval to the user where the agent lives. Add to
    the same `env` block (one JSON array, placeholders filled by GigaMail):
 
    ```json5
