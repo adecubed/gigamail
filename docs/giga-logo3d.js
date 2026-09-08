@@ -4,11 +4,9 @@
 import * as THREE from "three";
 import { TTFLoader } from "three/addons/loaders/TTFLoader.js";
 import { Font } from "three/addons/loaders/FontLoader.js";
-import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
-import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
-// Luckiest Guy (OFL), servito da Google Fonts con CORS. Ha lo stesso carattere del PNG.
-const FONT_URL = "https://fonts.gstatic.com/s/luckiestguy/v25/_gP_1RrxsjcxVyin9l9n_j2hTd5z.ttf";
+// Titan One (OFL), servito da Google Fonts con CORS: tondo, largo e pesante come il lettering del PNG.
+const FONT_URL = "https://fonts.gstatic.com/s/titanone/v17/mFTzWbsGxbbS_J5cQcjClDgj.ttf";
 
 const TOP = new THREE.Color("#4fc3ff");   // blu in alto
 const MID = new THREE.Color("#8f8cf0");   // passaggio
@@ -40,70 +38,79 @@ export function mount(host, opts = {}) {
   const logo = new THREE.Group();
   scene.add(logo);
 
-  const faceMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.05 });
-  const edgeMat = new THREE.MeshStandardMaterial({ color: EDGE, roughness: 0.55, metalness: 0.1 });
+  // facce piatte (colori esatti del PNG), fianchi navy illuminati (danno la profondita' quando ruota)
+  const faceMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: EDGE, roughness: 0.6, metalness: 0.1 });
+  const plateMat = new THREE.MeshBasicMaterial({ color: EDGE });
 
   const S = 1;                       // corpo del carattere
-  const DEPTH = 0.22 * S;            // spessore
-  const BEVEL = 0.045 * S;           // bordo navy visibile sul davanti
-  const SHEAR = 0.16;                // corsivo
-  const extrude = { depth: DEPTH, bevelEnabled: true, bevelThickness: BEVEL, bevelSize: BEVEL, bevelSegments: 3, curveSegments: 10 };
+  const DEPTH = 0.20 * S;            // spessore
+  const OUTLINE = 0.075 * S;         // bordo navy piatto attorno a tutto
+  const LIFT = 0.02 * S;             // le lettere colorate stanno un pelo davanti al piatto navy
+  const SHEAR = 0.22;                // corsivo delle lettere
+  const BOLT_SHEAR = 0.34;           // il fulmine e' piu' inclinato
 
   // fulmine: poligono in unita' di S, da sopra le lettere a sotto la base
-  function boltGeometry() {
-    const p = [[0.24, 1.10], [0.66, 1.10], [0.46, 0.62], [0.70, 0.62], [0.12, -0.22], [0.30, 0.40], [0.06, 0.40]];
-    const shape = new THREE.Shape(p.map(([x, y]) => new THREE.Vector2(x * S, y * S)));
-    return new THREE.ExtrudeGeometry(shape, extrude);
+  function boltShape() {
+    const p = [[0.16, 1.14], [0.50, 1.14], [0.35, 0.66], [0.54, 0.66], [0.06, -0.26], [0.22, 0.42], [0.02, 0.42]];
+    return new THREE.Shape(p.map(([x, y]) => new THREE.Vector2(x * S, y * S)));
   }
 
-  const letters = [];   // { mesh, from, to } per l'accensione a scalare
+  const letters = [];   // gruppi lettera, per l'accensione a scalare
   function build(font) {
-    const parts = [];
-    const glyph = (ch) => new TextGeometry(ch, { font, size: S, ...extrude });
-    parts.push(glyph("G"));
-    parts.push(boltGeometry());
-    parts.push(glyph("G"));
-    parts.push(glyph("A"));
+    // ogni pezzo: le sue shape e il suo corsivo
+    const pieces = [
+      { shapes: font.generateShapes("G", S), shear: SHEAR },
+      { shapes: [boltShape()],              shear: BOLT_SHEAR, bolt: true },
+      { shapes: font.generateShapes("G", S), shear: SHEAR },
+      { shapes: font.generateShapes("A", S), shear: SHEAR },
+    ];
+    const colored = (shapes) => new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: false, curveSegments: 12 });
+    const plate   = (shapes) => new THREE.ExtrudeGeometry(shapes, { depth: DEPTH - LIFT, bevelEnabled: true,
+      bevelSize: OUTLINE, bevelThickness: 0.001, bevelSegments: 1, curveSegments: 12 });
 
-    // affiancamento: ogni pezzo parte dove finisce il precedente, con un piccolo sormonto
+    // affiancamento sulle facce colorate: lettere quasi a contatto, fulmine incastrato tra le G
     let x = 0;
-    const boxes = [];
-    parts.forEach((g, i) => {
-      g.computeBoundingBox();
-      const b = g.boundingBox;
-      const gap = (i === 1 || i === 2) ? -0.06 * S : 0.02 * S;   // il fulmine si incastra tra le G
-      g.translate(-b.min.x + x + (i ? gap : 0), 0, 0);
-      g.computeBoundingBox();
-      boxes.push(g.boundingBox.clone());
-      x = g.boundingBox.max.x;
+    const all = new THREE.Box3();
+    pieces.forEach((pc, i) => {
+      pc.face = colored(pc.shapes); pc.back = plate(pc.shapes);
+      pc.face.computeBoundingBox();
+      const b = pc.face.boundingBox;
+      const gap = pc.bolt ? -0.12 * S : (i === 2 ? -0.12 * S : -0.01 * S);
+      const dx = -b.min.x + x + (i ? gap : 0);
+      pc.face.translate(dx, 0, LIFT); pc.back.translate(dx, 0, 0);
+      pc.face.computeBoundingBox();
+      all.union(pc.face.boundingBox);
+      x = pc.face.boundingBox.max.x;
     });
 
-    // gradiente per vertice sull'altezza complessiva
-    const all = new THREE.Box3();
-    boxes.forEach((b) => all.union(b));
+    // gradiente per vertice sull'altezza complessiva (facce colorate)
     const h = all.max.y - all.min.y;
     const tmp = new THREE.Color();
-    parts.forEach((g) => {
-      const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
+    pieces.forEach((pc) => {
+      const pos = pc.face.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const t = THREE.MathUtils.clamp((pos.getY(i) - all.min.y) / h, 0, 1);
         if (t < 0.5) tmp.lerpColors(BOT, MID, t / 0.5); else tmp.lerpColors(MID, TOP, (t - 0.5) / 0.5);
         col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
       }
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      pc.face.setAttribute("color", new THREE.BufferAttribute(col, 3));
     });
 
-    // corsivo e centratura
-    const shear = new THREE.Matrix4().makeShear(SHEAR, 0, 0, 0, 0, 0);
+    // corsivo, centratura, mesh
     const center = all.getCenter(new THREE.Vector3());
-    parts.forEach((g, i) => {
-      g.translate(-center.x, -center.y, -DEPTH / 2);
-      g.applyMatrix4(shear);
-      const m = new THREE.Mesh(g, [faceMat, edgeMat]);
-      logo.add(m);
-      letters.push(m);
+    pieces.forEach((pc) => {
+      const shear = new THREE.Matrix4().makeShear(pc.shear, 0, 0, 0, 0, 0);
+      const L = new THREE.Group();
+      [pc.face, pc.back].forEach((g, k) => {
+        g.translate(-center.x, -center.y, -DEPTH / 2);
+        g.applyMatrix4(shear);
+        L.add(new THREE.Mesh(g, k === 0 ? [faceMat, edgeMat] : [plateMat, edgeMat]));
+      });
+      logo.add(L);
+      letters.push(L);
     });
-    logoWidth = (all.max.x - all.min.x) + h * SHEAR;
+    logoWidth = (all.max.x - all.min.x) + 2 * OUTLINE + h * SHEAR;
     resize();
     requestAnimationFrame(() => host.classList.add("ready"));
   }
