@@ -147,3 +147,20 @@ def test_un_watcher_alla_volta(monkeypatch):
     monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
     st = watcher.running_state()
     assert st["running"] is False and st["pid"] is None
+
+
+def test_il_battito_si_aggiorna_anche_dentro_il_giro():
+    """Regressione: il battito si scriveva una volta per giro, ma un giro
+    che scrive bozze e spedisce mail dura piu' della soglia oltre cui
+    running_state() dichiara morto il watcher. Un processo vivo e al
+    lavoro risultava assente — e la guardia del launcher, che usa quello
+    stesso controllo, poteva farne partire un secondo."""
+    import inspect
+    from ade_mail_agent.watcher import runner
+    corpo = inspect.getsource(runner.Watcher.tick)
+    assert corpo.count("self.heartbeat()") >= 4, (
+        "il battito deve essere aggiornato anche fra un'operazione lunga "
+        "e l'altra, non solo a inizio giro")
+    # e in particolare accanto al punto piu' lento: la bozza
+    i = corpo.index("self.process_message(")
+    assert "self.heartbeat()" in corpo[max(0, i - 200):i]
