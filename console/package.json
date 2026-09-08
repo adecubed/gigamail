@@ -1,7 +1,7 @@
 {
   "name": "gigamail",
   "productName": "GigaMail",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "GigaMail — secure agentic email console",
   "main": "main.js",
   "author": {
