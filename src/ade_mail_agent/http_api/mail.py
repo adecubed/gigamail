@@ -1,8 +1,10 @@
 """Posta: liste, cartelle, ricerca, indice locale, invio e azioni sul messaggio."""
+import mimetypes
 import threading
 from typing import List, Optional
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from ade_mail_agent.core import (
@@ -14,6 +16,7 @@ from .addresses import _remember_message_addresses, _save_address
 from .common import _active_id
 
 router = APIRouter()
+_MIME = mimetypes.MimeTypes()
 
 
 # ── MAIL: LETTURA ────────────────────────────────────────────────────
@@ -149,6 +152,36 @@ def send_mail(req: SendRequest):
     )
     _save_address(req.to)
     return result
+
+
+@router.get("/mail/{message_id}/attachment/{filename:path}")
+def download_attachment(message_id: str, filename: str, folder: str = "",
+                        account_id: Optional[int] = None):
+    """I byte di un allegato, per "apri" e "salva con nome" della console.
+    Mancava del tutto: la console chiedeva questa URL e riceveva 404 su
+    qualunque allegato. Il provider (Graph o IMAP) restituisce
+    (bytes, content_type); il nome viaggia percent-encoded nel percorso."""
+    aid = account_id or _active_id()
+    try:
+        data = mail_router.get_attachment(account_id=aid, message_id=message_id,
+                                          filename=filename, folder=folder)
+    except ValueError as e:
+        raise HTTPException(404, str(e)) from e
+    if isinstance(data, tuple):
+        content = data[0] if data else b""
+        ctype = data[1] if len(data) > 1 else None
+    else:
+        content, ctype = data, None
+    if not content:
+        raise HTTPException(404, f'Allegato "{filename}" vuoto o non trovato')
+    # Tabella della libreria standard, non il registro di Windows: li' .csv e'
+    # "application/vnd.ms-excel", e il tipo cambierebbe da macchina a macchina.
+    media = ctype or _MIME.guess_type(filename)[0] or "application/octet-stream"
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
+    return Response(content=content, media_type=media, headers={
+        "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}",
+        "Content-Length": str(len(content)),
+    })
 
 
 @router.get("/mail/{message_id}")

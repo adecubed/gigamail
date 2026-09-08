@@ -13,6 +13,11 @@
   own approvals bypassed.
 - `.codex-plugin/plugin.json` follows the release version (it was still
   0.2.4 at 0.3.1); `sync-version.js` and a test keep it aligned.
+- **Attachments open again from the console.** Clicking an attachment
+  answered "HTTP 404" on every account: the console asked the backend for
+  `GET /mail/{id}/attachment/{name}` and that route did not exist. It
+  does now (bytes, content type from the provider or from the file name,
+  proper `Content-Disposition`), with tests.
 - **An old notification says it is old.** Pressing a desktop toast after
   its request has expired or been decided used to answer "request does
   not exist", which reads like a fault. It now says the notification is
