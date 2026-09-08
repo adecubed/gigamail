@@ -1,7 +1,7 @@
 ---
 name: gigamail
 description: Email and calendar for your OpenClaw agent through the GigaMail MCP server — read, search, draft, reply, schedule — with every destructive action (send, delete, calendar write) held for out-of-band human approval that the agent cannot grant itself. 给你的 OpenClaw 代理一个真实邮箱和日历：读信、搜索、起草自由，发送与删除必须由人带外批准，代理无法批准自己。
-version: 0.3.0
+version: 0.3.1
 metadata:
   openclaw:
     emoji: "📬"
@@ -101,7 +101,7 @@ Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
 Requires gigamail ≥ 0.2.4 (approval via OS-level user verification;
 GIGAMAIL_* environment variables; reply rules and the watcher). Current
-server release: 0.3.1, same 24 tools.
+server release: 0.3.2, same 24 tools. The console can also drive Codex CLI for its drafts (see INTEGRATIONS.md).
 
 ## Setup (once)
 
