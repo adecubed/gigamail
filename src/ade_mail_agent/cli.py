@@ -216,6 +216,40 @@ def _cli_who() -> str:
         return "cli"
 
 
+def _attendi_invio() -> None:
+    """Tiene aperta la finestra aperta da una toast finche' l'utente non
+    ha letto. Se lo standard input non c'e' (finestra senza console,
+    esecuzione da script) non si muore con un traceback: l'ultima cosa
+    che l'utente vedrebbe sarebbe un errore che non lo riguarda."""
+    try:
+        input("Premi INVIO per chiudere... ")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+def _spiega_richiesta_assente(rid: str) -> None:
+    """Una notifica premuta dopo che la sua richiesta e' sparita.
+
+    Capita di continuo: la toast resta nel centro notifiche piu' a
+    lungo della richiesta che annuncia, e chi la preme si vede
+    rispondere \"inesistente\" — che sembra un guasto del programma
+    invece di 'questa e' vecchia, non devi fare niente'. Dire quante
+    richieste ci sono davvero in attesa chiude la domanda sul
+    nascere."""
+    from ade_mail_agent import policy
+    print(f"Richiesta '{rid}' non trovata: questa notifica e' vecchia.")
+    try:
+        pendenti = policy.store().list_pending()
+    except Exception:
+        return
+    if not pendenti:
+        print("Non c'e' nessuna richiesta in attesa: non devi fare nulla.")
+        return
+    print(f"In attesa adesso: {len(pendenti)}.")
+    for r in pendenti:
+        print(f"  {r['request_id']}  [{r['tool']}]  "
+              f"{r['preview'].get('to') or ''}")
+
 def _fmt_preview(preview: dict, limit: int = 300) -> str:
     """`limit=0`: nessun troncamento — per chi legge per decidere."""
     righe = []
@@ -255,7 +289,7 @@ def cmd_approvals_approve(args) -> int:
     from ade_mail_agent import consent, policy
     rec = policy.store().get(args.request_id)
     if not rec:
-        print(f"Richiesta '{args.request_id}' inesistente.")
+        _spiega_richiesta_assente(args.request_id)
         return 1
     print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
     reason = f"GigaMail: approvare {rec['tool']} ({args.request_id})?"
@@ -287,7 +321,7 @@ def cmd_approvals_revoke(args) -> int:
     from ade_mail_agent import policy
     rec = policy.store().get(args.request_id)
     if not rec:
-        print(f"Richiesta '{args.request_id}' inesistente.")
+        _spiega_richiesta_assente(args.request_id)
         return 1
     if rec["status"] == policy.EXECUTED:
         print("Gia' ESEGUITA: quell'azione e' stata compiuta e non si "
@@ -714,8 +748,8 @@ def cmd_open_url_show(rid: str) -> int:
     from ade_mail_agent import policy
     rec = policy.store().get(rid)
     if not rec:
-        print(f"Richiesta '{rid}' inesistente.")
-        input("Premi INVIO per chiudere... ")
+        _spiega_richiesta_assente(rid)
+        _attendi_invio()
         return 1
     import time as _t
     eta = int(rec["expires_at"] - _t.time())
@@ -725,7 +759,7 @@ def cmd_open_url_show(rid: str) -> int:
     print(_fmt_preview(rec["preview"], limit=0))
     print()
     if rec["status"] != policy.PENDING or rec["expired"]:
-        input("Premi INVIO per chiudere... ")
+        _attendi_invio()
         return 0
 
     class _A:
@@ -740,7 +774,7 @@ def cmd_open_url_show(rid: str) -> int:
     else:
         print(f"Nessuna decisione. Approva con:  gigamail approvals approve {rid}")
         rc = 0
-    input("Premi INVIO per chiudere... ")
+    _attendi_invio()
     return rc
 
 
@@ -772,7 +806,7 @@ def cmd_open_url_edit(rid: str) -> int:
     from ade_mail_agent import policy
     rec = policy.store().get(rid)
     if not rec:
-        print(f"Richiesta '{rid}' inesistente.")
+        _spiega_richiesta_assente(rid)
         return 1
     print(f"Tool: {rec['tool']}")
     print("Anteprima:")
@@ -822,7 +856,7 @@ def cmd_open_url(args) -> int:
                   (args.url or "").strip(), _re.I)
     if not m:
         print(f"URL non riconosciuto: {args.url}")
-        input("Premi INVIO per chiudere... ")
+        _attendi_invio()
         return 1
     action, rid = m.group(1).lower(), m.group(2)
 
@@ -848,7 +882,7 @@ def cmd_open_url(args) -> int:
             rc = cmd_approvals_approve(_A)
         if rc == 0 and action == "approve":
             print("Il watcher la invia al prossimo giro (entro l'intervallo di polling).")
-    input("Premi INVIO per chiudere... ")
+    _attendi_invio()
     return rc
 
 

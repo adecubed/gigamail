@@ -80,3 +80,49 @@ def test_i_bottoni_e_il_gestore_accettano_gli_stessi_id():
     # e resta chiuso a tutto il resto
     assert not re.match(regex, "gigamail://approve/../../etc")
     assert not re.match(regex, "gigamail://elimina/req_abc123")
+
+
+def test_una_notifica_vecchia_lo_dice(capsys, monkeypatch):
+    """Premere una toast rimasta nel centro notifiche dopo che la sua
+    richiesta e' sparita rispondeva "inesistente": sembra un guasto del
+    programma invece di "questa e' vecchia, non devi fare niente". Dire
+    quante richieste ci sono davvero in attesa chiude la domanda."""
+    from ade_mail_agent import cli, policy
+
+    class _Store:
+        def list_pending(self):
+            return []
+
+    monkeypatch.setattr(policy, "store", lambda: _Store())
+    cli._spiega_richiesta_assente("req_sparita")
+    out = capsys.readouterr().out
+    assert "vecchia" in out
+    assert "non devi fare nulla" in out
+
+
+def test_se_invece_c_e_qualcosa_in_attesa_lo_elenca(capsys, monkeypatch):
+    from ade_mail_agent import cli, policy
+
+    class _Store:
+        def list_pending(self):
+            return [{"request_id": "req_viva", "tool": "send_mail",
+                     "preview": {"to": "cliente@x.it"}}]
+
+    monkeypatch.setattr(policy, "store", lambda: _Store())
+    cli._spiega_richiesta_assente("req_sparita")
+    out = capsys.readouterr().out
+    assert "In attesa adesso: 1" in out
+    assert "req_viva" in out and "cliente@x.it" in out
+
+
+def test_la_finestra_non_muore_senza_input(monkeypatch):
+    """La finestra aperta da una toast si chiude con INVIO. Senza stdin
+    finiva con un traceback: l'ultima cosa che l'utente vede sarebbe un
+    errore che non lo riguarda."""
+    from ade_mail_agent import cli
+
+    def _boom(_):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _boom)
+    cli._attendi_invio()      # non deve sollevare
