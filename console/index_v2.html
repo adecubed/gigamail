@@ -155,7 +155,7 @@
             <div class="ai-card">
               <div class="ai-card-title" data-i18n="agent_title">Agente che scrive le bozze</div>
               <div class="ai-card-sub" data-i18n="agent_desc">GigaMail non ha un LLM interno: le bozze le scrive il tuo agente (default: Claude Code, `claude -p`). Cambialo in agent.json.</div>
-              <div class="ai-card-row"><span class="ai-card-status" id="agentStatus">…</span><button class="chip-btn" id="btnOnboarding" data-i18n="ob_reopen" onclick="window.openOnboarding&&window.openOnboarding()">Guida iniziale</button></div>
+              <div class="ai-card-row"><select id="agentSelect" class="field-input" style="max-width:200px;margin-right:8px"></select><span class="ai-card-status" id="agentStatus">…</span><button class="chip-btn" id="btnOnboarding" data-i18n="ob_reopen" onclick="window.openOnboarding&&window.openOnboarding()">Guida iniziale</button></div>
               <div class="ai-card-title" style="margin-top:12px" data-i18n="consent_title">Verifica umana (Hello / Touch ID)</div>
               <div class="ai-card-row"><span class="ai-card-status" id="consentStatus">…</span></div>
               <div class="ai-card-title" style="margin-top:12px" data-i18n="desktop_title">Notifiche sul PC</div>
@@ -460,8 +460,9 @@
 
       <div id="ob-step-agent" class="ob-step hidden">
         <p class="ob-p" data-i18n="ob_agent_intro">GigaMail non ha un'AI propria: l'intelligenza è l'agente che colleghi (Claude, Codex, Hermes o il tuo).</p>
+        <div class="field-row"><label class="field-label" data-i18n="ob_agent_pick">Agente che scrive le bozze</label><select id="obAgentSelect" class="field-input"></select></div>
         <div class="ob-status" id="obAgentStatus"></div>
-        <div class="field-label" data-i18n="ob_agent_mcp">Registra GigaMail nel client MCP (Claude Desktop / Claude Code):</div>
+        <div class="field-label" id="obMcpLabel" data-i18n="ob_agent_mcp">Registra GigaMail nel client MCP (Claude Desktop / Claude Code):</div>
         <div class="ob-code-box"><pre id="obMcpSnippet"></pre><button class="chip-btn ob-copy" id="obCopyMcp" data-i18n="ob_copy">Copia</button></div>
         <div id="obNotifyBox" class="ob-panel hidden">
           <div class="field-label" data-i18n="ob_notify_title">Notifiche di approvazione</div>

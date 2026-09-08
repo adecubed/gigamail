@@ -12,6 +12,67 @@ real data. It does **not** mean we have exercised full model-driven
 workflows (draft → approval → send) inside that client. Claude Code /
 Claude Desktop is the platform GigaMail runs on in daily production use.
 
+## Codex CLI (OpenAI) — verified
+
+Two directions, both tested on Windows with **codex-cli 0.135.0** and
+**gigamail 0.3.2** (ChatGPT login; the MCP server from the pip package).
+
+### 1. Codex uses GigaMail's tools
+
+Register the server once — `codex mcp add` writes `~/.codex/config.toml`:
+
+```bash
+codex mcp add gigamail --env GIGAMAIL_ROOT="%APPDATA%\ADE" -- gigamail-server
+```
+
+Equivalent `config.toml` entry (POSIX: `GIGAMAIL_ROOT = "/home/<you>/.ade"`):
+
+```toml
+[mcp_servers.gigamail]
+command = "gigamail-server"
+
+[mcp_servers.gigamail.env]
+GIGAMAIL_ROOT = "C:\\Users\\<you>\\AppData\\Roaming\\ADE"
+```
+
+`GIGAMAIL_ROOT` must be the same directory the desktop console uses,
+otherwise Codex and the console see different accounts and approvals.
+If `gigamail-server` is not on Codex's PATH, use the absolute path of the
+executable (`<venv>\Scripts\gigamail-server.exe`).
+
+What was verified, in one `codex exec` session against a demo data
+directory: all 24 tools discovered; `list_accounts` returned the account;
+`send_mail` returned `status: approval_required` with a `request_id` and
+nothing was sent; calling it again with the `request_id` returned
+`awaiting_approval`; the request sat in the approval store waiting for a
+human. This held **with Codex's own approvals and sandbox bypassed**
+(`--dangerously-bypass-approvals-and-sandbox`): GigaMail's gate is
+server-side and does not depend on the client asking first.
+
+Note that in non-interactive mode with `approval_policy = never` Codex
+cancels the `send_mail` call itself ("user cancelled MCP tool call") before
+it reaches GigaMail — a second, client-side fence. In an interactive
+`codex` session Codex asks you first, then GigaMail asks again, out of
+band.
+
+### 2. The console uses Codex to write drafts
+
+Since 0.3.2 the desktop console detects `codex` on the PATH next to
+`claude`. Pick it in the first-run guide or in Automations → "Agent that
+writes the drafts": the choice lands in `%APPDATA%\ADE\agent.json` as
+`{"agent": "codex"}` and the command is resolved at each start, so it
+follows CLI updates. The command used is
+
+```
+codex exec --skip-git-repo-check -s read-only --color never -o <tmpfile> <prompt>
+```
+
+read-only sandbox (the agent writes a draft, not the disk), final answer
+read from the `-o` file because Codex prints the whole session on stdout,
+prompt passed on stdin when it would exceed the Windows command-line limit.
+Verified: a reply draft came back in about 30 seconds. A command of your
+own still goes in `agent.json` as `{"command": [...]}`.
+
 ## One rule for every client: declare `GIGAMAIL_ROOT`
 
 (`ADE_ROOT` is the historical name and keeps working as an alias; the

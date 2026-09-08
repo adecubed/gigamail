@@ -35,3 +35,15 @@ if (fs.existsSync(lockPath)) {
     console.log(`sync-version: package-lock.json -> ${version}`);
   }
 }
+
+// Il manifest del plugin Codex/ChatGPT dichiara la stessa versione del
+// prodotto: alla 0.3.1 era rimasto a 0.2.4 perche' nessuno lo toccava.
+const pluginPath = path.join(__dirname, '..', '.codex-plugin', 'plugin.json');
+if (fs.existsSync(pluginPath)) {
+  const plugin = fs.readFileSync(pluginPath, 'utf-8');
+  const updatedPlugin = plugin.replace(/("version"\s*:\s*")[^"]+(")/, `$1${version}$2`);
+  if (updatedPlugin !== plugin) {
+    fs.writeFileSync(pluginPath, updatedPlugin);
+    console.log(`sync-version: .codex-plugin/plugin.json -> ${version}`);
+  }
+}

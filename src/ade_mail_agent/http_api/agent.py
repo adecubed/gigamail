@@ -93,6 +93,20 @@ def agent_status():
     return agent_bridge.status()
 
 
+class AgentSelectRequest(BaseModel):
+    agent: str
+
+
+@router.post("/agent/select")
+def agent_select(req: AgentSelectRequest):
+    """Sceglie quale CLI scrive le bozze (claude | codex). Il comando viene
+    risolto a ogni avvio, cosi' segue gli aggiornamenti della CLI."""
+    try:
+        return agent_bridge.select_agent(req.agent)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
 class GenerateDraftRequest(BaseModel):
     instruction: str
     to: str = ""

@@ -20,6 +20,7 @@ def test_le_regole_e_i_tool_usano_la_stessa_funzione():
     """Due elenchi di bottoni scritti a mano in due punti divergono: e'
     esattamente cosi' che Modifica era sparita da un canale solo."""
     import inspect
+
     from ade_mail_agent.watcher import pipeline
     src = inspect.getsource(pipeline)
     assert "policy.toast_actions(request_id)" in src
@@ -65,8 +66,9 @@ def test_i_bottoni_e_il_gestore_accettano_gli_stessi_id():
     esadecimali: un id fuori formato faceva rispondere "URL non
     riconosciuto" a un bottone appena premuto, e l'errore sembrava
     dell'utente. Le due regex devono concordare."""
-    import re
     import inspect
+    import re
+
     from ade_mail_agent import cli
     from ade_mail_agent.core import desktop_notify as d
 

@@ -156,6 +156,7 @@ def test_il_battito_si_aggiorna_anche_dentro_il_giro():
     lavoro risultava assente — e la guardia del launcher, che usa quello
     stesso controllo, poteva farne partire un secondo."""
     import inspect
+
     from ade_mail_agent.watcher import runner
     corpo = inspect.getsource(runner.Watcher.tick)
     assert corpo.count("self.heartbeat()") >= 4, (
