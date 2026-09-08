@@ -43,7 +43,10 @@ def test_server_json_segue_pyproject():
     root = Path(__file__).resolve().parent.parent
     version = re.search(r'^version\s*=\s*"([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
     doc = json.loads((root / "server.json").read_text(encoding="utf-8"))
-    assert doc["version"] == version
+    # la versione del server sul registry puo' portare una revisione in coda
+    # ("0.3.1.1"): il registry non ripubblica la stessa stringa, e i metadati
+    # a volte vanno corretti senza un nuovo pacchetto PyPI
+    assert doc["version"] == version or doc["version"].startswith(version + ".")
     for pkg in doc["packages"]:
         assert pkg["version"] == version
         pins = [a["value"] for a in pkg.get("runtimeArguments", []) if "==" in str(a.get("value", ""))]
