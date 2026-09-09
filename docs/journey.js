@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import Keyboard from './vendor/bruno/Inputs/Keyboard.js';
 import {Events} from './vendor/bruno/Events.js';
 import {FollowView} from './vendor/bruno/FollowView.js';
-import {MailFlow,stations} from './flow.js?v=22';
+import {MailFlow,stations} from './flow.js?v=23';
 
 const $=id=>document.getElementById(id),flow=new MailFlow(),events=new Events();
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
