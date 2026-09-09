@@ -18,3 +18,8 @@ console/e2e-electron.log
 
 # Claude Code: file locali della sessione (launch.json, settings.local.json, worktree)
 .claude/
+
+# Il sito pubblico vendorizza three.js: la cartella build/ qui dentro e' una
+# dipendenza da versionare, non un artefatto di compilazione.
+!docs/vendor/three/build/
+!docs/vendor/three/build/*.js
