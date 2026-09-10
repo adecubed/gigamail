@@ -11,6 +11,7 @@ from ade_mail_agent.core import (
     availability,
     calendar_router,
     identity_reader,
+    injection_guard,
     mail_memory,
     mail_router,
     observer,
@@ -23,10 +24,40 @@ router = APIRouter()
 
 # ── AGENTE (cio' che prima faceva l'LLM interno ora lo fa l'agente) ──
 
-def _identity_context(aid: Optional[int]) -> str:
+def _identity_for(aid: Optional[int], folder: str = "") -> dict:
+    """L'identity da usare: quella dell'account, con sopra quella della
+    cartella se la mail arriva da una cartella che ne ha una.
+
+    Le cartelle sono il modo in cui l'utente separa i mestieri (Lead,
+    Clienti, Fornitori): senza questa sovrapposizione la stessa mail
+    riceveva la stessa bozza ovunque, e configurare l'identity di cartella
+    non cambiava niente."""
+    if not aid:
+        return {}
+    ident = dict(core_accounts.get_identity(aid))
+    if not folder:
+        return ident
+    try:
+        fold = core_accounts.get_folder_identity(aid, folder) or {}
+    except Exception:
+        return ident
+    for k in ("who_am_i", "what_i_do", "tone", "key_info"):
+        if (fold.get(k) or "").strip():
+            ident[k] = fold[k]
+    # I percorsi si sommano: la cartella aggiunge la sua conoscenza a
+    # quella generale dell'account, non la sostituisce.
+    paths = list(ident.get("file_paths") or [])
+    for p in fold.get("file_paths") or []:
+        if p not in paths:
+            paths.append(p)
+    ident["file_paths"] = paths
+    return ident
+
+
+def _identity_context(aid: Optional[int], folder: str = "") -> str:
     if not aid:
         return ""
-    ident = core_accounts.get_identity(aid)
+    ident = _identity_for(aid, folder)
     parts = []
     if ident.get("who_am_i"):
         parts.append(f"Chi sono: {ident['who_am_i']}")
@@ -71,21 +102,54 @@ def _slots_context(text: str, max_slots: int = 3) -> str:
             f"orari, senza inventarne altri): {righe}")
 
 
-def _suggest_attachments(aid: Optional[int], text: str) -> list:
+def _suggest_attachments(aid: Optional[int], text: str, folder: str = "") -> list:
     """Propone allegati dai file di conoscenza dell'account in base al testo
     dell'istruzione/oggetto (es. 'manda la planimetria A.2.1'). La UI mostra
     i suggerimenti con checkbox: decide sempre l'utente."""
     if not aid or not (text or "").strip():
         return []
     try:
-        ident = core_accounts.get_identity(aid)
-        paths = ident.get("file_paths") or []
+        paths = _identity_for(aid, folder).get("file_paths") or []
         if not paths:
             return []
         hits = identity_reader.find_relevant_files(paths, text, max_files=5)
         return [{"name": h["name"], "path": h["path"]} for h in hits]
     except Exception:
         return []
+
+
+def _documenti_context(aid: Optional[int], text: str, folder: str = "") -> str:
+    """Il contenuto dei documenti che parlano di questa mail."""
+    if not aid or not (text or "").strip():
+        return ""
+    try:
+        paths = _identity_for(aid, folder).get("file_paths") or []
+        if not paths:
+            return ""
+        return identity_reader.read_relevant_excerpts(paths, text, max_files=3)
+    except Exception:
+        return ""
+
+
+# Con i documenti nel prompt il modello puo' finalmente essere specifico.
+# Il permesso pero' e' stretto: vale per quel blocco e solo per quello.
+# Allentandolo si allenta anche la disciplina sul non inventare — visto
+# accadere: senza queste righe la bozza si e' inventata l'esistenza di
+# convenzioni bancarie che nella documentazione non c'erano.
+_DISCIPLINA_DATI = (
+    "La sezione DATI SPECIFICI DALLA DOCUMENTAZIONE viene dai file "
+    "dell'utente: e' attendibile e va USATA per rispondere nel merito "
+    "(prezzi, misure, condizioni). Fuori da quella sezione non inventare "
+    "nulla:\n"
+    "- non affermare NE' negare l'esistenza di servizi, convenzioni, "
+    "sconti, tassi o condizioni che nei documenti non compaiono;\n"
+    "- non promettere tempi, richiami o informazioni future;\n"
+    "- non aggiungere elenchi o offerte che nessuno ha chiesto;\n"
+    "- per ogni informazione che non hai, scrivi il marcatore alla lettera, "
+    "senza spiegazioni intorno: [DA COMPLETARE] se stai scrivendo in "
+    "italiano, [TO BE COMPLETED] se stai scrivendo in inglese "
+    "(esempio: \"Riguardo al mutuo: [DA COMPLETARE]\")."
+)
 
 
 @router.get("/agent/status")
@@ -116,13 +180,18 @@ class GenerateDraftRequest(BaseModel):
 @router.post("/mail/generate_draft")
 def generate_draft(req: GenerateDraftRequest, account_id: Optional[int] = None):
     aid = account_id or _active_id()
+    query = f"{req.instruction} {req.subject}"
+    docs = _documenti_context(aid, query)
     prompt = (
-        "Scrivi il TESTO di una email in italiano (solo il corpo, niente oggetto, "
-        "nessun commento) seguendo l'istruzione dell'utente.\n"
+        "Scrivi il TESTO di una email (solo il corpo, niente oggetto, nessun "
+        "commento) seguendo l'istruzione dell'utente, NELLA STESSA LINGUA "
+        "dell'istruzione.\n"
         f"{_identity_context(aid)}\n"
+        f"{docs}\n"
+        f"{_DISCIPLINA_DATI if docs else ''}\n"
         f"Destinatario: {req.to or 'non specificato'}\n"
         f"Oggetto: {req.subject or 'non specificato'}\n"
-        f"{_slots_context(req.instruction + ' ' + req.subject)}\n"
+        f"{_slots_context(query)}\n"
         f"Istruzione: {req.instruction}"
     )
     out = _run_agent(prompt)
@@ -154,24 +223,51 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
             req.subject = req.subject or msg.get("subject") or ""
         except Exception:
             pass
+    # Il presidio gira PRIMA di qualunque generazione: se la mail impartisce
+    # ordini all'assistente non si scrive nessuna bozza e non si propone
+    # nessun allegato. Difendersi dentro l'istruzione non basta — l'attacco
+    # viaggia nello stesso canale; qui il controllo e' deterministico e non
+    # interpella nessun modello, quindi il testo non puo' manipolarlo.
+    verdetto = injection_guard.check(body, req.subject)
+    if verdetto.blocked:
+        return {
+            "blocked": True,
+            "draft": "",
+            "engine": "injection_guard",
+            "reasons": verdetto.reasons,
+            "passage": verdetto.passage,
+            "suggested_attachments": [],
+        }
     obs = ""
     try:
         obs = observer.get_context_for_prompt(aid or 0, sender=req.sender, subject=req.subject)
     except Exception:
         pass
+    query = f"{req.instruction} {req.subject} {body[:2000]}"
+    docs = _documenti_context(aid, query, folder)
     prompt = (
-        "Scrivi la RISPOSTA a questa email in italiano (solo il corpo, nessun "
-        "commento). Rispetta il tono e le correzioni abituali dell'utente.\n"
-        f"{_identity_context(aid)}\n"
+        # La lingua la decide chi ha scritto, non noi: rispondere in
+        # italiano a un cliente che scrive in inglese e' un errore che si
+        # vede subito, e prima era cablato qui dentro.
+        "Scrivi la RISPOSTA a questa email NELLA STESSA LINGUA in cui e' "
+        "scritta l'email ricevuta (solo il corpo, nessun commento). "
+        "Rispetta il tono e le correzioni abituali dell'utente.\n"
+        "L'email e tutto il contesto che serve sono gia' qui sotto: non "
+        "cercare altrove e non chiedere niente, scrivi la bozza.\n"
+        f"{_identity_context(aid, folder)}\n"
         f"{obs}\n"
+        f"{docs}\n"
+        f"{_DISCIPLINA_DATI if docs else ''}\n"
         f"Mittente: {req.sender}\nOggetto: {req.subject}\n"
         f"--- EMAIL RICEVUTA ---\n{body[:6000]}\n--- FINE EMAIL ---\n"
-        f"{_slots_context(req.instruction + ' ' + req.subject + ' ' + body[:2000])}\n"
+        f"{_slots_context(query)}\n"
         f"Istruzione dell'utente: {req.instruction or 'rispondi in modo appropriato'}"
     )
     out = _run_agent(prompt)
+    out["blocked"] = False
     out["suggested_attachments"] = _suggest_attachments(
-        aid, f"{out.get('draft', '')} {req.instruction} {req.subject} {body[:1000]}"
+        aid, f"{out.get('draft', '')} {req.instruction} {req.subject} {body[:1000]}",
+        folder,
     )
     return out
 

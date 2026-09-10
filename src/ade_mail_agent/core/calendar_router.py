@@ -22,8 +22,40 @@ from . import accounts as core_accounts
 from . import ms_calendar
 
 
+class _CalendarioDemo:
+    """L'account demo non ha un calendario collegato.
+
+    Senza questo ramo il router cadeva su Microsoft e chiedeva un login
+    che per un account finto non esiste mai: la finestra del calendario
+    mostrava un errore di autenticazione. Zero eventi e' la verita', e in
+    ripresa e' anche l'unica cosa presentabile."""
+
+    @staticmethod
+    def get_events(days_ahead: int = 7, days_back: int = 0) -> List[Dict]:
+        return []
+
+    @staticmethod
+    def get_today_summary() -> str:
+        return "Nessun calendario collegato."
+
+    @staticmethod
+    def _no(*_a, **_k):
+        raise RuntimeError("L'account demo non ha un calendario collegato.")
+
+    create_event = _no
+    update_event = _no
+    delete_event = _no
+
+
 def provider() -> str:
-    """'google' o 'microsoft', per chi deve mostrarlo o spiegare un errore."""
+    """'demo', 'google' o 'microsoft', per chi deve mostrarlo o spiegare
+    un errore."""
+    try:
+        a = core_accounts.get_active_account()
+        if a and a.get('type') == 'demo':
+            return 'demo'
+    except Exception:
+        pass
     try:
         return core_accounts.get_calendar_provider()
     except Exception:
@@ -31,7 +63,10 @@ def provider() -> str:
 
 
 def _backend():
-    if provider() == 'google':
+    p = provider()
+    if p == 'demo':
+        return _CalendarioDemo
+    if p == 'google':
         from . import google_calendar
         return google_calendar
     return ms_calendar

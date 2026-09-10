@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 from . import accounts as acc
 from . import auth as ms_auth
+from . import demo_mailbox as demo
 from . import imap_client as imap
 from . import mail as ms_mail
 
@@ -50,6 +51,13 @@ def _with_ms_context(a):
             a.get('email', ''), a.get('id'), data.get('token_cache')
         )
     return a
+def _demo(a) -> bool:
+    """Account di tipo 'demo': la casella e' un file, non una connessione.
+    Esiste solo se qualcuno l'ha creato apposta — per le riprese o per una
+    prova — quindi su un'installazione normale questo ramo non esiste."""
+    return bool(a) and a.get('type') == 'demo'
+
+
 def _is_microsoft(account_id=None) -> bool:
     a = _account(account_id)
     if not a:
@@ -108,6 +116,8 @@ def get_messages(
     a = _account(account_id)
     if not a:
         return []
+    if _demo(a):
+        return demo.get_messages(a, folder=folder, top=top, skip=skip)
     f = (folder or 'inbox').lower()
     # Microsoft Graph
     if a.get('type', 'microsoft') == 'microsoft':
@@ -151,6 +161,8 @@ def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict
     a = _account(account_id)
     if not a:
         return {}
+    if _demo(a):
+        return demo.get_message(a, message_id)
     if a.get('type', 'microsoft') == 'microsoft':
         # Guardia: se l'ID è puramente numerico è un UID IMAP — non appartiene a questo account
         if str(message_id).isdigit():
@@ -164,6 +176,8 @@ def get_message_headers(account_id=None, message_id: str = '', folder: str = '')
     a = _account(account_id)
     if not a:
         return None
+    if _demo(a):
+        return demo.get_message_headers(a, message_id)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.get_message_headers(message_id)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -193,6 +207,11 @@ def send_message(
             'warning': None,
             'error': 'Account non trovato',
         }
+    if _demo(a):
+        return _normalize_send_result(demo.send_message(
+            a, to, subject, body, reply_to_id=reply_to_id,
+            attachments=attachments, cc=cc, bcc=bcc,
+        ))
     if a.get('type', 'microsoft') == 'microsoft':
         return _normalize_send_result(ms_mail.send_message(
             to,
@@ -274,6 +293,8 @@ def get_priority_messages(account_id=None, top: int = 20) -> List[Dict]:
     a = _account(account_id)
     if not a:
         return []
+    if _demo(a):
+        return demo.get_messages(a, folder='inbox', top=top)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.get_priority_messages(top=top)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -283,6 +304,8 @@ def search_messages(account_id=None, query: str = '', top: int = 10) -> List[Dic
     a = _account(account_id)
     if not a:
         return []
+    if _demo(a):
+        return demo.search_messages(a, query, top=top)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.search_messages(query, top=top)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -299,6 +322,8 @@ def set_read_status(account_id=None, message_id: str = '', folder: str = 'inbox'
     a = _account(account_id)
     if not a:
         return False
+    if _demo(a):
+        return demo.set_read_status(a, message_id, is_read)
     if a.get('type', 'microsoft') == 'microsoft':
         try:
             ms_mail.set_read_status(message_id, is_read)
@@ -333,6 +358,8 @@ def _message_datetime(value: str) -> Optional[datetime]:
 def get_all_uids(account_id=None, folder: str = 'inbox') -> List[str]:
     """Ritorna tutti gli UID IMAP di una cartella. Solo per account IMAP."""
     a = _account(account_id)
+    if _demo(a):
+        return demo.get_all_uids(a, folder=folder)
     if not a or a.get('type', 'microsoft') == 'microsoft':
         return []
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -343,6 +370,8 @@ def get_all_uids(account_id=None, folder: str = 'inbox') -> List[str]:
 def fetch_messages_by_uids(account_id=None, uids: List[str] = None, folder: str = 'inbox') -> List[Dict]:
     """Fetcha mail per lista UID. Solo per account IMAP."""
     a = _account(account_id)
+    if _demo(a):
+        return demo.fetch_messages_by_uids(a, uids or [])
     if not a or a.get('type', 'microsoft') == 'microsoft':
         return []
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -379,6 +408,8 @@ def move_to_folder(account_id=None, message_id: str = '', folder_id: str = '', s
     a = _account(account_id)
     if not a:
         return False
+    if _demo(a):
+        return demo.move_to_folder(a, message_id, folder_id)
     f = (folder_id or '').lower()
     if f in ('inbox', 'posta_in_arrivo', 'postainarrivo'):
         normalized = 'inbox'
@@ -425,6 +456,8 @@ def list_folders(account_id=None) -> List[Dict]:
     a = _account(account_id)
     if not a:
         return []
+    if _demo(a):
+        return demo.list_folders(a)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.list_folders()
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -434,6 +467,8 @@ def create_folder(account_id=None, name: str = '') -> Dict:
     a = _account(account_id)
     if not a:
         return {}
+    if _demo(a):
+        return demo.create_folder(a, name)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.create_folder(name)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -443,6 +478,8 @@ def delete_folder(account_id=None, folder_id: str = '') -> bool:
     a = _account(account_id)
     if not a:
         return False
+    if _demo(a):
+        return demo.delete_folder(a, folder_id)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.delete_folder(folder_id)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -452,6 +489,8 @@ def delete_message(account_id=None, message_id: str = '', folder: str = None) ->
     a = _account(account_id)
     if not a:
         return False
+    if _demo(a):
+        return demo.delete_message(a, message_id)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.delete_message(message_id)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
@@ -467,6 +506,8 @@ def get_attachment(account_id=None, message_id: str = '', filename: str = '', fo
     a = _account(account_id)
     if not a:
         raise ValueError('Account non trovato')
+    if _demo(a):
+        return demo.get_attachment(a, message_id, filename)
     if a.get('type', 'microsoft') == 'microsoft':
         return ms_mail.get_attachment(message_id, filename)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)

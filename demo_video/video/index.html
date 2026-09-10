@@ -1,0 +1,97 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>GigaMail — le scene</title>
+<style>
+  :root{ color-scheme: light dark; }
+  body{
+    margin:0; padding:28px 20px 60px;
+    font:15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    background:#f4f6fa; color:#161a20;
+  }
+  @media (prefers-color-scheme: dark){
+    body{ background:#12141a; color:#e7e9ee; }
+    .card{ background:#1b1e26; border-color:#2b3040; }
+    .meta{ color:#98a0b3; }
+  }
+  h1{ font-size:20px; margin:0 auto 4px; max-width:980px; letter-spacing:-.2px; }
+  .sub{ max-width:980px; margin:0 auto 26px; color:#5d6577; font-size:13px; }
+  .card{
+    max-width:980px; margin:0 auto 26px; background:#fff;
+    border:1px solid #e2e6ef; border-radius:14px; overflow:hidden;
+    box-shadow:0 2px 14px rgba(20,26,40,.06);
+  }
+  .head{ display:flex; align-items:baseline; gap:10px; padding:14px 18px 10px; flex-wrap:wrap; }
+  .n{ font-weight:700; font-size:13px; letter-spacing:1.4px; opacity:.55; }
+  .t{ font-weight:650; font-size:16px; }
+  .lang{
+    margin-left:auto; font-size:11px; letter-spacing:1.2px; font-weight:700;
+    padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3550c8;
+  }
+  .meta{ padding:0 18px 12px; font-size:13px; color:#5d6577; }
+  video{ display:block; width:100%; background:#0d0f14; }
+</style>
+
+<h1>GigaMail, le scene della demo</h1>
+<p class="sub">Console vera, casella su file. Le attese della generazione
+scorrono a velocita' otto, il resto e' a tempo reale.</p>
+
+<div class="card">
+  <div class="head"><span class="n">TUTTO</span>
+    <span class="t">Le quattro scene di seguito</span>
+    <span class="lang">EN</span></div>
+  <p class="meta">Cartelli di stacco fra una scena e l'altra, e i
+  sottotitoli in una fascia sotto, dove non coprono niente. I sottotitoli
+  stanno anche in un .srt accanto al file, per chi rimonta.</p>
+  <video controls preload="metadata" src="gigamail_demo_en.mp4"></video>
+</div>
+
+<div class="card">
+  <div class="head"><span class="n">SCENA 1</span>
+    <span class="t">La stessa domanda, due cartelle</span>
+    <span class="lang" id="l1">IT</span></div>
+  <p class="meta">La mail di Giulia arriva in Lead, quella identica di Marco
+  in Clienti. Fra le due riprese non si tocca nessuna impostazione.</p>
+  <video id="v1" controls preload="metadata"></video>
+</div>
+
+<div class="card">
+  <div class="head"><span class="n">SCENA 3</span>
+    <span class="t">Il dato esce dai documenti</span>
+    <span class="lang">EN</span></div>
+  <p class="meta">Il prezzo viene dal listino dell'utente, letto sul momento.
+  La scheda dell'appartamento finisce fra gli allegati proposti.</p>
+  <video controls preload="metadata" src="scena3_dato_dai_documenti_en.mp4"></video>
+</div>
+
+<div class="card">
+  <div class="head"><span class="n">SCENA 4</span>
+    <span class="t">Il limite dichiarato</span>
+    <span class="lang">EN</span></div>
+  <p class="meta">Il prezzo confermato e il marcatore sulla convenzione
+  bancaria, che nei documenti non esiste, nella stessa risposta.</p>
+  <video controls preload="metadata" src="scena4_limite_dichiarato_en.mp4"></video>
+</div>
+
+<div class="card">
+  <div class="head"><span class="n">SCENA 7</span>
+    <span class="t">La mail che da' ordini all'assistente</span>
+    <span class="lang">EN</span></div>
+  <p class="meta">Nessuna bozza. L'avviso elenca cosa e' stato riconosciuto e
+  cita il passaggio. Il destinatario resta chi ha scritto.</p>
+  <video controls preload="metadata" src="scena7_mail_ostile_en.mp4"></video>
+</div>
+
+<script>
+  // La scena 1 esiste in inglese se e' stata girata; altrimenti si mostra
+  // quella italiana, senza lasciare un riquadro rotto.
+  (async () => {
+    const v = document.getElementById('v1'), tag = document.getElementById('l1');
+    const en = 'scena1_due_cartelle_en.mp4', it = 'scena1_due_cartelle_it.mp4';
+    let scelta = it;
+    try {
+      const r = await fetch(en, { method: 'HEAD' });
+      if (r.ok) { scelta = en; tag.textContent = 'EN'; }
+    } catch (e) { /* nessuna versione inglese */ }
+    v.src = scelta;
+  })();
+</script>
