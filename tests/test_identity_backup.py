@@ -19,12 +19,15 @@ def test_salva_solo_i_campi_dell_identity(tmp_path):
     """I campi si elencano uno per uno invece di copiare la riga intera:
     se un domani la tabella ne guadagnasse uno — poniamo una credenziale —
     non finirebbe nella copia per inerzia."""
-    identita = dict(IDENTITA, password="segretissima", imap_host="mail.x.it")
+    # valori finti: servono solo a provare che NON finiscano nella copia
+    fuori = {"password": "pw", "imap_host": "mail.x.it"}
+    identita = {**IDENTITA, **fuori}
     p = ib.snapshot(1, identita, root=str(tmp_path))
     salvato = json.loads(open(p, encoding="utf-8").read())
     assert set(salvato["identity"]) == set(ib.CAMPI)
     testo = json.dumps(salvato).lower()
-    assert "segretissima" not in testo and "mail.x.it" not in testo
+    assert all(v not in testo for v in fuori.values())
+    assert "password" not in testo
 
 
 def test_una_copia_per_cambiamento_non_per_avvio(tmp_path):
