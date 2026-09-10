@@ -315,6 +315,50 @@ def _score_file(filename: str, tokens) -> float:
     return score
 
 
+MAX_EXCERPT_CHARS = 2000   # per file, nel blocco dei dati
+MAX_EXCERPT_TOTAL = 6000   # totale del blocco
+
+
+def read_relevant_excerpts(file_paths: List[str], query: str,
+                           max_files: int = 3) -> str:
+    """Il CONTENUTO dei documenti che parlano della mail ricevuta, pronto
+    per il prompt.
+
+    find_relevant_files sceglie i file per NOME e serve a proporre gli
+    allegati; qui i file scelti vengono anche letti. Senza questo passo il
+    prezzo sta nel listino sullo stesso disco e la bozza risponde lo stesso
+    'non disponiamo di questa informazione': la conoscenza c'e' ma non
+    arriva mai a chi scrive.
+
+    Il blocco e' etichettato in modo che l'istruzione possa dichiararlo
+    fonte attendibile, distinguendolo dal corpo della mail, che invece
+    resta dato non fidato.
+    """
+    hits = find_relevant_files(file_paths, query, max_files=max_files)
+    if not hits:
+        return ""
+    pezzi = []
+    totale = 0
+    for h in hits:
+        if totale >= MAX_EXCERPT_TOTAL:
+            break
+        if h.get('ext') not in SUPPORTED_EXTENSIONS:
+            continue  # immagini: si allegano, non si leggono
+        content = _read_file(h['path'])
+        # I lettori segnalano il guasto restituendo '[PDF non leggibile: ...]'.
+        # Va bene per un'anteprima, non qui: finirebbe nel prompt sotto
+        # l'etichetta dei dati attendibili, e il modello non ha modo di
+        # sapere che quello e' un errore e non il contenuto del file.
+        if not content or content.lstrip().startswith('['):
+            continue
+        content = content[:min(MAX_EXCERPT_CHARS, MAX_EXCERPT_TOTAL - totale)]
+        pezzi.append(f"--- {h['name']} ---\n{content}")
+        totale += len(content)
+    if not pezzi:
+        return ""
+    return "DATI SPECIFICI DALLA DOCUMENTAZIONE:\n" + "\n".join(pezzi)
+
+
 def list_all_files(file_paths: List[str]) -> List[Dict]:
     """
     Lista tutti i file disponibili nelle cartelle configurate.

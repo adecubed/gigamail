@@ -135,6 +135,20 @@ def add_imap_account(name: str, email: str, password: str,
         )
         conn.commit()
         return cur.lastrowid
+def add_demo_account(name: str, email: str, seed_path: str) -> int:
+    """Account con la casella su file (demo_mailbox): niente rete, niente
+    credenziali. Serve per le riprese e per le prove a vuoto; l'installer
+    non ne crea nessuno."""
+    data_enc = _encrypt(json.dumps({'seed_path': seed_path}))
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            'INSERT INTO accounts (name, type, email, data_enc) VALUES (?,?,?,?)',
+            (name, 'demo', email, data_enc)
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
 def set_active_account(account_id: int):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute('UPDATE accounts SET active=0')
@@ -156,6 +170,21 @@ def delete_account(account_id: int):
             except Exception:
                 pass
         conn.commit()
+def update_demo_seed(account_id: int, seed_path: str, email: str = '') -> None:
+    """Cambia il file da cui pesca un account demo. Serve a passare da una
+    casella all'altra (per esempio fra italiano e inglese) senza rifare
+    l'account e senza perdere le identity, che sono agganciate al suo id."""
+    data_enc = _encrypt(json.dumps({'seed_path': seed_path}))
+    with sqlite3.connect(DB_PATH) as conn:
+        if email:
+            conn.execute('UPDATE accounts SET data_enc=?, email=? WHERE id=? AND type=?',
+                         (data_enc, email, account_id, 'demo'))
+        else:
+            conn.execute('UPDATE accounts SET data_enc=? WHERE id=? AND type=?',
+                         (data_enc, account_id, 'demo'))
+        conn.commit()
+
+
 def update_microsoft_token(account_id: int, token_cache: str):
     data = json.dumps({'token_cache': token_cache})
     data_enc = _encrypt(data)

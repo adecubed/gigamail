@@ -2,6 +2,91 @@
 
 ## Unreleased — Google Calendar and Drive
 
+- **Il prompt della bozza arrivava mutilato all'agente.** npm installa
+  `claude` e `codex` come wrapper `.cmd`, quindi CreateProcess li lancia
+  attraverso cmd.exe, che la riga di comando la tronca al primo a capo.
+  Il processo partiva, l'agente riceveva la prima riga e basta: identity,
+  documenti e corpo della mail non uscivano mai da `agent_bridge`. La
+  bozza tornava con "non vedo l'email a cui rispondere" e sembrava un
+  problema del modello. `run()` mandava gia' il prompt su stdin quando era
+  troppo lungo; ora lo fa anche quando va a capo, cioe' sempre.
+
+- **La bozza segue la lingua di chi ha scritto.** Era cablata in italiano
+  dentro il prompt, in due punti: a un cliente che scriveva in inglese
+  l'agente rispondeva in italiano, ed e' un errore che si vede subito. Ora
+  la risposta esce nella lingua della mail ricevuta, e il testo che si
+  compone da zero segue la lingua dell'istruzione. Il marcatore di cio' che
+  manca ha la sua forma per lingua: `[DA COMPLETARE]` o `[TO BE COMPLETED]`.
+
+- **Il presidio contro le mail che impartiscono ordini all'assistente.**
+  Il corpo di una mail e' dato, non istruzione, ma finiva nel prompt
+  accanto alla richiesta di scrivere una bozza. `injection_guard` gira
+  PRIMA della generazione: se scatta non viene scritta nessuna bozza e non
+  viene proposto nessun allegato, e la mail torna all'utente con i motivi e
+  il passaggio incriminato. E' deterministico e locale — schemi, nessun
+  modello — quindi il testo che analizza non puo' manipolarlo. Limite
+  dichiarato: riconosce le formulazioni note, e' il primo strato e non
+  l'ultimo; copre `smart_draft`, l'unico percorso in cui una mail ricevuta
+  entra nel prompt. Non basta nominare una password per far scattare il
+  controllo, serve un verbo che la chieda: la posta vera parla di password
+  e di inoltri di continuo, e un presidio che blocca il notaio viene spento
+  il primo giorno. In inglese la prima persona e l'imperativo hanno la
+  stessa forma, quindi "I will send the file passwords separately" faceva
+  scattare il controllo: adesso si guarda anche chi c'e' davanti al verbo.
+  I motivi viaggiano come codici e non come frasi italiane, perche' in una
+  console inglese comparivano cosi' com'erano dentro l'avviso di sicurezza.
+
+- **L'identity di cartella adesso arriva davvero alla bozza.** Si poteva
+  configurare dalla console e salvare nel database, ma nessuno la leggeva:
+  `smart_draft` prendeva sempre e solo l'identity dell'account, quindi la
+  stessa mail riceveva la stessa risposta in Lead e in Clienti. Ora la
+  cartella copre i campi che ha valorizzato e i suoi percorsi di
+  conoscenza si sommano a quelli generali.
+
+- **I documenti entrano nella bozza, con la disciplina che serve.** I file
+  di conoscenza venivano scelti per nome per proporre gli allegati, ma non
+  venivano mai letti: il prezzo stava nel listino sullo stesso disco e la
+  bozza rispondeva lo stesso "non disponiamo di questa informazione".
+  `read_relevant_excerpts` mette il contenuto nel prompt sotto l'etichetta
+  `DATI SPECIFICI DALLA DOCUMENTAZIONE`, dichiarata attendibile. Il
+  permesso e' stretto e vale per quel blocco soltanto: fuori non si afferma
+  ne' si nega l'esistenza di servizi, convenzioni o condizioni che nei
+  documenti non ci sono, non si promettono tempi, e cio' che manca si
+  scrive `[DA COMPLETARE]`, alla lettera. Senza quelle righe la bozza si e'
+  inventata delle convenzioni bancarie che non esistevano.
+
+- **Una casella su file, per le riprese e per le prove.** `demo_mailbox`
+  serve la posta da un JSON invece che da IMAP o Graph: nessuna
+  connessione, nessuna credenziale, e cio' che l'agente 'invia' finisce
+  nella posta inviata del file. La console, il server MCP e le regole
+  passano dallo stesso codice di sempre. Non e' una modalita' globale e
+  non si accende con una variabile d'ambiente: esiste solo se qualcuno
+  crea un account di tipo `demo`, e l'installer non ne crea nessuno. Un
+  account demo non ha calendario collegato, e il router adesso lo dice
+  invece di cadere su Microsoft e chiedere un login che non esiste.
+
+- **La console mostra quando il presidio ferma una mail.** Senza questo,
+  premere GENERA su una mail ostile lasciava il campo vuoto e sembrava un
+  guasto dell'applicazione. Ora compare una fascia con cio' che e' stato
+  riconosciuto e il passaggio incriminato, e nessun allegato viene
+  proposto.
+
+- **Prova a vuoto delle scene del video.** `demo_video/preflight_test.py`
+  gira sulla pipeline vera con dati finiti: nessuna casella aperta, radice
+  dati dirottata su una cartella usa e getta. Undici verifiche sulle
+  quattro scene, stabili su tre giri. `demo_video/allestisci.py --scena N`
+  monta la casella per una scena sola e stampa il foglio di ripresa, cosi'
+  ogni scena diventa un video corto a se'. Salta anche la procedura di
+  primo avvio: su una radice dati nuova l'overlay copriva la casella e
+  sembrava che l'applicazione fosse bloccata. `demo_video/registra.py`
+  pilota la console vera via CDP e consegna l'mp4 della scena: le finestre
+  vengono fotografate dai loro renderer e composte, quindi nel video entra
+  solo l'applicazione e mai il resto del desktop di chi gira. Ogni scena
+  lascia accanto al suo mp4 i punti del copione, e `demo_video/unisci.py`
+  ne fa un video unico con cartelli e sottotitoli agganciati a quei punti:
+  la durata di un tratto cambia a ogni ripresa, quindi sottotitoli decisi a
+  tavolino scivolerebbero via al primo rifacimento.
+
 
 - **Spostare una mail ora chiede l'approvazione.** `move_message` stava
   fra le scritture libere perche' non distrugge niente e si annulla
