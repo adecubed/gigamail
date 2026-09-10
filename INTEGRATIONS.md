@@ -51,6 +51,11 @@ Without `gigamail-server` on PATH the skill still loads but the server
 exposes 0 tools: that is the "not on PATH" case in the skill's
 troubleshooting, and the reason the plugin cannot replace step 1 above.
 
+The entry proposed for Codex's curated catalogs (`openai/plugins`, both
+the ChatGPT-login and the API-key marketplace), with the PR text and what
+was verified, is in [integrations/codex/](integrations/codex/). Not yet
+submitted.
+
 One thing to know: a plugin install copies the whole plugin root into
 `~/.codex/plugins/cache/`, and for this repository the plugin root is the
 repository itself, `.git` included. That is how Codex installs plugins,

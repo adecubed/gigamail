@@ -58,6 +58,19 @@ def test_marketplace_locale_espone_il_plugin():
     assert market["name"] == "gigamail"  # selettore: gigamail@gigamail
 
 
+def test_voce_per_il_catalogo_openai_coerente_col_manifest():
+    """integrations/codex/marketplace-entry.json e' la voce proposta per i
+    cataloghi di openai/plugins: deve puntare a questo repo e portare lo
+    stesso nome e la stessa categoria del manifest."""
+    entry = _load("integrations/codex/marketplace-entry.json")
+    plugin = _load(".codex-plugin/plugin.json")
+    assert entry["name"] == plugin["name"]
+    assert entry["source"] == {"source": "url", "url": plugin["repository"] + ".git"}
+    assert entry["category"] == plugin["interface"]["category"]
+    assert entry["interface"]["displayName"] == plugin["interface"]["displayName"]
+    assert entry["policy"] == {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}
+
+
 def test_skill_frontmatter_e_metadata():
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     m = re.match(r"---\n(.*?)\n---\n", text, re.S)
