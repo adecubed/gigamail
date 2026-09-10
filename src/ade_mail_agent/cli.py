@@ -574,6 +574,77 @@ def cmd_rules_remove(args) -> int:
     return 1
 
 
+def cmd_identity_history(args) -> int:
+    """Le copie salvate dell'identity di un account.
+
+    Vivono in %APPDATA%, mai nel repository: contengono l'indirizzo
+    dell'ufficio, i prezzi e il modo di trattare i clienti, e il
+    repository e' pubblico."""
+    from ade_mail_agent.core import identity_backup as ib
+    aid = _resolve_account_id(getattr(args, "account_id", None))
+    if not aid:
+        print("Nessun account.")
+        return 1
+    copie = ib.storia(aid)
+    print(f"Copie in {ib.cartella()}")
+    if not copie:
+        print("  nessuna copia: ne nascera' una alla prossima modifica.")
+        return 0
+    for p in copie:
+        d = ib.leggi(p)
+        ki = (d.get("identity") or {}).get("key_info") or ""
+        print(f"  {d.get('salvata_il')}  {len(ki):5d} car  "
+              f"{__import__('os').path.basename(p)}")
+    return 0
+
+
+def cmd_identity_restore(args) -> int:
+    """Riporta l'identity a una copia precedente.
+
+    La copia attuale viene salvata prima di essere sostituita, quindi
+    un ripristino sbagliato si annulla ripristinando l'ultima."""
+    import os
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import identity_backup as ib
+    aid = _resolve_account_id(getattr(args, "account_id", None))
+    percorso = args.file
+    if not os.path.isabs(percorso):
+        percorso = os.path.join(ib.cartella(), percorso)
+    if not os.path.exists(percorso):
+        print(f"Copia inesistente: {percorso}")
+        return 1
+    d = ib.leggi(percorso)
+    ident = d.get("identity") or {}
+    if int(d.get("account_id", -1)) != int(aid):
+        print(f"Questa copia e' dell'account {d.get('account_id')}, "
+              f"non del {aid}. Nessuna modifica.")
+        return 1
+    print(f"Ripristino la copia del {d.get('salvata_il')} "
+          f"({len(ident.get('key_info') or '')} caratteri di key_info).")
+    core_accounts.set_identity(
+        aid,
+        who_am_i=ident.get("who_am_i") or "",
+        what_i_do=ident.get("what_i_do") or "",
+        tone=ident.get("tone") or "",
+        key_info=ident.get("key_info") or "",
+        file_paths=ident.get("file_paths") or [],
+    )
+    print("Fatto. La versione precedente e' stata salvata come nuova copia.")
+    return 0
+
+
+def cmd_identity_backup(args) -> int:
+    """Forza una copia adesso, senza aspettare una modifica."""
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import identity_backup as ib
+    aid = _resolve_account_id(getattr(args, "account_id", None))
+    p = ib.snapshot(aid, core_accounts.get_identity(aid))
+    if p:
+        print(f"Copia salvata: {p}")
+    else:
+        print("Nessuna modifica dall'ultima copia: non ne serviva una nuova.")
+    return 0
+
 def cmd_telegram_pin(args) -> int:
     """Imposta (o rimuove) il PIN che serve per approvare da Telegram.
 
@@ -936,12 +1007,104 @@ def cmd_purge(args) -> int:
     return 0
 
 
+def cmd_google_login(_args) -> int:
+    """Login Google. A differenza di Microsoft non c'e' un codice da
+    incollare: si apre il browser e il redirect torna su 127.0.0.1."""
+    import time
+    import webbrowser
+
+    from ade_mail_agent.core import google_auth
+
+    try:
+        data = google_auth.get_login_url()
+    except google_auth.NotConfigured as e:
+        print(f"Google non configurato: {e}")
+        return 1
+
+    url = data["auth_url"]
+    print("\nSi apre il browser per l'accesso Google.")
+    print(f"Se non si apre, incolla questo indirizzo:\n{url}\n")
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+    # Il redirect arriva al listener locale: qui si aspetta, senza chiedere
+    # all'utente di premere INVIO come nel flusso Microsoft.
+    print("In attesa dell'autorizzazione... (Ctrl+C per annullare)")
+    scaduto = time.time() + 300
+    try:
+        while time.time() < scaduto:
+            esito = google_auth.complete_login(data["flow"])
+            if esito:
+                print(f"Google collegato: {esito['email']}")
+                return 0
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nAnnullato.")
+        return 1
+    print("Tempo scaduto: nessuna autorizzazione ricevuta.")
+    return 1
+
+
+def cmd_google_logout(args) -> int:
+    from ade_mail_agent.core import google_auth
+    if google_auth.logout(getattr(args, "email", None)):
+        print("Identita Google scollegata e token revocato.")
+        return 0
+    print("Nessuna identita Google collegata.")
+    return 1
+
+
+def cmd_google_status(_args) -> int:
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import calendar_router, google_auth
+
+    if not google_auth.is_configured():
+        print("Google non configurato in questa build (manca il client OAuth).")
+        return 1
+    identita = core_accounts.list_google_identities()
+    if not identita:
+        print("Nessun account Google collegato. Usa: gigamail google login")
+    for i in identita:
+        primario = " [calendario]" if i.get("calendar_primary") else ""
+        print(f"- {i['email']}{primario}")
+    print(f"Calendario servito da: {calendar_router.provider()}")
+    return 0
+
+
+def cmd_google_calendar(args) -> int:
+    """Sposta il calendario tra Microsoft e Google. Scelta esplicita:
+    collegare Google non muove niente da solo."""
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import calendar_router
+    try:
+        core_accounts.set_calendar_provider(args.provider)
+    except ValueError as e:
+        print(str(e))
+        return 1
+    print(f"Calendario ora servito da: {calendar_router.provider()}")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="gigamail")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("login").set_defaults(fn=cmd_login)
     sub.add_parser("logout").set_defaults(fn=cmd_logout)
+
+    p_g = sub.add_parser("google", help="collega Google (calendario e Drive)")
+    g_sub = p_g.add_subparsers(dest="subcommand", required=True)
+    g_sub.add_parser("login").set_defaults(fn=cmd_google_login)
+    g_sub.add_parser("status").set_defaults(fn=cmd_google_status)
+    p_glo = g_sub.add_parser("logout")
+    p_glo.add_argument("email", nargs="?", default=None)
+    p_glo.set_defaults(fn=cmd_google_logout)
+    p_gcal = g_sub.add_parser(
+        "calendar", help="scegli quale calendario usa GigaMail")
+    p_gcal.add_argument("provider", choices=["google", "microsoft"])
+    p_gcal.set_defaults(fn=cmd_google_calendar)
 
     p_acc = sub.add_parser("accounts")
     acc_sub = p_acc.add_subparsers(dest="subcommand", required=True)
@@ -1038,6 +1201,19 @@ def main(argv=None) -> int:
     p_tgp.add_argument("--remove", action="store_true",
                        help="toglie il PIN: il tap tornera' a bastare")
     p_tgp.set_defaults(fn=cmd_telegram_pin)
+
+    p_id = sub.add_parser(
+        "identity", help="copie locali dell'identity (mai nel repo)")
+    id_sub = p_id.add_subparsers(dest="subcommand", required=True)
+    for nome, fn, aiuto in (("history", cmd_identity_history, "elenca le copie"),
+                            ("backup", cmd_identity_backup, "salva una copia adesso")):
+        pp = id_sub.add_parser(nome, help=aiuto)
+        pp.add_argument("--account-id", type=int, default=None, dest="account_id")
+        pp.set_defaults(fn=fn)
+    p_ir = id_sub.add_parser("restore", help="torna a una copia precedente")
+    p_ir.add_argument("file", help="nome del file di copia (o percorso)")
+    p_ir.add_argument("--account-id", type=int, default=None, dest="account_id")
+    p_ir.set_defaults(fn=cmd_identity_restore)
 
     p_ds = sub.add_parser(
         "desktop-setup",
