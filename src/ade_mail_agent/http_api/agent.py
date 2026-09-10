@@ -9,10 +9,10 @@ from ade_mail_agent import agent_bridge
 from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import (
     availability,
+    calendar_router,
     identity_reader,
     mail_memory,
     mail_router,
-    ms_calendar,
     observer,
 )
 
@@ -59,7 +59,7 @@ def _slots_context(text: str, max_slots: int = 3) -> str:
     if not any(k in low for k in _APPUNTAMENTO_KW):
         return ""
     try:
-        events = ms_calendar.get_events(days_ahead=8)
+        events = calendar_router.get_events(days_ahead=8)
         slots = availability.find_free_slots(events, days_ahead=7,
                                              max_slots=max_slots)
     except Exception:

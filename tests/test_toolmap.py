@@ -39,7 +39,7 @@ def test_qualita_descrizioni_tool():
 
     from ade_mail_agent.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
-    assert len(tools) == 24
+    assert len(tools) == 28
     for t in tools:
         desc = (t.description or "").strip()
         assert len(desc) >= 120, f"{t.name}: descrizione troppo corta"
