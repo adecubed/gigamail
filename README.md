@@ -33,7 +33,7 @@ before the agent ever sees them.
 
 
 
-[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
 
 
@@ -255,7 +255,7 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
-[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
 *Due minuti e un quarto su una casella dimostrativa, in quattro scene: la
 stessa domanda con due risposte diverse in due cartelle, un prezzo preso
@@ -467,7 +467,7 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
-[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
 *演示邮箱上的两分一刻钟，共四个场景：同一个问题在两个文件夹里得到不同的回复、
 价格取自用户自己的文件、文档里没有的信息留下标记，以及一封夹带助手指令的邮件
