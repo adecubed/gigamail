@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — GigaMail</title>
+<meta name="description" content="How GigaMail handles your data. Everything runs on your own machine; GigaMail operates no servers and receives none of your mail, calendar or files.">
+<meta name="theme-color" content="#070b18">
+<link rel="icon" href="brand/gigamail.ico">
+<style>
+  :root {
+    --bg: #070b18; --text: #e8eefb; --muted: #9fb0cc;
+    --line: rgba(143,168,214,.22); --line-2: rgba(143,168,214,.4);
+    --blue: #4fc3ff; --pink: #ff5fcf; --amber: #ffb454;
+    --grad: linear-gradient(135deg, #4fc3ff, #ff5fcf);
+    --display: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); }
+  .mono { font-family: var(--display); }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: .9rem clamp(1rem, 3vw, 2rem); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--text); text-decoration: none; letter-spacing: -.02em; }
+  .brand img { width: 30px; height: 30px; }
+  .brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pill { font-family: var(--display); font-size: .82rem; padding: .45rem .9rem; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); text-decoration: none; }
+
+  main { max-width: 46rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 2rem) 6rem; }
+  h1 { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -.03em; margin: 0 0 .4rem; }
+  .updated { color: var(--muted); font-family: var(--display); font-size: .85rem; margin: 0 0 2.5rem; }
+  h2 { font-family: var(--display); font-size: 1.15rem; letter-spacing: -.02em; margin: 2.6rem 0 .7rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+  p, li { color: #cfdcf2; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .45rem 0; }
+  strong { color: var(--text); }
+  .lede { font-size: 1.08rem; color: var(--text); }
+  .callout { border: 1px solid var(--line-2); border-left: 3px solid var(--amber); border-radius: 10px; padding: 1rem 1.2rem; background: rgba(255,180,84,.06); margin: 1.4rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 2rem clamp(1rem, 4vw, 2rem); color: var(--muted); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/"><img src="brand/gigamail.ico" alt=""><span>GigaMail</span></a>
+  <a class="pill" href="/">Back to site</a>
+</header>
+
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated mono">Last updated: 10 September 2026</p>
+
+  <p class="lede">GigaMail is software you install and run on your own
+  computer. It has no servers, no accounts and no backend. We do not
+  receive, store or see your mail, your calendar or your files.</p>
+
+  <h2>Who this policy is from</h2>
+  <p>GigaMail is published by Adecubed. It is open-source software
+  licensed under the AGPL-3.0; the source is at
+  <a href="https://github.com/adecubed/gigamail">github.com/adecubed/gigamail</a>.
+  Questions about this policy: <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>.</p>
+
+  <h2>What GigaMail accesses</h2>
+  <p>Only what you connect, and only while it runs on your machine.</p>
+  <ul>
+    <li><strong>Email</strong> — through Microsoft Graph or your IMAP and
+    SMTP servers, using credentials you supply.</li>
+    <li><strong>Google Calendar</strong> — events on your primary calendar,
+    read and written through the <span class="mono">calendar.events</span>
+    scope, if you connect a Google account.</li>
+    <li><strong>Google Drive</strong> — through the
+    <span class="mono">drive.file</span> scope, which grants access
+    <em>only</em> to files GigaMail itself created. GigaMail cannot see the
+    rest of your Drive, and does not ask to.</li>
+    <li><strong>Your email address and basic profile</strong> — to show
+    which account is connected.</li>
+  </ul>
+
+  <h2>Where the data goes</h2>
+  <p>Nowhere we control. Your mail, events and file contents move between
+  your computer and your own providers. They are held on your machine, in
+  the application data directory of your user account.</p>
+  <p>Access tokens are kept in memory only. Refresh tokens and mailbox
+  passwords are encrypted at rest; on Windows the encryption key is itself
+  protected by the operating system and bound to your user account, so
+  copying the files to another machine does not make them readable.</p>
+
+  <h2>The AI agent you choose</h2>
+  <div class="callout">
+    <p style="margin:0">GigaMail exists to give an AI agent access to your
+    mailbox. That agent is <strong>not</strong> part of GigaMail: it is a
+    separate program you choose and configure, such as Claude Code or Codex
+    CLI. When it drafts a reply, summarises a thread, reads an attachment or
+    proposes a meeting time, the relevant content — including Google
+    Calendar events and the text of Drive files GigaMail created — is sent
+    to that agent and therefore to its provider, under that provider's own
+    terms and privacy policy. This is the one path by which your data leaves
+    your machine, and it happens because you asked for it.</p>
+  </div>
+  <p>GigaMail does not choose the agent for you and sends nothing to any
+  provider of its own.</p>
+
+  <h2>Google user data: limited use</h2>
+  <p>GigaMail's use and transfer of information received from Google APIs
+  adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+  including the Limited Use requirements. Concretely:</p>
+  <ul>
+    <li>Google user data is used only to provide the features you invoke.</li>
+    <li>It is never sold, and never used for advertising or profiling.</li>
+    <li>No human at Adecubed reads it. We have no way to: it never reaches
+    us.</li>
+    <li>It is transferred only to the AI agent you configured, to perform
+    the action you asked for.</li>
+  </ul>
+
+  <h2>Actions that change something need your approval</h2>
+  <p>Sending or replying to mail, deleting messages or folders, moving a
+  message, creating or deleting a calendar event, uploading a file to Drive
+  or moving one to the trash: none of these happen because the agent
+  decided to. Each one stops and waits for a human approval given
+  separately, behind your device's own authentication. The agent cannot
+  grant that approval and cannot bypass it.</p>
+
+  <h2>Retention and deletion</h2>
+  <p>Everything GigaMail stores lives in a directory on your computer.
+  Disconnecting an account deletes its stored credentials and revokes the
+  token with the provider. Uninstalling GigaMail and deleting that
+  directory removes everything. There is nothing held elsewhere for us to
+  delete on your behalf.</p>
+  <p>You can also revoke GigaMail's access to your Google account at any
+  time from
+  <a href="https://myaccount.google.com/permissions">your Google Account permissions page</a>,
+  independently of the application.</p>
+
+  <h2>Children</h2>
+  <p>GigaMail is a tool for professional email and is not directed at
+  children under 13.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>Changes are published on this page with a new date at the top. The
+  history of the file is public in the repository, so you can see exactly
+  what changed and when.</p>
+</main>
+
+<footer>
+  GigaMail — Adecubed — AGPL-3.0 —
+  <a href="/">gigamail.ai</a>
+</footer>
+
+</body>
+</html>
