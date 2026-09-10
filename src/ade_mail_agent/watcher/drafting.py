@@ -10,7 +10,12 @@ from typing import Any, Dict, Optional
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import accounts as core_accounts
-from ade_mail_agent.core import file_extractor, mail_guard, observer
+from ade_mail_agent.core import (
+    file_extractor,
+    injection_guard,
+    mail_guard,
+    observer,
+)
 
 from .log import logger
 
@@ -101,12 +106,32 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
     )
 
 
+class MailConOrdini(Exception):
+    """La mail contiene istruzioni rivolte all'assistente.
+
+    Non e' un guasto dell'agente: e' la mail a non essere trattabile in
+    automatico. Chi la riceve la mostra all'umano invece di ritentare."""
+
+    def __init__(self, reasons, passage: str = ""):
+        self.reasons = list(reasons)
+        self.passage = passage
+        super().__init__(", ".join(self.reasons) or "istruzioni all'assistente")
+
+
 def draft_reply(rule: Dict[str, Any], account_id: int,
                 message: Dict[str, Any],
                 feedback: Optional[str] = None,
                 previous_body: Optional[str] = None) -> str:
     """Corpo della risposta, scritto dall'agente dell'utente. Solleva
-    agent_bridge.AgentUnavailable se l'agente non c'e' o non risponde."""
+    agent_bridge.AgentUnavailable se l'agente non c'e' o non risponde,
+    MailConOrdini se la mail impartisce ordini all'assistente.
+
+    Il presidio gira qui e non solo in smart_draft: questo percorso e' il
+    piu' esposto dei due, perche' la regola puo' anche spedire da sola."""
+    verdetto = injection_guard.check(_message_body_text(message),
+                                     str(message.get("subject") or ""))
+    if verdetto.blocked:
+        raise MailConOrdini(verdetto.reasons, verdetto.passage)
     # Timeout piu' largo del default (180 s): misurato dal vivo, claude -p
     # con i server MCP da avviare supera i 180 s sotto carico.
     out = agent_bridge.run(build_draft_prompt(rule, account_id, message,

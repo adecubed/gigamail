@@ -24,7 +24,7 @@ carrying exactly this entry, added with `codex plugin marketplace add`,
 listed `gigamail` as "not installed" with the GitHub URL as path;
 `codex plugin add gigamail@<marketplace>` resolved 0.3.2 from GitHub and
 installed it enabled. The same install, exercised in `codex exec`, loaded
-the skill as `gigamail:gigamail`, exposed the 24 tools and answered
+the skill as `gigamail:gigamail`, exposed the 28 tools and answered
 `list_accounts` on the console's accounts.
 
 ## Submitting (maintainers)
@@ -54,7 +54,7 @@ Add GigaMail to curated marketplaces
 GigaMail is missing from the curated marketplaces. It is a local MCP server
 (Python, PyPI `gigamail`, AGPL-3.0-or-later) that gives Codex the user's
 real mailbox (Microsoft 365 via Graph, or any IMAP provider) and calendar
-as 24 typed tools, with a server-side, out-of-band human approval on every
+as 28 typed tools, with a server-side, out-of-band human approval on every
 send, reply, delete and calendar write: the agent receives an inert request
 id and the action runs only after the user approves it from the GigaMail
 console or CLI, behind Windows Hello / Touch ID. It needs no OpenAI

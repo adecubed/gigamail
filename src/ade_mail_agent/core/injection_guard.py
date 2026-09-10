@@ -30,7 +30,6 @@ import re
 import unicodedata
 from typing import List
 
-
 # I motivi viaggiano come CODICI, non come frasi: la console li traduce
 # nella lingua di chi guarda. Prima erano frasi italiane e in una console
 # inglese comparivano cosi' com'erano, dentro l'avviso di sicurezza.

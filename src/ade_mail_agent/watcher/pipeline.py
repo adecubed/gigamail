@@ -17,7 +17,12 @@ from typing import Any, Dict, Optional
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import attachments as attachments_mod
-from ade_mail_agent.core import mail_guard, mail_router, telegram_channel
+from ade_mail_agent.core import (
+    injection_guard,
+    mail_guard,
+    mail_router,
+    telegram_channel,
+)
 from ade_mail_agent.core import rules as rules_mod
 
 from . import drafting, notify
@@ -131,6 +136,26 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         body = drafting.draft_reply(rule, account_id, full,
                                     feedback=retry_feedback,
                                     previous_body=previous_body)
+    except drafting.MailConOrdini as e:
+        # La mail impartisce ordini all'assistente. Non si ritenta: non
+        # cambierebbe niente al giro dopo, e questa e' la regola che puo'
+        # anche spedire da sola. Si ferma qui e la vede l'umano.
+        policy.audit("watch_rule", {"rule_id": rule_id,
+                                    "message_id": message_id}, "draft_blocked",
+                     detail=f"injection_guard: {', '.join(e.reasons)[:160]}")
+        rs.set_status(rule_id, message_id, "blocked", f"injection:{e}")
+        motivi = ", ".join(injection_guard.descrivi(m, policy.user_lang())
+                           for m in e.reasons)
+        policy.notify_approval_requested(
+            "-", f"draft_blocked:{rule_id}", {"action": "draft blocked"},
+            message=(f"Nessuna bozza per la mail da {sender} ({rule_id}): "
+                     f"contiene istruzioni rivolte all'assistente "
+                     f"({motivi}). Guardala prima di rispondere."
+                     if policy.user_lang() == "it" else
+                     f"No draft for the mail from {sender} ({rule_id}): it "
+                     f"carries instructions addressed to the assistant "
+                     f"({motivi}). Look at it before replying."))
+        return "blocked"
     except agent_bridge.AgentUnavailable as e:
         # L'agente non ha risposto (timeout, assente): non e' colpa
         # della mail. Si riprova ai giri successivi, fino a
