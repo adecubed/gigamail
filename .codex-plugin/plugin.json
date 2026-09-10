@@ -9,13 +9,15 @@
   "homepage": "https://gigamail.ai",
   "repository": "https://github.com/adecubed/gigamail",
   "license": "AGPL-3.0-or-later",
-  "keywords": ["email", "calendar", "mcp", "imap", "microsoft-365", "human-in-the-loop"],
+  "keywords": ["email", "calendar", "mcp", "imap", "microsoft-365", "outlook", "human-in-the-loop", "approval"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "GigaMail",
     "shortDescription": "Your real inbox and calendar for your agent, with a human on the send button.",
     "longDescription": "GigaMail exposes the user's real mailboxes (Microsoft 365 via Graph, or any IMAP provider) and calendar as 24 typed MCP tools. Reading, searching, attachment text, sender history, free-slot computation and drafting are free; send, reply, delete and calendar writes return an inert request id and execute only after a human approves out of band, from the desktop console or CLI, with the arguments stored at request time. Mail content is treated as data, never as instructions.",
     "developerName": "Adecubed",
-    "category": "Productivity",
+    "category": "Communication",
     "capabilities": [
       "Read, search and triage mail across Microsoft 365 and IMAP accounts",
       "Extract attachment text (PDF, DOCX, XLSX) without passing binaries to the model",
@@ -23,12 +25,17 @@
       "Compute free calendar slots and manage events",
       "Out-of-band human approval for send, reply, delete and calendar writes"
     ],
+    "defaultPrompt": [
+      "Triage my unread mail and tell me what needs an answer today",
+      "Reply to the last quote request using my price list, then ask me before sending",
+      "Find three free slots next week for a 45-minute call and draft the proposal"
+    ],
     "brandColor": "#0B2B5C",
-    "composerIcon": "./docs/brand/gigamail-logo-256.png",
+    "composerIcon": "./docs/brand/gigamail-logo-96.png",
     "logo": "./docs/brand/gigamail-logo-256.png",
     "screenshots": ["./docs/demo/poster.png"],
     "websiteURL": "https://gigamail.ai",
-    "privacyPolicyURL": "https://github.com/adecubed/gigamail/blob/main/SECURITY.md",
+    "privacyPolicyURL": "https://gigamail.ai/privacy.html",
     "termsOfServiceURL": "https://github.com/adecubed/gigamail/blob/main/LICENSE"
   }
 }

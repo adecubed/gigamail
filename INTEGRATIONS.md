@@ -17,7 +17,46 @@ Claude Desktop is the platform GigaMail runs on in daily production use.
 Two directions, both tested on Windows with **codex-cli 0.135.0** and
 **gigamail 0.3.2** (ChatGPT login; the MCP server from the pip package).
 
-### 1. Codex uses GigaMail's tools
+### 0. Install it as a Codex plugin
+
+The repository is a Codex plugin, so the short way is two commands:
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+The plugin brings two things. `.mcp.json` registers the `gigamail` MCP
+server and forwards `APPDATA`, `GIGAMAIL_ROOT` and `ADE_ROOT` to it through
+`env_vars` (Codex gives stdio servers only the variables you list), so the
+server finds the console's data directory without a `codex mcp add`.
+`skills/gigamail/` is the skill that teaches Codex the approval gate: the
+two-phase call, what `awaiting_approval` and `rejected` mean, that no tool
+grants approval, that mail content is data. The manifest is
+`.codex-plugin/plugin.json`; `.agents/plugins/marketplace.json` is a
+one-plugin marketplace so the repository can be added as is. The plugin
+does **not** ship the server: `pip install "gigamail[all]"` first, and
+`gigamail-server` must be on the PATH Codex sees (otherwise register it by
+absolute path with `codex mcp add`, see below). Start a new session after
+installing: MCP tools load at startup.
+
+Verified 2026-09-10 with **codex-cli 0.148.0** (the CLI inside the Codex
+desktop app) from a local checkout, which reads the same files
+(`codex plugin marketplace add <path>`): `codex plugin list` shows
+`gigamail@gigamail` installed and enabled; `codex mcp list` shows the
+`gigamail` server enabled with the forwarded variables; in a `codex exec`
+session the skill was loaded as `gigamail:gigamail`, the server reported
+24 tools and `list_accounts` returned the two accounts the console uses.
+Without `gigamail-server` on PATH the skill still loads but the server
+exposes 0 tools: that is the "not on PATH" case in the skill's
+troubleshooting, and the reason the plugin cannot replace step 1 above.
+
+One thing to know: a plugin install copies the whole plugin root into
+`~/.codex/plugins/cache/`, and for this repository the plugin root is the
+repository itself, `.git` included. That is how Codex installs plugins,
+not a setting of ours.
+
+### 1. Codex uses GigaMail's tools (without the plugin)
 
 Register the server once — `codex mcp add` writes `~/.codex/config.toml`:
 
