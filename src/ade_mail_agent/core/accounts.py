@@ -292,6 +292,14 @@ def get_identity(account_id: int) -> dict:
 def set_identity(account_id: int, who_am_i: str = '', what_i_do: str = '',
                  tone: str = '', key_info: str = '', file_paths=None) -> dict:
     fp_json = json.dumps(file_paths or [], ensure_ascii=False)
+    # Copia di cio' che c'e' ADESSO, prima di sovrascriverlo: e' l'unico
+    # istante in cui la versione precedente esiste ancora. Le copie
+    # restano in %APPDATA%, mai nel repository, che e' pubblico.
+    try:
+        from ade_mail_agent.core import identity_backup
+        identity_backup.snapshot(account_id, get_identity(account_id))
+    except Exception:
+        pass  # una copia mancata non deve impedire la modifica
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
             INSERT INTO account_identity
@@ -388,3 +396,172 @@ def get_calendar_primary() -> Optional[int]:
             "SELECT id FROM accounts WHERE type='microsoft' LIMIT 1"
         ).fetchone()
         return row[0] if row else None
+
+# ── IDENTITA' GOOGLE (calendario + drive) ─────────────────────────────────────
+# Volutamente FUORI dalla tabella accounts: quella governa la POSTA, dove
+# ogni ramo di mail_router decide con `type == 'microsoft'` e in tutti gli
+# altri casi cade su IMAP. Un type='google' finirebbe silenziosamente sul
+# ramo IMAP. Calendario e Drive non passano dal router della posta, quindi
+# vivono in una tabella propria e non toccano nulla di esistente.
+
+def _init_google_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS google_identity (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                email            TEXT NOT NULL UNIQUE,
+                name             TEXT DEFAULT '',
+                data_enc         TEXT NOT NULL,
+                calendar_primary INTEGER DEFAULT 0,
+                created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+
+_init_google_db()
+
+
+def _google_row_to_dict(row, with_secrets: bool = False) -> Dict:
+    g = dict(row)
+    enc = g.pop('data_enc', None)
+    if with_secrets and enc:
+        try:
+            g['data'] = json.loads(_decrypt(enc))
+        except Exception:
+            g['data'] = {}
+    return g
+
+
+def list_google_identities() -> List[Dict]:
+    """Identita' Google salvate, SENZA segreti: [{id, email, name,
+    calendar_primary, created_at}]."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            'SELECT id, email, name, calendar_primary, created_at '
+            'FROM google_identity ORDER BY id'
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_google_identity(email: str = None) -> Optional[Dict]:
+    """Identita' Google con i segreti decifrati. Senza email ritorna quella
+    marcata come primaria per il calendario, altrimenti la prima."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        if email:
+            row = conn.execute(
+                'SELECT * FROM google_identity WHERE lower(email)=lower(?)',
+                (email,)
+            ).fetchone()
+        else:
+            row = conn.execute(
+                'SELECT * FROM google_identity WHERE calendar_primary=1 LIMIT 1'
+            ).fetchone()
+            if not row:
+                row = conn.execute(
+                    'SELECT * FROM google_identity ORDER BY id LIMIT 1'
+                ).fetchone()
+        return _google_row_to_dict(row, with_secrets=True) if row else None
+
+
+def save_google_identity(email: str, name: str, data: Dict) -> int:
+    """Salva o aggiorna l'identita' Google. `data` contiene refresh_token e
+    scope concessi, cifrati con la stessa chiave Fernet degli account (su
+    Windows protetta con DPAPI). Se e' la prima identita' diventa primaria."""
+    email = (email or '').strip().lower()
+    if not email:
+        raise ValueError('save_google_identity: email mancante')
+    data_enc = _encrypt(json.dumps(data))
+    with sqlite3.connect(DB_PATH) as conn:
+        first = conn.execute('SELECT COUNT(*) FROM google_identity').fetchone()[0] == 0
+        conn.execute("""
+            INSERT INTO google_identity (email, name, data_enc, calendar_primary)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+                name     = excluded.name,
+                data_enc = excluded.data_enc
+        """, (email, name or '', data_enc, 1 if first else 0))
+        conn.commit()
+        row = conn.execute(
+            'SELECT id FROM google_identity WHERE lower(email)=lower(?)', (email,)
+        ).fetchone()
+        return row[0] if row else 0
+
+
+def delete_google_identity(email: str) -> bool:
+    """Rimuove un'identita' Google (revoca locale: il refresh token sparisce)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            'DELETE FROM google_identity WHERE lower(email)=lower(?)', (email,)
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def set_google_calendar_primary(email: str):
+    """Marca quale identita' Google serve il calendario."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute('UPDATE google_identity SET calendar_primary=0')
+        conn.execute(
+            'UPDATE google_identity SET calendar_primary=1 WHERE lower(email)=lower(?)',
+            (email,)
+        )
+        conn.commit()
+
+# -- PROVIDER DEL CALENDARIO --------------------------------------------------
+# Con Google collegato ci sono due backend possibili. La scelta e' esplicita
+# e persistente: NON si deduce dall'ultimo login, altrimenti collegare Drive
+# sposterebbe di nascosto il calendario di chi usa Microsoft da anni.
+
+def _init_settings_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS app_setting (
+                key   TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        conn.commit()
+
+_init_settings_db()
+
+
+def get_setting(key: str, default: str = '') -> str:
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute('SELECT value FROM app_setting WHERE key=?', (key,)).fetchone()
+        return row[0] if row else default
+
+
+def set_setting(key: str, value: str):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            INSERT INTO app_setting (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, str(value)))
+        conn.commit()
+
+
+def get_calendar_provider() -> str:
+    """'google' o 'microsoft'. Scelta esplicita se c'e'; altrimenti Google
+    solo quando e' l'unica strada possibile, cioe' nessun account Microsoft
+    configurato. Il default resta 'microsoft': un'installazione esistente
+    non cambia comportamento per il solo fatto di aver collegato Google."""
+    scelta = (get_setting('calendar_provider') or '').strip().lower()
+    if scelta in ('google', 'microsoft'):
+        return scelta
+    ha_google = bool(list_google_identities())
+    with sqlite3.connect(DB_PATH) as conn:
+        ha_ms = conn.execute(
+            "SELECT 1 FROM accounts WHERE type='microsoft' LIMIT 1"
+        ).fetchone() is not None
+    if ha_google and not ha_ms:
+        return 'google'
+    return 'microsoft'
+
+
+def set_calendar_provider(provider: str):
+    provider = (provider or '').strip().lower()
+    if provider not in ('google', 'microsoft'):
+        raise ValueError("provider deve essere 'google' o 'microsoft'")
+    set_setting('calendar_provider', provider)
