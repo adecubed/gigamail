@@ -303,3 +303,48 @@ def test_toast_non_si_accorpano_e_restano():
     assert "scenario" not in d.build_toast_xml("GigaMail", "x")
     assert "duration='long'" in d.build_toast_xml("GigaMail", "x")
     assert d._toast_tag(None) == ""
+
+
+# ------------------------------------------- move_message: gate + preview
+
+def _call(tool, **kw):
+    fn = getattr(tool, "fn", tool)
+    return fn(**kw)
+
+
+def test_move_message_non_sposta_alla_prima_chiamata(monkeypatch):
+    """Spostare non distrugge nulla, ma basta a nascondere una mail
+    all'umano che dovrebbe sorvegliare: prima chiamata = anteprima."""
+    from ade_mail_agent import server
+
+    mosse = []
+    monkeypatch.setattr(server.mail_router, "get_message",
+                        lambda **k: {"subject": "Fattura", "from": "a@x.it"})
+    monkeypatch.setattr(server.mail_router, "list_folders",
+                        lambda **k: [{"id": "AAMkAGopaco", "displayName": "Archivio"}])
+    monkeypatch.setattr(server.mail_router, "move_to_folder",
+                        lambda **k: mosse.append(k) or True)
+
+    out = _call(server.move_message, message_id="m1", folder_id="AAMkAGopaco")
+    assert out["status"] == "approval_required"
+    assert mosse == []
+    prev = out["preview"]
+    assert prev["subject"] == "Fattura"
+    assert prev["folder_to"] == "Archivio", "l'id opaco non e' un'anteprima"
+    assert prev["folder_from"] == "Inbox"
+
+    policy.store().approve(out["request_id"], by="test")
+    ok = _call(server.move_message, message_id="m1", folder_id="AAMkAGopaco",
+               request_id=out["request_id"])
+    assert ok["success"] is True and len(mosse) == 1
+
+
+def test_preview_move_mostra_la_destinazione_su_telegram():
+    """full_preview_text componeva le intestazioni da mittente e oggetto e
+    la cartella non compariva: in uno spostamento e' l'unica cosa che
+    conta."""
+    testo = policy.full_preview_text("move_message", {
+        "action": "move", "from": "a@x.it", "subject": "Fattura",
+        "folder_from": "Inbox", "folder_to": "Archivio",
+    })
+    assert "Archivio" in testo and "Inbox" in testo

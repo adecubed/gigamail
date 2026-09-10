@@ -33,14 +33,15 @@ before the agent ever sees them.
 
 
 
-https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
 
 
 
-*The human console in ninety seconds, on a demo mailbox: dashboard, reading
-a mail, a reply drafted by the agent from a one-line instruction, folders,
-calendar, "ask your mail", automation rules and the first-run guide. The
-human reviews and sends — or edits the instruction and regenerates.*
+*Two minutes and a quarter on a demo mailbox, in four scenes: the same
+question answered differently in two folders, a price taken from the
+seller's own file, a marker left where the documents say nothing, and a
+mail carrying instructions for the assistant that never reaches the model.
+A human reviews and sends — or edits the instruction and regenerates.*
 
 ## Why
 
@@ -137,14 +138,21 @@ reply, and asks you before sending.
 
 ## Tools
 
-24 typed tools, generated from the server itself:
+28 typed tools, generated from the server itself:
 
-- **Read (15)** — accounts, identity, knowledge files, messages, unread,
+- **Read (17)** — accounts, identity, knowledge files, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
-  patterns, calendar events, free-slot availability
+  patterns, calendar events, free-slot availability, Drive files and
+  their text
 - **Safe writes (3, audited)** — mark read, move message, create folder
-- **Dangerous (6, human approval out of band)** — send, reply, delete
-  message, delete folder, create/delete calendar event
+- **Dangerous (8, human approval out of band)** — send, reply, delete
+  message, delete folder, create/delete calendar event, upload a file to
+  Drive, move a Drive file to the trash
+
+The calendar is served by Microsoft Graph or Google Calendar, whichever
+the user connected; the tools are the same either way. Drive uses the
+`drive.file` scope, so it only ever sees files GigaMail created itself.
+Connecting Google: [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
 Full map and design decisions: [MAPPA_MCP.md](MAPPA_MCP.md).
 
@@ -247,13 +255,13 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
-https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
 
-*La console umana in novanta secondi, su una casella dimostrativa:
-dashboard, lettura di una mail, una risposta scritta dall'agente da
-un'istruzione di una riga, cartelle, calendario, "chiedi alle mail", regole
-di automazione e guida iniziale. L'umano rivede e invia — oppure corregge
-l'istruzione e rigenera.*
+*Due minuti e un quarto su una casella dimostrativa, in quattro scene: la
+stessa domanda con due risposte diverse in due cartelle, un prezzo preso
+dai file dell'utente, un marcatore dove i documenti non dicono niente, e
+una mail con dentro istruzioni per l'assistente che al modello non arriva
+mai. L'umano rivede e invia — oppure corregge l'istruzione e rigenera.*
 
 ## Perché
 
@@ -344,15 +352,21 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-24 tool tipizzati, generati dal server stesso:
+28 tool tipizzati, generati dal server stesso:
 
-- **Lettura (15)** — account, identità, file di conoscenza, messaggi, non
+- **Lettura (17)** — account, identità, file di conoscenza, messaggi, non
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
-  pattern appresi, eventi di calendario, slot liberi
+  pattern appresi, eventi di calendario, slot liberi, file di Drive e il
+  loro testo
 - **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
-- **Pericolose (6, approvazione umana fuori banda)** — invio, risposta,
+- **Pericolose (8, approvazione umana fuori banda)** — invio, risposta,
   cancellazione messaggio, cancellazione cartella, creazione/cancellazione
-  evento
+  evento, caricamento di un file su Drive, cestinamento di un file di Drive
+
+Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
+quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo
+scope `drive.file`, quindi vede solo i file creati da GigaMail.
+Per collegare Google: [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
 Mappa completa e decisioni di design: [MAPPA_MCP.md](MAPPA_MCP.md).
 
@@ -453,11 +467,11 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
-https://github.com/user-attachments/assets/362b58b6-6161-4911-b255-4c735bc7ba56
+[![The GigaMail console answering a real request](docs/demo/poster.png)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-console-0.3.1.mp4)
 
-*演示邮箱上的人工控制台 90 秒：仪表盘、阅读邮件、代理根据一行指令起草的回复、
-文件夹、日历、“询问邮件”、自动化规则和首次运行向导。人工审阅后发送 ——
-或者修改指令后重新生成。*
+*演示邮箱上的两分一刻钟，共四个场景：同一个问题在两个文件夹里得到不同的回复、
+价格取自用户自己的文件、文档里没有的信息留下标记，以及一封夹带助手指令的邮件
+从未送到模型面前。人工审阅后发送 —— 或者修改指令后重新生成。*
 
 ## 为什么
 
@@ -533,13 +547,17 @@ codex plugin add gigamail@gigamail
 
 ## 工具
 
-24 个类型化工具，由服务器本身生成：
+28 个类型化工具，由服务器本身生成：
 
-- **读取（15）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
-  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段
+- **读取（17）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
+  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本
 - **安全写入（3，有审计）** —— 标记已读、移动邮件、新建文件夹
-- **危险操作（6，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
-  创建/删除日历事件
+- **危险操作（8，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
+  创建/删除日历事件、上传文件到 Drive、将 Drive 文件移入回收站
+
+日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；
+工具完全相同。Drive 使用 `drive.file` 权限，只能看到 GigaMail 自己创建的
+文件。连接 Google 的方法见 [GOOGLE_SETUP.md](GOOGLE_SETUP.md)。
 
 ## 安全模型
 

@@ -15,7 +15,7 @@ from pathlib import Path
 BEGIN = "<!-- TOOLMAP:BEGIN (generato da gen_toolmap — non editare a mano) -->"
 END = "<!-- TOOLMAP:END -->"
 
-WRITE_SAFE_TOOLS = {"mark_read", "move_message", "create_folder"}
+WRITE_SAFE_TOOLS = {"mark_read", "create_folder"}
 
 
 def _mappa_path() -> Path:

@@ -29,11 +29,12 @@ from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import (
     attachments,
     availability,
+    calendar_router,
     file_extractor,
+    google_drive,
     identity_reader,
     mail_memory,
     mail_router,
-    ms_calendar,
     observer,
 )
 from ade_mail_agent.policy import audit
@@ -385,12 +386,14 @@ def list_events(
     days_ahead: Annotated[int, Field(description="Look this many days into the future.", ge=0)] = 7,
     days_back: Annotated[int, Field(description="Also include this many past days.", ge=0)] = 0,
 ) -> list[dict]:
-    """Calendar events in [today - days_back, today + days_ahead] for the
-    active Microsoft account: [{id, subject, start, end, location, ...}].
-    Requires a Microsoft account (Graph calendar); returns [] or an error
-    for IMAP-only setups. Read-only. To propose meeting times prefer
-    find_free_slots, which already applies working hours and margins."""
-    return ms_calendar.get_events(days_ahead=days_ahead, days_back=days_back)
+    """Calendar events in [today - days_back, today + days_ahead]:
+    [{id, subject, start, end, location, ...}]. Served by whichever
+    calendar the user connected, Microsoft Graph or Google Calendar; the
+    shape is identical either way. Returns [] or an error when no calendar
+    account is connected (IMAP-only setups). Read-only. To propose meeting
+    times prefer find_free_slots, which already applies working hours and
+    margins."""
+    return calendar_router.get_events(days_ahead=days_ahead, days_back=days_back)
 
 
 @mcp.tool(annotations=READ)
@@ -407,10 +410,10 @@ def find_free_slots(
     an email: {count, slots: [{start, end, label}], nota}. `label` is a
     human-readable Italian string. Time zone, weekends, working hours,
     minimum notice and gaps between events are already handled — use this
-    instead of deriving availability from list_events. Requires a
-    Microsoft account. Read-only: it never books anything (use
+    instead of deriving availability from list_events. Requires a connected
+    calendar (Microsoft or Google). Read-only: it never books anything (use
     create_event for that, which needs human approval)."""
-    events = ms_calendar.get_events(days_ahead=days_ahead + 1)
+    events = calendar_router.get_events(days_ahead=days_ahead + 1)
     slots = availability.find_free_slots(
         events,
         days_ahead=days_ahead,
@@ -424,6 +427,26 @@ def find_free_slots(
     return {"count": len(slots), "slots": slots,
             "nota": "Proponi questi orari all'utente/cliente; l'evento va "
                     "creato solo con create_event (che richiede conferma)."}
+
+
+def _folder_label(account_id, folder_ref: str) -> str:
+    """Nome leggibile di una cartella a partire da id (Graph) o nome (IMAP).
+
+    L'anteprima di uno spostamento vive o muore qui: l'id di Graph e' una
+    stringa opaca, e un umano che legge "AAMkAG..." non sta approvando
+    niente. Best effort: se il provider non risponde si torna il
+    riferimento cosi' com'e', mai una stringa vuota che nasconde la
+    destinazione."""
+    ref = (folder_ref or "").strip()
+    if not ref:
+        return ""
+    try:
+        for f in mail_router.list_folders(account_id=account_id) or []:
+            if ref in (f.get("id"), f.get("displayName"), f.get("name")):
+                return f.get("displayName") or f.get("name") or ref
+    except Exception:
+        pass
+    return ref
 
 
 # ---------------------------------------------------------- WRITE_SAFE
@@ -448,33 +471,6 @@ def mark_read(
 
 
 @mcp.tool(annotations=WRITE_SAFE)
-def move_message(
-    message_id: MessageId,
-    folder_id: Annotated[str, Field(
-        description="Destination folder: id (Graph) or name (IMAP) from "
-                    "list_folders.")],
-    source_folder: Annotated[str, Field(
-        description="Folder the message is currently in (IMAP only; empty "
-                    "= inbox).")] = "",
-    account_id: AccountId = None,
-) -> dict:
-    """Move a message to another folder of the same account. Returns
-    {success}. Reversible (move it back), executed immediately without
-    approval, audited. Note: on IMAP the message gets a new UID in the
-    destination folder, so the old message_id stops being valid. To
-    delete a message use delete_message (which requires approval)."""
-    ok = mail_router.move_to_folder(
-        account_id=account_id,
-        message_id=message_id,
-        folder_id=folder_id,
-        source_folder=source_folder or None,
-    )
-    audit("move_message", {"message_id": message_id, "folder_id": folder_id},
-          "executed" if ok else "failed")
-    return {"success": ok}
-
-
-@mcp.tool(annotations=WRITE_SAFE)
 def create_folder(
     name: Annotated[str, Field(
         description="Folder name. Created at the top level of the mailbox "
@@ -494,6 +490,52 @@ def create_folder(
 
 
 # ----------------------------------------------------------- DANGEROUS
+
+@mcp.tool(annotations=DANGEROUS, description=_two_phase(
+    """Move a message to another folder of the same account.""",
+    """
+    The preview shows the message's sender and subject and, above all,
+    the folder it leaves and the folder it lands in, by readable name.
+    Returns {success}. Nothing is destroyed and the move can be undone by
+    moving the message back, but a move is enough to hide mail from the
+    human who is supervising, so it is approved like any other action
+    that changes what the mailbox looks like. Note: on IMAP the message
+    gets a new UID in the destination folder, so the old message_id stops
+    being valid. To delete a message use delete_message."""))
+def move_message(
+    message_id: MessageId,
+    folder_id: Annotated[str, Field(
+        description="Destination folder: id (Graph) or name (IMAP) from "
+                    "list_folders.")],
+    source_folder: Annotated[str, Field(
+        description="Folder the message is currently in (IMAP only; empty "
+                    "= inbox).")] = "",
+    account_id: AccountId = None,
+    request_id: RequestId = None,
+) -> dict:
+    args = {"message_id": message_id, "folder_id": folder_id,
+            "source_folder": source_folder, "account_id": account_id}
+
+    def _preview():
+        m = mail_router.get_message(account_id=account_id,
+                                    message_id=message_id) or {}
+        return {"action": "move", "subject": m.get("subject"),
+                "from": m.get("from") or m.get("sender"),
+                "folder_from": _folder_label(account_id, source_folder) or "Inbox",
+                "folder_to": _folder_label(account_id, folder_id) or folder_id}
+
+    return policy.execute_dangerous(
+        "move_message", args, request_id,
+        preview_fn=_preview,
+        execute_fn=lambda a: {
+            "success": mail_router.move_to_folder(
+                account_id=a["account_id"], message_id=a["message_id"],
+                folder_id=a["folder_id"],
+                source_folder=a["source_folder"] or None,
+            )
+        },
+    )
+
 
 @mcp.tool(annotations=DANGEROUS, description=_two_phase(
     """Send a new email from the user's account.""",
@@ -625,7 +667,8 @@ def reply_mail(
     The preview shows the message's subject and sender. On execution the
     message is moved to the provider's Deleted Items / marked deleted and
     expunged (IMAP); GigaMail never empties the trash. Returns {success}.
-    For reversible tidying prefer move_message, which needs no approval."""))
+    For reversible tidying prefer move_message, which is approved the
+    same way but destroys nothing."""))
 def delete_message(
     message_id: MessageId,
     folder: Annotated[str, Field(description="Folder of the message (IMAP only; empty = search).")] = "",
@@ -676,13 +719,13 @@ def delete_folder(
 
 
 @mcp.tool(annotations=DANGEROUS, description=_two_phase(
-    """Create a calendar event on the active Microsoft account.""",
+    """Create a calendar event on the connected calendar.""",
     """
     Approval is required because an event can generate invitations to
     other people. The preview shows all fields as they will be created.
     Returns the created event ({id, ...}) on execution. Requires a
-    Microsoft account (Graph calendar). Find times with find_free_slots
-    first."""))
+    connected calendar (Microsoft or Google). Find times with
+    find_free_slots first."""))
 def create_event(
     subject: Annotated[str, Field(description="Event title.")],
     start: Annotated[str, Field(description="Start, ISO 8601 local time, e.g. 2026-08-12T15:00:00.")],
@@ -696,7 +739,7 @@ def create_event(
     return policy.execute_dangerous(
         "create_event", args, request_id,
         preview_fn=lambda: dict(args),
-        execute_fn=lambda a: ms_calendar.create_event(
+        execute_fn=lambda a: calendar_router.create_event(
             a["subject"], a["start"], a["end"],
             body=a["body"], location=a["location"],
         ),
@@ -704,11 +747,12 @@ def create_event(
 
 
 @mcp.tool(annotations=DANGEROUS, description=_two_phase(
-    """Delete a calendar event on the active Microsoft account.""",
+    """Delete a calendar event on the connected calendar.""",
     """
     Deleting an event the user organised cancels it for every attendee
     (the provider sends cancellations). The preview shows the event_id.
-    Returns {success}. Requires a Microsoft account."""))
+    Returns {success}. Requires a connected calendar (Microsoft or
+    Google)."""))
 def delete_event(
     event_id: Annotated[str, Field(description="Event id from list_events.")],
     request_id: RequestId = None,
@@ -717,7 +761,131 @@ def delete_event(
     return policy.execute_dangerous(
         "delete_event", args, request_id,
         preview_fn=lambda: {"action": "delete_event", "event_id": event_id},
-        execute_fn=lambda a: {"success": ms_calendar.delete_event(a["event_id"])},
+        execute_fn=lambda a: {"success": calendar_router.delete_event(a["event_id"])},
+    )
+
+
+# ── GOOGLE DRIVE ─────────────────────────────────────────────────────────────
+# Scope drive.file: GigaMail vede SOLO i file che ha creato lui. Ogni tool
+# lo dice nella propria descrizione, perche' un agente che cerca a vuoto
+# dentro il Drive dell'utente e non sa perche' e' un agente che insiste.
+
+_DRIVE_SCOPE_NOTE = (
+    "Scope is drive.file: this tool only ever sees files GigaMail itself "
+    "created or uploaded, never the user's whole Drive. An empty result "
+    "does not mean the user has no such file — say so instead of retrying."
+)
+
+
+def _google_error(e: Exception) -> dict:
+    """Un errore di autenticazione Google non e' un guasto da ritentare:
+    e' una cosa che deve fare l'utente. Dirlo esplicitamente evita che
+    l'agente rilanci la stessa chiamata in loop."""
+    from ade_mail_agent.core import google_auth
+    if isinstance(e, google_auth.NotConfigured):
+        return {"status": "error", "error": str(e),
+                "instructions": "Google is not set up in this build. Do not retry."}
+    if isinstance(e, google_auth.AuthRequired):
+        return {"status": "error", "error": str(e),
+                "instructions": "The user must connect Google from the "
+                                "GigaMail console (Account -> Google). You "
+                                "cannot do it. Do not retry."}
+    raise e
+
+
+@mcp.tool(annotations=READ)
+def drive_list_files(
+    query: Annotated[str, Field(description="Free text matched against the file name. Empty = most recently modified files.")] = "",
+    limit: Annotated[int, Field(description="Max files to return.", ge=1, le=100)] = 25,
+    folder_id: Annotated[str, Field(description="Restrict to one folder, by id from a previous result.")] = "",
+) -> dict:
+    """List files on the user's Google Drive: {count, files: [{id, name,
+    mime_type, size, modified, link, is_folder}], nota}. Read-only.
+    Requires a connected Google account."""
+    try:
+        files = google_drive.list_files(query=query, limit=limit, folder_id=folder_id)
+        return {"count": len(files), "files": files, "nota": _DRIVE_SCOPE_NOTE}
+    except Exception as e:
+        return _google_error(e)
+
+
+@mcp.tool(annotations=READ)
+def drive_read_file(
+    file_id: Annotated[str, Field(description="File id from drive_list_files.")],
+) -> dict:
+    """Extract the text of a Drive file: {filename, kind, text}. Google
+    Docs, Sheets and Slides are exported to their Office format first, so
+    they read like any attachment. The file is fetched to a temporary path
+    and deleted straight after. Requires a connected Google account."""
+    try:
+        info = google_drive.download_file(file_id, tempfile.mkdtemp())
+    except Exception as e:
+        return _google_error(e)
+    try:
+        text, kind = file_extractor.extract_text(
+            info["path"], original_filename=info["name"])
+        return {"filename": info["name"], "kind": kind, "text": text}
+    finally:
+        try:
+            os.unlink(info["path"])
+        except OSError:
+            pass
+
+
+@mcp.tool(annotations=DANGEROUS, description=_two_phase(
+    """Upload a local file to the user's Google Drive.""",
+    """
+    Approval is required because a file on Drive can be shared onward and
+    leaves the machine. The preview shows the local path, the name it will
+    get and the destination folder. Returns the created file
+    ({id, name, link, ...}) on execution. Requires a connected Google
+    account."""))
+def drive_upload_file(
+    local_path: Annotated[str, Field(description="Absolute path of the file to upload.")],
+    name: Annotated[str, Field(description="Name to give it on Drive. Empty = keep the local file name.")] = "",
+    folder_id: Annotated[str, Field(description="Destination folder id. Empty = the Drive root.")] = "",
+    request_id: RequestId = None,
+) -> dict:
+    args = {"local_path": local_path, "name": name, "folder_id": folder_id}
+    return policy.execute_dangerous(
+        "drive_upload_file", args, request_id,
+        preview_fn=lambda: {
+            "action": "drive_upload_file",
+            "local_path": local_path,
+            "name": name or os.path.basename(local_path),
+            "folder_id": folder_id or "(root)",
+            "size": os.path.getsize(local_path) if os.path.isfile(local_path) else None,
+        },
+        execute_fn=lambda a: google_drive.upload_file(
+            a["local_path"], name=a["name"], folder_id=a["folder_id"]),
+    )
+
+
+@mcp.tool(annotations=DANGEROUS, description=_two_phase(
+    """Move a Google Drive file to the trash.""",
+    """
+    The file goes to the Drive trash, from where the user can restore it;
+    nothing is erased permanently. Approval is still required because the
+    file disappears from where the user expects it. The preview shows the
+    file id and name. Returns {success}. Requires a connected Google
+    account."""))
+def drive_delete_file(
+    file_id: Annotated[str, Field(description="File id from drive_list_files.")],
+    request_id: RequestId = None,
+) -> dict:
+    def _preview():
+        try:
+            info = google_drive.get_file(file_id)
+            return {"action": "drive_delete_file", "file_id": file_id,
+                    "name": info.get("name"), "link": info.get("link")}
+        except Exception:
+            return {"action": "drive_delete_file", "file_id": file_id}
+
+    args = {"file_id": file_id}
+    return policy.execute_dangerous(
+        "drive_delete_file", args, request_id,
+        preview_fn=_preview,
+        execute_fn=lambda a: {"success": google_drive.delete_file(a["file_id"])},
     )
 
 

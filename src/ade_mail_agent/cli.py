@@ -1048,6 +1048,30 @@ def cmd_google_login(_args) -> int:
     return 1
 
 
+def cmd_google_setup(args) -> int:
+    """Installa il file credenziali che Google fa scaricare quando crei il
+    client. Evita di ricopiare id e secret a mano, che e' il modo piu'
+    facile per accoppiare l'id di un client con il secret di un altro."""
+    import os
+
+    from ade_mail_agent.core import google_auth
+
+    if not os.path.isfile(args.file):
+        print(f"File inesistente: {args.file}")
+        return 1
+    try:
+        info = google_auth.installa_client_json(args.file)
+    except ValueError as e:
+        print(f"File non valido: {e}")
+        return 1
+    print("Credenziali installate.")
+    print(f"  progetto  : {info['project_id'] or '(non indicato)'}")
+    print(f"  client_id : {info['client_id']}")
+    print(f"  copiato in: {info['path']}")
+    print("Ora puoi eseguire: gigamail google login")
+    return 0
+
+
 def cmd_google_logout(args) -> int:
     from ade_mail_agent.core import google_auth
     if google_auth.logout(getattr(args, "email", None)):
@@ -1062,8 +1086,11 @@ def cmd_google_status(_args) -> int:
     from ade_mail_agent.core import calendar_router, google_auth
 
     if not google_auth.is_configured():
-        print("Google non configurato in questa build (manca il client OAuth).")
+        print("Google non configurato: manca il client OAuth.")
+        print("Scarica il file credenziali del client desktop dalla console "
+              "Google Cloud, poi: gigamail google setup <file.json>")
         return 1
+    print(f"Credenziali da: {google_auth.CREDENTIALS_SOURCE}")
     identita = core_accounts.list_google_identities()
     if not identita:
         print("Nessun account Google collegato. Usa: gigamail google login")
@@ -1099,6 +1126,10 @@ def main(argv=None) -> int:
     g_sub = p_g.add_subparsers(dest="subcommand", required=True)
     g_sub.add_parser("login").set_defaults(fn=cmd_google_login)
     g_sub.add_parser("status").set_defaults(fn=cmd_google_status)
+    p_gset = g_sub.add_parser(
+        "setup", help="installa il file credenziali scaricato da Google")
+    p_gset.add_argument("file", help="percorso del client_secret_*.json")
+    p_gset.set_defaults(fn=cmd_google_setup)
     p_glo = g_sub.add_parser("logout")
     p_glo.add_argument("email", nargs="?", default=None)
     p_glo.set_defaults(fn=cmd_google_logout)
@@ -1212,6 +1243,19 @@ def main(argv=None) -> int:
     p_tgp.add_argument("--remove", action="store_true",
                        help="toglie il PIN: il tap tornera' a bastare")
     p_tgp.set_defaults(fn=cmd_telegram_pin)
+
+    p_id = sub.add_parser(
+        "identity", help="copie locali dell'identity (mai nel repo)")
+    id_sub = p_id.add_subparsers(dest="subcommand", required=True)
+    for nome, fn, aiuto in (("history", cmd_identity_history, "elenca le copie"),
+                            ("backup", cmd_identity_backup, "salva una copia adesso")):
+        pp = id_sub.add_parser(nome, help=aiuto)
+        pp.add_argument("--account-id", type=int, default=None, dest="account_id")
+        pp.set_defaults(fn=fn)
+    p_ir = id_sub.add_parser("restore", help="torna a una copia precedente")
+    p_ir.add_argument("file", help="nome del file di copia (o percorso)")
+    p_ir.add_argument("--account-id", type=int, default=None, dest="account_id")
+    p_ir.set_defaults(fn=cmd_identity_restore)
 
     p_ds = sub.add_parser(
         "desktop-setup",

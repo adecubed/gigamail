@@ -88,6 +88,12 @@
   .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
   .attach-chip-rm:hover{color:#dc2626;}
   #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.14);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  /* Mail che impartisce ordini all'assistente: nessuna bozza scritta.
+     Deve leggersi come un avviso, non come un errore dell'app. */
+  #guardBanner{margin:0 14px 6px;padding:10px 12px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.35);border-radius:10px;font-size:11px;font-family:var(--font);display:none;}
+  #guardBanner .gb-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:#b91c1c;margin-bottom:5px;}
+  #guardBanner .gb-why{color:rgba(0,0,0,0.75);margin-bottom:6px;}
+  #guardBanner .gb-quote{font-family:monospace;font-size:10px;padding:6px 8px;background:rgba(0,0,0,0.05);border-radius:6px;color:rgba(0,0,0,0.7);white-space:pre-wrap;}
 
   .toolbar{
     padding:8px 12px;flex-shrink:0;border-top:1px solid rgba(0,0,0,0.14);
@@ -178,6 +184,7 @@
   <textarea id="replyText" class="reply-textarea" data-i18n-ph="reply_text_drag_ph" placeholder="Scrivi la tua risposta… (trascina file o immagini qui)"></textarea>
   <div class="drop-overlay" id="bodyDropOverlay">📎 Rilascia per allegare</div>
   <div class="attachments" id="attachmentsBox"></div>
+  <div id="guardBanner"></div>
   <div id="suggestedBanner"></div>
 </div>
 
@@ -216,6 +223,11 @@ let sendRafId = null;
 let instructionContext = ''; // testo estratto da file droppato su instruction
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+/** Traduce una chiave, con l'italiano come ripiego naturale. */
+function T(chiave, italiano){
+  const t = window.i18n && window.i18n.t ? window.i18n.t(chiave) : '';
+  return (t && t !== chiave) ? t : italiano;
+}
 
 // ── AUTOCOMPLETE replyTo ──────────────────────────────────────────────────────
 const replyToInput = document.getElementById('replyTo');
@@ -507,6 +519,27 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
       body: JSON.stringify({ instruction, body_text:mailData.body_text||mailData.bodyPreview||'', subject:mailData.subject||'', sender:mailData.sender||'' })
     });
     const data = await r.json();
+    const guard = document.getElementById('guardBanner');
+    guard.style.display = 'none';
+    document.getElementById('suggestedBanner').style.display = 'none';
+    if (data.blocked) {
+      // Il presidio ha fermato la mail PRIMA della generazione: non c'e'
+      // nessuna bozza da mostrare, e non deve sembrare che l'app si sia
+      // rotta. Si dice cosa e' stato riconosciuto e si mostra il passaggio.
+      // I motivi arrivano come codici: qui diventano la lingua di chi guarda.
+      const motivi = (data.reasons || [])
+        .map(m => `• ${esc(T('guard_' + m, m))}`).join('<br/>');
+      guard.innerHTML = `<div class="gb-title">⚠ ${esc(T('guard_title',
+        "NESSUNA BOZZA: LA MAIL DA' ORDINI ALL'ASSISTENTE"))}</div>
+        <div class="gb-why">${motivi || esc(T('guard_generic',
+          "testo rivolto all'assistente"))}</div>
+        <div class="gb-quote">${esc(data.passage || '')}</div>`;
+      guard.style.display = 'block';
+      ta.value = '';
+      window._lastGeneratedDraft = '';
+      btn.textContent = '⚡ ' + (window.i18n?window.i18n.t('generate'):'GENERA'); btn.disabled = false;
+      return;
+    }
     ta.value = data.draft || data.text || '';
     window._lastGeneratedDraft = ta.value;
     if (data.suggested_attachments?.length) {
@@ -516,8 +549,8 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
           <input type="checkbox" data-path="${esc(a.path)}" data-name="${esc(a.name)}" checked/>
           <span style="font-size:11px;font-family:monospace">${esc(a.name)}</span>
          </label>`).join('');
-      banner.innerHTML = `<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(26,80,180,0.8);margin-bottom:3px">📎 ALLEGATI SUGGERITI</div>${items}
-        <button onclick="addSuggestedAttachments()" style="margin-top:6px;padding:4px 10px;border-radius:6px;background:rgba(26,108,245,0.1);border:1px solid rgba(26,108,245,0.2);color:var(--accent);font-size:10px;cursor:pointer">+ AGGIUNGI SELEZIONATI</button>`;
+      banner.innerHTML = `<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(26,80,180,0.8);margin-bottom:3px">📎 ${esc(T('suggested_attachments','ALLEGATI SUGGERITI'))}</div>${items}
+        <button onclick="addSuggestedAttachments()" style="margin-top:6px;padding:4px 10px;border-radius:6px;background:rgba(26,108,245,0.1);border:1px solid rgba(26,108,245,0.2);color:var(--accent);font-size:10px;cursor:pointer">+ ${esc(T('add_selected','AGGIUNGI SELEZIONATI'))}</button>`;
       banner.style.display = 'block';
     }
   } catch(e) { ta.value = `Errore: ${e}`; }

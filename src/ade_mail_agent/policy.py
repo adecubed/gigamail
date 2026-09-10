@@ -454,7 +454,8 @@ def _notify_command() -> Optional[List[str]]:
 
 def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
     parts = []
-    for k in ("to", "subject", "replying_to", "action", "folder_id", "event_id", "start"):
+    for k in ("to", "subject", "replying_to", "action", "folder_from",
+              "folder_to", "folder_id", "event_id", "start"):
         v = preview.get(k)
         if v:
             parts.append(f"{k}={v}")
@@ -518,8 +519,14 @@ def full_preview_text(tool: str, preview: Dict[str, Any],
     """
     it = user_lang() == "it"
     righe = []
+    # folder_from/folder_to sono qui e non solo nel riassunto: in uno
+    # spostamento la destinazione E' l'azione, e senza questa riga un
+    # preview con mittente e oggetto componeva le intestazioni e la
+    # cartella non compariva da nessuna parte su Telegram.
     intestazioni = (("from", "Da"), ("to", "A"), ("cc", "Cc"),
-                    ("bcc", "Ccn"), ("subject", "Oggetto"))
+                    ("bcc", "Ccn"), ("subject", "Oggetto"),
+                    ("folder_from", "Da cartella" if it else "From folder"),
+                    ("folder_to", "A cartella" if it else "To folder"))
     for chiave, etichetta in intestazioni:
         v = preview.get(chiave)
         if v:
