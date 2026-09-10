@@ -604,6 +604,7 @@ def cmd_identity_restore(args) -> int:
     La copia attuale viene salvata prima di essere sostituita, quindi
     un ripristino sbagliato si annulla ripristinando l'ultima."""
     import os
+
     from ade_mail_agent.core import accounts as core_accounts
     from ade_mail_agent.core import identity_backup as ib
     aid = _resolve_account_id(getattr(args, "account_id", None))
@@ -1047,6 +1048,30 @@ def cmd_google_login(_args) -> int:
     return 1
 
 
+def cmd_google_setup(args) -> int:
+    """Installa il file credenziali che Google fa scaricare quando crei il
+    client. Evita di ricopiare id e secret a mano, che e' il modo piu'
+    facile per accoppiare l'id di un client con il secret di un altro."""
+    import os
+
+    from ade_mail_agent.core import google_auth
+
+    if not os.path.isfile(args.file):
+        print(f"File inesistente: {args.file}")
+        return 1
+    try:
+        info = google_auth.installa_client_json(args.file)
+    except ValueError as e:
+        print(f"File non valido: {e}")
+        return 1
+    print("Credenziali installate.")
+    print(f"  progetto  : {info['project_id'] or '(non indicato)'}")
+    print(f"  client_id : {info['client_id']}")
+    print(f"  copiato in: {info['path']}")
+    print("Ora puoi eseguire: gigamail google login")
+    return 0
+
+
 def cmd_google_logout(args) -> int:
     from ade_mail_agent.core import google_auth
     if google_auth.logout(getattr(args, "email", None)):
@@ -1061,8 +1086,11 @@ def cmd_google_status(_args) -> int:
     from ade_mail_agent.core import calendar_router, google_auth
 
     if not google_auth.is_configured():
-        print("Google non configurato in questa build (manca il client OAuth).")
+        print("Google non configurato: manca il client OAuth.")
+        print("Scarica il file credenziali del client desktop dalla console "
+              "Google Cloud, poi: gigamail google setup <file.json>")
         return 1
+    print(f"Credenziali da: {google_auth.CREDENTIALS_SOURCE}")
     identita = core_accounts.list_google_identities()
     if not identita:
         print("Nessun account Google collegato. Usa: gigamail google login")
@@ -1098,6 +1126,10 @@ def main(argv=None) -> int:
     g_sub = p_g.add_subparsers(dest="subcommand", required=True)
     g_sub.add_parser("login").set_defaults(fn=cmd_google_login)
     g_sub.add_parser("status").set_defaults(fn=cmd_google_status)
+    p_gset = g_sub.add_parser(
+        "setup", help="installa il file credenziali scaricato da Google")
+    p_gset.add_argument("file", help="percorso del client_secret_*.json")
+    p_gset.set_defaults(fn=cmd_google_setup)
     p_glo = g_sub.add_parser("logout")
     p_glo.add_argument("email", nargs="?", default=None)
     p_glo.set_defaults(fn=cmd_google_logout)

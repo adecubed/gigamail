@@ -69,6 +69,18 @@ contextBridge.exposeInMainWorld('ademail', {
   completeLogin:  () => apiJson(`${API}/auth/complete`, { method: 'POST' }),
   logout:         () => apiJson(`${API}/auth/logout`, { method: 'POST' }),
 
+  // ------------------------------------------------- GOOGLE (calendario/Drive)
+  // Separato dall'account Gmail via IMAP: quello e' la POSTA, questo e'
+  // calendario e file. Collegare l'uno non collega l'altro.
+  googleStatus:   () => apiJson(`${API}/google/status`),
+  googleLogin:    () => apiJson(`${API}/google/auth/login`),
+  googleComplete: () => apiJson(`${API}/google/auth/complete`, { method: 'POST' }),
+  googleLogout:   (email) => apiJson(
+    `${API}/google/auth/logout?email=${encodeURIComponent(email || '')}`,
+    { method: 'POST' }),
+  getCalendarProvider: () => apiJson(`${API}/calendar/provider`),
+  setCalendarProvider: (p) => apiJson(`${API}/calendar/provider/${p}`, { method: 'POST' }),
+
   // ---------------------------------------------------------------- ACCOUNTS
   getAccounts:      () => apiJson(`${API}/accounts`),
   getActiveAccount: () => apiJson(`${API}/accounts/active`),

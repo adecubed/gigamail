@@ -1,5 +1,84 @@
 # Changelog
 
+## Unreleased — Google Calendar and Drive
+
+
+- **Spostare una mail ora chiede l'approvazione.** `move_message` stava
+  fra le scritture libere perche' non distrugge niente e si annulla
+  rimettendo il messaggio dov'era. Solo che il raggio d'azione e il costo
+  di sorveglianza non sono lo stesso asse: un agente che sposta una mail
+  in una cartella che l'umano non guarda gliela ha nascosta, senza
+  cancellare nulla e senza passare da nessun gate. Passa a due fasi come
+  invio e cancellazione. L'anteprima mostra mittente, oggetto e — la cosa
+  che conta — cartella di partenza e di arrivo con il nome leggibile, non
+  l'id opaco di Graph; `full_preview_text` e il riassunto della toast
+  hanno imparato quei due campi, perche' con mittente e oggetto presenti
+  la destinazione non veniva stampata da nessuna parte su Telegram.
+  Gli spostamenti fatti dall'umano dalla console passano da
+  `POST /mail/{id}/move` e restano immediati: nessuno chiede il permesso
+  a se stesso. Costo dichiarato: il riordino automatico di molte mail
+  diventa impraticabile, il tetto resta 20 richieste per tool all'ora.
+Version deliberately not bumped: this lands the code, not a release. The
+build still needs an OAuth client from a Google Cloud project before any
+of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+
+- **The calendar has a router.** `list_events`, `find_free_slots`,
+  `create_event` and `delete_event` used to call Microsoft Graph
+  directly, from nine places across the MCP server, the console API and
+  the agent bridge. That, not the missing client code, is why a second
+  calendar could not exist. `calendar_router` now picks the backend and
+  every caller goes through it.
+- **Google Calendar as a backend.** Events come back in the Microsoft
+  Graph shape, so `availability.py`, the free-slot computation and the
+  console calendar window are untouched. The subtle part: Google returns
+  RFC3339 with a `+02:00` offset, and `_parse_graph_dt` strips
+  milliseconds and `Z` but not an offset — an aware datetime would have
+  crashed `find_free_slots` against the naive ones. Times are converted
+  to naive Europe/Rome at the boundary, and a test holds that line.
+- **Connecting Google never moves your calendar.** With a Microsoft
+  account present the calendar stays on Microsoft until the user says
+  otherwise, from the console or `gigamail google calendar google`.
+  Linking Drive must not silently relocate someone's appointments.
+- **Google Drive, four tools.** `drive_list_files` and `drive_read_file`
+  read (Docs, Sheets and Slides are exported to Office formats so they
+  extract like any attachment); `drive_upload_file` and
+  `drive_delete_file` need human approval out of band, like sending mail.
+  Deleting moves the file to the Drive trash, never erases it.
+- **Scope `drive.file`, on purpose.** GigaMail sees only the files it
+  created itself. Full Drive access is a restricted scope and would drag
+  every release through an annual paid security assessment. The tools say
+  so in their own descriptions, so an agent that finds nothing knows why
+  and stops retrying.
+- **OAuth by loopback with PKCE, no Google libraries.** Google's device
+  flow does not cover these scopes, so the desktop redirect is the only
+  route; the flow is plain `requests`, like the rest of the HTTP here.
+  Refresh tokens live in the encrypted account database (Fernet, DPAPI on
+  Windows); access tokens stay in memory. A redirect whose `state` does
+  not match is dropped without exchanging the code.
+- **A revoked account says so.** `invalid_grant` on refresh surfaces as
+  "reconnect", not as a network fault, so the agent stops retrying.
+- **Three defects found by the first real setup**, each with a test. The
+  browser asks the loopback port more than once: after the redirect it
+  requests `/favicon.ico`, with no parameters, and recording that wiped
+  the authorisation code — the login then died accusing a legitimate
+  redirect of CSRF. The callback page said "connected" the moment the
+  code arrived, before the token exchange that can still fail, sending
+  the user to look for the problem in the wrong place. And Google's
+  errors were hidden behind the HTTP status: a bare `403` cannot tell an
+  API disabled on the project from a missing permission, so the body
+  Google actually sends is now surfaced with the remedy.
+- **Credentials come from the file Google hands you.** `gigamail google
+  setup <client_secret_*.json>` validates and installs it; a "Web
+  application" client is refused at that point rather than three browser
+  screens later. Nobody has to retype an id and a secret that look
+  identical to every other id and secret. And each source must supply
+  **both** halves: an incomplete one is skipped, never topped up from the
+  next, so an id and a secret can no longer arrive from different places
+  and produce an `invalid_client` with nothing to go on.
+- 28 tools, up from 24. `gigamail google setup|login|status|logout|
+  calendar` in the CLI, a Google panel in the console, `/google/*` in the
+  console API. 50 new tests.
+
 ## v0.3.2 — 2026-09-08
 
 - **Codex CLI as a first-class agent.** The console detects `codex` next to

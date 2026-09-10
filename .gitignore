@@ -18,3 +18,8 @@ console/e2e-electron.log
 
 # Claude Code: file locali della sessione (launch.json, settings.local.json, worktree)
 .claude/
+
+# File credenziali OAuth scaricato da Google: contiene un secret,
+# va nella cartella dati dell'utente, mai nel repository.
+client_secret_*.json
+google_client_secret.json

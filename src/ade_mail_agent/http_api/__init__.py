@@ -57,13 +57,14 @@ from . import (  # noqa: E402 — dopo app, per l'ordine di lettura
     agent,
     approvals,
     calendar,
+    google,
     mail,
     mask,
     notify,
     rules,
 )
 
-for _r in (accounts, addresses, mail, calendar, mask, agent, approvals, rules, notify):
+for _r in (accounts, addresses, mail, calendar, google, mask, agent, approvals, rules, notify):
     app.include_router(_r.router)
 
 # Nomi che restano raggiungibili dalla facciata (compatibilita').
