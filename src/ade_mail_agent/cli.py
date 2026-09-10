@@ -1244,19 +1244,6 @@ def main(argv=None) -> int:
                        help="toglie il PIN: il tap tornera' a bastare")
     p_tgp.set_defaults(fn=cmd_telegram_pin)
 
-    p_id = sub.add_parser(
-        "identity", help="copie locali dell'identity (mai nel repo)")
-    id_sub = p_id.add_subparsers(dest="subcommand", required=True)
-    for nome, fn, aiuto in (("history", cmd_identity_history, "elenca le copie"),
-                            ("backup", cmd_identity_backup, "salva una copia adesso")):
-        pp = id_sub.add_parser(nome, help=aiuto)
-        pp.add_argument("--account-id", type=int, default=None, dest="account_id")
-        pp.set_defaults(fn=fn)
-    p_ir = id_sub.add_parser("restore", help="torna a una copia precedente")
-    p_ir.add_argument("file", help="nome del file di copia (o percorso)")
-    p_ir.add_argument("--account-id", type=int, default=None, dest="account_id")
-    p_ir.set_defaults(fn=cmd_identity_restore)
-
     p_ds = sub.add_parser(
         "desktop-setup",
         help="rende cliccabili i bottoni delle notifiche Windows (una volta, UAC)")

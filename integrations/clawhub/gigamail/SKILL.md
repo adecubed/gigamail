@@ -87,7 +87,7 @@ Use this skill when the user asks about their email or calendar: reading
 or triaging the inbox, searching mail, reading attachments, drafting or
 sending replies, checking availability, proposing or creating
 appointments. GigaMail exposes the user's real mailboxes (Microsoft 365
-via Graph, or any IMAP provider) and calendar as 24 typed MCP tools.
+via Graph, or any IMAP provider) and calendar as 28 typed MCP tools.
 
 This skill is a policy layer. It does not implement an MCP server and does
 not replace OpenClaw MCP configuration: the `gigamail` server must be
@@ -101,7 +101,7 @@ Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
 tools. See INTEGRATIONS.md in the repository for exactly what was tested.
 Requires gigamail ≥ 0.2.4 (approval via OS-level user verification;
 GIGAMAIL_* environment variables; reply rules and the watcher). Current
-server release: 0.3.2, same 24 tools. The console can also drive Codex CLI for its drafts (see INTEGRATIONS.md).
+server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for its drafts (see INTEGRATIONS.md).
 
 ## Setup (once)
 
@@ -141,7 +141,7 @@ server release: 0.3.2, same 24 tools. The console can also drive Codex CLI for i
    }
    ```
 
-   Verify with `openclaw mcp probe gigamail` — expect `24 tools`. After
+   Verify with `openclaw mcp probe gigamail` — expect `28 tools`. After
    config changes run `openclaw mcp reload`.
 
 4. Optional but valuable: give the account an identity (who the user is,

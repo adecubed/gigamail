@@ -45,8 +45,11 @@
   il passaggio incriminato. E' deterministico e locale — schemi, nessun
   modello — quindi il testo che analizza non puo' manipolarlo. Limite
   dichiarato: riconosce le formulazioni note, e' il primo strato e non
-  l'ultimo; copre `smart_draft`, l'unico percorso in cui una mail ricevuta
-  entra nel prompt. Non basta nominare una password per far scattare il
+  l'ultimo. Copre i due percorsi in cui una mail ricevuta entra nel
+  prompt: `smart_draft` della console e il drafter delle regole. Il
+  secondo e' il piu' esposto, perche' la regola in modo auto puo' anche
+  spedire da sola: li' la mail con ordini non produce nessuna bozza, non
+  viene ritentata, e l'umano la vede con il motivo del blocco. Non basta nominare una password per far scattare il
   controllo, serve un verbo che la chieda: la posta vera parla di password
   e di inoltri di continuo, e un presidio che blocca il notaio viene spento
   il primo giorno. In inglese la prima persona e l'imperativo hanno la
