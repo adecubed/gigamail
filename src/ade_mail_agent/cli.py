@@ -604,6 +604,7 @@ def cmd_identity_restore(args) -> int:
     La copia attuale viene salvata prima di essere sostituita, quindi
     un ripristino sbagliato si annulla ripristinando l'ultima."""
     import os
+
     from ade_mail_agent.core import accounts as core_accounts
     from ade_mail_agent.core import identity_backup as ib
     aid = _resolve_account_id(getattr(args, "account_id", None))
@@ -1114,7 +1115,7 @@ def main(argv=None) -> int:
     p_rm.add_argument("account_id", type=int)
     p_rm.set_defaults(fn=cmd_accounts_remove)
 
-    p_id = sub.add_parser("identity")
+    p_id = sub.add_parser("identity", help="identity dell'account e sue copie locali")
     id_sub = p_id.add_subparsers(dest="subcommand", required=True)
     p_show = id_sub.add_parser("show")
     p_show.add_argument("account_id", type=int, nargs="?", default=None)
@@ -1130,6 +1131,16 @@ def main(argv=None) -> int:
     p_rmf.add_argument("path")
     p_rmf.add_argument("--account-id", type=int, default=None, dest="account_id")
     p_rmf.set_defaults(fn=cmd_identity_remove_file)
+    # copie locali dell'identity (mai nel repo)
+    for nome, fn, aiuto in (("history", cmd_identity_history, "elenca le copie"),
+                            ("backup", cmd_identity_backup, "salva una copia adesso")):
+        pp = id_sub.add_parser(nome, help=aiuto)
+        pp.add_argument("--account-id", type=int, default=None, dest="account_id")
+        pp.set_defaults(fn=fn)
+    p_ir = id_sub.add_parser("restore", help="torna a una copia precedente")
+    p_ir.add_argument("file", help="nome del file di copia (o percorso)")
+    p_ir.add_argument("--account-id", type=int, default=None, dest="account_id")
+    p_ir.set_defaults(fn=cmd_identity_restore)
 
     p_appr = sub.add_parser("approvals", help="approva le azioni richieste dall'agente")
     appr_sub = p_appr.add_subparsers(dest="subcommand", required=True)
@@ -1201,19 +1212,6 @@ def main(argv=None) -> int:
     p_tgp.add_argument("--remove", action="store_true",
                        help="toglie il PIN: il tap tornera' a bastare")
     p_tgp.set_defaults(fn=cmd_telegram_pin)
-
-    p_id = sub.add_parser(
-        "identity", help="copie locali dell'identity (mai nel repo)")
-    id_sub = p_id.add_subparsers(dest="subcommand", required=True)
-    for nome, fn, aiuto in (("history", cmd_identity_history, "elenca le copie"),
-                            ("backup", cmd_identity_backup, "salva una copia adesso")):
-        pp = id_sub.add_parser(nome, help=aiuto)
-        pp.add_argument("--account-id", type=int, default=None, dest="account_id")
-        pp.set_defaults(fn=fn)
-    p_ir = id_sub.add_parser("restore", help="torna a una copia precedente")
-    p_ir.add_argument("file", help="nome del file di copia (o percorso)")
-    p_ir.add_argument("--account-id", type=int, default=None, dest="account_id")
-    p_ir.set_defaults(fn=cmd_identity_restore)
 
     p_ds = sub.add_parser(
         "desktop-setup",
