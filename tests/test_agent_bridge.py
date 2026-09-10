@@ -10,6 +10,12 @@ from ade_mail_agent import agent_bridge
 PY = sys.executable
 
 
+def _righe(s: str) -> str:
+    """Su Windows print() converte gli a capo in CRLF: qui interessa il
+    testo, non il modo in cui il figlio l'ha stampato."""
+    return s.replace("\r\n", "\n")
+
+
 def test_env_cmd_ha_precedenza(monkeypatch):
     monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(["mio-agente", "{prompt}"]))
     cfg = agent_bridge.get_config()
@@ -124,3 +130,26 @@ def test_select_agent_conserva_il_comando_custom(monkeypatch, tmp_ade_root):
 def test_select_agent_sconosciuto():
     with pytest.raises(ValueError):
         agent_bridge.select_agent("skynet")
+
+
+def test_prompt_su_piu_righe_passa_da_stdin(monkeypatch):
+    """cmd.exe tronca la riga di comando al primo a capo, e npm installa
+    claude e codex come wrapper .cmd: un prompt multiriga passato come
+    argomento arriva mutilato. Deve andare su stdin anche quando e' corto."""
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(
+        [PY, "-c", "import sys; sys.stdout.write(sys.stdin.read())", "{prompt}"]))
+    prompt = "prima riga\nseconda riga\nterza riga"
+    assert _righe(agent_bridge.run(prompt)) == prompt
+
+
+def test_prompt_multiriga_da_stdin_anche_senza_placeholder(monkeypatch):
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(
+        [PY, "-c", "import sys; sys.stdout.write(sys.stdin.read())"]))
+    prompt = "riga uno\nriga due"
+    assert _righe(agent_bridge.run(prompt)) == prompt
+
+
+def test_prompt_di_una_riga_resta_un_argomento(monkeypatch):
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(
+        [PY, "-c", "import sys; print('ARG:' + sys.argv[1])", "{prompt}"]))
+    assert agent_bridge.run("una riga sola") == "ARG:una riga sola"

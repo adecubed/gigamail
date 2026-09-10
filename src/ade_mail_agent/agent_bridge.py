@@ -195,6 +195,18 @@ def _riga_troppo_lunga(cmd: list) -> bool:
     return sum(len(a) + 3 for a in cmd) > _MAX_RIGA_COMANDO
 
 
+def _va_a_capo(prompt: str) -> bool:
+    """Un prompt su piu' righe non puo' viaggiare sulla riga di comando.
+
+    npm installa `claude` e `codex` come wrapper .cmd, quindi CreateProcess
+    li lancia attraverso cmd.exe, che la riga di comando la TRONCA al primo
+    a capo. Non e' un errore: il processo parte, l'agente riceve la prima
+    riga e basta. La bozza tornava con 'non vedo l'email a cui rispondere'
+    e sembrava un problema del modello — invece identity, documenti e corpo
+    della mail non erano mai usciti da qui."""
+    return "\n" in (prompt or "") or "\r" in (prompt or "")
+
+
 def run(prompt: str, timeout: int | None = None) -> str:
     """Esegue l'agente headless con il prompt e restituisce il testo prodotto."""
     cfg = get_config()
@@ -202,7 +214,7 @@ def run(prompt: str, timeout: int | None = None) -> str:
     da_stdin = None
     if any("{prompt}" in a for a in cmd):
         pieno = [a.replace("{prompt}", prompt) for a in cmd]
-        if _riga_troppo_lunga(pieno):
+        if _riga_troppo_lunga(pieno) or _va_a_capo(prompt):
             # Il prompt porta identity, listino e il corpo della mail:
             # su Windows una riga di comando cosi' sfonda il limite e il
             # processo muore con "La riga di comando e' troppo lunga".
@@ -212,6 +224,8 @@ def run(prompt: str, timeout: int | None = None) -> str:
             da_stdin = prompt.encode("utf-8")
         else:
             cmd = pieno
+    elif _riga_troppo_lunga(cmd + [prompt]) or _va_a_capo(prompt):
+        da_stdin = prompt.encode("utf-8")
     else:
         cmd.append(prompt)
     out_file = None
