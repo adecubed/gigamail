@@ -1,0 +1,20 @@
+{
+  "name": "gigamail",
+  "interface": {
+    "displayName": "GigaMail"
+  },
+  "plugins": [
+    {
+      "name": "gigamail",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Communication"
+    }
+  ]
+}

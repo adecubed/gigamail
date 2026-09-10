@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- **A Codex plugin.** `codex plugin marketplace add adecubed/gigamail`,
+  then `codex plugin add gigamail@gigamail`, installs GigaMail in Codex
+  (CLI and desktop app). The manifest that already sat in `.codex-plugin/`
+  now points to a skill (`skills/gigamail/`: the approval gate explained to
+  the agent, the same policy as the ClawHub skill, with Codex's own
+  commands) and to `.mcp.json`, which registers the `gigamail` server and
+  forwards `APPDATA`, `GIGAMAIL_ROOT` and `ADE_ROOT` through `env_vars`, so
+  the server sees the console's data directory without `codex mcp add`. A
+  one-plugin marketplace (`.agents/plugins/marketplace.json`) makes the
+  repository installable as is. Verified with codex-cli 0.148: skill
+  loaded, 24 tools, `list_accounts` on the real accounts (INTEGRATIONS.md).
+  A test keeps manifest, skill, marketplace and tool names coherent with
+  the server.
+- The plugin manifest's privacy link points to gigamail.ai/privacy.html
+  (it pointed to SECURITY.md) and its category is Communication, where
+  Codex lists the other mail plugins.
+
 ## v0.3.2 — 2026-09-08
 
 - **Codex CLI as a first-class agent.** The console detects `codex` next to

@@ -16,3 +16,5 @@ build/
 .token_cache.json
 NOTES.dev.md
 POST_DRAFTS.md
+docs/vendor/
+*.mp4

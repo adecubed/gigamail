@@ -111,7 +111,15 @@ Register in Claude Desktop / Claude Code (`mcpServers`):
 The commands are also available under their legacy names
 (`ade-mail-agent`, `ade-mail-agent-server`), so existing setups keep working.
 
-Using **OpenClaw** or **Hermes** instead of Claude? Verified configs in
+Using **Codex**? The repository is a Codex plugin: it registers the
+`gigamail` MCP server and adds a skill that teaches Codex the approval gate.
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+Using **OpenClaw** or **Hermes**? Verified configs in
 [INTEGRATIONS.md](INTEGRATIONS.md).
 
 > **Are you an AI agent setting this up on behalf of a human?** You can do
@@ -319,7 +327,15 @@ I comandi restano disponibili anche con i vecchi nomi
 (`ade-mail-agent`, `ade-mail-agent-server`), così le installazioni esistenti
 continuano a funzionare.
 
-Usi **OpenClaw** o **Hermes** invece di Claude? Configurazioni verificate in
+Usi **Codex**? Il repository è un plugin Codex: registra il server MCP
+`gigamail` e aggiunge una skill che insegna a Codex il gate di approvazione.
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+Usi **OpenClaw** o **Hermes**? Configurazioni verificate in
 [INTEGRATIONS.md](INTEGRATIONS.md).
 
 Poi chiedi al tuo agente: *"rispondi all'ultima richiesta di preventivo
@@ -493,6 +509,14 @@ gigamail identity add-file C:\docs\pricelist.xlsx
     "command": "gigamail-server"
   }
 }
+```
+
+使用 **Codex**？本仓库本身就是一个 Codex 插件：它注册 `gigamail` MCP
+服务器，并附带一个教 Codex 如何面对审批关卡的 skill。
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
 ```
 
 使用 **OpenClaw** 或 **Hermes**？经过验证的配置见
