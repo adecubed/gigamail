@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.3.3 — 2026-09-11
 
 - **Posta e calendario si parlano, nei due versi.** Erano due mondi
   separati: `calendar_router` lo chiamavano solo console, API HTTP e CLI,
@@ -51,8 +51,6 @@
 - The plugin manifest's privacy link points to gigamail.ai/privacy.html
   (it pointed to SECURITY.md) and its category is Communication, where
   Codex lists the other mail plugins.
-
-## Unreleased — Google Calendar and Drive
 
 - **Il prompt della bozza arrivava mutilato all'agente.** npm installa
   `claude` e `codex` come wrapper `.cmd`, quindi CreateProcess li lancia
@@ -158,9 +156,8 @@
   `POST /mail/{id}/move` e restano immediati: nessuno chiede il permesso
   a se stesso. Costo dichiarato: il riordino automatico di molte mail
   diventa impraticabile, il tetto resta 20 richieste per tool all'ora.
-Version deliberately not bumped: this lands the code, not a release. The
-build still needs an OAuth client from a Google Cloud project before any
-of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+The Google side still needs an OAuth client from a Google Cloud project
+before any of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
 - **The calendar has a router.** `list_events`, `find_free_slots`,
   `create_event` and `delete_event` used to call Microsoft Graph
