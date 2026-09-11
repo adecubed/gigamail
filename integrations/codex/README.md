@@ -22,10 +22,12 @@ and the body below follows it.
 Verified 2026-09-10 with codex-cli 0.148.0 on Windows: a marketplace file
 carrying exactly this entry, added with `codex plugin marketplace add`,
 listed `gigamail` as "not installed" with the GitHub URL as path;
-`codex plugin add gigamail@<marketplace>` resolved 0.3.2 from GitHub and
-installed it enabled. The same install, exercised in `codex exec`, loaded
-the skill as `gigamail:gigamail`, exposed the 28 tools and answered
-`list_accounts` on the console's accounts.
+`codex plugin add gigamail@<marketplace>` resolved the plugin from GitHub
+and installed it enabled. Re-verified 2026-09-11 after the 0.3.3 release:
+plugin 0.3.3 from GitHub, server `gigamail[all]==0.3.3` from PyPI in a
+fresh venv; in `codex exec` the skill loaded as `gigamail:gigamail`, the
+server exposed the 28 tools by name and `list_accounts` answered on the
+console's accounts.
 
 ## Submitting (maintainers)
 
@@ -80,8 +82,9 @@ instructions.
 
 Validation:
 - Installed from a marketplace file carrying exactly this entry with
-  codex-cli 0.148.0 on Windows: `codex plugin add` resolved 0.3.2 from
-  GitHub; in a `codex exec` session the skill loaded as
+  codex-cli 0.148.0 on Windows: `codex plugin add` resolved 0.3.3 from
+  GitHub, with the server from PyPI (`gigamail[all]==0.3.3`); in a
+  `codex exec` session the skill loaded as
   `gigamail:gigamail`, `codex mcp list` showed the `gigamail` server
   enabled, the server exposed 28 tools and `list_accounts` returned the
   user's accounts.
