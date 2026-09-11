@@ -45,7 +45,7 @@
   the server sees the console's data directory without `codex mcp add`. A
   one-plugin marketplace (`.agents/plugins/marketplace.json`) makes the
   repository installable as is. Verified with codex-cli 0.148: skill
-  loaded, 24 tools, `list_accounts` on the real accounts (INTEGRATIONS.md).
+  loaded, 28 tools, `list_accounts` on the real accounts (INTEGRATIONS.md).
   A test keeps manifest, skill, marketplace and tool names coherent with
   the server.
 - The plugin manifest's privacy link points to gigamail.ai/privacy.html
