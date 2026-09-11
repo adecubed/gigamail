@@ -346,6 +346,38 @@ def test_mail_ostile_in_cartella_con_regola_attiva(fake_world):
     assert sent["body"] == fake_world["draft"]
 
 
+def test_prompt_porta_gli_slot_liberi_dellagenda(fake_world, monkeypatch):
+    """Il verso agenda -> bozza. Prima l'agente scriveva senza vedere il
+    calendario e proponeva orari gia' occupati; peggio, un appuntamento
+    proposto per mail non finiva da nessuna parte."""
+    from ade_mail_agent.watcher import drafting
+
+    monkeypatch.setattr(
+        drafting.calendar_router, "get_events",
+        lambda **kw: [])
+    monkeypatch.setattr(
+        drafting.availability, "find_free_slots",
+        lambda eventi, **kw: [{"start": "2026-09-15T10:00",
+                               "end": "2026-09-15T11:00",
+                               "label": "martedi' 15 settembre alle 10:00"}])
+    rule = rules_mod.store().get(_rule())
+    prompt = watcher_mod.build_draft_prompt(rule, 1, _msg())
+    assert "martedi' 15 settembre alle 10:00" in prompt
+    assert "SLOT LIBERI" in prompt
+
+
+def test_agenda_irraggiungibile_vieta_di_proporre_orari(fake_world, monkeypatch):
+    """Fail-closed: senza calendario non si inventano orari."""
+    from ade_mail_agent.watcher import drafting
+
+    def _esplode(**kw):
+        raise RuntimeError("token scaduto")
+    monkeypatch.setattr(drafting.calendar_router, "get_events", _esplode)
+    rule = rules_mod.store().get(_rule())
+    prompt = watcher_mod.build_draft_prompt(rule, 1, _msg())
+    assert "NON proporre" in prompt
+
+
 def test_prompt_del_drafter_marca_la_mail_come_non_fidata(fake_world, tmp_path):
     doc = tmp_path / "listino.txt"
     doc.write_text("Prezzo base: 100", encoding="utf-8")
