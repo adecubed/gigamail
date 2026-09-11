@@ -83,7 +83,7 @@ Validation:
   codex-cli 0.148.0 on Windows: `codex plugin add` resolved 0.3.2 from
   GitHub; in a `codex exec` session the skill loaded as
   `gigamail:gigamail`, `codex mcp list` showed the `gigamail` server
-  enabled, the server exposed 24 tools and `list_accounts` returned the
+  enabled, the server exposed 28 tools and `list_accounts` returned the
   user's accounts.
 - Parsed both marketplace files after the change and checked unique plugin
   ids and preservation of all existing entries and marketplace metadata.

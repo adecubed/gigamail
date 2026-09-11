@@ -92,7 +92,7 @@ def test_skill_nomina_i_tool_veri():
     tools = _server_tools()
     assert len(tools) == 28
     backticked = set(re.findall(r"`([a-z_]+)`", text))
-    verbs = r"(?:list|get|read|search|send|reply|delete|create|move|mark|find)_[a-z_]+"
+    verbs = r"(?:list|get|read|search|send|reply|delete|create|move|mark|find|drive)_[a-z_]+"
     mentioned = {t for t in backticked if re.fullmatch(verbs, t)}
     assert mentioned <= tools, mentioned - tools
     assert tools <= backticked, tools - backticked
