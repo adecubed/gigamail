@@ -100,8 +100,7 @@ class Watcher:
         e' la RISPOSTA del cliente a dire se quel blocco diventa un
         appuntamento vero o va tolto. Si leggono solo i thread che hanno
         un evento aperto: se non ce ne sono questa fase non costa nulla."""
-        from ade_mail_agent.core import appointments
-        from ade_mail_agent.core import mail_router
+        from ade_mail_agent.core import appointments, mail_router
 
         aperti = appointments.store().aperti()
         if not aperti:

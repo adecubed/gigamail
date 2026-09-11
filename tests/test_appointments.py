@@ -7,7 +7,6 @@ import pytest
 
 from ade_mail_agent.core import appointments
 
-
 # mercoledì 9 settembre 2026, ore 09:00
 NOW = datetime(2026, 9, 9, 9, 0)
 

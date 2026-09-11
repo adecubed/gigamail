@@ -8,7 +8,8 @@ non lascia traccia da nessuna parte.
 """
 import pytest
 
-from ade_mail_agent import policy, server as srv
+from ade_mail_agent import policy
+from ade_mail_agent import server as srv
 from ade_mail_agent.core import mail_router
 
 
