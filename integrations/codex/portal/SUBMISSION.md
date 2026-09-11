@@ -1,5 +1,15 @@
 # Plugin Directory submission, skills-only
 
+**Outcome: published 2026-09-11**, version 0.3.3, status "Published
+(View in Directory)" right after upload, with no review wait. Directory
+page: https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3. Developer
+identity used: the individual one (the business identity for Adecubed
+was not verified at the time). The subtitle that went in is "Answer
+email from your files" (the portal caps it at 30 characters) and the
+description is the one below, which leads with identity and documents
+rather than with the approval gate. A new version is a new upload of
+the same ZIP layout with the bumped manifest.
+
 Everything the OpenAI plugin submission portal
 (https://platform.openai.com/plugins, docs:
 https://developers.openai.com/plugins/deploy/submission) asks for, ready
@@ -10,10 +20,26 @@ step. Prerequisites on the portal side: a verified developer or business
 identity (Adecubed) and the "Apps Management" write permission
 (organization owners have it).
 
-Skill bundle to upload: the folder `skills/gigamail/` of this repository
-(`SKILL.md`, `agents/openai.yaml`, `assets/gigamail-logo-96.png`,
-`assets/gigamail-logo-256.png`). Zip it from the repository root so the
-archive contains `gigamail/SKILL.md` at its top level.
+What to upload: the portal's "Upload Plugin" dialog asks for a ZIP of a
+**skills-only plugin folder**, not of the skill alone. The archive
+holds a folder `gigamail/` with:
+
+- `.codex-plugin/plugin.json`: this repository's manifest **without**
+  the `mcpServers` key (no server in the submission) and **without**
+  `interface.screenshots` (the portal rejects it: "ZIP uploads currently
+  support skills only"), with `composerIcon` and `logo` repointed to
+  `./assets/`;
+- `skills/gigamail/` as in the repository (`SKILL.md`,
+  `agents/openai.yaml`, the two icons);
+- `assets/`: `gigamail-logo-96.png`, `gigamail-logo-256.png` (copied
+  from `docs/brand`);
+- `LICENSE`.
+
+The dialog also picks the **developer identity** from the verified ones
+on the account. The manifest says `developerName: Adecubed`; if the
+identity chosen is an individual one, expect the reviewer to check that
+the privacy policy and terms match that publisher, and consider
+verifying Adecubed as a business identity first.
 
 ## Listing
 
@@ -23,18 +49,20 @@ archive contains `gigamail/SKILL.md` at its top level.
 GigaMail
 ```
 
-**Short description**
+**Subtitle** (the portal allows 30 characters, plain function, no
+marketing; 28 here)
 
 ```
-Your real inbox and calendar for your agent, with a human on the send button.
+Answer email from your files
 ```
 
-**Long description**
+**Description** (the portal asks for concrete user value; the approval
+gate comes after what the plugin does for the user)
 
 ```
-GigaMail gives Codex the user's real mailboxes (Microsoft 365 via Graph, or any IMAP provider) and calendar as 28 typed MCP tools, served by a local MCP server the user installs from PyPI (pip install "gigamail[all]") and registers with one command. Reading, searching, attachment text, sender history, free-slot computation and drafting are free. Send, reply, delete, move and calendar writes are two-phase: the agent receives an inert request id and a preview, and the action runs only after the user approves it out of band, from the GigaMail desktop console, the CLI or Telegram, behind Windows Hello or Touch ID. No tool grants approval; the arguments executed are the ones stored at request time. Mail content is treated as data, never as instructions.
+GigaMail connects Codex to your real mailboxes, Microsoft 365 or any IMAP provider, and to your calendar, and answers mail the way you would: from your own identity and your own documents. Tell it once who you are, what you do and how you sign; attach your price list, catalogue, terms or product sheets to the account. When a request comes in, Codex reads the thread and what was already said to that sender, takes the numbers from your files instead of inventing them, checks your free slots before proposing a time, and drafts the reply in the language the customer wrote in. Several mailboxes work side by side, one agent across all of them.
 
-This skill teaches Codex how to work with that gate: which tools cost nothing, how the two-phase call works, what awaiting_approval, rejected, deduplicated and rate_limited mean, why it must never retry to force an approval, what it can and cannot do about reply rules, and how to draft from the user's identity and knowledge files (price lists, catalogues, terms) instead of inventing numbers. Credentials never pass through the agent: mailboxes are connected from the user's own shell.
+Nothing goes out on the agent's say-so: every send, reply, delete or calendar write waits for your approval, from the desktop console, the CLI or Telegram, and mail content is treated as data, never as instructions. The server runs on your machine (pip install "gigamail[all]"); this skill teaches Codex how to use it.
 ```
 
 **Category**
