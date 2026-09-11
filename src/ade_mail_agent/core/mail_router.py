@@ -198,6 +198,44 @@ def send_message(
     bcc: list = None,
     auto_submitted: bool = False,
 ) -> Dict:
+    """Invia, e se la mail parlava di un appuntamento lo porta in agenda.
+
+    L'aggancio sta qui e non nei singoli tool perche' qui passano TUTTE le
+    mail in uscita: quelle dell'agente via MCP, quelle delle regole del
+    watcher, quelle della console. Prima mancava del tutto, e un
+    appuntamento proposto per mail non compariva da nessuna parte.
+
+    Il calendario non puo' far fallire un invio: la lettura gira in un
+    thread a perdere e qualunque errore resta nel log."""
+    esito = _send_backend(
+        account_id=account_id, to=to, subject=subject, body=body,
+        reply_to_id=reply_to_id, attachments=attachments, cc=cc, bcc=bcc,
+        auto_submitted=auto_submitted)
+    try:
+        if isinstance(esito, dict) and esito.get('success'):
+            a = _account(account_id)
+            aid = (a or {}).get('id')
+            if aid is not None:
+                from . import appointments
+                appointments.dalla_mail_async(int(aid), subject, body,
+                                              str(to or ''))
+    except Exception:
+        # Nessun errore del calendario deve somigliare a un errore di invio.
+        pass
+    return esito
+
+
+def _send_backend(
+    account_id=None,
+    to: str = '',
+    subject: str = '',
+    body: str = '',
+    reply_to_id: str = None,
+    attachments: list = None,
+    cc: list = None,
+    bcc: list = None,
+    auto_submitted: bool = False,
+) -> Dict:
     a = _account(account_id)
     if not a:
         return {

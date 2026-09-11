@@ -64,7 +64,7 @@ class Watcher:
         process_state.heartbeat(self.interval)
 
     def tick(self) -> Dict[str, int]:
-        stats = {"executed": 0, "processed": 0}
+        stats = {"executed": 0, "processed": 0, "appointments": 0}
         # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
         # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
         # soglia oltre la quale running_state() dichiara morto il watcher:
@@ -75,6 +75,8 @@ class Watcher:
         stats["executed"] = self.execute_approved()
         self.heartbeat()
         stats["processed"] += self.process_retries()
+        self.heartbeat()
+        stats["appointments"] = self.sweep_appointments()
         self.heartbeat()
         for rule in rules_mod.store().active():
             for message in self._poll_folder(rule):
@@ -88,6 +90,38 @@ class Watcher:
                 stats["processed"] += 1
                 self.heartbeat()
         return stats
+
+    # -- fase C: conferme e disdette sugli appuntamenti --------------------
+
+    def sweep_appointments(self) -> int:
+        """Chi ha accettato o disdetto un appuntamento gia' proposto.
+
+        La proposta finisce in agenda al momento dell'invio (mail_router);
+        e' la RISPOSTA del cliente a dire se quel blocco diventa un
+        appuntamento vero o va tolto. Si leggono solo i thread che hanno
+        un evento aperto: se non ce ne sono questa fase non costa nulla."""
+        from ade_mail_agent.core import appointments
+        from ade_mail_agent.core import mail_router
+
+        aperti = appointments.store().aperti()
+        if not aperti:
+            return 0
+        totale = 0
+        for account_id in sorted({int(r["account_id"]) for r in aperti}):
+            try:
+                messaggi = mail_router.get_messages(
+                    account_id=account_id, folder="inbox",
+                    top=self.unread_top) or []
+            except Exception as e:
+                _log(f"appuntamenti, poll fallito ({account_id}): {e}",
+                     self.verbose)
+                continue
+            try:
+                totale += appointments.sweep(account_id, messaggi)
+            except Exception as e:
+                _log(f"appuntamenti, sweep fallito ({account_id}): {e}",
+                     self.verbose)
+        return totale
 
     # -- Telegram: tap e comandi dall'umano --------------------------------
 
@@ -150,7 +184,8 @@ class Watcher:
         while True:
             try:
                 stats = self.tick()
-                if stats["processed"] or stats["executed"]:
+                if (stats["processed"] or stats["executed"]
+                        or stats["appointments"]):
                     _log(f"tick: {stats}", True)
             except KeyboardInterrupt:
                 raise
