@@ -31,18 +31,53 @@ console's accounts.
 
 ## Submitting (maintainers)
 
-1. Fork `openai/plugins`, branch `add-gigamail`. On Windows clone with
-   `--sparse` and `git sparse-checkout set .agents`: the full tree has
-   paths longer than 260 characters and the checkout fails otherwise.
-2. Append `marketplace-entry.json` as the last element of `plugins` in
-   both `.agents/plugins/marketplace.json` and
-   `.agents/plugins/api_marketplace.json` (4-space indent, LF).
-3. `git diff --check`, parse both files, check the plugin ids stay
-   unique, commit, push, open the PR with the title and body below.
+**The PR route is closed to outsiders.** Tried 2026-09-11: the fork
+`adecubed/plugins` with branch `add-gigamail` (the entry appended to both
+catalogs, 30 lines, `git diff --check` clean) reaches the compare page,
+and GitHub answers "An owner of this repository has limited the ability
+to open a pull request to users that are collaborators on this
+repository". The third-party entries already there (Qodo, CrowdStrike,
+DigitalOcean) were all committed by OpenAI staff or by collaborators. The
+entry, title and body below stay here for the day someone at OpenAI asks
+for them, and for a collaborator who wants to open the PR on our behalf.
 
-Keep `name` (`gigamail`), `category` and `displayName` in sync with
-`.codex-plugin/plugin.json`; the test in `tests/test_codex_plugin.py`
-checks the URL and the name.
+**The official channel is the plugin submission portal**,
+https://platform.openai.com/plugins (docs:
+https://developers.openai.com/plugins/deploy/submission). It needs a
+verified developer or business identity on the OpenAI Platform and the
+"Apps Management" write permission (organization owners have it). It
+collects listing data, tool annotations, starter prompts, at least five
+positive and three negative test cases, country availability and release
+notes. Accepted plugin types: skills-only, remote-MCP-only, skills plus a
+remote MCP server. The catch for GigaMail: an MCP server must sit at a
+public HTTPS URL, and for a local one the docs say "reach out to your
+OpenAI contact for local MCP support". GigaMail is local stdio by design.
+So the realistic submissions are:
+
+- **skills-only**: the `gigamail` skill alone, with the setup step
+  telling the user to install the server from PyPI and register it with
+  `codex mcp add`. Allowed today, no contact needed; loses the automatic
+  `.mcp.json` registration.
+- **skills plus local MCP**: needs an OpenAI contact, per the docs.
+
+The skills-only package for the portal (listing texts, starter prompts,
+reviewer fixture, five positive and three negative test cases, release
+notes) is in [portal/SUBMISSION.md](portal/SUBMISSION.md).
+
+Meanwhile the repo marketplace keeps working for everyone:
+`codex plugin marketplace add adecubed/gigamail`, then
+`codex plugin add gigamail@gigamail`.
+
+Steps for the PR, should a collaborator take it: sparse-clone
+`openai/plugins` (`--sparse`, `git sparse-checkout set .agents`; on
+Windows the full tree has paths over 260 characters), append
+`marketplace-entry.json` as the last element of `plugins` in both
+`.agents/plugins/marketplace.json` and
+`.agents/plugins/api_marketplace.json` (4-space indent, LF),
+`git diff --check`, parse both files, check the ids stay unique. Keep
+`name`, `category` and `displayName` in sync with
+`.codex-plugin/plugin.json`; `tests/test_codex_plugin.py` checks the URL
+and the name.
 
 ## PR title
 

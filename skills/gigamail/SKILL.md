@@ -35,16 +35,24 @@ Codex's approvals and sandbox are bypassed. Both are meant to be there.
    gigamail accounts add-imap    # any IMAP provider
    ```
 
-3. Install this plugin. It registers the `gigamail` MCP server from its own
-   `.mcp.json`, so no `codex mcp add` is needed:
+3. Make the `gigamail` MCP server known to Codex. Two cases:
 
-   ```bash
-   codex plugin marketplace add adecubed/gigamail
-   codex plugin add gigamail@gigamail
-   ```
+   - Installed from the repository marketplace, the plugin registers the
+     server itself from its `.mcp.json`; nothing to do:
 
-   Without the plugin, the manual equivalent is
-   `codex mcp add gigamail -- gigamail-server`.
+     ```bash
+     codex plugin marketplace add adecubed/gigamail
+     codex plugin add gigamail@gigamail
+     ```
+
+   - Installed from the Plugin Directory (skill only, no server bundled),
+     register it once:
+
+     ```bash
+     codex mcp add gigamail -- gigamail-server
+     ```
+
+   Check with `codex mcp list`: the `gigamail` server must be enabled.
 
 4. Optional but valuable: an identity (who the user is, what they do, how
    they sign) and knowledge files (price lists, catalogues, terms). Replies
@@ -59,9 +67,10 @@ Codex's approvals and sandbox are bypassed. Both are meant to be there.
    Releases) is where the user reads mail, approves your requests and
    manages reply rules. Server and console must share the data directory:
    `%APPDATA%\ADE` on Windows, `~/.ade` elsewhere, or the same
-   `GIGAMAIL_ROOT`. The plugin forwards `APPDATA`, `GIGAMAIL_ROOT` and
-   `ADE_ROOT` to the server, so a `GIGAMAIL_ROOT` set in the user's
-   environment is honoured.
+   `GIGAMAIL_ROOT`. From the repository marketplace the plugin forwards
+   `APPDATA`, `GIGAMAIL_ROOT` and `ADE_ROOT` to the server; with
+   `codex mcp add`, pass the directory explicitly if the server sees no
+   accounts: `codex mcp add gigamail --env GIGAMAIL_ROOT=<dir> -- gigamail-server`.
 
 Start a new Codex session after installing: MCP tools load at startup.
 
