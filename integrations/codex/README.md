@@ -62,7 +62,9 @@ So the realistic submissions are:
 
 The skills-only package for the portal (listing texts, starter prompts,
 reviewer fixture, five positive and three negative test cases, release
-notes) is in [portal/SUBMISSION.md](portal/SUBMISSION.md).
+notes) is in [portal/SUBMISSION.md](portal/SUBMISSION.md). **It went
+through: GigaMail 0.3.3 is published in the OpenAI Plugins Directory
+since 2026-09-11**, skill only, server from PyPI.
 
 Meanwhile the repo marketplace keeps working for everyone:
 `codex plugin marketplace add adecubed/gigamail`, then

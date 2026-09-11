@@ -120,6 +120,11 @@ codex plugin marketplace add adecubed/gigamail
 codex plugin add gigamail@gigamail
 ```
 
+GigaMail is also in the [OpenAI Plugins Directory](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3),
+as a skill: install it from there, then register the server with
+`codex mcp add gigamail -- gigamail-server` (the server comes from `pip`,
+as above).
+
 Using **OpenClaw** or **Hermes**? Verified configs in
 [INTEGRATIONS.md](INTEGRATIONS.md).
 
