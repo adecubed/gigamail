@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- **Posta e calendario si parlano, nei due versi.** Erano due mondi
+  separati: `calendar_router` lo chiamavano solo console, API HTTP e CLI,
+  mai il percorso della posta. Si poteva proporre un appuntamento in una
+  mail, spedirla, e non trovarne traccia in agenda — succedeva davvero, e
+  non lo si scopre finche' il cliente non si presenta (o finche' non ci si
+  presenta noi). In uscita `mail_router.send_message` passa ora ogni mail
+  spedita, da qualunque strada arrivi (MCP, regole del watcher, console),
+  al nuovo `core/appointments.py`: una proposta diventa un blocco
+  `[da confermare]`, la conferma del cliente lo promuove, una disdetta lo
+  toglie. In ingresso il watcher ha una fase nuova che rilegge SOLO i
+  thread con un appuntamento aperto. A leggere il messaggio e' l'agente
+  dell'utente, non una regex sulle date, ma prima c'e' un filtro a costo
+  zero: una mail senza orari ne' parole di appuntamento non fa nemmeno
+  partire il processo. L'invio non aspetta mai il calendario (thread a
+  perdere) e ogni passaggio e' fail-closed: agente assente, JSON
+  illeggibile, data mancante, nel passato o oltre l'anno, evento creato
+  senza id => il calendario non si tocca e resta una riga nel log. Una
+  mail che impartisce ordini all'assistente non entra nel prompt.
+- **L'agente vede l'agenda PRIMA di proporre un orario.** Il prompt della
+  bozza diceva "non usare tool" e non portava il calendario: l'agente
+  proponeva date a caso e l'utente si ritrovava due cose nella stessa
+  fascia. Ora `build_draft_prompt` include gli slot liberi calcolati da
+  `availability.find_free_slots` (non dall'agente: weekend, fusi e
+  sovrapposizioni li sbaglia) e vieta di proporne altri. Se il calendario
+  non risponde la sezione lo dichiara e proibisce orari precisi.
+  `GIGAMAIL_SLOT_DAYS` sposta l'orizzonte, `GIGAMAIL_SLOTS_SABATO=1` serve
+  a chi riceve anche di sabato.
+- **Il cc di `reply_mail` non partiva.** Il tool lo accettava, finiva negli
+  args e compariva nell'anteprima approvata dall'umano, ma `execute_fn`
+  non lo passava a `reply_message`: chi approvava vedeva la copia promessa
+  e il destinatario in copia non riceveva niente, senza un errore da
+  nessuna parte. Una riga, piu' la regressione a presidiarla.
+
 - **A Codex plugin.** `codex plugin marketplace add adecubed/gigamail`,
   then `codex plugin add gigamail@gigamail`, installs GigaMail in Codex
   (CLI and desktop app). The manifest that already sat in `.codex-plugin/`
