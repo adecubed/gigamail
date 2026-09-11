@@ -40,13 +40,16 @@ does **not** ship the server: `pip install "gigamail[all]"` first, and
 absolute path with `codex mcp add`, see below). Start a new session after
 installing: MCP tools load at startup.
 
-Verified 2026-09-10 with **codex-cli 0.148.0** (the CLI inside the Codex
-desktop app) from a local checkout, which reads the same files
-(`codex plugin marketplace add <path>`): `codex plugin list` shows
-`gigamail@gigamail` installed and enabled; `codex mcp list` shows the
-`gigamail` server enabled with the forwarded variables; in a `codex exec`
-session the skill was loaded as `gigamail:gigamail`, the server reported
-24 tools and `list_accounts` returned the two accounts the console uses.
+Verified 2026-09-11 with **codex-cli 0.148.0** (the CLI inside the Codex
+desktop app), plugin installed from GitHub with the two commands above and
+the server from PyPI (`gigamail[all]==0.3.3` in a fresh venv on PATH):
+`codex plugin list` shows `gigamail@gigamail` 0.3.3 installed and enabled;
+`codex mcp list` shows the `gigamail` server enabled with the forwarded
+variables; in a `codex exec` session the skill was loaded as
+`gigamail:gigamail` from the plugin cache, the server reported the 28
+tools by name and `list_accounts` returned the two accounts the console
+uses. The same check on 2026-09-10, from a local checkout and with the
+0.3.2 server, gave 24 tools.
 Without `gigamail-server` on PATH the skill still loads but the server
 exposes 0 tools: that is the "not on PATH" case in the skill's
 troubleshooting, and the reason the plugin cannot replace step 1 above.
