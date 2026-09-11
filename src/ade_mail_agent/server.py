@@ -653,10 +653,14 @@ def reply_mail(
         # reply_message ritorna il risultato normalizzato: provider_result
         # arriva cosi' fino all'audit anche per le risposte, non solo per
         # send_mail.
+        # Il cc arrivava fino all'anteprima e poi spariva: execute_fn non
+        # lo passava a reply_message. L'utente vedeva la copia promessa
+        # nell'approvazione e il destinatario in copia non riceveva nulla.
         execute_fn=lambda a: mail_router.reply_message(
             account_id=a["account_id"], message_id=a["message_id"],
             body=a["body"],
             attachments=_attachments_payload(a.get("attachments")),
+            cc=a.get("cc"),
         ),
     )
 
