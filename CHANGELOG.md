@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Un agente scollegato non scrive piu' le bozze.** Claude Code senza
+  login esce con codice 1 e stampa "Not logged in · Please run /login" su
+  stdout. `agent_bridge.run` scartava l'errore quando l'output non era
+  vuoto, e restituiva quella frase come risposta: una bozza con quel testo
+  sarebbe arrivata in approvazione come mail per un cliente, e la lettura
+  degli appuntamenti falliva senza dire perche'. Ora un'uscita con errore
+  e' sempre `AgentUnavailable`, e cosi' un messaggio di login breve anche
+  con uscita 0.
+
 - **Una proposta non si inventa piu' un appuntamento, e la risposta del
   cliente arriva a un umano.** Trovati dal vivo, su un cliente che aveva
   scelto lunedi' mattina senza che nessuno lo vedesse:
