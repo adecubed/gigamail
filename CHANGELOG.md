@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **L'orario scelto dal cliente entra in calendario, e l'avviso mostra la
+  risposta.** L'avviso diceva chi aveva risposto e l'oggetto: la notizia
+  che esiste una mail, non cosa c'e' scritto. Ora porta solo il nome e il
+  testo della risposta, senza la citazione, piu' una riga su cosa e'
+  successo in agenda. Quando il cliente indica una sola data e un solo
+  orario precisi e l'agenda e' libera, l'appuntamento viene inserito
+  subito. Se l'orario e' occupato, se ne indica piu' d'uno o se il
+  calendario non si legge, non si inserisce nulla e l'avviso lo dice.
+
 - **Un agente scollegato non scrive piu' le bozze.** Claude Code senza
   login esce con codice 1 e stampa "Not logged in · Please run /login" su
   stdout. `agent_bridge.run` scartava l'errore quando l'output non era

@@ -246,13 +246,15 @@ def build_prompt(testo: str, subject: str, mittente: str,
         "- Rispondi SOLO con un oggetto JSON, niente testo prima o dopo,\n"
         "  niente blocchi di codice.\n"
         '- Forma esatta: {"stato": "...", "inizio": "...", "fine": "...",'
-        ' "con": "...", "luogo": "..."}\n'
+        ' "con": "...", "luogo": "...", "scelta_unica": true}\n'
         "- stato vale uno di: proposto (si offrono uno o piu' orari, "
         "nessuno ancora accettato), confermato (un orario preciso e' stato "
         "accettato da entrambe le parti), disdetto (l'incontro salta e non "
         "c'e' una nuova data), nessuno (il messaggio non parla di "
         "appuntamenti).\n"
         "- Se gli orari proposti sono piu' di uno, metti in inizio il PRIMO.\n"
+        "- scelta_unica vale true solo se il messaggio indica UNA data e UN "
+        "orario precisi; false se ne elenca piu' d'uno o resta vago.\n"
         "- inizio e fine in formato YYYY-MM-DDTHH:MM, ora locale. Se manca "
         "l'ora di fine lascia fine a null.\n"
         "- Se la data non e' certa, o e' ricavata da una citazione di un "
@@ -364,6 +366,7 @@ def leggi(testo: str, subject: str, mittente: str,
         "fine": fine.isoformat(timespec="minutes"),
         "con": str(dato.get("con") or "")[:120],
         "luogo": str(dato.get("luogo") or "")[:200],
+        "scelta_unica": dato.get("scelta_unica") is True,
     }
 
 
@@ -536,6 +539,29 @@ def dalla_mail_async(account_id: int, subject: str, body: str,
 
 # ── SWEEP IN INGRESSO ────────────────────────────────────────────────
 
+def libero(inizio: str, fine: str, escludi: str = "") -> Optional[bool]:
+    """L'orario non si sovrappone a nessun impegno in agenda.
+
+    None se il calendario non si legge: non sapere e' diverso da
+    "occupato", e l'avviso all'umano lo deve dire. In entrambi i casi
+    non si inserisce nulla."""
+    try:
+        a, b = datetime.fromisoformat(inizio), datetime.fromisoformat(fine)
+        giorni = max(1, (a.date() - datetime.now().date()).days + 1)
+        eventi = calendar_router.get_events(days_ahead=giorni)
+    except Exception as e:
+        logger.info("agenda non leggibile per %s: %s", inizio, e)
+        return None
+    for ev in eventi or []:
+        if escludi and str(ev.get("id") or "") == escludi:
+            continue
+        s = availability._parse_graph_dt(ev.get("start"))
+        e = availability._parse_graph_dt(ev.get("end"))
+        if s and e and s < b and e > a:
+            return False
+    return True
+
+
 def sweep(account_id: int, messaggi: list, adesso=None,
           corpo_di: Optional[Callable[[Dict[str, Any]], str]] = None,
           avvisa: Optional[Callable[..., None]] = None) -> int:
@@ -583,8 +609,18 @@ def sweep(account_id: int, messaggi: list, adesso=None,
         if forse(f"{subject}\n{corpo}"):
             esito = leggi(corpo, subject, mittente, adesso)
         toccato = None
-        # "proposto" in ingresso e' il cliente che sceglie o rilancia un
-        # orario: il calendario aspetta la nostra conferma, l'umano no.
+        if esito.get("stato") == "proposto" and esito.get("scelta_unica"):
+            # Il cliente ha scelto un orario preciso: se l'agenda e' libera
+            # entra in calendario subito, senza aspettare un'altra mail.
+            # Con piu' orari, o un orario vago, decide l'umano.
+            esito_agenda = libero(esito["inizio"], esito["fine"],
+                                  escludi=riga.get("event_id") or "")
+            if esito_agenda:
+                esito = dict(esito, stato="confermato")
+            elif esito_agenda is False:
+                esito = dict(esito, occupato=True)
+            else:
+                esito = dict(esito, agenda_illeggibile=True)
         if esito.get("stato") in ("confermato", "disdetto"):
             toccato = applica(account_id, riga["thread_key"], esito,
                               controparte=mittente, oggetto=subject)
@@ -656,16 +692,18 @@ def _estratto(corpo: str) -> str:
 def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
                  esito: Dict[str, Any], toccato: Optional[Dict[str, Any]],
                  lingua: str = "it") -> str:
-    """L'avviso per l'umano: chi ha risposto, cosa dice, cosa e' cambiato."""
+    """Cosa ha scritto il cliente e cosa e' successo in agenda.
+
+    Niente "e' arrivata una mail", niente oggetto: chi legge vuole la
+    risposta, non la notizia che esiste."""
     it = lingua == "it"
     f = m.get("from") or {}
     ea = f.get("emailAddress") if isinstance(f, dict) else None
     nome = str(ea.get("name") or "").strip() if isinstance(ea, dict) else ""
-    indirizzo = _mittente(m)
-    chi = f"{nome} <{indirizzo}>" if nome else indirizzo
-    oggetto = re.sub(r"\s+", " ", str(m.get("subject") or "")).strip()
-    righe = [f"📩 {chi} " + ("ha risposto" if it else "replied"),
-             ("Oggetto: " if it else "Subject: ") + oggetto]
+    chi = nome or _mittente(m)
+    estratto = _estratto(corpo) or ("(testo non leggibile)" if it
+                                    else "(unreadable text)")
+    righe = [f"{chi}:", f"«{estratto}»"]
     stato = esito.get("stato")
     quando = ""
     if esito.get("inizio"):
@@ -674,27 +712,34 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
                 datetime.fromisoformat(esito["inizio"]))
         except ValueError:
             quando = str(esito["inizio"])
-    if stato == "proposto" and quando:
-        righe.append(f"Indica {quando}: aspetta una tua conferma, il "
-                     "calendario non e' cambiato." if it else
-                     f"Suggests {quando}: waiting for your confirmation, "
-                     "calendar unchanged.")
-    elif stato == "confermato" and quando:
+    nota = ""
+    if stato == "confermato" and quando:
         if toccato:
-            righe.append(f"Conferma {quando}: l'evento e' in calendario."
-                         if it else f"Confirms {quando}: event in calendar.")
+            nota = (f"📅 {quando}: inserito in calendario." if it
+                    else f"📅 {quando}: added to the calendar.")
         else:
-            righe.append(f"Conferma {quando}, ma il calendario NON e' stato "
-                         "aggiornato: controlla." if it else
-                         f"Confirms {quando}, but the calendar was NOT "
-                         "updated: check it.")
+            nota = (f"⚠️ {quando}: NON inserito, il calendario non ha "
+                    "accettato l'evento." if it else
+                    f"⚠️ {quando}: NOT added, the calendar refused it.")
+    elif stato == "proposto" and quando and esito.get("occupato"):
+        nota = (f"⚠️ {quando}: in calendario c'e' gia' un impegno, non "
+                "l'ho inserito." if it else
+                f"⚠️ {quando}: the calendar is busy, not added.")
+    elif stato == "proposto" and quando and esito.get("agenda_illeggibile"):
+        nota = (f"⚠️ {quando}: calendario non leggibile, non l'ho "
+                "inserito." if it else
+                f"⚠️ {quando}: calendar unreadable, not added.")
+    elif stato == "proposto" and quando:
+        nota = ("Piu' orari o un orario non preciso: in calendario non ho "
+                "inserito nulla." if it else
+                "Several or vague times: nothing added to the calendar.")
     elif stato == "disdetto":
-        righe.append("Disdice l'appuntamento." if it
-                     else "Cancels the appointment.")
-    else:
-        righe.append("Nessun orario letto: serve una tua risposta." if it
-                     else "No time found: it needs your reply.")
-    estratto = _estratto(corpo)
-    if estratto:
-        righe += ["", f"«{estratto}»"]
+        tolto = bool(toccato and toccato.get("event_id"))
+        nota = (("📅 Appuntamento disdetto"
+                 + (", tolto dal calendario." if tolto else "."))
+                if it else ("📅 Appointment cancelled"
+                            + (", removed from the calendar." if tolto
+                               else ".")))
+    if nota:
+        righe += ["", nota]
     return "\n".join(righe)
