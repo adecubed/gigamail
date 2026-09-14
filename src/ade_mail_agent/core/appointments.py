@@ -11,9 +11,15 @@ finche' il cliente non si presenta (o non si presenta).
 
 Il verso in USCITA vive qui: da una mail inviata o ricevuta si ricava
 l'appuntamento e lo si riporta in calendario.
-  proposto    abbiamo offerto uno o piu' orari  -> blocco TENTATIVO
-  confermato  l'altra parte ne ha accettato uno -> evento confermato
+  in_attesa   una regola ha risposto            -> si ascolta il thread
+  proposto    abbiamo offerto uno o piu' orari  -> si ascolta il thread
+  confermato  l'altra parte ne ha accettato uno -> evento in calendario
   disdetto    salta e non c'e' una nuova data   -> l'evento si toglie
+
+Una proposta NON entra in calendario. Prima diventava un blocco
+"[da confermare]" sul primo degli orari offerti: a chi non rispondeva
+restava in agenda un appuntamento mai chiesto, promemoria compreso, e a
+chi sceglieva un altro orario il blocco stava nel posto sbagliato.
 
 Il verso in INGRESSO (agenda -> bozza) vive in watcher/drafting.py: gli
 slot liberi entrano nel prompt, cosi' l'agente non puo' proporre un orario
@@ -33,23 +39,31 @@ import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
+from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from ade_mail_agent import agent_bridge, policy
 
-from . import calendar_router, injection_guard
+from . import availability, calendar_router, injection_guard
+from .addresses import split_addresses
 
 logger = logging.getLogger("gigamail.appointments")
 
 STATI = ("proposto", "confermato", "disdetto", "nessuno")
+# I thread da tenere d'occhio. "in_attesa" non esce mai dall'agente: lo
+# scrive solo segui(), quando una regola ha appena risposto.
+APERTI = ("in_attesa", "proposto", "confermato")
 
 # Un appuntamento oltre questo orizzonte e' quasi sempre una data letta
 # male (un "2025" al posto di "2026", un giorno preso da una citazione in
 # coda al thread). Meglio non scriverlo che scriverlo sbagliato.
 ORIZZONTE_GIORNI = 365
 DURATA_DEFAULT_MINUTI = 60
-_PREFISSO_TENTATIVO = "[da confermare] "
+# Una mail arrivata prima dell'ultimo aggiornamento del thread e' quella a
+# cui abbiamo risposto, non la replica. Margine per gli orologi dei server.
+_MARGINE_SECONDI = 300
+_ESTRATTO_MAX = 700
 _TESTO_MAX = 6000
 _TIMEOUT_SECONDI = policy._env_int("GIGAMAIL_APPOINTMENT_TIMEOUT", 180)
 
@@ -104,6 +118,17 @@ class AppointmentStore:
                     PRIMARY KEY (account_id, thread_key)
                 )
             """)
+            # Le risposte gia' guardate. Senza, lo stesso messaggio
+            # rientrerebbe a ogni giro: un processo dell'agente e un
+            # avviso su Telegram ogni due minuti, per sempre.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS risposte_viste (
+                    account_id  INTEGER NOT NULL,
+                    message_id  TEXT    NOT NULL,
+                    visto_il    REAL    NOT NULL,
+                    PRIMARY KEY (account_id, message_id)
+                )
+            """)
 
     def get(self, account_id: int, thread_key: str) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:
@@ -132,13 +157,38 @@ class AppointmentStore:
         """Le conversazioni con un appuntamento ancora in piedi. Le usa lo
         sweep in ingresso: si rileggono solo i thread che hanno qualcosa da
         confermare, non tutta la casella."""
-        q = "SELECT * FROM appuntamenti WHERE stato IN ('proposto','confermato')"
-        args: tuple = ()
+        q = ("SELECT * FROM appuntamenti WHERE stato IN ("
+             + ",".join("?" * len(APERTI)) + ")")
+        args: tuple = tuple(APERTI)
         if account_id is not None:
             q += " AND account_id=?"
-            args = (int(account_id),)
+            args = args + (int(account_id),)
         with self._conn() as conn:
             return [dict(r) for r in conn.execute(q, args).fetchall()]
+
+    def segui(self, account_id: int, thread_key: str, con: str = "") -> None:
+        """Mette un thread in ascolto senza toccare cio' che c'e' gia':
+        un appuntamento proposto o fissato non torna 'in_attesa'."""
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO appuntamenti"
+                " (account_id, thread_key, event_id, stato, inizio, fine,"
+                "  con, updated_at) VALUES (?,?,'','in_attesa','','',?,?)",
+                (int(account_id), thread_key, con or "", time.time()))
+
+    def vista(self, account_id: int, message_id: str) -> bool:
+        with self._conn() as conn:
+            return conn.execute(
+                "SELECT 1 FROM risposte_viste"
+                " WHERE account_id=? AND message_id=?",
+                (int(account_id), str(message_id))).fetchone() is not None
+
+    def segna_vista(self, account_id: int, message_id: str) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO risposte_viste"
+                " (account_id, message_id, visto_il) VALUES (?,?,?)",
+                (int(account_id), str(message_id), time.time()))
 
 
 _store: Optional[AppointmentStore] = None
@@ -170,7 +220,19 @@ def thread_key(subject: str, controparte: str = "") -> str:
     il primo."""
     base = _PREFISSI.sub("", str(subject or "")).strip().lower()
     base = re.sub(r"\s+", " ", base)[:200]
-    return f"{(controparte or '').strip().lower()}|{base}"
+    return f"{_indirizzo(controparte)}|{base}"
+
+
+def _indirizzo(controparte: str) -> str:
+    """Il solo indirizzo, minuscolo. Chi spedisce puo' scrivere
+    'Nome <a@b.it>' o una lista; nella replica il mittente e' l'indirizzo
+    nudo. Senza normalizzare le due chiavi non coincidono, e la risposta
+    del cliente non ritrova il suo thread."""
+    try:
+        primo = (split_addresses(controparte or "") or [""])[0]
+    except Exception:
+        primo = str(controparte or "")
+    return (parseaddr(primo)[1] or primo).strip().lower()
 
 
 # ── LETTURA (delegata all'agente) ────────────────────────────────────
@@ -313,7 +375,7 @@ def _titolo(esito: Dict[str, Any], controparte: str, oggetto: str) -> str:
     riferimento = _PREFISSI.sub("", str(oggetto or "")).strip()
     if riferimento:
         base = f"{base} — {riferimento[:80]}"
-    return (_PREFISSO_TENTATIVO + base) if esito["stato"] == "proposto" else base
+    return base
 
 
 def applica(account_id: int, chiave: str, esito: Dict[str, Any],
@@ -332,25 +394,41 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
     if stato == "disdetto":
         if not corrente:
             return None
-        try:
-            calendar_router.delete_event(corrente["event_id"])
-        except Exception as e:
-            logger.warning("evento %s non cancellato: %s",
-                           corrente["event_id"], e)
-            policy.audit("appointment", {"account_id": account_id,
-                                         "thread": chiave},
-                         "delete_failed", detail=str(e)[:200])
-            return None
+        if corrente.get("event_id"):
+            try:
+                calendar_router.delete_event(corrente["event_id"])
+            except Exception as e:
+                logger.warning("evento %s non cancellato: %s",
+                               corrente["event_id"], e)
+                policy.audit("appointment", {"account_id": account_id,
+                                             "thread": chiave},
+                             "delete_failed", detail=str(e)[:200])
+                return None
         st.delete(account_id, chiave)
         policy.audit("appointment", {"account_id": account_id,
                                      "thread": chiave}, "deleted")
-        return {"stato": "disdetto", "event_id": corrente["event_id"]}
+        return {"stato": "disdetto",
+                "event_id": corrente.get("event_id") or ""}
+
+    inizio, fine = esito["inizio"], esito["fine"]
+    con = esito.get("con") or controparte
+
+    if stato == "proposto":
+        if corrente and corrente.get("event_id"):
+            # C'e' gia' un appuntamento fissato: una nuova proposta e' uno
+            # spostamento in corso, e l'evento resta dov'e' finche' non
+            # arriva l'accordo sul nuovo orario.
+            return None
+        st.upsert(account_id, chiave, "", "proposto", inizio, fine, con)
+        policy.audit("appointment", {"account_id": account_id,
+                                     "thread": chiave, "stato": stato,
+                                     "inizio": inizio}, "proposed")
+        return {"stato": "proposto", "event_id": ""}
 
     titolo = _titolo(esito, controparte, oggetto)
-    inizio, fine = esito["inizio"], esito["fine"]
     luogo = esito.get("luogo") or ""
     try:
-        if corrente:
+        if corrente and corrente.get("event_id"):
             evento = calendar_router.update_event(
                 corrente["event_id"], subject=titolo, start=inizio,
                 end=fine, location=luogo)
@@ -361,7 +439,7 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                 body="Creato da GigaMail dalla conversazione via mail.")
             event_id = str((evento or {}).get("id") or "")
             if not event_id:
-                # Senza id non si potra' promuovere o cancellare: meglio
+                # Senza id non si potra' spostare o cancellare: meglio
                 # saperlo adesso che alla disdetta.
                 logger.warning("calendario: evento creato senza id")
                 policy.audit("appointment", {"account_id": account_id,
@@ -374,11 +452,10 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                                      "thread": chiave}, "failed",
                      detail=str(e)[:200])
         return None
-    st.upsert(account_id, chiave, event_id, stato, inizio, fine,
-              esito.get("con") or controparte)
+    st.upsert(account_id, chiave, event_id, stato, inizio, fine, con)
     policy.audit("appointment", {"account_id": account_id, "thread": chiave,
                                  "stato": stato, "inizio": inizio},
-                 "confirmed" if stato == "confermato" else "held")
+                 "confirmed")
     return {"stato": stato, "event_id": event_id, "evento": evento}
 
 
@@ -393,6 +470,22 @@ def dalla_mail(account_id: int, subject: str, body: str, controparte: str,
         return None
     return applica(account_id, thread_key(subject, controparte), esito,
                    controparte=controparte, oggetto=subject)
+
+
+def segui(account_id: int, subject: str, controparte: str) -> None:
+    """Una regola ha appena risposto: la replica deve arrivare a un umano.
+
+    Prima si ascoltavano solo i thread con un appuntamento, e la regola
+    guarda solo i suoi mittenti. Il cliente che rispondeva dalla propria
+    casella restava fra i non letti senza un avviso: e' successo con una
+    conferma per il lunedi' mattina, scoperta a orario passato."""
+    indirizzo = _indirizzo(controparte)
+    if not indirizzo:
+        return
+    try:
+        store().segui(account_id, thread_key(subject, indirizzo), indirizzo)
+    except Exception as e:
+        logger.warning("thread non messo in ascolto: %s", e)
 
 
 # ── FILTRO A COSTO ZERO ──────────────────────────────────────────────
@@ -443,15 +536,25 @@ def dalla_mail_async(account_id: int, subject: str, body: str,
 
 # ── SWEEP IN INGRESSO ────────────────────────────────────────────────
 
-def sweep(account_id: int, messaggi: list, adesso=None) -> int:
-    """Le risposte dei clienti sui thread con un appuntamento aperto.
+def sweep(account_id: int, messaggi: list, adesso=None,
+          corpo_di: Optional[Callable[[Dict[str, Any]], str]] = None,
+          avvisa: Optional[Callable[..., None]] = None) -> int:
+    """Le risposte dei clienti sui thread in ascolto.
 
-    Si guardano SOLO i thread che hanno gia' un evento in piedi: e' li'
-    che una conferma va promossa e una disdetta va tolta. Sul resto della
-    casella non si spende un solo processo dell'agente.
+    Si guardano SOLO i thread aperti: in attesa di risposta, con un orario
+    proposto o con un appuntamento fissato. Sul resto della casella non si
+    spende un solo processo dell'agente.
 
-    Ritorna quanti appuntamenti sono stati aggiornati."""
-    aperti = {r["thread_key"]: r for r in store().aperti(account_id)}
+    corpo_di(messaggio) scarica il testo quando la lista non lo porta, e
+    IMAP non lo porta mai: senza, la conferma "lunedi' alle 9:30" veniva
+    giudicata dal solo oggetto e scartata senza lasciare traccia.
+    avvisa(riga, messaggio, corpo, esito, toccato) parte per OGNI risposta
+    nuova, anche quando il calendario non cambia: un cliente che sceglie un
+    orario e aspetta la conferma e' proprio il caso da far sapere.
+
+    Ritorna quanti appuntamenti sono cambiati in calendario."""
+    st = store()
+    aperti = {r["thread_key"]: r for r in st.aperti(account_id)}
     if not aperti:
         return 0
     fatti = 0
@@ -460,20 +563,41 @@ def sweep(account_id: int, messaggi: list, adesso=None) -> int:
             continue
         mittente = _mittente(m)
         subject = str(m.get("subject") or "")
-        chiave = thread_key(subject, mittente)
-        if chiave not in aperti:
+        riga = aperti.get(thread_key(subject, mittente))
+        if riga is None:
             continue
+        mid = str(m.get("id") or "")
+        if mid and st.vista(account_id, mid):
+            continue
+        ricevuta = _timestamp(m)
+        if (ricevuta is not None
+                and ricevuta < float(riga["updated_at"]) - _MARGINE_SECONDI):
+            continue  # la mail a cui abbiamo risposto, non la replica
         corpo = _corpo(m)
-        if not forse(f"{subject}\n{corpo}"):
-            continue
-        esito = leggi(corpo, subject, mittente, adesso)
-        if esito.get("stato") in (None, "nessuno", "proposto"):
-            # "proposto" in ingresso e' il cliente che ributta la palla:
-            # finche' non c'e' un accordo l'evento resta tentativo com'e'.
-            continue
-        if applica(account_id, chiave, esito, controparte=mittente,
-                   oggetto=subject):
-            fatti += 1
+        if not corpo.strip() and corpo_di is not None:
+            try:
+                corpo = str(corpo_di(m) or "")
+            except Exception as e:
+                logger.info("testo della risposta %s non letto: %s", mid, e)
+        esito: Dict[str, Any] = {"stato": "nessuno"}
+        if forse(f"{subject}\n{corpo}"):
+            esito = leggi(corpo, subject, mittente, adesso)
+        toccato = None
+        # "proposto" in ingresso e' il cliente che sceglie o rilancia un
+        # orario: il calendario aspetta la nostra conferma, l'umano no.
+        if esito.get("stato") in ("confermato", "disdetto"):
+            toccato = applica(account_id, riga["thread_key"], esito,
+                              controparte=mittente, oggetto=subject)
+            if toccato:
+                fatti += 1
+        if mid:
+            st.segna_vista(account_id, mid)
+        if avvisa is not None:
+            try:
+                avvisa(riga, m, corpo, esito, toccato)
+            except Exception as e:
+                logger.warning("avviso sulla risposta %s non partito: %s",
+                               mid, e)
     return fatti
 
 
@@ -494,3 +618,83 @@ def _corpo(m: Dict[str, Any]) -> str:
         if isinstance(corpo, dict):
             corpo = corpo.get("content") or ""
     return str(corpo or "")
+
+
+def _timestamp(m: Dict[str, Any]) -> Optional[float]:
+    """Quando e' arrivato il messaggio: ISO da Graph, RFC 2822 da IMAP."""
+    grezzo = str(m.get("receivedDateTime") or m.get("date") or "").strip()
+    if not grezzo:
+        return None
+    try:
+        return datetime.fromisoformat(grezzo.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        pass
+    try:
+        return parsedate_to_datetime(grezzo).timestamp()
+    except Exception:
+        return None
+
+
+_CITAZIONE = re.compile(
+    r"(il giorno .{0,160}?ha scritto:|on .{0,160}?wrote:"
+    r"|-----\s*original message|-----\s*messaggio originale)",
+    re.IGNORECASE | re.DOTALL)
+
+
+def _estratto(corpo: str) -> str:
+    """Il testo nuovo della risposta, senza il nostro messaggio citato."""
+    testo = str(corpo or "")
+    trovato = _CITAZIONE.search(testo)
+    if trovato:
+        testo = testo[:trovato.start()]
+    testo = re.sub(r"\s+", " ", testo).strip()
+    if len(testo) > _ESTRATTO_MAX:
+        testo = testo[:_ESTRATTO_MAX].rstrip() + "…"
+    return testo
+
+
+def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
+                 esito: Dict[str, Any], toccato: Optional[Dict[str, Any]],
+                 lingua: str = "it") -> str:
+    """L'avviso per l'umano: chi ha risposto, cosa dice, cosa e' cambiato."""
+    it = lingua == "it"
+    f = m.get("from") or {}
+    ea = f.get("emailAddress") if isinstance(f, dict) else None
+    nome = str(ea.get("name") or "").strip() if isinstance(ea, dict) else ""
+    indirizzo = _mittente(m)
+    chi = f"{nome} <{indirizzo}>" if nome else indirizzo
+    oggetto = re.sub(r"\s+", " ", str(m.get("subject") or "")).strip()
+    righe = [f"📩 {chi} " + ("ha risposto" if it else "replied"),
+             ("Oggetto: " if it else "Subject: ") + oggetto]
+    stato = esito.get("stato")
+    quando = ""
+    if esito.get("inizio"):
+        try:
+            quando = availability.etichetta_slot(
+                datetime.fromisoformat(esito["inizio"]))
+        except ValueError:
+            quando = str(esito["inizio"])
+    if stato == "proposto" and quando:
+        righe.append(f"Indica {quando}: aspetta una tua conferma, il "
+                     "calendario non e' cambiato." if it else
+                     f"Suggests {quando}: waiting for your confirmation, "
+                     "calendar unchanged.")
+    elif stato == "confermato" and quando:
+        if toccato:
+            righe.append(f"Conferma {quando}: l'evento e' in calendario."
+                         if it else f"Confirms {quando}: event in calendar.")
+        else:
+            righe.append(f"Conferma {quando}, ma il calendario NON e' stato "
+                         "aggiornato: controlla." if it else
+                         f"Confirms {quando}, but the calendar was NOT "
+                         "updated: check it.")
+    elif stato == "disdetto":
+        righe.append("Disdice l'appuntamento." if it
+                     else "Cancels the appointment.")
+    else:
+        righe.append("Nessun orario letto: serve una tua risposta." if it
+                     else "No time found: it needs your reply.")
+    estratto = _estratto(corpo)
+    if estratto:
+        righe += ["", f"«{estratto}»"]
+    return "\n".join(righe)

@@ -217,6 +217,10 @@ def send_message(
             aid = (a or {}).get('id')
             if aid is not None:
                 from . import appointments
+                if auto_submitted:
+                    # Risposta da regola: la replica del cliente deve
+                    # arrivare a un umano anche se non parla di orari.
+                    appointments.segui(int(aid), subject, str(to or ''))
                 appointments.dalla_mail_async(int(aid), subject, body,
                                               str(to or ''))
     except Exception:

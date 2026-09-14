@@ -1,6 +1,6 @@
 """Slot liberi: la disponibilita' proposta ai clienti deve essere corretta
 in modo deterministico (niente calcoli lasciati all'agente)."""
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from ade_mail_agent.core import availability
 
@@ -98,6 +98,34 @@ def test_eventi_utc_convertiti_in_locale():
         start = datetime.fromisoformat(s["start"])
         if start.date() == datetime(2026, 8, 18).date():
             assert start.hour < 9 or start.hour >= 18
+
+
+def test_festivi_italiani():
+    assert availability.festivo(date(2026, 4, 6))     # Pasquetta 2026
+    assert availability.festivo(date(2027, 3, 29))    # Pasquetta 2027
+    assert availability.festivo(date(2026, 12, 8))
+    assert not availability.festivo(date(2026, 12, 7))
+    assert availability.festivo(date(2026, 12, 7), patrono="12-07")
+
+
+def test_salta_festivi_e_patrono():
+    # lunedi' 7 dicembre 2026 (Sant'Ambrogio), martedi' 8 (Immacolata)
+    lunedi = datetime(2026, 12, 7, 8, 0)
+    slots = availability.find_free_slots([], now=lunedi, min_notice_hours=0,
+                                         days_ahead=3, max_slots=10,
+                                         skip_holidays=True, patrono="12-07")
+    giorni = {datetime.fromisoformat(s["start"]).day for s in slots}
+    assert 7 not in giorni and 8 not in giorni
+    assert 9 in giorni
+
+
+def test_fascia_dalle_17_niente_mattina():
+    slots = availability.find_free_slots([], now=NOW, min_notice_hours=0,
+                                         work_start="17:00", work_end="18:30",
+                                         max_slots=6)
+    assert slots
+    for s in slots:
+        assert datetime.fromisoformat(s["start"]).hour >= 17
 
 
 def test_evento_malformato_ignorato_senza_crash():
