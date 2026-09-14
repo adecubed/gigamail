@@ -94,18 +94,21 @@ class Watcher:
     # -- fase C: conferme e disdette sugli appuntamenti --------------------
 
     def sweep_appointments(self) -> int:
-        """Chi ha accettato o disdetto un appuntamento gia' proposto.
+        """Le risposte dei clienti sui thread in ascolto.
 
-        La proposta finisce in agenda al momento dell'invio (mail_router);
-        e' la RISPOSTA del cliente a dire se quel blocco diventa un
-        appuntamento vero o va tolto. Si leggono solo i thread che hanno
-        un evento aperto: se non ce ne sono questa fase non costa nulla."""
-        from ade_mail_agent.core import appointments
-        from ade_mail_agent.core import mail_router
+        Una proposta NON entra in agenda: ci entra la conferma. Qui si
+        rileggono solo i thread aperti (una regola ha risposto, un orario
+        e' stato proposto o fissato) e ogni risposta nuova arriva
+        all'umano su Telegram, anche quando il calendario non cambia."""
+        from ade_mail_agent.core import appointments, mail_router
 
         aperti = appointments.store().aperti()
         if not aperti:
             return 0
+        try:
+            tg = telegram_channel.channel()
+        except Exception:
+            tg = None
         totale = 0
         for account_id in sorted({int(r["account_id"]) for r in aperti}):
             try:
@@ -116,8 +119,32 @@ class Watcher:
                 _log(f"appuntamenti, poll fallito ({account_id}): {e}",
                      self.verbose)
                 continue
+
+            def _corpo_di(m, _aid=account_id):
+                pieno = mail_router.get_message(
+                    account_id=_aid, message_id=str(m.get("id") or ""),
+                    folder="INBOX") or {}
+                return appointments._corpo(pieno)
+
+            def _avvisa(riga, m, corpo, esito, toccato, _aid=account_id):
+                testo = appointments.testo_avviso(
+                    riga, m, corpo, esito, toccato,
+                    lingua=policy.user_lang())
+                _log(f"risposta sul thread {riga['thread_key'][:80]} "
+                     f"({esito.get('stato')})", True)
+                policy.audit("appointment",
+                             {"account_id": _aid,
+                              "thread": riga["thread_key"],
+                              "message_id": str(m.get("id") or ""),
+                              "stato": esito.get("stato")},
+                             "reply_notified" if tg else "reply_seen")
+                if tg:
+                    tg.send(testo)
+
             try:
-                totale += appointments.sweep(account_id, messaggi)
+                totale += appointments.sweep(account_id, messaggi,
+                                             corpo_di=_corpo_di,
+                                             avvisa=_avvisa)
             except Exception as e:
                 _log(f"appuntamenti, sweep fallito ({account_id}): {e}",
                      self.verbose)

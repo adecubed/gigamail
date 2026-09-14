@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Una proposta non si inventa piu' un appuntamento, e la risposta del
+  cliente arriva a un umano.** Trovati dal vivo, su un cliente che aveva
+  scelto lunedi' mattina senza che nessuno lo vedesse:
+  - la fase che rilegge i thread aperti giudicava le risposte dal solo
+    oggetto, perche' la lista IMAP non porta il testo. Ora il testo si
+    scarica per i soli messaggi dei thread aperti, e ognuno si guarda una
+    volta sola;
+  - chi rispondeva dalla propria casella invece che dal portale non
+    generava alcun avviso. Le risposte partite da una regola mettono il
+    thread in ascolto, e ogni replica nuova arriva su Telegram con
+    l'orario letto e il testo senza la nostra citazione;
+  - una proposta diventava un blocco `[da confermare]` sul primo degli
+    orari offerti, promemoria compreso, anche per chi non rispondeva mai.
+    Ora in calendario entra solo la conferma;
+  - la fascia degli slot era fissa dalle 09:30. Ora si legge dalle
+    impostazioni (`slot_work_start`, `slot_work_end`, `slot_patrono`,
+    `slot_skip_holidays`), i festivi italiani sono esclusi e la bozza
+    invita sempre a suggerire un'alternativa;
+  - leggere una mail via IMAP la segnava come letta (`RFC822` invece di
+    `BODY.PEEK[]`): il watcher avrebbe tolto dai non letti proprio le
+    risposte che deve segnalare.
+
 - **Posta e calendario si parlano, nei due versi.** Erano due mondi
   separati: `calendar_router` lo chiamavano solo console, API HTTP e CLI,
   mai il percorso della posta. Si poteva proporre un appuntamento in una

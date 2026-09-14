@@ -1077,7 +1077,10 @@ def get_message(
                 select_status, _ = conn.select(f'"{resolved}"')
                 if select_status != "OK":
                     raise imaplib.IMAP4.abort(f"select failed for folder {resolved!r}: {select_status}")
-                _, msg_data = _uid_fetch(conn, clean_id, "(RFC822)")
+                # BODY.PEEK[]: leggere non deve segnare come letta. Con
+                # RFC822 bastava aprire la replica di un cliente per
+                # toglierla dai non letti, e l'umano non la vedeva piu'.
+                _, msg_data = _uid_fetch(conn, clean_id, "(BODY.PEEK[])")
             else:
                 all_folders = _list_folders(conn)
                 for rf in all_folders:
@@ -1085,7 +1088,7 @@ def get_message(
                         status, _ = conn.select(f'"{rf}"')
                         if status != "OK":
                             continue
-                        _, md = _uid_fetch(conn, clean_id, "(RFC822)")
+                        _, md = _uid_fetch(conn, clean_id, "(BODY.PEEK[])")
                         if md and md[0] is not None:
                             msg_data = md
                             resolved = rf
