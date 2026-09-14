@@ -17,7 +17,13 @@ class FintoCalendario:
     def __init__(self, fallisce: bool = False, senza_id: bool = False):
         self.creati, self.aggiornati, self.cancellati = [], [], []
         self.fallisce, self.senza_id = fallisce, senza_id
+        self.eventi, self.lettura_rotta = [], False
         self._seq = 0
+
+    def get_events(self, days_ahead=7, **kw):
+        if self.lettura_rotta:
+            raise RuntimeError("token scaduto")
+        return list(self.eventi)
 
     def create_event(self, subject, start, end, location='', body='',
                      attendees=None):
@@ -403,9 +409,10 @@ def test_avviso_senza_il_nostro_messaggio_citato():
     testo = appointments.testo_avviso(
         riga, m, corpo, {"stato": "proposto", "inizio": "2026-09-14T09:30"},
         None)
-    assert "Roberto <rg@example.com>" in testo
-    assert "lunedì 14 settembre alle 09:30" in testo
+    assert testo.startswith("Roberto:")
+    assert "va bene lunedi alle 9:30" in testo
     assert "Gentile" not in testo
+    assert "ha risposto" not in testo and "Oggetto" not in testo
 
 
 def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch):
@@ -423,3 +430,71 @@ def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch):
     mail_router.send_message(account_id=2, to="c@example.com",
                              subject="Re: y", body="ciao")
     assert seguiti == [(2, "Re: x", "c@example.com")]
+
+
+# ── il cliente sceglie un orario: se e' libero entra in agenda ───────
+
+def _proposta_aperta(monkeypatch):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-15T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "martedi o giovedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+
+
+def test_orario_scelto_e_libero_entra_in_calendario(monkeypatch, cal):
+    _proposta_aperta(monkeypatch)
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
+                         '"scelta_unica":true,"con":"Roberto Galioto"}')
+    avvisi = []
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "Mi rendo disponibile giovedi 17 alle 17:00",
+                      nome="Roberto Galioto")],
+        adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert n == 1
+    assert cal.creati[0]["start"] == "2026-09-17T17:00"
+    testo = appointments.testo_avviso(*avvisi[0])
+    assert testo.startswith("Roberto Galioto:")
+    assert "inserito in calendario" in testo
+
+
+def test_orario_scelto_ma_occupato_non_entra(monkeypatch, cal):
+    _proposta_aperta(monkeypatch)
+    cal.eventi = [{"id": "altro",
+                   "start": {"dateTime": "2026-09-17T16:30:00",
+                             "timeZone": "Europe/Rome"},
+                   "end": {"dateTime": "2026-09-17T17:30:00",
+                           "timeZone": "Europe/Rome"}}]
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
+                         '"scelta_unica":true}')
+    avvisi = []
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "giovedi 17 alle 17:00")],
+        adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert n == 0 and cal.creati == []
+    assert "gia' un impegno" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_piu_orari_non_entrano_in_calendario(monkeypatch, cal):
+    _proposta_aperta(monkeypatch)
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-15T17:00",'
+                         '"scelta_unica":false}')
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "martedi o giovedi alle 17:00")], adesso=NOW)
+    assert n == 0 and cal.creati == []
+
+
+def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
+    """Fail-closed: se l'agenda non si legge non si sa se e' libera."""
+    _proposta_aperta(monkeypatch)
+    cal.lettura_rotta = True
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
+                         '"scelta_unica":true}')
+    avvisi = []
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "giovedi 17 alle 17:00")],
+        adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert n == 0 and cal.creati == []
+    assert "non leggibile" in appointments.testo_avviso(*avvisi[0])
