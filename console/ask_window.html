@@ -216,8 +216,16 @@ async function send(){
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ question:q, account_id:accountId, history, lang:(window.i18n?window.i18n.lang:(localStorage.getItem('ade_lang')||'it')) })
     });
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
     loading.remove();
+    if (!r.ok) {
+      // Prima un errore del backend (agente scollegato, 503) diventava
+      // "(nessuna risposta)": il motivo vero non arrivava mai a video.
+      addMsg((window.i18n?window.i18n.t('error'):'Errore') + ': ' + (d.detail || `HTTP ${r.status}`), 'bot');
+      sendBtn.disabled = false;
+      input.focus();
+      return;
+    }
     addMsg(d.answer || (window.i18n?window.i18n.t('no_answer'):'(nessuna risposta)'), 'bot', d.cited_mails);
     history.push({ role:'assistant', content:d.answer||'', cited_thread_ids:d.cited_thread_ids||[] });
     if (history.length > 20) history = history.slice(-20);  // tieni ultimi ~10 scambi (user+bot)
