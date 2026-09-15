@@ -70,10 +70,17 @@ def del_dominio(indirizzo: str, domini: Iterable[str]) -> bool:
 
 
 def pronta(account_id: int, message: Dict[str, Any],
-           regole: List[Dict[str, Any]]) -> bool:
-    """Nessuna regola attiva su questa casella aspetta ancora la mail."""
+           regole: List[Dict[str, Any]], unread_days: int = 7) -> bool:
+    """Nessuna regola attiva su questa casella aspetta ancora la mail.
+
+    Una regola guarda solo le mail arrivate dopo la sua creazione ed entro
+    unread_days (ingestion.poll_folder): quelle piu' vecchie non le gestira'
+    mai. Aspettarle le lasciava nella posta in arrivo per sempre: e' successo
+    con 80 mail dell'arretrato di idealista, tutte precedenti alla regola."""
     mid = str(message.get("id") or "")
     rs = rules_mod.store()
+    arrivo = mail_router._message_datetime(str(message.get("receivedDateTime") or ""))
+    adesso = time.time()
     for regola in regole:
         if int(regola["account_id"]) != int(account_id):
             continue
@@ -82,8 +89,14 @@ def pronta(account_id: int, message: Dict[str, Any],
         if not ingestion.matches(regola, message):
             continue
         riga = rs.get_handled(regola["rule_id"], mid)
-        if not riga or riga.get("status") not in _CONCLUSI:
-            return False
+        if riga:
+            if riga.get("status") not in _CONCLUSI:
+                return False
+            continue
+        soglia = max(float(regola.get("created_at") or 0),
+                     adesso - unread_days * 86400)
+        if arrivo is None or arrivo.timestamp() >= soglia:
+            return False  # la regola la vedra': si aspetta
     return True
 
 
@@ -114,7 +127,7 @@ def archivia(w) -> int:
             chiave = (aid, str(m["id"]))
             if _falliti.get(chiave, 0) >= _TENTATIVI_MAX:
                 continue
-            if not pronta(aid, m, regole):
+            if not pronta(aid, m, regole, getattr(w, "unread_days", 7)):
                 continue
             try:
                 ok = bool(mail_router.move_to_folder(

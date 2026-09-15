@@ -61,7 +61,7 @@ def test_la_richiesta_resta_finche_la_regola_non_ha_finito(casella):
     rifare non la ritroverebbe piu'."""
     posta, spostate = casella
     rid = _regola()
-    posta[:] = [_msg("r1", "reply@idealista.it")]
+    posta[:] = [_msg("r1", "reply@idealista.it", minuti_fa=-1)]
     assert archive.archivia(W) == 0, "la regola non l'ha ancora vista"
     rules_mod.store().record(rid, ACCOUNT, "r1", "reply@idealista.it",
                              "awaiting_approval", "", "req_x")
@@ -74,9 +74,21 @@ def test_la_richiesta_resta_finche_la_regola_non_ha_finito(casella):
 def test_bozza_fallita_resta_nella_posta_in_arrivo(casella):
     posta, spostate = casella
     rid = _regola()
-    posta[:] = [_msg("f1", "reply@idealista.it")]
+    posta[:] = [_msg("f1", "reply@idealista.it", minuti_fa=-1)]
     rules_mod.store().record(rid, ACCOUNT, "f1", "reply@idealista.it", "failed")
     assert archive.archivia(W) == 0 and spostate == []
+
+
+def test_mail_precedente_alla_regola_non_si_aspetta(casella):
+    """La regola guarda solo la posta arrivata dopo la sua creazione:
+    aspettarla lasciava l'arretrato nella posta in arrivo per sempre."""
+    posta, spostate = casella
+    archive.aggiungi(ACCOUNT, ["idealista.it"], "INBOX.idealista", dal=0)
+    _regola()
+    posta[:] = [_msg("vecchia", "reply@idealista.it", minuti_fa=3 * 60),
+                _msg("fuori", "reply@idealista.it", minuti_fa=10 * 24 * 60)]
+    assert archive.archivia(W) == 2
+    assert [s[1] for s in spostate] == ["vecchia", "fuori"]
 
 
 def test_posta_vecchia_e_altri_domini_non_si_toccano(casella):
