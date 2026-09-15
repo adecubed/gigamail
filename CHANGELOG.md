@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
+  le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
+  ne conteneva 138. Il watcher ha una fase nuova che sposta nella cartella
+  configurata le mail di un dominio e dei suoi sottodomini, arrivate dopo
+  l'attivazione. Una mail si sposta solo quando nessuna regola ha piu'
+  bisogno di trovarla nella posta in arrivo (inviata, scartata, rifiutata o
+  scaduta): IMAP cambia l'id di una mail spostata, e una bozza in
+  approvazione o da rifare non la ritroverebbe. Una bozza fallita resta
+  dov'e', perche' la veda un umano. Uno spostamento fallito si riprova al
+  massimo tre volte.
+
 - **Il tasto Sposta della console funziona, e la finestra si chiude.** La
   console mandava la cartella nel corpo della richiesta, il backend la
   voleva in query: ogni clic finiva in un 422 e la finestra restava aperta.
