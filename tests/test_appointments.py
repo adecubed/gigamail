@@ -427,9 +427,49 @@ def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch):
     mail_router.send_message(account_id=2, to="c@example.com",
                              subject="Re: x", body="ciao",
                              auto_submitted=True)
-    mail_router.send_message(account_id=2, to="c@example.com",
+    monkeypatch.setattr(appointments, "_propri",
+                        lambda: (set(), {"interno.example"}))
+    mail_router.send_message(account_id=2, to="info@interno.example",
                              subject="Re: y", body="ciao")
     assert seguiti == [(2, "Re: x", "c@example.com")]
+
+
+def test_risposta_dellagente_mette_il_thread_in_ascolto(monkeypatch):
+    """Regressione del 15/09: la replica di una cliente a una risposta
+    mandata dall'agente, non da una regola, non faceva scattare l'avviso.
+    Un inoltro verso un nostro indirizzo invece non si segue: non deve
+    accendere allarmi."""
+    from ade_mail_agent.core import mail_router
+
+    seguiti = []
+    monkeypatch.setattr(mail_router, "_send_backend",
+                        lambda **kw: {"success": True})
+    monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 2})
+    monkeypatch.setattr(appointments, "segui", lambda *a: seguiti.append(a))
+    monkeypatch.setattr(appointments, "dalla_mail_async", lambda *a: False)
+    mail_router.send_message(account_id=2, to="c@example.com",
+                             subject="Re: x", body="ciao",
+                             reply_to_id="3460")
+    monkeypatch.setattr(appointments, "_propri",
+                        lambda: (set(), {"interno.example"}))
+    mail_router.send_message(account_id=2, to="info@interno.example",
+                             subject="I: x", body="per conoscenza")
+    assert seguiti == [(2, "Re: x", "c@example.com")]
+
+
+def test_invio_fallito_non_mette_in_ascolto(monkeypatch):
+    from ade_mail_agent.core import mail_router
+
+    seguiti = []
+    monkeypatch.setattr(mail_router, "_send_backend",
+                        lambda **kw: {"success": False, "error": "smtp"})
+    monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 2})
+    monkeypatch.setattr(appointments, "segui", lambda *a: seguiti.append(a))
+    monkeypatch.setattr(appointments, "dalla_mail_async", lambda *a: False)
+    mail_router.send_message(account_id=2, to="c@example.com",
+                             subject="Re: x", body="ciao",
+                             reply_to_id="3460")
+    assert seguiti == []
 
 
 # ── il cliente sceglie un orario: se e' libero entra in agenda ───────

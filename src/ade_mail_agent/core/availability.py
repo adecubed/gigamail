@@ -36,9 +36,10 @@ def _pasqua(anno: int) -> date:
     g = (b - f + 1) // 3
     h = (19 * a + b - d - g + 15) % 30
     i, k = divmod(c, 4)
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    mese, giorno = divmod(h + l - 7 * m + 114, 31)
+    # "L" nell'algoritmo originale: ruff vieta la l minuscola (E741).
+    ll = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * ll) // 451
+    mese, giorno = divmod(h + ll - 7 * m + 114, 31)
     return date(anno, mese, giorno + 1)
 
 
