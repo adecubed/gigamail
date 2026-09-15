@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Zoom collegato: una video call confermata ha subito il suo link.**
+  Prima il link lo creava l'utente a mano e lo spediva con un altro giro
+  di richieste. Ora una mail che parla di video call segna il thread; quando
+  il cliente conferma l'orario GigaMail crea la riunione Zoom (sala d'attesa
+  accesa), mette il link nell'evento e prepara la mail con il link, che
+  parte solo dopo l'approvazione ed e' eseguita dal watcher. Un nuovo orario
+  sposta la stessa riunione senza un'altra mail, una disdetta la cancella.
+  Credenziali Server-to-Server OAuth con `gigamail zoom setup` (segreto
+  digitato e cifrato), `zoom test`, `zoom remove`; nuovo tool MCP a due fasi
+  `create_zoom_meeting`. Senza Zoom collegato l'avviso lo dice e non si
+  crea nulla.
+- **Ogni mail verso l'esterno mette il thread in ascolto.** Si seguivano
+  solo le risposte: il cliente che rispondeva a una mail nuova, con listino
+  e planimetrie, non generava avvisi. Restano fuori gli indirizzi dei nostri
+  account (per i domini aziendali l'intero dominio, per i provider pubblici
+  l'indirizzo esatto).
+
 - **L'orario scelto dal cliente entra in calendario, e l'avviso mostra la
   risposta.** L'avviso diceva chi aveva risposto e l'oggetto: la notizia
   che esiste una mail, non cosa c'e' scritto. Ora porta solo il nome e il

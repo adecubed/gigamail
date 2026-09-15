@@ -134,11 +134,11 @@ Regola generale: **l'agente riceve capacità, non scorciatoie cognitive.**
 ---
 
 <!-- TOOLMAP:BEGIN (generato da gen_toolmap — non editare a mano) -->
-## Riepilogo tool esposti (28 — generato dal server)
+## Riepilogo tool esposti (29 — generato dal server)
 
 **READ (17):** `list_accounts`, `get_identity`, `list_knowledge_files`, `read_knowledge_file`, `list_messages`, `list_unread`, `read_message`, `read_attachment`, `list_folders`, `search_mail`, `sender_history`, `observer_context`, `memory_stats`, `list_events`, `find_free_slots`, `drive_list_files`, `drive_read_file`
 **WRITE_SAFE (2):** `mark_read`, `create_folder`
-**DANGEROUS (9, due fasi):** `move_message`, `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`, `drive_upload_file`, `drive_delete_file`
+**DANGEROUS (10, due fasi):** `move_message`, `send_mail`, `reply_mail`, `delete_message`, `delete_folder`, `create_event`, `delete_event`, `create_zoom_meeting`, `drive_upload_file`, `drive_delete_file`
 <!-- TOOLMAP:END -->
 
 Le righe marcate *(pianificato)* nelle tabelle sopra descrivono il disegno, non il codice: quei tool non esistono ancora. Il riquadro qui sopra e' generato dal server vivo, quindi elenca esattamente cio' che l'agente puo' chiamare oggi.

@@ -41,7 +41,7 @@ import time
 from datetime import datetime, timedelta
 from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from ade_mail_agent import agent_bridge, policy
 
@@ -118,6 +118,16 @@ class AppointmentStore:
                     PRIMARY KEY (account_id, thread_key)
                 )
             """)
+            # Video call e riunione Zoom del thread. Colonne aggiunte dopo:
+            # un database gia' in uso le riceve qui, senza perdere righe.
+            cols = {r[1] for r in conn.execute(
+                "PRAGMA table_info(appuntamenti)")}
+            for nome, tipo in (("video", "INTEGER NOT NULL DEFAULT 0"),
+                               ("zoom_id", "TEXT NOT NULL DEFAULT ''"),
+                               ("zoom_url", "TEXT NOT NULL DEFAULT ''")):
+                if nome not in cols:
+                    conn.execute(
+                        f"ALTER TABLE appuntamenti ADD COLUMN {nome} {tipo}")
             # Le risposte gia' guardate. Senza, lo stesso messaggio
             # rientrerebbe a ogni giro: un processo dell'agente e un
             # avviso su Telegram ogni due minuti, per sempre.
@@ -141,9 +151,15 @@ class AppointmentStore:
                stato: str, inizio: str, fine: str, con: str = "") -> None:
         with self._conn() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO appuntamenti"
+                # Non INSERT OR REPLACE: rimpiazzare la riga azzererebbe il
+                # segno video e la riunione Zoom a ogni cambio di stato.
+                "INSERT INTO appuntamenti"
                 " (account_id, thread_key, event_id, stato, inizio, fine,"
-                "  con, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                "  con, updated_at) VALUES (?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(account_id, thread_key) DO UPDATE SET"
+                " event_id=excluded.event_id, stato=excluded.stato,"
+                " inizio=excluded.inizio, fine=excluded.fine,"
+                " con=excluded.con, updated_at=excluded.updated_at",
                 (int(account_id), thread_key, event_id, stato, inizio, fine,
                  con or "", time.time()))
 
@@ -189,6 +205,23 @@ class AppointmentStore:
                 "INSERT OR IGNORE INTO risposte_viste"
                 " (account_id, message_id, visto_il) VALUES (?,?,?)",
                 (int(account_id), str(message_id), time.time()))
+
+    def segna_video(self, account_id: int, thread_key: str,
+                    con: str = "") -> None:
+        self.segui(account_id, thread_key, con)
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE appuntamenti SET video=1"
+                " WHERE account_id=? AND thread_key=?",
+                (int(account_id), thread_key))
+
+    def set_zoom(self, account_id: int, thread_key: str, zoom_id: str,
+                 zoom_url: str) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE appuntamenti SET zoom_id=?, zoom_url=?"
+                " WHERE account_id=? AND thread_key=?",
+                (str(zoom_id), str(zoom_url), int(account_id), thread_key))
 
 
 _store: Optional[AppointmentStore] = None
@@ -407,6 +440,18 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                                              "thread": chiave},
                              "delete_failed", detail=str(e)[:200])
                 return None
+        if corrente.get("zoom_id"):
+            try:
+                from . import zoom
+                zoom.cancella_riunione(corrente["zoom_id"])
+            except Exception as e:
+                # La riunione orfana non blocca la disdetta: resta nel
+                # log e nell'audit, da togliere a mano su Zoom.
+                logger.warning("riunione Zoom %s non cancellata: %s",
+                               corrente["zoom_id"], e)
+                policy.audit("appointment", {"account_id": account_id,
+                                             "thread": chiave},
+                             "zoom_delete_failed", detail=str(e)[:200])
         st.delete(account_id, chiave)
         policy.audit("appointment", {"account_id": account_id,
                                      "thread": chiave}, "deleted")
@@ -471,15 +516,48 @@ def dalla_mail(account_id: int, subject: str, body: str, controparte: str,
     esito = leggi(body, subject, controparte, adesso)
     if esito.get("stato") == "nessuno":
         return None
-    return applica(account_id, thread_key(subject, controparte), esito,
-                   controparte=controparte, oggetto=subject)
+    chiave = thread_key(subject, controparte)
+    toccato = applica(account_id, chiave, esito, controparte=controparte,
+                      oggetto=subject)
+    _video_dopo_conferma(account_id, chiave, {}, _indirizzo(controparte),
+                         subject, esito, toccato)
+    return toccato
+
+
+def _video_dopo_conferma(account_id: int, chiave: str,
+                         messaggio: Dict[str, Any], mittente: str,
+                         subject: str, esito: Dict[str, Any],
+                         toccato: Optional[Dict[str, Any]]
+                         ) -> Optional[Dict[str, Any]]:
+    """Se l'appuntamento confermato e' una video call: riunione Zoom e
+    mail con il link in approvazione. None se non c'era niente da fare.
+    Un guasto di Zoom non tocca l'appuntamento, che resta in calendario:
+    finisce nell'avviso, dove l'umano lo vede."""
+    if not toccato or esito.get("stato") != "confermato":
+        return None
+    riga = store().get(account_id, chiave)
+    if not riga or not riga.get("video"):
+        return None
+    try:
+        from . import video_call
+        return video_call.dopo_conferma(account_id, riga, messaggio,
+                                        mittente, subject, esito, toccato)
+    except Exception as e:
+        logger.warning("video call non preparata per %s: %s", chiave, e)
+        policy.audit("appointment", {"account_id": account_id,
+                                     "thread": chiave}, "zoom_failed",
+                     detail=str(e)[:200])
+        return {"stato": "errore", "errore": str(e)[:200]}
 
 
 def segui(account_id: int, subject: str, controparte: str) -> None:
-    """Una regola ha appena risposto: la replica deve arrivare a un umano.
+    """Abbiamo appena risposto in un thread, da una regola o dall'agente:
+    la replica deve arrivare a un umano.
 
     Prima si ascoltavano solo i thread con un appuntamento, e la regola
-    guarda solo i suoi mittenti. Il cliente che rispondeva dalla propria
+    guarda solo i suoi mittenti. Poi solo le risposte delle regole: il
+    15/09 la replica di una cliente seguita a mano dall'agente e' rimasta
+    fra i non letti senza avviso. Il cliente che rispondeva dalla propria
     casella restava fra i non letti senza un avviso: e' successo con una
     conferma per il lunedi' mattina, scoperta a orario passato."""
     indirizzo = _indirizzo(controparte)
@@ -489,6 +567,69 @@ def segui(account_id: int, subject: str, controparte: str) -> None:
         store().segui(account_id, thread_key(subject, indirizzo), indirizzo)
     except Exception as e:
         logger.warning("thread non messo in ascolto: %s", e)
+
+
+_VIDEO = re.compile(r"\bzoom\b|video\s*-?\s*call|videocall|video\s*chiamat"
+                    r"|videochiamat", re.IGNORECASE)
+
+# Provider di posta pubblici: un nostro account su msn.com non fa di ogni
+# cliente msn.com un collega. Per questi conta l'indirizzo esatto.
+_PUBBLICI = {"gmail.com", "googlemail.com", "msn.com", "hotmail.com",
+             "hotmail.it", "outlook.com", "outlook.it", "live.com", "live.it",
+             "yahoo.com", "yahoo.it", "icloud.com", "me.com", "libero.it",
+             "virgilio.it", "tiscali.it", "alice.it", "tim.it", "fastwebnet.it"}
+
+
+def parla_di_video(testo: str) -> bool:
+    return bool(_VIDEO.search(str(testo or "")))
+
+
+def _propri() -> tuple:
+    """(indirizzi, domini) dei nostri account. Un dominio aziendale conta
+    intero, un provider pubblico solo con l'indirizzo esatto."""
+    indirizzi, domini = set(), set()
+    try:
+        from . import accounts
+        for a in accounts.get_accounts():
+            email = str(a.get("email") or "").strip().lower()
+            if "@" not in email:
+                continue
+            indirizzi.add(email)
+            dominio = email.rsplit("@", 1)[1]
+            if dominio not in _PUBBLICI:
+                domini.add(dominio)
+    except Exception as e:
+        logger.debug("account non letti per il filtro interni: %s", e)
+    return indirizzi, domini
+
+
+def destinatari_da_seguire(to: str) -> List[str]:
+    """Gli indirizzi esterni fra i destinatari, senza doppioni.
+
+    Un inoltro a Fingroup o una copia a noi stessi non e' una conversazione
+    con un cliente: la sua risposta non deve accendere avvisi."""
+    indirizzi, domini = _propri()
+    fuori: List[str] = []
+    for grezzo in split_addresses(to or ""):
+        indirizzo = _indirizzo(grezzo)
+        if "@" not in indirizzo or indirizzo in fuori:
+            continue
+        if indirizzo in indirizzi or indirizzo.rsplit("@", 1)[1] in domini:
+            continue
+        fuori.append(indirizzo)
+    return fuori
+
+
+def segna_video(account_id: int, subject: str, controparte: str) -> None:
+    """Il thread parla di video call: alla conferma serve un link."""
+    indirizzo = _indirizzo(controparte)
+    if not indirizzo:
+        return
+    try:
+        store().segna_video(account_id, thread_key(subject, indirizzo),
+                            indirizzo)
+    except Exception as e:
+        logger.warning("thread non segnato come video call: %s", e)
 
 
 # ── FILTRO A COSTO ZERO ──────────────────────────────────────────────
@@ -626,6 +767,11 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                               controparte=mittente, oggetto=subject)
             if toccato:
                 fatti += 1
+                video = _video_dopo_conferma(
+                    account_id, riga["thread_key"], m, mittente, subject,
+                    esito, toccato)
+                if video:
+                    esito = dict(esito, video=video)
         if mid:
             st.segna_vista(account_id, mid)
         if avvisa is not None:
@@ -742,4 +888,31 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
                                else ".")))
     if nota:
         righe += ["", nota]
+    video = _nota_video(esito.get("video") or {}, it)
+    if video:
+        righe.append(video)
     return "\n".join(righe)
+
+
+def _nota_video(video: Dict[str, Any], it: bool = True) -> str:
+    stato = video.get("stato")
+    url = video.get("join_url") or ""
+    if stato == "creata":
+        return (f"🎥 Riunione Zoom creata: {url}. La mail con il link "
+                "aspetta la tua approvazione." if it else
+                f"🎥 Zoom meeting created: {url}. The mail with the link "
+                "awaits your approval.")
+    if stato == "spostata":
+        return ("🎥 Riunione Zoom spostata al nuovo orario, il link resta "
+                "quello gia' mandato." if it else
+                "🎥 Zoom meeting moved, the link already sent still works.")
+    if stato == "non_configurato":
+        return ("🎥 Zoom non collegato: il link va mandato a mano. Per "
+                "collegarlo: gigamail zoom setup" if it else
+                "🎥 Zoom not connected: send the link by hand. To connect "
+                "it: gigamail zoom setup")
+    if stato == "errore":
+        return (f"⚠️ Zoom: riunione NON creata ({video.get('errore')})."
+                if it else
+                f"⚠️ Zoom: meeting NOT created ({video.get('errore')}).")
+    return ""

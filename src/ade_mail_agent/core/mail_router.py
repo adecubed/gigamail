@@ -217,10 +217,19 @@ def send_message(
             aid = (a or {}).get('id')
             if aid is not None:
                 from . import appointments
-                if auto_submitted:
-                    # Risposta da regola: la replica del cliente deve
-                    # arrivare a un umano anche se non parla di orari.
-                    appointments.segui(int(aid), subject, str(to or ''))
+                # Ogni mail che esce verso l'esterno, risposta o invio
+                # nuovo, mette il thread in ascolto: la replica del cliente
+                # deve arrivare a un umano anche se non parla di orari.
+                # Prima valeva solo per le risposte, e il cliente che
+                # rispondeva a una mail nuova con listino e planimetrie non
+                # generava avvisi. I nostri indirizzi restano fuori: un
+                # inoltro a Fingroup non accende allarmi.
+                video = appointments.parla_di_video(body)
+                for indirizzo in appointments.destinatari_da_seguire(
+                        str(to or '')):
+                    appointments.segui(int(aid), subject, indirizzo)
+                    if video:
+                        appointments.segna_video(int(aid), subject, indirizzo)
                 appointments.dalla_mail_async(int(aid), subject, body,
                                               str(to or ''))
     except Exception:
