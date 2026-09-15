@@ -115,7 +115,8 @@ def _chiama(metodo: str, percorso: str, **kw) -> Dict[str, Any]:
     cfg = config()
     if cfg is None:
         raise ZoomNonConfigurato(
-            "Zoom non collegato: esegui `gigamail zoom setup`.")
+            "Zoom non collegato: collegalo dalla console "
+            "(Aggiungi account > Zoom).")
     for tentativo in range(2):
         token = _richiedi_token(cfg)
         try:

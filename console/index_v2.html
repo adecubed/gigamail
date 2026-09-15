@@ -325,6 +325,17 @@
   </div>
 </div>
 
+<!-- MODAL ZOOM: link automatico per le video call -->
+<div class="overlay hidden" id="zoomOverlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Zoom per le video call</span>
+      <button class="icon-btn" id="btnCloseZoom">&#10005;</button>
+    </div>
+    <div class="modal-body" id="zoomBody"></div>
+  </div>
+</div>
+
 <!-- MODAL ACCOUNT IMAP -->
 <div class="overlay hidden" id="imapOverlay">
   <div class="modal">
@@ -355,6 +366,7 @@
         <button style="flex:1;padding:9px;background:rgba(234,67,53,0.07);border:1px solid rgba(234,67,53,0.22);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font);color:rgba(200,50,40,0.85);cursor:pointer" id="btnAddGmail">G Gmail / Google</button>
       </div>
       <button style="width:100%;padding:9px;background:transparent;border:1px solid rgba(0,0,0,0.14);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer" id="btnAddGoogleServices">Calendario e Drive di Google</button>
+      <button style="width:100%;padding:9px;background:rgba(45,140,255,0.07);border:1px solid rgba(45,140,255,0.25);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font);color:rgba(20,100,210,0.9);cursor:pointer" id="btnAddZoom">Zoom per le video call</button>
       <div style="height:1px;background:rgba(0,0,0,0.08)"></div>
       <div style="display:flex;gap:6px;justify-content:flex-end">
         <button class="chip-btn" id="btnCloseLogin" data-i18n="cancel">Annulla</button>
@@ -649,6 +661,7 @@
 <script src="renderer_identity.js" defer></script>
 <script src="renderer_accounts.js" defer></script>
 <script src="renderer_google.js" defer></script>
+<script src="renderer_zoom.js" defer></script>
 <script src="renderer_calendar.js" defer></script>
 <script src="renderer_compose.js"  defer></script>
 <script src="renderer_mail.js"     defer></script>

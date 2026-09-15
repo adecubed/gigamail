@@ -778,7 +778,7 @@ def delete_event(
     participants, and the waiting room is on. Share the join_url with
     send_mail or reply_mail, which need their own approval. Returns
     {id, join_url, password} on execution. Requires Zoom to be connected
-    with `gigamail zoom setup`."""))
+    from the GigaMail console (Add account > Zoom)."""))
 def create_zoom_meeting(
     topic: Annotated[str, Field(description="Meeting title shown in Zoom, e.g. 'Video call with Mario Rossi'.")],
     start: Annotated[str, Field(description="Start, ISO 8601 local time (Europe/Rome), e.g. 2026-09-16T16:00:00.")],

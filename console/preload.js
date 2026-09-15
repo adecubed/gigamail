@@ -81,6 +81,17 @@ contextBridge.exposeInMainWorld('ademail', {
   getCalendarProvider: () => apiJson(`${API}/calendar/provider`),
   setCalendarProvider: (p) => apiJson(`${API}/calendar/provider/${p}`, { method: 'POST' }),
 
+  // ------------------------------------------------- ZOOM (link video call)
+  // Il Client Secret va al backend e non torna: lo stato non lo contiene.
+  zoomStatus: () => apiJson(`${API}/zoom/status`),
+  zoomSetup:  (dati) => apiJson(`${API}/zoom/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dati || {}),
+  }),
+  zoomTest:   () => apiJson(`${API}/zoom/test`, { method: 'POST' }),
+  zoomRemove: () => apiJson(`${API}/zoom/remove`, { method: 'POST' }),
+
   // ---------------------------------------------------------------- ACCOUNTS
   getAccounts:      () => apiJson(`${API}/accounts`),
   getActiveAccount: () => apiJson(`${API}/accounts/active`),

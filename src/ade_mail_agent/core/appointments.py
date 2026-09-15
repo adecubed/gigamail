@@ -907,10 +907,10 @@ def _nota_video(video: Dict[str, Any], it: bool = True) -> str:
                 "quello gia' mandato." if it else
                 "🎥 Zoom meeting moved, the link already sent still works.")
     if stato == "non_configurato":
-        return ("🎥 Zoom non collegato: il link va mandato a mano. Per "
-                "collegarlo: gigamail zoom setup" if it else
-                "🎥 Zoom not connected: send the link by hand. To connect "
-                "it: gigamail zoom setup")
+        return ("🎥 Zoom non collegato: il link va mandato a mano. "
+                "Collegalo dalla console: Aggiungi account > Zoom." if it else
+                "🎥 Zoom not connected: send the link by hand. Connect it "
+                "from the console: Add account > Zoom.")
     if stato == "errore":
         return (f"⚠️ Zoom: riunione NON creata ({video.get('errore')})."
                 if it else

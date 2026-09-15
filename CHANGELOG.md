@@ -9,8 +9,11 @@
   accesa), mette il link nell'evento e prepara la mail con il link, che
   parte solo dopo l'approvazione ed e' eseguita dal watcher. Un nuovo orario
   sposta la stessa riunione senza un'altra mail, una disdetta la cancella.
-  Credenziali Server-to-Server OAuth con `gigamail zoom setup` (segreto
-  digitato e cifrato), `zoom test`, `zoom remove`; nuovo tool MCP a due fasi
+  Si collega dalla console (Aggiungi account > Zoom) con i tre codici di
+  un'app Server-to-Server OAuth, verificati subito con Zoom: credenziali
+  rifiutate non restano salvate, e il segreto resta cifrato e non torna mai
+  alla pagina. Dal terminale restano `gigamail zoom setup|test|remove`.
+  Nuovo tool MCP a due fasi
   `create_zoom_meeting`. Senza Zoom collegato l'avviso lo dice e non si
   crea nulla.
 - **Ogni mail verso l'esterno mette il thread in ascolto.** Si seguivano
