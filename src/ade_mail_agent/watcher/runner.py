@@ -10,7 +10,7 @@ from ade_mail_agent import policy
 from ade_mail_agent.core import rules as rules_mod
 from ade_mail_agent.core import telegram_channel
 
-from . import execution, ingestion, pipeline, process_state, telegram
+from . import archive, execution, ingestion, pipeline, process_state, telegram
 from .log import _log
 
 
@@ -64,7 +64,8 @@ class Watcher:
         process_state.heartbeat(self.interval)
 
     def tick(self) -> Dict[str, int]:
-        stats = {"executed": 0, "processed": 0, "appointments": 0}
+        stats = {"executed": 0, "processed": 0, "appointments": 0,
+                 "archived": 0}
         # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
         # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
         # soglia oltre la quale running_state() dichiara morto il watcher:
@@ -89,7 +90,20 @@ class Watcher:
                 self.process_message(rule, message)
                 stats["processed"] += 1
                 self.heartbeat()
+        # Dopo le regole, non prima: una mail si sposta solo quando la sua
+        # regola l'ha gia' gestita in questo stesso giro o in uno precedente.
+        stats["archived"] = self.archive_mail()
+        self.heartbeat()
         return stats
+
+    # -- fase D: archiviazione automatica ----------------------------------
+
+    def archive_mail(self) -> int:
+        try:
+            return archive.archivia(self)
+        except Exception as e:
+            _log(f"archivio fallito: {e}", self.verbose)
+            return 0
 
     # -- fase C: conferme e disdette sugli appuntamenti --------------------
 
@@ -212,7 +226,7 @@ class Watcher:
             try:
                 stats = self.tick()
                 if (stats["processed"] or stats["executed"]
-                        or stats["appointments"]):
+                        or stats["appointments"] or stats["archived"]):
                     _log(f"tick: {stats}", True)
             except KeyboardInterrupt:
                 raise
