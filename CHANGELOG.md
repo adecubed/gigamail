@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **"Chiedi alle mail" trova le mail anche senza agente.** Con l'agente
+  scollegato la finestra mostrava "(nessuna risposta)", anche quando la
+  mail cercata c'era in un'altra casella. Ora, se l'agente non risponde, la
+  domanda diventa una ricerca per parole chiave in tutte le caselle, con le
+  mail trovate cliccabili e il motivo scritto nella risposta. Un errore del
+  backend compare a video con il suo messaggio.
+
 - **Zoom collegato: una video call confermata ha subito il suo link.**
   Prima il link lo creava l'utente a mano e lo spediva con un altro giro
   di richieste. Ora una mail che parla di video call segna il thread; quando

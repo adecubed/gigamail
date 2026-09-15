@@ -1,5 +1,6 @@
 """Cio' che prima faceva l'LLM interno ora lo fa l'agente dell'utente: bozze, domande, riassunti. Piu' observer."""
 import json
+import re
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -287,9 +288,71 @@ def mail_ask(req: MailAskRequest):
         f"italiano, conciso): {req.question}"
     )
     try:
-        return {"answer": agent_bridge.run(prompt), "engine": "agent"}
+        risposta = (agent_bridge.run(prompt) or "").strip()
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e)) from e
+        return _ricerca_senza_agente(req.question, str(e))
+    if not risposta:
+        return _ricerca_senza_agente(req.question, "risposta vuota")
+    return {"answer": risposta, "engine": "agent"}
+
+
+# Parole che in una domanda non cercano niente: "trova le mail di X" deve
+# diventare "X", altrimenti la ricerca per parole chiave cerca "trova".
+_PAROLE_VUOTE = {
+    "trova", "trovami", "cerca", "cercami", "mostra", "mostrami", "dammi",
+    "mail", "email", "e-mail", "messaggi", "messaggio", "posta", "tutte",
+    "tutti", "quelle", "quella", "della", "delle", "degli", "dello", "dei",
+    "del", "con", "per", "sul", "sulla", "sulle", "che", "dove", "quando",
+    "ho", "hai", "abbiamo", "parlato", "scritto", "mandato", "ricevuto",
+    "inviato", "arrivate", "arrivata", "find", "show", "emails", "from",
+    "about", "the", "with",
+}
+
+
+def _parole_chiave(domanda: str) -> str:
+    parole = re.findall(r"[\w@.'-]+", str(domanda or "").lower())
+    utili = []
+    for parola in parole:
+        parola = parola.strip("'.-")
+        if len(parola) >= 3 and parola not in _PAROLE_VUOTE:
+            utili.append(parola)
+    return " ".join(utili[:3])
+
+
+def _ricerca_senza_agente(domanda: str, motivo: str) -> dict:
+    """Senza agente, una ricerca per parole chiave in TUTTE le caselle.
+
+    Prima un agente scollegato dava 503, e la finestra mostrava "(nessuna
+    risposta)": la mail cercata c'era, in un'altra casella, e l'utente non
+    aveva modo di saperlo. Il motivo resta scritto nella risposta, perche'
+    una ricerca semplice non e' la stessa cosa di una risposta ragionata."""
+    query = _parole_chiave(domanda)
+    if not query:
+        raise HTTPException(503, f"Agente non disponibile: {motivo}")
+    trovate = []
+    for account in core_accounts.get_accounts():
+        try:
+            risultati = mail_router.search_messages(
+                account_id=account["id"], query=query, top=10) or []
+        except Exception:
+            continue  # una casella irraggiungibile non ferma le altre
+        for m in risultati:
+            mittente = (m.get("from") or {}).get("emailAddress") or {}
+            nome = str(mittente.get("name") or mittente.get("address") or "").strip('" ')
+            trovate.append({
+                "subject": re.sub(r"\s+", " ", str(m.get("subject") or "(senza oggetto)")).strip(),
+                "sender": f"{account.get('email')} · {nome}",
+                "message_id": str(m.get("id") or ""),
+                "folder": m.get("folder") or "INBOX",
+                "account_id": account["id"],
+            })
+    esito = f"{len(trovate)} mail trovate." if trovate else "nessuna mail trovata."
+    return {
+        "answer": (f"L'agente non risponde ({str(motivo)[:160]}), quindi ho fatto "
+                   f"una ricerca semplice di «{query}» in tutte le caselle: {esito}"),
+        "engine": "search",
+        "cited_mails": trovate[:20],
+    }
 
 
 class SenderSummaryRequest(BaseModel):
