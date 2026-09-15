@@ -364,6 +364,24 @@ def test_prompt_porta_gli_slot_liberi_dellagenda(fake_world, monkeypatch):
     prompt = watcher_mod.build_draft_prompt(rule, 1, _msg())
     assert "martedi' 15 settembre alle 10:00" in prompt
     assert "SLOT LIBERI" in prompt
+    assert "alternativa" in prompt
+
+
+def test_regole_agenda_lette_dalle_impostazioni(monkeypatch):
+    """La fascia degli appuntamenti e' un dato di chi usa GigaMail: fissa
+    dalle 09:30 ha fatto proporre le 9.30 di lunedi' a un ufficio che apre
+    alle 10."""
+    from ade_mail_agent.watcher import drafting
+
+    valori = {"slot_work_start": "17:00", "slot_work_end": "25:99",
+              "slot_patrono": "12-07"}
+    monkeypatch.setattr(drafting.core_accounts, "get_setting",
+                        lambda k, d="": valori.get(k, d))
+    regole = drafting.regole_agenda()
+    assert regole["work_start"] == "17:00"
+    assert "work_end" not in regole      # illeggibile: vale il default
+    assert regole["skip_holidays"] is True
+    assert regole["patrono"] == "12-07"
 
 
 def test_agenda_irraggiungibile_vieta_di_proporre_orari(fake_world, monkeypatch):

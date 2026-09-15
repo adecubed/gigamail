@@ -1,5 +1,94 @@
 # Changelog
 
+## Unreleased
+
+- **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
+  le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
+  ne conteneva 138. Il watcher ha una fase nuova che sposta nella cartella
+  configurata le mail di un dominio e dei suoi sottodomini, arrivate dopo
+  l'attivazione. Una mail si sposta solo quando nessuna regola ha piu'
+  bisogno di trovarla nella posta in arrivo (inviata, scartata, rifiutata o
+  scaduta): IMAP cambia l'id di una mail spostata, e una bozza in
+  approvazione o da rifare non la ritroverebbe. Una bozza fallita resta
+  dov'e', perche' la veda un umano. Uno spostamento fallito si riprova al
+  massimo tre volte.
+
+- **Il tasto Sposta della console funziona, e la finestra si chiude.** La
+  console mandava la cartella nel corpo della richiesta, il backend la
+  voleva in query: ogni clic finiva in un 422 e la finestra restava aperta.
+  In piu' la X in alto non era collegata a niente. Ora il backend accetta
+  entrambe le forme, la X chiude, la cartella proposta non e' piu' quella
+  in cui la mail si trova gia', un esito negativo del server di posta
+  compare a video e gli errori di validazione non si leggono piu' come
+  "[object Object]".
+
+- **"Chiedi alle mail" trova le mail anche senza agente.** Con l'agente
+  scollegato la finestra mostrava "(nessuna risposta)", anche quando la
+  mail cercata c'era in un'altra casella. Ora, se l'agente non risponde, la
+  domanda diventa una ricerca per parole chiave in tutte le caselle, con le
+  mail trovate cliccabili e il motivo scritto nella risposta. Un errore del
+  backend compare a video con il suo messaggio.
+
+- **Zoom collegato: una video call confermata ha subito il suo link.**
+  Prima il link lo creava l'utente a mano e lo spediva con un altro giro
+  di richieste. Ora una mail che parla di video call segna il thread; quando
+  il cliente conferma l'orario GigaMail crea la riunione Zoom (sala d'attesa
+  accesa), mette il link nell'evento e prepara la mail con il link, che
+  parte solo dopo l'approvazione ed e' eseguita dal watcher. Un nuovo orario
+  sposta la stessa riunione senza un'altra mail, una disdetta la cancella.
+  Si collega dalla console (Aggiungi account > Zoom) con i tre codici di
+  un'app Server-to-Server OAuth, verificati subito con Zoom: credenziali
+  rifiutate non restano salvate, e il segreto resta cifrato e non torna mai
+  alla pagina. Dal terminale restano `gigamail zoom setup|test|remove`.
+  Nuovo tool MCP a due fasi
+  `create_zoom_meeting`. Senza Zoom collegato l'avviso lo dice e non si
+  crea nulla.
+- **Ogni mail verso l'esterno mette il thread in ascolto.** Si seguivano
+  solo le risposte: il cliente che rispondeva a una mail nuova, con listino
+  e planimetrie, non generava avvisi. Restano fuori gli indirizzi dei nostri
+  account (per i domini aziendali l'intero dominio, per i provider pubblici
+  l'indirizzo esatto).
+
+- **L'orario scelto dal cliente entra in calendario, e l'avviso mostra la
+  risposta.** L'avviso diceva chi aveva risposto e l'oggetto: la notizia
+  che esiste una mail, non cosa c'e' scritto. Ora porta solo il nome e il
+  testo della risposta, senza la citazione, piu' una riga su cosa e'
+  successo in agenda. Quando il cliente indica una sola data e un solo
+  orario precisi e l'agenda e' libera, l'appuntamento viene inserito
+  subito. Se l'orario e' occupato, se ne indica piu' d'uno o se il
+  calendario non si legge, non si inserisce nulla e l'avviso lo dice.
+
+- **Un agente scollegato non scrive piu' le bozze.** Claude Code senza
+  login esce con codice 1 e stampa "Not logged in · Please run /login" su
+  stdout. `agent_bridge.run` scartava l'errore quando l'output non era
+  vuoto, e restituiva quella frase come risposta: una bozza con quel testo
+  sarebbe arrivata in approvazione come mail per un cliente, e la lettura
+  degli appuntamenti falliva senza dire perche'. Ora un'uscita con errore
+  e' sempre `AgentUnavailable`, e cosi' un messaggio di login breve anche
+  con uscita 0.
+
+- **Una proposta non si inventa piu' un appuntamento, e la risposta del
+  cliente arriva a un umano.** Trovati dal vivo, su un cliente che aveva
+  scelto lunedi' mattina senza che nessuno lo vedesse:
+  - la fase che rilegge i thread aperti giudicava le risposte dal solo
+    oggetto, perche' la lista IMAP non porta il testo. Ora il testo si
+    scarica per i soli messaggi dei thread aperti, e ognuno si guarda una
+    volta sola;
+  - chi rispondeva dalla propria casella invece che dal portale non
+    generava alcun avviso. Le risposte partite da una regola mettono il
+    thread in ascolto, e ogni replica nuova arriva su Telegram con
+    l'orario letto e il testo senza la nostra citazione;
+  - una proposta diventava un blocco `[da confermare]` sul primo degli
+    orari offerti, promemoria compreso, anche per chi non rispondeva mai.
+    Ora in calendario entra solo la conferma;
+  - la fascia degli slot era fissa dalle 09:30. Ora si legge dalle
+    impostazioni (`slot_work_start`, `slot_work_end`, `slot_patrono`,
+    `slot_skip_holidays`), i festivi italiani sono esclusi e la bozza
+    invita sempre a suggerire un'alternativa;
+  - leggere una mail via IMAP la segnava come letta (`RFC822` invece di
+    `BODY.PEEK[]`): il watcher avrebbe tolto dai non letti proprio le
+    risposte che deve segnalare.
+
 ## v0.3.3 — 2026-09-11
 
 - **Posta e calendario si parlano, nei due versi.** Erano due mondi

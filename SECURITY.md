@@ -36,7 +36,8 @@ The guarantees this project actually makes — break any of these and we want
 to know:
 
 - **The approval gate.** A destructive tool (`send_mail`, `reply_mail`,
-  `delete_message`, `delete_folder`, `create_event`, `delete_event`)
+  `delete_message`, `delete_folder`, `create_event`, `delete_event`,
+  `create_zoom_meeting`)
   executing without a human approval given out of band — or executing with
   arguments other than the ones the human saw. In particular: **any path by
   which the agent can approve its own request**, or any secret reaching the

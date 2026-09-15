@@ -279,10 +279,28 @@ def run(prompt: str, timeout: int | None = None) -> str:
         except OSError:
             pass
         _unlink(out_file)
-    if proc.returncode != 0 and not out:
-        err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
-        raise AgentUnavailable(f"Agente terminato con errore: {err[:400]}")
+    err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
+    if proc.returncode != 0:
+        # Un'uscita con errore non e' una risposta, anche se ha scritto
+        # qualcosa: Claude Code scollegato stampa "Not logged in · Please
+        # run /login" su stdout ed esce con 1. Prima quel testo tornava
+        # come se fosse la bozza, e sarebbe finito in approvazione come
+        # corpo della mail a un cliente.
+        raise AgentUnavailable(
+            f"Agente terminato con errore ({proc.returncode}): {(err or out)[:400]}")
+    if _non_collegato(out):
+        raise AgentUnavailable(f"Agente non collegato: {out[:200]}")
     return out
+
+
+_NON_COLLEGATO = ("not logged in", "please run /login", "invalid api key")
+
+
+def _non_collegato(out: str) -> bool:
+    """Un messaggio di login al posto della risposta. Solo su output brevi:
+    una bozza vera che nomina il login non deve diventare un guasto."""
+    testo = (out or "").strip().lower()
+    return len(testo) < 200 and any(s in testo for s in _NON_COLLEGATO)
 
 
 def _agent_of(cfg: dict) -> str:

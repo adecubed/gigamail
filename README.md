@@ -143,16 +143,16 @@ reply, and asks you before sending.
 
 ## Tools
 
-28 typed tools, generated from the server itself:
+29 typed tools, generated from the server itself:
 
 - **Read (17)** — accounts, identity, knowledge files, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
   their text
 - **Safe writes (3, audited)** — mark read, move message, create folder
-- **Dangerous (8, human approval out of band)** — send, reply, delete
-  message, delete folder, create/delete calendar event, upload a file to
-  Drive, move a Drive file to the trash
+- **Dangerous (9, human approval out of band)** — send, reply, delete
+  message, delete folder, create/delete calendar event, create a Zoom
+  meeting, upload a file to Drive, move a Drive file to the trash
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the
@@ -357,16 +357,17 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-28 tool tipizzati, generati dal server stesso:
+29 tool tipizzati, generati dal server stesso:
 
 - **Lettura (17)** — account, identità, file di conoscenza, messaggi, non
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi, file di Drive e il
   loro testo
 - **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
-- **Pericolose (8, approvazione umana fuori banda)** — invio, risposta,
+- **Pericolose (9, approvazione umana fuori banda)** — invio, risposta,
   cancellazione messaggio, cancellazione cartella, creazione/cancellazione
-  evento, caricamento di un file su Drive, cestinamento di un file di Drive
+  evento, creazione di una riunione Zoom, caricamento di un file su Drive,
+  cestinamento di un file di Drive
 
 Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
 quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo

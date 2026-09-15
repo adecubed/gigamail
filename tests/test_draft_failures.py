@@ -49,6 +49,42 @@ def test_se_non_c_e_proprio_lo_dice(tmp_path, monkeypatch):
     assert "non trovato" in str(e.value)
 
 
+def _agente_che_stampa(monkeypatch, returncode: int, stdout: str):
+    monkeypatch.setattr(agent_bridge, "get_config", lambda: {
+        "command": ["claude", "-p", "{prompt}"], "timeout": 5})
+    monkeypatch.setattr(agent_bridge, "_found", lambda exe: True)
+
+    def _finta_run(cmd, **kw):
+        class R:
+            pass
+        r = R()
+        r.returncode, r.stdout, r.stderr = returncode, stdout.encode("utf-8"), b""
+        return r
+    monkeypatch.setattr(agent_bridge.subprocess, "run", _finta_run)
+
+
+def test_agente_scollegato_non_diventa_una_bozza(monkeypatch):
+    """Claude Code senza login esce con 1 e scrive l'invito al login su
+    stdout: quel testo tornava come se fosse la bozza di una mail."""
+    _agente_che_stampa(monkeypatch, 1, "Not logged in · Please run /login")
+    with pytest.raises(agent_bridge.AgentUnavailable) as e:
+        agent_bridge.run("prompt")
+    assert "Not logged in" in str(e.value)
+
+
+def test_messaggio_di_login_con_uscita_zero_resta_un_guasto(monkeypatch):
+    _agente_che_stampa(monkeypatch, 0, "Not logged in · Please run /login")
+    with pytest.raises(agent_bridge.AgentUnavailable):
+        agent_bridge.run("prompt")
+
+
+def test_una_bozza_che_nomina_il_login_resta_una_bozza(monkeypatch):
+    bozza = ("Gentile cliente, la ringraziamo per il messaggio. " * 5
+             + "Per l'area riservata basta il login con la mail indicata.")
+    _agente_che_stampa(monkeypatch, 0, bozza)
+    assert agent_bridge.run("prompt") == bozza
+
+
 def test_i_tentativi_falliti_si_accumulano(tmp_path, monkeypatch):
     """Regressione: il conteggio vive in `reason`, ma record(...,
     'matched') a inizio giro fa INSERT OR REPLACE e lo azzera. Letto

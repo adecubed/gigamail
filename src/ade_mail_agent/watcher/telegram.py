@@ -326,8 +326,9 @@ def retry(w, tg, rid: str, feedback: str, rs) -> None:
     if not rec:
         say(tg, f"{rid}: richiesta sconosciuta.", f"{rid}: unknown request.")
         return
-    if not row:
-        # Richiesta di un tool: non c'e' nessuna bozza da rifare
+    if not row or not rs.get(row["rule_id"]):
+        # Richiesta di un tool, o di una riga senza regola (il link di una
+        # video call): non c'e' nessuna bozza da rifare
         # qui. La si annulla e la nota resta nell'audit, da
         # riportare all'agente — come fa il bottone Modifica sul PC.
         if rec["status"] == policy.PENDING and not rec["expired"]:

@@ -536,6 +536,12 @@ async function openMoveMailPanel(mailId) {
   setText('moveMailStatus', '');
   try {
     await loadMailFolders(true);
+    // La prima cartella dell'elenco e' quasi sempre INBOX, cioe' quella in
+    // cui la mail si trova gia': proporla come destinazione non ha senso.
+    const sel = byId('moveFolderSelect');
+    const qui = String(currentFolder || '').toLowerCase();
+    const altra = sel ? [...sel.options].find((o) => o.value && o.value.toLowerCase() !== qui) : null;
+    if (altra) sel.value = altra.value;
   } catch {}
 }
 
@@ -550,15 +556,26 @@ async function moveSelectedMail() {
     if (status) status.textContent = 'Seleziona una cartella di destinazione.';
     return;
   }
+  if (String(folderId).toLowerCase() === String(currentFolder || '').toLowerCase()) {
+    if (status) status.textContent = 'La mail e\' gia\' in questa cartella: scegline un\'altra.';
+    return;
+  }
+  const bottone = byId('btnConfirmMoveMail');
+  if (bottone) bottone.disabled = true;
   if (status) status.textContent = 'Spostamento in corso...';
   try {
-    await api.moveMailToFolder(selectedMailId, folderId, activeAccountId, currentFolder);
+    const esito = await api.moveMailToFolder(selectedMailId, folderId, activeAccountId, currentFolder);
+    if (esito && esito.success === false) {
+      throw new Error('il server di posta non ha spostato la mail');
+    }
     document.querySelector(`[data-id="${selectedMailId}"]`)?.remove();
     resetMailDetail();
     setHidden('moveMailPanel', true);
     await refreshCurrentFolder();
   } catch (e) {
-    if (status) status.textContent = `Errore spostamento: ${e}`;
+    if (status) status.textContent = `Errore spostamento: ${e && e.message ? e.message : e}`;
+  } finally {
+    if (bottone) bottone.disabled = false;
   }
 }
 
