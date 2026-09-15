@@ -199,7 +199,7 @@ def test_zoom_non_collegato_lo_dice_e_non_chiede_nulla(monkeypatch, mondo):
     n, avvisi = _conferma(monkeypatch)
     assert n == 1 and len(cal.creati) == 1
     assert notifiche == []
-    assert "gigamail zoom setup" in appointments.testo_avviso(*avvisi[0])
+    assert "console" in appointments.testo_avviso(*avvisi[0])
 
 
 def test_nuovo_orario_sposta_la_riunione_senza_altra_mail(monkeypatch, mondo):
