@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Il calendario della console mostra davvero i giorni che chiede.** La
+  console chiedeva `/calendar?days=60`, il backend leggeva solo
+  `days_ahead` e rispondeva sempre con 7 giorni: un appuntamento fra dieci
+  giorni, gia' in calendario, nella console non c'era. Ora `days` vale
+  quanto `days_ahead`.
+
 - **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
   le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
   ne conteneva 138. Il watcher ha una fase nuova che sposta nella cartella
