@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Il tasto Sposta della console funziona, e la finestra si chiude.** La
+  console mandava la cartella nel corpo della richiesta, il backend la
+  voleva in query: ogni clic finiva in un 422 e la finestra restava aperta.
+  In piu' la X in alto non era collegata a niente. Ora il backend accetta
+  entrambe le forme, la X chiude, la cartella proposta non e' piu' quella
+  in cui la mail si trova gia', un esito negativo del server di posta
+  compare a video e gli errori di validazione non si leggono piu' come
+  "[object Object]".
+
 - **"Chiedi alle mail" trova le mail anche senza agente.** Con l'agente
   scollegato la finestra mostrava "(nessuna risposta)", anche quando la
   mail cercata c'era in un'altra casella. Ora, se l'agente non risponde, la
