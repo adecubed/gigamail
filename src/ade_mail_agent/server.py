@@ -36,6 +36,7 @@ from ade_mail_agent.core import (
     mail_memory,
     mail_router,
     observer,
+    zoom,
 )
 from ade_mail_agent.policy import audit
 
@@ -766,6 +767,33 @@ def delete_event(
         "delete_event", args, request_id,
         preview_fn=lambda: {"action": "delete_event", "event_id": event_id},
         execute_fn=lambda a: {"success": calendar_router.delete_event(a["event_id"])},
+    )
+
+
+@mcp.tool(annotations=DANGEROUS, description=_two_phase(
+    """Create a Zoom meeting on the user's connected Zoom account and return
+    its join link.""",
+    """
+    Creating the meeting sends nothing to anyone: Zoom does not invite
+    participants, and the waiting room is on. Share the join_url with
+    send_mail or reply_mail, which need their own approval. Returns
+    {id, join_url, password} on execution. Requires Zoom to be connected
+    from the GigaMail console (Add account > Zoom)."""))
+def create_zoom_meeting(
+    topic: Annotated[str, Field(description="Meeting title shown in Zoom, e.g. 'Video call with Mario Rossi'.")],
+    start: Annotated[str, Field(description="Start, ISO 8601 local time (Europe/Rome), e.g. 2026-09-16T16:00:00.")],
+    duration_minutes: Annotated[int, Field(description="Planned length in minutes; values below 15 become 15.")] = 60,
+    agenda: Annotated[str, Field(description="Optional agenda text stored with the meeting.")] = "",
+    request_id: RequestId = None,
+) -> dict:
+    args = {"topic": topic, "start": start,
+            "duration_minutes": duration_minutes, "agenda": agenda}
+    return policy.execute_dangerous(
+        "create_zoom_meeting", args, request_id,
+        preview_fn=lambda: dict(args),
+        execute_fn=lambda a: zoom.crea_riunione(
+            a["topic"], a["start"], a["duration_minutes"],
+            agenda=a["agenda"]),
     )
 
 

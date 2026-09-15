@@ -5,7 +5,7 @@ description: "Email and calendar on the user's real mailbox (Microsoft 365 or IM
 
 # GigaMail
 
-GigaMail gives you the user's real mailboxes and calendar as 28 typed MCP
+GigaMail gives you the user's real mailboxes and calendar as 29 typed MCP
 tools on the `gigamail` server. Reading, searching, attachment text, sender
 history, free-slot computation and drafting are free. Sending, replying,
 deleting and calendar writes are **two-phase**: the first call returns an
@@ -74,7 +74,7 @@ Codex's approvals and sandbox are bypassed. Both are meant to be there.
 
 Start a new Codex session after installing: MCP tools load at startup.
 
-## The 28 tools, by class
+## The 29 tools, by class
 
 - **Read** (17), free to call: `list_accounts`, `get_identity`,
   `list_knowledge_files`, `read_knowledge_file`, `list_messages`,
@@ -82,10 +82,10 @@ Start a new Codex session after installing: MCP tools load at startup.
   `search_mail`, `sender_history`, `observer_context`, `memory_stats`,
   `list_events`, `find_free_slots`, `drive_list_files`, `drive_read_file`.
 - **Safe writes** (2), free to call, audited: `mark_read`, `create_folder`.
-- **Dangerous** (9), two-phase with a human in between: `send_mail`,
+- **Dangerous** (10), two-phase with a human in between: `send_mail`,
   `reply_mail`, `delete_message`, `delete_folder`, `move_message`,
-  `create_event`, `delete_event`, `drive_upload_file`,
-  `drive_delete_file`.
+  `create_event`, `delete_event`, `create_zoom_meeting`,
+  `drive_upload_file`, `drive_delete_file`.
 
 ## The approval gate: read this before acting
 

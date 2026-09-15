@@ -18,8 +18,13 @@ async function apiJson(url, options = {}) {
   }
 
   if (!response.ok) {
+    // FastAPI manda gli errori di validazione come lista di oggetti: senza
+    // questa riga arrivavano a video come "[object Object]".
+    const detail = Array.isArray(payload?.detail)
+      ? payload.detail.map((d) => d?.msg || JSON.stringify(d)).join('; ')
+      : payload?.detail;
     const message =
-      payload?.detail ||
+      detail ||
       payload?.message ||
       payload?.raw ||
       `HTTP ${response.status}`;
@@ -80,6 +85,17 @@ contextBridge.exposeInMainWorld('ademail', {
     { method: 'POST' }),
   getCalendarProvider: () => apiJson(`${API}/calendar/provider`),
   setCalendarProvider: (p) => apiJson(`${API}/calendar/provider/${p}`, { method: 'POST' }),
+
+  // ------------------------------------------------- ZOOM (link video call)
+  // Il Client Secret va al backend e non torna: lo stato non lo contiene.
+  zoomStatus: () => apiJson(`${API}/zoom/status`),
+  zoomSetup:  (dati) => apiJson(`${API}/zoom/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dati || {}),
+  }),
+  zoomTest:   () => apiJson(`${API}/zoom/test`, { method: 'POST' }),
+  zoomRemove: () => apiJson(`${API}/zoom/remove`, { method: 'POST' }),
 
   // ---------------------------------------------------------------- ACCOUNTS
   getAccounts:      () => apiJson(`${API}/accounts`),

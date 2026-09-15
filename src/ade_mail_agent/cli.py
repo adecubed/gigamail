@@ -769,6 +769,58 @@ def cmd_telegram_setup(args) -> int:
     return 0 if ok else 1
 
 
+def cmd_zoom_setup(_args) -> int:
+    """Collega Zoom con un'app Server-to-Server OAuth dell'utente. Il
+    Client Secret si digita a video e NON e' un argomento: niente
+    cronologia di shell, niente agente che lo vede."""
+    from ade_mail_agent.core import zoom
+    print("Zoom: serve un'app Server-to-Server OAuth del tuo account.")
+    print("  1. marketplace.zoom.us > Develop > Build App > Server-to-Server OAuth")
+    print("  2. Scopes: meeting:write:meeting:admin, meeting:update:meeting:admin,")
+    print("     meeting:delete:meeting:admin, user:read:user:admin")
+    print("  3. Activate, poi incolla qui Account ID, Client ID e Client Secret.")
+    account_id = input("Account ID: ").strip()
+    client_id = input("Client ID: ").strip()
+    segreto = getpass.getpass("Client Secret (non viene mostrato): ").strip()
+    if not (account_id and client_id and segreto):
+        print("Dati mancanti: nessuna modifica.")
+        return 1
+    zoom.salva_config(account_id, client_id, segreto)
+    try:
+        email = zoom.verifica()
+    except Exception as e:
+        print(f"Salvato, ma Zoom rifiuta la verifica: {e}")
+        print("Controlla gli scopes e che l'app sia attivata, poi: gigamail zoom test")
+        return 1
+    from ade_mail_agent.policy import audit
+    audit("zoom", {"zoom_account": account_id}, "zoom_configured",
+          detail=_cli_who())
+    print(f"Zoom collegato ({email}). Le video call confermate avranno il link.")
+    return 0
+
+
+def cmd_zoom_test(_args) -> int:
+    from ade_mail_agent.core import zoom
+    if not zoom.configurato():
+        print("Zoom non collegato: gigamail zoom setup")
+        return 1
+    try:
+        print(f"Zoom funziona: account {zoom.verifica()}.")
+        return 0
+    except Exception as e:
+        print(f"Zoom non risponde come dovrebbe: {e}")
+        return 1
+
+
+def cmd_zoom_remove(_args) -> int:
+    from ade_mail_agent.core import zoom
+    zoom.rimuovi_config()
+    from ade_mail_agent.policy import audit
+    audit("zoom", {}, "zoom_removed", detail=_cli_who())
+    print("Credenziali Zoom rimosse: le video call non avranno piu' il link automatico.")
+    return 0
+
+
 def cmd_telegram_test(_args) -> int:
     from ade_mail_agent.core import telegram_channel
     tg = telegram_channel.channel()
@@ -1243,6 +1295,17 @@ def main(argv=None) -> int:
     p_tgp.add_argument("--remove", action="store_true",
                        help="toglie il PIN: il tap tornera' a bastare")
     p_tgp.set_defaults(fn=cmd_telegram_pin)
+
+    p_zoom = sub.add_parser(
+        "zoom", help="Zoom: link automatico per le video call confermate")
+    zoom_sub = p_zoom.add_subparsers(dest="subcommand", required=True)
+    zoom_sub.add_parser(
+        "setup", help="collega un'app Server-to-Server OAuth (segreto digitato)"
+    ).set_defaults(fn=cmd_zoom_setup)
+    zoom_sub.add_parser("test", help="verifica le credenziali").set_defaults(
+        fn=cmd_zoom_test)
+    zoom_sub.add_parser("remove", help="toglie le credenziali").set_defaults(
+        fn=cmd_zoom_remove)
 
     p_ds = sub.add_parser(
         "desktop-setup",

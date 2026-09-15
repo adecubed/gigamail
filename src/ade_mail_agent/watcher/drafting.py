@@ -6,6 +6,7 @@ richiesto e' il SOLO corpo: destinatario e oggetto non li decide mai
 l'agente (vedi approvals / mail_router).
 """
 import os
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from ade_mail_agent import agent_bridge, policy
@@ -48,6 +49,40 @@ def _rule_docs_text(rule: Dict[str, Any]) -> str:
     return "\n\n".join(parts)
 
 
+def regole_agenda() -> Dict[str, Any]:
+    """In che fascia e in che giorni si propongono appuntamenti.
+
+    Vive nelle impostazioni locali (app_setting), non nel codice: l'orario
+    in cui un ufficio riceve e' un dato di chi usa GigaMail. Con la fascia
+    fissa dalle 09:30 a un cliente sono state proposte le 9.30 di lunedi',
+    nella stessa mail che diceva "in ufficio dalle 10.00".
+      slot_work_start / slot_work_end  "HH:MM"
+      slot_skip_holidays               "0" per proporre anche i festivi
+      slot_patrono                     "MM-GG", la festa del patrono
+    Un valore illeggibile vale come assente: meglio la fascia di default
+    che nessuna proposta."""
+    regole: Dict[str, Any] = {"skip_holidays": True}
+    try:
+        leggi = core_accounts.get_setting
+        inizio = str(leggi("slot_work_start", "") or "").strip()
+        fine = str(leggi("slot_work_end", "") or "").strip()
+        festivi = str(leggi("slot_skip_holidays", "1") or "1").strip().lower()
+        patrono = str(leggi("slot_patrono", "") or "").strip()
+    except Exception as e:
+        logger.debug("impostazioni dell'agenda non lette: %s", e)
+        return regole
+    regole["skip_holidays"] = festivi not in ("0", "false", "no")
+    if patrono:
+        regole["patrono"] = patrono
+    for chiave, valore in (("work_start", inizio), ("work_end", fine)):
+        try:
+            datetime.strptime(valore, "%H:%M")
+        except ValueError:
+            continue
+        regole[chiave] = valore
+    return regole
+
+
 def _slot_liberi_text() -> str:
     """Gli orari realmente proponibili, gia' pronti per il testo.
 
@@ -63,7 +98,7 @@ def _slot_liberi_text() -> str:
         eventi = calendar_router.get_events(days_ahead=_SLOT_GIORNI + 1)
         slot = availability.find_free_slots(
             eventi, days_ahead=_SLOT_GIORNI,
-            skip_weekends=not _SLOT_SABATO)
+            skip_weekends=not _SLOT_SABATO, **regole_agenda())
     except Exception as e:
         logger.info("agenda non consultabile per la bozza: %s", e)
         return ("AGENDA: non disponibile in questo momento. NON proporre "
@@ -74,7 +109,9 @@ def _slot_liberi_text() -> str:
                 "proporre date od orari precisi.")
     righe = "\n".join(f"- {s['label']}" for s in slot)
     return ("AGENDA — SLOT LIBERI (gli UNICI che puoi proporre; non "
-            "inventarne altri, non spostarli di mezz'ora):\n" + righe)
+            "inventarne altri, non spostarli di mezz'ora):\n" + righe
+            + "\nDopo gli orari invita SEMPRE la persona a suggerire "
+            "un'alternativa se nessuno le va bene.")
 
 
 def _message_body_text(message: Dict[str, Any]) -> str:

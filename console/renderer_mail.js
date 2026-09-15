@@ -631,6 +631,8 @@ function bindMailEvents() {
     showToast('📬 Aggiornato');
   });
   on('btnCloseMoveMailPanel', 'click', () => setHidden('moveMailPanel', true));
+  // La X in alto ha un id suo: senza questo la finestra Sposta non si chiudeva.
+  on('btnCloseMoveMailPanel2', 'click', () => setHidden('moveMailPanel', true));
   on('btnRefreshFolders', 'click', () => loadMailFolders(false));
   on('btnConfirmMoveMail', 'click', moveSelectedMail);
 
