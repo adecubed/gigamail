@@ -216,7 +216,9 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
     const subject    = msg.subject || '(nessun oggetto)';
     const rawHtml    = msg.body?.content || '';
     const bodyType   = (msg.body?.contentType||'').toLowerCase();
-    const isHtml     = bodyType === 'html' || rawHtml.trimStart().startsWith('<');
+    // Stesso criterio della finestra principale: il tipo dichiarato vince,
+    // e un testo che inizia con un indirizzo tra <> non e' HTML.
+    const isHtml     = bodyType === 'html' || (bodyType !== 'text' && /^<\s*(!doctype|html|head|body|div|p|table|span|font)\b/i.test(rawHtml.trimStart()));
     const bodyText   = msg.body_text || msg.bodyPreview || '';
     console.log('[DBG] isHtml:', isHtml, '| body_text len:', bodyText.length, '| rawHtml len:', rawHtml.length);
     console.log('[DBG] body_text inizio:', bodyText.slice(0,200));

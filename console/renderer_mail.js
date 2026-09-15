@@ -96,7 +96,24 @@ const MailView = (() => {
     return MailRender.htmlToText(html);
   }
 
-  return { senderLabel, hasAttachments, listItemHtml, detailHeaderHtml, attachmentChipsHtml, htmlToText };
+  // Un tag HTML vero: nome noto seguito da attributi o dalla chiusura. Un
+  // indirizzo tra parentesi angolari (<info@20128milano.it>) non lo e'.
+  const TAG_HTML = /<\/?(html|head|body|div|p|br|span|table|tr|td|font|img|a|b|i|u|strong|em|ul|ol|li|h[1-6]|blockquote|center|style)(\s[^<>]*)?\/?>/i;
+
+  /** Il corpo va mostrato come HTML? Conta il tipo dichiarato dal server;
+   *  senza tipo, serve un vero tag. Prima bastava un indirizzo tra
+   *  parentesi angolari nel testo citato per trattare come HTML una mail
+   *  in testo semplice, e tutti i suoi a capo sparivano. */
+  function isHtmlBody(msg) {
+    const tipo = String((msg && msg.body && msg.body.contentType) || '').toLowerCase();
+    if (tipo === 'html') return true;
+    if (tipo === 'text') return false;
+    const raw = String((msg && msg.body && msg.body.content) || '');
+    const testo = String((msg && (msg.body_text || msg.bodyPreview)) || '');
+    return TAG_HTML.test(raw) || TAG_HTML.test(testo);
+  }
+
+  return { senderLabel, hasAttachments, listItemHtml, detailHeaderHtml, attachmentChipsHtml, htmlToText, isHtmlBody };
 })();
 if (typeof window !== 'undefined') window.MailView = MailView;
 
@@ -181,11 +198,9 @@ async function openMail(id, overrideFolder = null) {
 
     // Corpo mail: preferisci HTML nativo (Microsoft), poi body_text, poi bodyPreview
     const rawHtml    = msg.body?.content || '';
-    const bodyType   = (msg.body?.contentType || '').toLowerCase();
     const bodyText   = msg.body_text || msg.bodyPreview || '';
     window._currentMailBodyText = bodyText;  // cache per smart_draft — evita IMAP lento
-    const hasHtmlInText = /<[a-z][^>]*>/i.test(bodyText);
-    const isHtmlBody = bodyType === 'html' || (rawHtml && rawHtml.trimStart().startsWith('<')) || hasHtmlInText;
+    const isHtmlBody = MailView.isHtmlBody(msg);
     const effectiveHtml = isHtmlBody && !rawHtml ? `<html><body style="font-family:sans-serif;font-size:13px;line-height:1.7;padding:16px;color:#333;">${bodyText}</body></html>` : rawHtml;
     const bodyHtml   = isHtmlBody ? null : formatMailBodyHtml(bodyText);
 

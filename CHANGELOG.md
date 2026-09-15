@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Una richiesta decisa toglie la sua notifica dal PC.** Approvata o
+  rifiutata su Telegram, dalla console o dalla CLI, la toast restava nel
+  centro notifiche e invitava a premere Approva su una richiesta gia'
+  chiusa. Ora approvazione, rifiuto, revoca ed esecuzione la ritirano.
+- **Una mail in testo semplice si legge con i suoi a capo.** Nella console
+  bastava un indirizzo tra parentesi angolari nel testo citato
+  (`<info@20128milano.it>`) per trattare tutta la mail come HTML: gli a capo
+  sparivano e risposta, citazione e avviso legale diventavano un blocco
+  unico. Ora conta il tipo dichiarato dal server e, se manca, un vero tag
+  HTML.
+
 - **Il calendario della console mostra davvero i giorni che chiede.** La
   console chiedeva `/calendar?days=60`, il backend leggeva solo
   `days_ahead` e rispondeva sempre con 7 giorni: un appuntamento fra dieci
