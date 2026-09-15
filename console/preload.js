@@ -18,8 +18,13 @@ async function apiJson(url, options = {}) {
   }
 
   if (!response.ok) {
+    // FastAPI manda gli errori di validazione come lista di oggetti: senza
+    // questa riga arrivavano a video come "[object Object]".
+    const detail = Array.isArray(payload?.detail)
+      ? payload.detail.map((d) => d?.msg || JSON.stringify(d)).join('; ')
+      : payload?.detail;
     const message =
-      payload?.detail ||
+      detail ||
       payload?.message ||
       payload?.raw ||
       `HTTP ${response.status}`;

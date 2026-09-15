@@ -212,12 +212,25 @@ def mark_unread(message_id: str, folder: str = "inbox", account_id: Optional[int
     )}
 
 
+class MoveRequest(BaseModel):
+    folder_id: Optional[str] = None
+
+
 @router.post("/mail/{message_id}/move")
-def move_message(message_id: str, folder_id: str, source_folder: str = "",
-                 account_id: Optional[int] = None):
+def move_message(message_id: str, folder_id: Optional[str] = None,
+                 source_folder: str = "", account_id: Optional[int] = None,
+                 req: Optional[MoveRequest] = None):
+    """La cartella arriva nel corpo JSON, come la manda la console, o in
+    query. Prima la voleva solo in query: la console la mandava nel corpo e
+    ogni clic su Sposta finiva in un 422, con la finestra rimasta aperta."""
+    destinazione = (folder_id or (req.folder_id if req else "") or "").strip()
+    if not destinazione:
+        raise HTTPException(400, "Cartella di destinazione mancante")
+    if source_folder and destinazione.lower() == source_folder.strip().lower():
+        raise HTTPException(400, "La mail e' gia' in questa cartella")
     return {"success": mail_router.move_to_folder(
         account_id or _active_id(), message_id=message_id,
-        folder_id=folder_id, source_folder=source_folder or None,
+        folder_id=destinazione, source_folder=source_folder or None,
     )}
 
 
