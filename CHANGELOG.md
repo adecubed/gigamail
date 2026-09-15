@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.3.4 — 2026-09-15
 
 - **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
   le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
