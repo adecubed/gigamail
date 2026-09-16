@@ -69,6 +69,22 @@ test('credenziali rifiutate: il messaggio di Zoom compare e il segreto resta nel
   assert.equal(w.document.getElementById('btnZoomConnect').disabled, false);
 });
 
+test('link personale: campo precompilato ed escapato, salvataggio ripulito', async () => {
+  const salvati = [];
+  const w = load({
+    zoomStatus: async () => ({ configured: false, link: 'https://zoom.us/j/1?x="><img>' }),
+    zoomLink: async (url) => { salvati.push(url); return { success: true, link: url }; },
+  });
+  await w.ZoomView.render();
+  const campo = w.document.getElementById('zoomLink');
+  assert.equal(campo.value, 'https://zoom.us/j/1?x="><img>');
+  assert.equal(w.document.querySelectorAll('img').length, 0);
+  campo.value = '  https://us02web.zoom.us/j/123  ';
+  await w.ZoomView.salvaLink();
+  assert.deepEqual(salvati, ['https://us02web.zoom.us/j/123']);
+  assert.ok(w.document.getElementById('zoomStatus').textContent.includes('salvato'));
+});
+
 test('campi vuoti: nessuna chiamata al backend', async () => {
   let chiamato = false;
   const w = load({

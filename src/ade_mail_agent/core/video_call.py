@@ -36,6 +36,18 @@ logger = logging.getLogger("gigamail.video_call")
 # rule_id: e' cosi' che il watcher le trova ed esegue dopo l'approvazione.
 RULE_ID = "appuntamenti-video"
 _TTL_SECONDI = 4 * 3600
+# Riunione "personale": non nasce da Zoom, e' il link fisso dell'utente. Si
+# riconosce da qui, perche' non si sposta e non si cancella come le altre.
+_FISSO = "personale"
+
+
+def link_fisso() -> str:
+    """Il link personale Zoom dell'utente, se lo ha salvato.
+
+    Serve a chi non vuole creare un'app Server-to-Server: si incolla una
+    volta e vale per tutte le video call. In cambio e' sempre lo stesso
+    link, quindi conviene tenere la sala d'attesa accesa."""
+    return str(accounts.get_setting("zoom_link_fisso", "") or "").strip()
 
 
 def e_video(testo: str) -> bool:
@@ -126,7 +138,8 @@ def dopo_conferma(account_id: int, riga: Dict[str, Any],
       non_configurato Zoom non collegato, il link va mandato a mano
     Gli errori di Zoom salgono al chiamante, che li riporta nell'avviso."""
     chiave = riga["thread_key"]
-    if not zoom.configurato():
+    fisso = link_fisso()
+    if not zoom.configurato() and not fisso:
         return {"stato": "non_configurato"}
     st = appointments.store()
     corrente = st.get(account_id, chiave) or {}
@@ -135,17 +148,24 @@ def dopo_conferma(account_id: int, riga: Dict[str, Any],
                    or corrente.get("event_id") or "")
 
     if corrente.get("zoom_id"):
-        zoom.sposta_riunione(corrente["zoom_id"], esito["inizio"], durata)
+        # Il link personale non si sposta: e' sempre lo stesso, e il
+        # cliente ce l'ha gia'. Cambia solo l'orario dell'appuntamento.
+        if corrente["zoom_id"] != _FISSO:
+            zoom.sposta_riunione(corrente["zoom_id"], esito["inizio"], durata)
         _nel_calendario(event_id, corrente.get("zoom_url") or "")
         policy.audit("appointment", {"account_id": account_id,
                                      "thread": chiave}, "zoom_moved")
-        return {"stato": "spostata", "join_url": corrente.get("zoom_url") or ""}
+        return {"stato": "spostata", "join_url": corrente.get("zoom_url") or "",
+                "fisso": corrente["zoom_id"] == _FISSO}
 
     nome = _nome(messaggio)
-    riunione = zoom.crea_riunione(
-        f"Video call con {nome or corrente.get('con') or mittente}",
-        esito["inizio"], durata,
-        agenda=re.sub(r"\s+", " ", str(subject or ""))[:300])
+    if fisso and not zoom.configurato():
+        riunione = {"id": _FISSO, "join_url": fisso, "password": ""}
+    else:
+        riunione = zoom.crea_riunione(
+            f"Video call con {nome or corrente.get('con') or mittente}",
+            esito["inizio"], durata,
+            agenda=re.sub(r"\s+", " ", str(subject or ""))[:300])
     st.set_zoom(account_id, chiave, riunione["id"], riunione["join_url"])
     _nel_calendario(event_id, riunione["join_url"])
     policy.audit("appointment", {"account_id": account_id, "thread": chiave},
@@ -176,4 +196,4 @@ def dopo_conferma(account_id: int, riga: Dict[str, Any],
         buttons=_pulsanti(request_id),
         actions=policy.toast_actions(request_id))
     return {"stato": "creata", "join_url": riunione["join_url"],
-            "request_id": request_id}
+            "request_id": request_id, "fisso": riunione["id"] == _FISSO}

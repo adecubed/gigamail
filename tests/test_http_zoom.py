@@ -32,7 +32,7 @@ CODICI = {"account_id": "acc1", "client_id": "cid-12345678",
 
 def test_stato_senza_zoom(client):
     d = client.get("/zoom/status").json()
-    assert d == {"configured": False, "account_id": "", "client_id": ""}
+    assert d["configured"] is False and d["account_id"] == "" and d["client_id"] == ""
 
 
 def test_collegare_verifica_e_non_restituisce_il_segreto(client, monkeypatch):
