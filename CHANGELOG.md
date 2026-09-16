@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Il link personale Zoom basta, senza creare nessuna app.** Collegare Zoom
+  richiedeva un'app Server-to-Server sul marketplace, cinque minuti nel
+  browser che non tutti vogliono fare. Ora nella scheda Zoom della console
+  si incolla il link della propria riunione personale: GigaMail lo mette
+  nella mail di conferma di ogni video call, sempre dopo approvazione, e lo
+  scrive nell'evento di calendario. Un orario nuovo non genera una seconda
+  mail, perche' il link e' sempre lo stesso. Con l'app collegata resta il
+  comportamento di prima, un link diverso per ogni appuntamento.
+
 - **Una richiesta decisa toglie la sua notifica dal PC.** Approvata o
   rifiutata su Telegram, dalla console o dalla CLI, la toast restava nel
   centro notifiche e invitava a premere Approva su una richiesta gia'

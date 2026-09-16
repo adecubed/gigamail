@@ -897,6 +897,11 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
 def _nota_video(video: Dict[str, Any], it: bool = True) -> str:
     stato = video.get("stato")
     url = video.get("join_url") or ""
+    if stato == "creata" and video.get("fisso"):
+        return (f"🎥 Mail con il tuo link personale Zoom ({url}) in attesa "
+                "della tua approvazione." if it else
+                f"🎥 Mail with your personal Zoom link ({url}) awaiting "
+                "your approval.")
     if stato == "creata":
         return (f"🎥 Riunione Zoom creata: {url}. La mail con il link "
                 "aspetta la tua approvazione." if it else
