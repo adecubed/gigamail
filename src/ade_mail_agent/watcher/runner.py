@@ -10,7 +10,15 @@ from ade_mail_agent import policy
 from ade_mail_agent.core import rules as rules_mod
 from ade_mail_agent.core import telegram_channel
 
-from . import archive, execution, ingestion, pipeline, process_state, telegram
+from . import (
+    archive,
+    execution,
+    ingestion,
+    pipeline,
+    process_state,
+    telegram,
+    tg_risposte,
+)
 from .log import _log
 
 
@@ -153,7 +161,10 @@ class Watcher:
                               "stato": esito.get("stato")},
                              "reply_notified" if tg else "reply_seen")
                 if tg:
-                    tg.send(testo)
+                    # Con il bottone Rispondi: da Telegram si risponde al
+                    # cliente senza tornare al PC.
+                    tg_risposte.registra_avviso(tg, testo, _aid, m,
+                                                policy.user_lang())
 
             try:
                 totale += appointments.sweep(account_id, messaggi,

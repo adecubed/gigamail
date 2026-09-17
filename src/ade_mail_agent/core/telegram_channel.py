@@ -110,12 +110,25 @@ class Telegram:
         parse_mode Telegram linkifica da solo indirizzi e URL del
         messaggio, e in un'approvazione l'unica cosa tappabile
         diventa il mailto: del destinatario."""
+        return bool(self.send_message(text, buttons=buttons, html=html))
+
+    def send_message(self, text: str,
+                     buttons: Optional[List[List[Dict[str, str]]]] = None,
+                     html: bool = False) -> int:
+        """Come send, ma ritorna il message_id (0 se non e' partito): serve
+        a riconoscere quale messaggio l'utente sta citando quando risponde."""
         params: Dict[str, Any] = {"chat_id": self.chat_id, "text": text[:4000]}
         if html:
             params["parse_mode"] = "HTML"
         if buttons:
             params["reply_markup"] = {"inline_keyboard": buttons}
-        return self._call("sendMessage", **params) is not None
+        data = self._call("sendMessage", **params)
+        if not data:
+            return 0
+        try:
+            return int((data.get("result") or {}).get("message_id") or 0) or 1
+        except Exception:
+            return 1
 
     @staticmethod
     def safe_html(text: str) -> str:
@@ -219,6 +232,9 @@ class Telegram:
                     # serve a cancellare dalla chat il messaggio che
                     # contiene il PIN
                     "message_id": int(msg.get("message_id") or 0),
+                    # a quale messaggio sta rispondendo: una risposta
+                    # all'avviso di un cliente e' l'istruzione per rispondergli
+                    "reply_to": int((msg.get("reply_to_message") or {}).get("message_id") or 0),
                 })
         return events, new_offset
 

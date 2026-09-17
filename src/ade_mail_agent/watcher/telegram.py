@@ -87,7 +87,13 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
                      "telegram_unauthorized")
         return
     rs = rules_mod.store()
+    from . import tg_risposte
     if ev["kind"] == "callback":
+        scrivi = re.match(r"^w:([0-9a-f]{8})$", ev.get("data", ""))
+        if scrivi:
+            tg.answer_callback(ev.get("callback_id", ""))
+            tg_risposte.chiedi_istruzione(tg, scrivi.group(1))
+            return
         m = re.match(r"^([arm]):(req_[0-9a-f]+)$", ev.get("data", ""))
         tg.answer_callback(ev.get("callback_id", ""))
         if m:
@@ -99,10 +105,22 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
     if in_attesa_pin:
         check_pin(w, tg, in_attesa_pin, text, rs, ev.get("message_id", 0))
         return
+    # Una risposta all'avviso di un cliente vale piu' di qualunque attesa:
+    # l'utente ha indicato con precisione a quale mail si riferisce.
+    risposta_a = tg_risposte.chiave_da_evento(ev)
+    if risposta_a:
+        rs.kv_set(tg_risposte.AWAIT, "")
+        tg_risposte.rispondi(w, tg, risposta_a, text)
+        return
     waiting = rs.kv_get("tg_await_feedback")
     if waiting:
         rs.kv_set("tg_await_feedback", "")
         retry(w, tg, waiting, text, rs)
+        return
+    in_attesa_istruzione = rs.kv_get(tg_risposte.AWAIT, "")
+    if in_attesa_istruzione:
+        rs.kv_set(tg_risposte.AWAIT, "")
+        tg_risposte.rispondi(w, tg, in_attesa_istruzione, text)
         return
     m = re.match(r"^/?(approva|approve|si|sì|ok|yes)\s+(req_[0-9a-f]+)\s*$",
                  text, re.I)
@@ -119,9 +137,13 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
         return
     say(tg,
         "Comandi: 'approva req_x', 'rifiuta req_x', "
-        "'rifiuta req_x: <modifiche>' — o i bottoni sotto la bozza.",
+        "'rifiuta req_x: <modifiche>' — o i bottoni sotto la bozza. "
+        "Per rispondere a un cliente: bottone Rispondi sotto il suo "
+        "avviso, oppure rispondi direttamente a quel messaggio.",
         "Commands: 'approve req_x', 'reject req_x', "
-        "'reject req_x: <changes>' — or the buttons under the draft.")
+        "'reject req_x: <changes>' — or the buttons under the draft. "
+        "To answer a client: the Reply button under their alert, or "
+        "reply directly to that message.")
 
 
 def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
@@ -326,6 +348,10 @@ def retry(w, tg, rid: str, feedback: str, rs) -> None:
     if not rec:
         say(tg, f"{rid}: richiesta sconosciuta.", f"{rid}: unknown request.")
         return
+    from . import tg_risposte
+    if row and row["rule_id"] == tg_risposte.RULE_ID and feedback:
+        if tg_risposte.rifai(w, tg, rid, feedback):
+            return
     if not row or not rs.get(row["rule_id"]):
         # Richiesta di un tool, o di una riga senza regola (il link di una
         # video call): non c'e' nessuna bozza da rifare
