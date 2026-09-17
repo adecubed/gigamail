@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Da Telegram si risponde al cliente.** L'avviso "il cliente ha
+  risposto" arrivava su Telegram e li' finiva: per rispondere bisognava
+  tornare al PC. Ora sotto l'avviso c'e' il bottone Rispondi, e si puo'
+  anche rispondere direttamente al messaggio. Quello che si scrive ("ok, va
+  bene") e' un'istruzione: la bozza la scrive l'agente con identity, orari
+  liberi e presidio anti-injection, e la mail arriva in approvazione con i
+  soliti bottoni, Modifica compreso. Niente parte senza un si'.
+
 - **Una conferma ripetuta non riscrive piu' l'appuntamento.** Un "grazie, a
   domani" del cliente veniva letto come nuova conferma: l'evento era
   aggiornato con l'indirizzo mail al posto del nome nel titolo e con il
