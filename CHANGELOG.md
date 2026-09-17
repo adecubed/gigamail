@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Una conferma ripetuta non riscrive piu' l'appuntamento.** Un "grazie, a
+  domani" del cliente veniva letto come nuova conferma: l'evento era
+  aggiornato con l'indirizzo mail al posto del nome nel titolo e con il
+  luogo vuoto, link Zoom compreso. Ora una conferma con lo stesso orario non
+  tocca il calendario, uno spostamento cambia solo gli orari (e il luogo
+  solo se ne arriva uno nuovo), e il titolo di un appuntamento nuovo usa il
+  nome del mittente invece del suo indirizzo.
+
 - **Il link personale Zoom basta, senza creare nessuna app.** Collegare Zoom
   richiedeva un'app Server-to-Server sul marketplace, cinque minuti nel
   browser che non tutti vogliono fare. Ora nella scheda Zoom della console

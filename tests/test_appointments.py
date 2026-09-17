@@ -125,6 +125,50 @@ def test_nuova_proposta_non_tocca_un_appuntamento_fissato(monkeypatch, cal):
     assert riga["stato"] == "confermato"
 
 
+def test_conferma_ripetuta_non_tocca_levento(monkeypatch, cal):
+    """Il 16/09 un "grazie, a domani" ha riscritto l'evento: titolo con
+    l'indirizzo mail al posto del nome e luogo svuotato."""
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00",'
+                         '"con":"Lorenzo Karagiannakos"}')
+    appointments.dalla_mail(2, "Appuntamento", "venerdi alle 17:00",
+                            "max@example.com", adesso=NOW)
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00"}')
+    esito = appointments.dalla_mail(2, "Re: Appuntamento", "grazie, a venerdi alle 17:00",
+                                    "max@example.com", adesso=NOW)
+    assert esito["invariato"] is True
+    assert cal.aggiornati == []
+    riga = appointments.store().get(
+        2, appointments.thread_key("Appuntamento", "max@example.com"))
+    assert riga["con"] == "Lorenzo Karagiannakos"
+
+
+def test_spostamento_non_riscrive_titolo_ne_svuota_luogo(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00"}')
+    appointments.dalla_mail(2, "Appuntamento", "venerdi alle 17:00",
+                            "max@example.com", adesso=NOW)
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Re: Appuntamento", "meglio lunedi alle 17:00",
+                            "max@example.com", adesso=NOW)
+    assert len(cal.aggiornati) == 1
+    modifica = cal.aggiornati[0]
+    assert "subject" not in modifica and "location" not in modifica
+    assert modifica["start"] == "2026-09-14T17:00"
+
+
+def test_il_titolo_usa_il_nome_del_mittente(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    appointments.sweep(2, [{"id": "n1", "subject": "Re: Via Treviglio",
+                            "body_text": "va bene lunedi alle 17:00",
+                            "from": {"emailAddress": {"address": "rg@example.com",
+                                                      "name": "Roberto Galioto"}}}],
+                       adesso=NOW)
+    assert cal.creati[0]["subject"].startswith("Appuntamento Roberto Galioto")
+    assert "rg@example.com" not in cal.creati[0]["subject"]
+
+
 def test_disdetta_toglie_levento(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00",'
                          '"fine":"2026-09-11T18:00","con":"Prato"}')
