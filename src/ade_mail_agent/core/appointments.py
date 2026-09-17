@@ -473,13 +473,28 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                                      "inizio": inizio}, "proposed")
         return {"stato": "proposto", "event_id": ""}
 
+    # Un nome gia' noto non si perde per un indirizzo: la conferma arriva
+    # spesso senza nome, e l'indirizzo finiva nel titolo al suo posto.
+    if corrente and corrente.get("con") and "@" in str(con):
+        con = corrente["con"]
     titolo = _titolo(esito, controparte, oggetto)
     luogo = esito.get("luogo") or ""
     try:
         if corrente and corrente.get("event_id"):
-            evento = calendar_router.update_event(
-                corrente["event_id"], subject=titolo, start=inizio,
-                end=fine, location=luogo)
+            if (corrente.get("stato") == "confermato"
+                    and corrente.get("inizio") == inizio
+                    and corrente.get("fine") == fine):
+                # La stessa conferma ripetuta ("grazie, a domani"): l'evento
+                # e' gia' giusto. Riscriverlo metteva l'indirizzo mail al posto
+                # del nome nel titolo e svuotava il luogo, link Zoom compreso.
+                return {"stato": stato, "event_id": corrente["event_id"],
+                        "invariato": True}
+            # Uno spostamento cambia gli orari. Il titolo resta quello scelto
+            # alla creazione, e il luogo cambia solo se ne arriva uno nuovo.
+            modifiche = {"start": inizio, "end": fine}
+            if luogo:
+                modifiche["location"] = luogo
+            evento = calendar_router.update_event(corrente["event_id"], **modifiche)
             event_id = corrente["event_id"]
         else:
             evento = calendar_router.create_event(
@@ -533,7 +548,7 @@ def _video_dopo_conferma(account_id: int, chiave: str,
     mail con il link in approvazione. None se non c'era niente da fare.
     Un guasto di Zoom non tocca l'appuntamento, che resta in calendario:
     finisce nell'avviso, dove l'umano lo vede."""
-    if not toccato or esito.get("stato") != "confermato":
+    if not toccato or esito.get("stato") != "confermato" or toccato.get("invariato"):
         return None
     riga = store().get(account_id, chiave)
     if not riga or not riga.get("video"):
@@ -763,9 +778,12 @@ def sweep(account_id: int, messaggi: list, adesso=None,
             else:
                 esito = dict(esito, agenda_illeggibile=True)
         if esito.get("stato") in ("confermato", "disdetto"):
+            nome = _nome_mittente(m)
+            if nome and (not esito.get("con") or "@" in str(esito.get("con"))):
+                esito = dict(esito, con=nome)
             toccato = applica(account_id, riga["thread_key"], esito,
                               controparte=mittente, oggetto=subject)
-            if toccato:
+            if toccato and not toccato.get("invariato"):
                 fatti += 1
                 video = _video_dopo_conferma(
                     account_id, riga["thread_key"], m, mittente, subject,
@@ -781,6 +799,15 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                 logger.warning("avviso sulla risposta %s non partito: %s",
                                mid, e)
     return fatti
+
+
+def _nome_mittente(m: Dict[str, Any]) -> str:
+    """Il nome visualizzato del mittente, senza virgolette; vuoto se manca o
+    se e' solo l'indirizzo ripetuto."""
+    f = m.get("from") or m.get("sender") or {}
+    ea = f.get("emailAddress") if isinstance(f, dict) else None
+    nome = str((ea or {}).get("name") or "").strip().strip('"').strip()
+    return "" if "@" in nome else nome
 
 
 def _mittente(m: Dict[str, Any]) -> str:
