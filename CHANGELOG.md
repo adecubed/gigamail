@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- **SECURITY.md non spaccia piu' Telegram per Windows Hello.** Diceva che
+  approvare da Telegram era della stessa natura di Hello. Non lo e': Hello
+  si chiede a ogni approvazione, sul dispositivo; su Telegram basta un tap
+  in qualunque client collegato all'account, compreso Telegram Desktop
+  aperto sul PC dove gira l'agente. Ora la pagina lo dice, spiega cosa
+  regge oggi (l'approvazione da Telegram e' opzionale, senza `--approve`
+  resta solo notifica) e cosa e' in programma: approvazione solo dal
+  telefono, dentro una Mini App che chiede la sua biometria. Segnalato su
+  Reddit da **u/Bitter-Connection506**. Grazie.
+
+  *EN* — **SECURITY.md no longer passes Telegram off as Windows Hello.**
+  It said approving from Telegram was of the same nature as Hello. It is
+  not: Hello is asked for at every approval, on the device; on Telegram one
+  tap is enough in any client signed into the account, including Telegram
+  Desktop open on the PC the agent runs on. The page now says so, says
+  what holds today (Telegram approval is opt-in; without `--approve` it
+  stays notifications only) and what is planned: approval from the phone
+  only, inside a Mini App that asks for its biometrics. Pointed out on
+  Reddit by **u/Bitter-Connection506**. Thank you.
+
 ## v0.3.4 — 2026-09-15
 
 - **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
