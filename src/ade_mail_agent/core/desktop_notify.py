@@ -363,6 +363,49 @@ def _win_toast(title: str, body: str,
     return True
 
 
+def dismiss(request_id: str) -> bool:
+    """Toglie dal centro notifiche la toast di una richiesta gia' decisa.
+
+    La toast restava li' anche dopo un si' o un no da Telegram, dalla
+    console o dalla CLI, e invitava a premere Approva su qualcosa che non
+    era piu' da decidere. Il tag e' la request_id (_toast_tag), il gruppo
+    "approvals". Best-effort: mai eccezioni verso chi decide."""
+    import re
+    tag = str(request_id or "")
+    if sys.platform != "win32" or not re.fullmatch(r"req_[0-9A-Za-z]{1,60}", tag):
+        return False
+    try:
+        from winrt.windows.ui.notifications import (  # type: ignore
+            ToastNotificationManager,
+        )
+    except ImportError:
+        return _win_dismiss_powershell(tag)
+    try:
+        storia = ToastNotificationManager.history
+        try:
+            storia.remove_grouped_tag_with_id(tag, "approvals", _APP_ID)
+        except AttributeError:
+            storia.remove(tag, "approvals", _APP_ID)
+        return True
+    except Exception:
+        return False
+
+
+def _win_dismiss_powershell(tag: str) -> bool:
+    import subprocess
+    script = (
+        "[Windows.UI.Notifications.ToastNotificationManager,"
+        " Windows.UI.Notifications, ContentType=WindowsRuntime] > $null; "
+        "[Windows.UI.Notifications.ToastNotificationManager]::History.Remove("
+        f"'{tag}', 'approvals', '{_APP_ID}')")
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                        "-Command", script], capture_output=True, timeout=15)
+        return True
+    except Exception:
+        return False
+
+
 def _win_toast_powershell(title: str, body: str) -> bool:
     """Fallback senza dipendenze: la stessa toast, costruita da PowerShell.
     Il testo viaggia via variabili d'ambiente, mai interpolato nel comando."""
