@@ -120,6 +120,11 @@ codex plugin marketplace add adecubed/gigamail
 codex plugin add gigamail@gigamail
 ```
 
+GigaMail is also in the [OpenAI Plugins Directory](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3),
+as a skill: install it from there, then register the server with
+`codex mcp add gigamail -- gigamail-server` (the server comes from `pip`,
+as above).
+
 Using **OpenClaw** or **Hermes**? Verified configs in
 [INTEGRATIONS.md](INTEGRATIONS.md).
 
@@ -138,16 +143,16 @@ reply, and asks you before sending.
 
 ## Tools
 
-28 typed tools, generated from the server itself:
+29 typed tools, generated from the server itself:
 
 - **Read (17)** — accounts, identity, knowledge files, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
   their text
 - **Safe writes (3, audited)** — mark read, move message, create folder
-- **Dangerous (8, human approval out of band)** — send, reply, delete
-  message, delete folder, create/delete calendar event, upload a file to
-  Drive, move a Drive file to the trash
+- **Dangerous (9, human approval out of band)** — send, reply, delete
+  message, delete folder, create/delete calendar event, create a Zoom
+  meeting, upload a file to Drive, move a Drive file to the trash
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the

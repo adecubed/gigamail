@@ -50,6 +50,28 @@
   giorni, gia' in calendario, nella console non c'era. Ora `days` vale
   quanto `days_ahead`.
 
+- **SECURITY.md non spaccia piu' Telegram per Windows Hello.** Diceva che
+  approvare da Telegram era della stessa natura di Hello. Non lo e': Hello
+  si chiede a ogni approvazione, sul dispositivo; su Telegram basta un tap
+  in qualunque client collegato all'account, compreso Telegram Desktop
+  aperto sul PC dove gira l'agente. Ora la pagina lo dice, spiega cosa
+  regge oggi (l'approvazione da Telegram e' opzionale, senza `--approve`
+  resta solo notifica) e cosa e' in programma: approvazione solo dal
+  telefono, dentro una Mini App che chiede la sua biometria. Segnalato su
+  Reddit da **u/Bitter-Connection506**. Grazie.
+
+  *EN* — **SECURITY.md no longer passes Telegram off as Windows Hello.**
+  It said approving from Telegram was of the same nature as Hello. It is
+  not: Hello is asked for at every approval, on the device; on Telegram one
+  tap is enough in any client signed into the account, including Telegram
+  Desktop open on the PC the agent runs on. The page now says so, says
+  what holds today (Telegram approval is opt-in; without `--approve` it
+  stays notifications only) and what is planned: approval from the phone
+  only, inside a Mini App that asks for its biometrics. Pointed out on
+  Reddit by **u/Bitter-Connection506**. Thank you.
+
+## v0.3.4 — 2026-09-15
+
 - **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
   le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
   ne conteneva 138. Il watcher ha una fase nuova che sposta nella cartella
@@ -137,6 +159,8 @@
     `BODY.PEEK[]`): il watcher avrebbe tolto dai non letti proprio le
     risposte che deve segnalare.
 
+## v0.3.3 — 2026-09-11
+
 - **Posta e calendario si parlano, nei due versi.** Erano due mondi
   separati: `calendar_router` lo chiamavano solo console, API HTTP e CLI,
   mai il percorso della posta. Si poteva proporre un appuntamento in una
@@ -180,14 +204,12 @@
   the server sees the console's data directory without `codex mcp add`. A
   one-plugin marketplace (`.agents/plugins/marketplace.json`) makes the
   repository installable as is. Verified with codex-cli 0.148: skill
-  loaded, 24 tools, `list_accounts` on the real accounts (INTEGRATIONS.md).
+  loaded, 28 tools, `list_accounts` on the real accounts (INTEGRATIONS.md).
   A test keeps manifest, skill, marketplace and tool names coherent with
   the server.
 - The plugin manifest's privacy link points to gigamail.ai/privacy.html
   (it pointed to SECURITY.md) and its category is Communication, where
   Codex lists the other mail plugins.
-
-## Unreleased — Google Calendar and Drive
 
 - **Il prompt della bozza arrivava mutilato all'agente.** npm installa
   `claude` e `codex` come wrapper `.cmd`, quindi CreateProcess li lancia
@@ -293,9 +315,8 @@
   `POST /mail/{id}/move` e restano immediati: nessuno chiede il permesso
   a se stesso. Costo dichiarato: il riordino automatico di molte mail
   diventa impraticabile, il tetto resta 20 richieste per tool all'ora.
-Version deliberately not bumped: this lands the code, not a release. The
-build still needs an OAuth client from a Google Cloud project before any
-of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+The Google side still needs an OAuth client from a Google Cloud project
+before any of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
 - **The calendar has a router.** `list_events`, `find_free_slots`,
   `create_event` and `delete_event` used to call Microsoft Graph
