@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **L'appuntamento porta il nome del cliente, non il nostro.** La nostra
+  conferma firmata "Ufficio Vendite" dava il titolo all'evento: l'agente
+  prendeva chi firmava. Ora un nome che e' nostro (account, identity,
+  etichette d'ufficio) non vale mai come persona, il nome visualizzato di
+  chi risponde ha la precedenza, e quando il nome arriva dopo l'evento se
+  ne aggiorna solo il titolo.
 - **Da Telegram si risponde al cliente.** L'avviso "il cliente ha
   risposto" arrivava su Telegram e li' finiva: per rispondere bisognava
   tornare al PC. Ora sotto l'avviso c'e' il bottone Rispondi, e si puo'

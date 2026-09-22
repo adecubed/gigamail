@@ -582,3 +582,81 @@ def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
     assert "non leggibile" in appointments.testo_avviso(*avvisi[0])
+
+
+# ── la persona dell'appuntamento e' il cliente, mai chi firma per noi ─
+
+@pytest.fixture()
+def nostri(monkeypatch):
+    from ade_mail_agent.core import accounts
+    monkeypatch.setattr(accounts, "get_accounts",
+                        lambda: [{"id": 2, "name": "20128", "email": "info@20128milano.it"},
+                                 {"id": 5, "name": "Simone napoli", "email": "s@msn.com"}])
+    monkeypatch.setattr(accounts, "get_identity",
+                        lambda aid: {"who_am_i": "ufficio vendite 20128 milano"})
+
+
+def test_riconosce_i_nomi_nostri(nostri):
+    assert appointments._e_nostro("Ufficio Vendite")
+    assert appointments._e_nostro("Simone Napoli")
+    assert appointments._e_nostro("Segreteria")
+    assert not appointments._e_nostro("Arianna Riboni")
+    assert not appointments._e_nostro("")
+
+
+def test_la_nostra_conferma_non_da_il_titolo(monkeypatch, cal, nostri):
+    """Il 22/09 la conferma firmata "Ufficio Vendite" ha intitolato
+    all'ufficio l'appuntamento di Arianna Riboni."""
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
+                         '"con":"Ufficio Vendite"}')
+    appointments.dalla_mail(2, "Re: Nuovo messaggio di Arianna",
+                            "Le confermo mercoledi 30 alle 18:00. Ufficio Vendite",
+                            "arianna.riboni@gmail.com", adesso=NOW)
+    titolo = cal.creati[0]["subject"]
+    assert "Ufficio Vendite" not in titolo
+    assert titolo.startswith("Appuntamento arianna.riboni@gmail.com")
+
+
+def test_la_replica_del_cliente_porta_il_nome_nel_titolo(monkeypatch, cal, nostri):
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
+                         '"con":"Ufficio Vendite"}')
+    appointments.dalla_mail(2, "Re: Nuovo messaggio di Arianna",
+                            "Le confermo mercoledi 30 alle 18:00",
+                            "arianna.riboni@gmail.com", adesso=NOW)
+    appointments.sweep(2, [_risposta("Re: Nuovo messaggio di Arianna",
+                                     "arianna.riboni@gmail.com",
+                                     "Perfetto, a mercoledi 30/09 ore 18:00",
+                                     nome="Arianna Riboni")], adesso=NOW)
+    assert len(cal.creati) == 1
+    assert cal.aggiornati == [{"id": "ev1", "subject":
+                               "Appuntamento Arianna Riboni — Nuovo messaggio di Arianna"}]
+    riga = appointments.store().get(2, appointments.thread_key(
+        "Nuovo messaggio di Arianna", "arianna.riboni@gmail.com"))
+    assert riga["con"] == "Arianna Riboni"
+
+
+def test_il_nome_del_mittente_vince_sulla_firma_citata(monkeypatch, cal, nostri):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-30T18:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "mercoledi 30 alle 18:00?",
+                            "ar@example.com", adesso=NOW)
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
+                         '"con":"Ufficio Vendite"}')
+    appointments.sweep(2, [_risposta("Re: Via Treviglio", "ar@example.com",
+                                     "Perfetto, a mercoledi alle 18:00",
+                                     nome="Arianna Riboni")], adesso=NOW)
+    assert cal.creati[0]["subject"].startswith("Appuntamento Arianna Riboni")
+
+
+def test_la_proposta_non_registra_il_nostro_nome(monkeypatch, cal, nostri):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-21T17:00",'
+                         '"con":"Ufficio Vendite"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "mb@example.com", adesso=NOW)
+    riga = appointments.store().get(2, appointments.thread_key(
+        "Via Treviglio", "mb@example.com"))
+    assert riga["con"] == "mb@example.com"
+
+
+def test_il_prompt_chiede_la_persona_esterna():
+    p = appointments.build_prompt("ciao", "x", "a@b.it", adesso=NOW)
+    assert "PERSONA ESTERNA" in p
