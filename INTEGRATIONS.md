@@ -40,21 +40,29 @@ does **not** ship the server: `pip install "gigamail[all]"` first, and
 absolute path with `codex mcp add`, see below). Start a new session after
 installing: MCP tools load at startup.
 
-Verified 2026-09-10 with **codex-cli 0.148.0** (the CLI inside the Codex
-desktop app) from a local checkout, which reads the same files
-(`codex plugin marketplace add <path>`): `codex plugin list` shows
-`gigamail@gigamail` installed and enabled; `codex mcp list` shows the
-`gigamail` server enabled with the forwarded variables; in a `codex exec`
-session the skill was loaded as `gigamail:gigamail`, the server reported
-24 tools and `list_accounts` returned the two accounts the console uses.
+Verified 2026-09-11 with **codex-cli 0.148.0** (the CLI inside the Codex
+desktop app), plugin installed from GitHub with the two commands above and
+the server from PyPI (`gigamail[all]==0.3.3` in a fresh venv on PATH):
+`codex plugin list` shows `gigamail@gigamail` 0.3.3 installed and enabled;
+`codex mcp list` shows the `gigamail` server enabled with the forwarded
+variables; in a `codex exec` session the skill was loaded as
+`gigamail:gigamail` from the plugin cache, the server reported the 28
+tools by name and `list_accounts` returned the two accounts the console
+uses. The same check on 2026-09-10, from a local checkout and with the
+0.3.2 server, gave 24 tools.
 Without `gigamail-server` on PATH the skill still loads but the server
 exposes 0 tools: that is the "not on PATH" case in the skill's
 troubleshooting, and the reason the plugin cannot replace step 1 above.
 
-The entry proposed for Codex's curated catalogs (`openai/plugins`, both
-the ChatGPT-login and the API-key marketplace), with the PR text and what
-was verified, is in [integrations/codex/](integrations/codex/). Not yet
-submitted.
+GigaMail is also listed in the **OpenAI Plugins Directory**
+(https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3,
+published 2026-09-11 through the plugin submission portal, version 0.3.3, skills
+only: the directory entry carries the skill, not the server, so after
+installing it you still need `pip install "gigamail[all]"` and
+`codex mcp add gigamail -- gigamail-server`, as the skill's setup step
+says). The `openai/plugins` catalog itself takes PRs from collaborators
+only; the entry prepared for it, and the portal package, are in
+[integrations/codex/](integrations/codex/).
 
 One thing to know: a plugin install copies the whole plugin root into
 `~/.codex/plugins/cache/`, and for this repository the plugin root is the

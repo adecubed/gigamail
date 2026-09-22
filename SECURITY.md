@@ -152,9 +152,9 @@ compatible:
   `approve / reject / edit` **only from the configured chat_id**, and the
   Bot API cannot fabricate a message *from* a user: a process on the PC,
   even holding the bot token, writes *as the bot*, never as you. The trust
-  anchor becomes your phone's Telegram session — the same nature as
-  Windows Hello (whoever holds the unlocked phone ≈ whoever knows the
-  PIN). Declared limits: the phone is now an approval device, protect it
+  anchor becomes your Telegram account, on every device where it is
+  signed in — weaker than Windows Hello, see the next point. Declared
+  limits: each of those devices is now an approval device, protect it
   like one; a stolen bot token lets someone read the draft previews or
   silence the channel (DoS → fail-closed), **not** approve; `notify.json`
   is a file on disk, so a process with your shell could edit the
@@ -167,6 +167,30 @@ compatible:
   u/Secondmindsystems on r/mcp). Rejecting and
   asking for changes never need approval rights. Audit: `decided_by:
   telegram:<chat_id>`.
+- **A Telegram session is not Windows Hello, and this page used to say
+  it was.** Hello is asked for at every approval, on the device, and is
+  bound to that hardware. A Telegram approval is a tap in *any* client
+  signed into your account: the phone, but also Telegram Desktop or Web,
+  which stay signed in and open for weeks — often on the very PC the agent
+  runs on. Anyone sitting at that unlocked PC can approve or reject. A
+  process running as you can also copy Telegram Desktop's session folder
+  (`tdata`) and use your session from elsewhere, unless Telegram Desktop
+  has a local passcode, which encrypts it. The phone's screen lock covers
+  the phone, not the other sessions. The optional PIN (`gigamail telegram
+  pin`) does not close this: it travels in the chat, so it sits in the
+  history those same sessions can read. What holds today: Telegram
+  approval is opt-in, and `gigamail telegram setup` without `--approve`
+  keeps Telegram as notifications only, with approval left to the PC. If
+  you enable it, do not keep Telegram signed in on the machine the agent
+  uses. Planned, not built yet: approval only from the phone. The bot
+  cannot tell a tap from Desktop from a tap on the phone — the Bot API
+  does not say which client sent it — so the approval moves into a
+  Telegram Mini App that releases a secret kept in the phone's secure
+  storage only after its biometrics, and the watcher checks that secret.
+  Telegram Desktop and Web have no biometrics, so from there approval
+  fails instead of falling back to a tap; on the PC, approval stays with
+  the console and Windows Hello. Pointed out on Reddit by
+  **u/Bitter-Connection506**.
 - Declared limit: outgoing rule replies carry `Auto-Submitted:
   auto-replied` over SMTP; Microsoft Graph rejects non `x-*` custom headers,
   so replies sent through Graph do not carry it. Our own loop protection

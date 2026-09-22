@@ -22,25 +22,64 @@ and the body below follows it.
 Verified 2026-09-10 with codex-cli 0.148.0 on Windows: a marketplace file
 carrying exactly this entry, added with `codex plugin marketplace add`,
 listed `gigamail` as "not installed" with the GitHub URL as path;
-`codex plugin add gigamail@<marketplace>` resolved 0.3.2 from GitHub and
-installed it enabled. The same install, exercised in `codex exec`, loaded
-the skill as `gigamail:gigamail`, exposed the 28 tools and answered
-`list_accounts` on the console's accounts.
+`codex plugin add gigamail@<marketplace>` resolved the plugin from GitHub
+and installed it enabled. Re-verified 2026-09-11 after the 0.3.3 release:
+plugin 0.3.3 from GitHub, server `gigamail[all]==0.3.3` from PyPI in a
+fresh venv; in `codex exec` the skill loaded as `gigamail:gigamail`, the
+server exposed the 28 tools by name and `list_accounts` answered on the
+console's accounts.
 
 ## Submitting (maintainers)
 
-1. Fork `openai/plugins`, branch `add-gigamail`. On Windows clone with
-   `--sparse` and `git sparse-checkout set .agents`: the full tree has
-   paths longer than 260 characters and the checkout fails otherwise.
-2. Append `marketplace-entry.json` as the last element of `plugins` in
-   both `.agents/plugins/marketplace.json` and
-   `.agents/plugins/api_marketplace.json` (4-space indent, LF).
-3. `git diff --check`, parse both files, check the plugin ids stay
-   unique, commit, push, open the PR with the title and body below.
+**The PR route is closed to outsiders.** Tried 2026-09-11: the fork
+`adecubed/plugins` with branch `add-gigamail` (the entry appended to both
+catalogs, 30 lines, `git diff --check` clean) reaches the compare page,
+and GitHub answers "An owner of this repository has limited the ability
+to open a pull request to users that are collaborators on this
+repository". The third-party entries already there (Qodo, CrowdStrike,
+DigitalOcean) were all committed by OpenAI staff or by collaborators. The
+entry, title and body below stay here for the day someone at OpenAI asks
+for them, and for a collaborator who wants to open the PR on our behalf.
 
-Keep `name` (`gigamail`), `category` and `displayName` in sync with
-`.codex-plugin/plugin.json`; the test in `tests/test_codex_plugin.py`
-checks the URL and the name.
+**The official channel is the plugin submission portal**,
+https://platform.openai.com/plugins (docs:
+https://developers.openai.com/plugins/deploy/submission). It needs a
+verified developer or business identity on the OpenAI Platform and the
+"Apps Management" write permission (organization owners have it). It
+collects listing data, tool annotations, starter prompts, at least five
+positive and three negative test cases, country availability and release
+notes. Accepted plugin types: skills-only, remote-MCP-only, skills plus a
+remote MCP server. The catch for GigaMail: an MCP server must sit at a
+public HTTPS URL, and for a local one the docs say "reach out to your
+OpenAI contact for local MCP support". GigaMail is local stdio by design.
+So the realistic submissions are:
+
+- **skills-only**: the `gigamail` skill alone, with the setup step
+  telling the user to install the server from PyPI and register it with
+  `codex mcp add`. Allowed today, no contact needed; loses the automatic
+  `.mcp.json` registration.
+- **skills plus local MCP**: needs an OpenAI contact, per the docs.
+
+The skills-only package for the portal (listing texts, starter prompts,
+reviewer fixture, five positive and three negative test cases, release
+notes) is in [portal/SUBMISSION.md](portal/SUBMISSION.md). **It went
+through: GigaMail 0.3.3 is published in the OpenAI Plugins Directory
+since 2026-09-11**, skill only, server from PyPI.
+
+Meanwhile the repo marketplace keeps working for everyone:
+`codex plugin marketplace add adecubed/gigamail`, then
+`codex plugin add gigamail@gigamail`.
+
+Steps for the PR, should a collaborator take it: sparse-clone
+`openai/plugins` (`--sparse`, `git sparse-checkout set .agents`; on
+Windows the full tree has paths over 260 characters), append
+`marketplace-entry.json` as the last element of `plugins` in both
+`.agents/plugins/marketplace.json` and
+`.agents/plugins/api_marketplace.json` (4-space indent, LF),
+`git diff --check`, parse both files, check the ids stay unique. Keep
+`name`, `category` and `displayName` in sync with
+`.codex-plugin/plugin.json`; `tests/test_codex_plugin.py` checks the URL
+and the name.
 
 ## PR title
 
@@ -80,10 +119,11 @@ instructions.
 
 Validation:
 - Installed from a marketplace file carrying exactly this entry with
-  codex-cli 0.148.0 on Windows: `codex plugin add` resolved 0.3.2 from
-  GitHub; in a `codex exec` session the skill loaded as
+  codex-cli 0.148.0 on Windows: `codex plugin add` resolved 0.3.3 from
+  GitHub, with the server from PyPI (`gigamail[all]==0.3.3`); in a
+  `codex exec` session the skill loaded as
   `gigamail:gigamail`, `codex mcp list` showed the `gigamail` server
-  enabled, the server exposed 24 tools and `list_accounts` returned the
+  enabled, the server exposed 28 tools and `list_accounts` returned the
   user's accounts.
 - Parsed both marketplace files after the change and checked unique plugin
   ids and preservation of all existing entries and marketplace metadata.
