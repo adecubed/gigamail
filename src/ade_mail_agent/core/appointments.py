@@ -285,6 +285,10 @@ def build_prompt(testo: str, subject: str, mittente: str,
         "accettato da entrambe le parti), disdetto (l'incontro salta e non "
         "c'e' una nuova data), nessuno (il messaggio non parla di "
         "appuntamenti).\n"
+        "- con e' il nome della PERSONA ESTERNA dell'appuntamento (il "
+        "cliente), mai chi firma per l'azienda ne' un ufficio: nella nostra "
+        "mail e' chi riceve il saluto (\"Gentile Sig.ra Rossi\"). Se non lo "
+        "sai lascialo vuoto.\n"
         "- Se gli orari proposti sono piu' di uno, metti in inizio il PRIMO.\n"
         "- scelta_unica vale true solo se il messaggio indica UNA data e UN "
         "orario precisi; false se ne elenca piu' d'uno o resta vago.\n"
@@ -405,6 +409,66 @@ def leggi(testo: str, subject: str, mittente: str,
 
 # ── SCRITTURA (sul calendario) ───────────────────────────────────────
 
+# Chi firma per un ufficio non e' mai la persona dell'appuntamento. Oltre ai
+# nomi dei nostri account e al "chi sono" dell'identity, le etichette piu'
+# comuni: servono a chi l'identity non l'ha ancora compilata.
+_ETICHETTE_UFFICIO = ("ufficio vendite", "ufficio commerciale", "segreteria",
+                      "sales office", "sales team")
+
+
+def _norma(testo: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", str(testo or "").casefold()).split())
+
+
+def _nomi_propri() -> List[str]:
+    """I nomi con cui firmiamo noi: account, identity, etichette d'ufficio."""
+    nomi = list(_ETICHETTE_UFFICIO)
+    try:
+        from . import accounts
+        for a in accounts.get_accounts():
+            nomi.append(str(a.get("name") or ""))
+            try:
+                nomi.append(str(accounts.get_identity(a["id"]).get("who_am_i") or ""))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("account non letti per i nomi propri: %s", e)
+    return [n for n in (_norma(x) for x in nomi) if len(n) >= 4]
+
+
+def _e_nostro(nome: str, propri: Optional[List[str]] = None) -> bool:
+    """Il nome e' il nostro? Confronto a parole intere, in tutti e due i
+    sensi: "Ufficio Vendite" sta dentro "ufficio vendite 20128 milano"."""
+    n = _norma(nome)
+    if not n:
+        return False
+    for p in (_nomi_propri() if propri is None else propri):
+        if f" {n} " in f" {p} " or f" {p} " in f" {n} ":
+            return True
+    return False
+
+
+def _persona_valida(nome: str, propri: Optional[List[str]] = None) -> bool:
+    nome = str(nome or "").strip()
+    return bool(nome) and "@" not in nome and not _e_nostro(nome, propri)
+
+
+def _persona(proposto: str, corrente: Optional[Dict[str, Any]],
+             controparte: str) -> str:
+    """Il nome da mettere in calendario: quello letto se e' di una persona
+    esterna, altrimenti quello gia' noto, altrimenti l'indirizzo.
+
+    Il 22/09 la nostra conferma firmata "Ufficio Vendite" ha dato il titolo
+    all'appuntamento di una cliente: l'agente aveva preso chi firmava."""
+    propri = _nomi_propri()
+    if _persona_valida(proposto, propri):
+        return str(proposto).strip()
+    gia = (corrente or {}).get("con") or ""
+    if _persona_valida(gia, propri):
+        return str(gia).strip()
+    return _indirizzo(controparte) or str(gia or proposto or "").strip()
+
+
 def _titolo(esito: Dict[str, Any], controparte: str, oggetto: str) -> str:
     chi = (esito.get("con") or controparte or "").strip()
     base = f"Appuntamento {chi}".strip() if chi else "Appuntamento"
@@ -459,7 +523,8 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                 "event_id": corrente.get("event_id") or ""}
 
     inizio, fine = esito["inizio"], esito["fine"]
-    con = esito.get("con") or controparte
+    con = _persona(esito.get("con") or "", corrente, controparte)
+    esito = dict(esito, con=con)
 
     if stato == "proposto":
         if corrente and corrente.get("event_id"):
@@ -473,20 +538,28 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                                      "inizio": inizio}, "proposed")
         return {"stato": "proposto", "event_id": ""}
 
-    # Un nome gia' noto non si perde per un indirizzo: la conferma arriva
-    # spesso senza nome, e l'indirizzo finiva nel titolo al suo posto.
-    if corrente and corrente.get("con") and "@" in str(con):
-        con = corrente["con"]
     titolo = _titolo(esito, controparte, oggetto)
     luogo = esito.get("luogo") or ""
     try:
         if corrente and corrente.get("event_id"):
+            # Il nome arriva spesso dopo l'evento: creato dalla nostra
+            # conferma con il solo indirizzo, lo porta la replica del cliente.
+            # Cambia il titolo e basta, orari e luogo restano quelli.
+            nome_nuovo = (_persona_valida(con)
+                          and not _persona_valida(corrente.get("con") or ""))
             if (corrente.get("stato") == "confermato"
                     and corrente.get("inizio") == inizio
                     and corrente.get("fine") == fine):
                 # La stessa conferma ripetuta ("grazie, a domani"): l'evento
                 # e' gia' giusto. Riscriverlo metteva l'indirizzo mail al posto
                 # del nome nel titolo e svuotava il luogo, link Zoom compreso.
+                if nome_nuovo:
+                    calendar_router.update_event(corrente["event_id"],
+                                                 subject=titolo)
+                    st.upsert(account_id, chiave, corrente["event_id"], stato,
+                              inizio, fine, con)
+                    return {"stato": stato, "event_id": corrente["event_id"],
+                            "invariato": True, "rinominato": True}
                 return {"stato": stato, "event_id": corrente["event_id"],
                         "invariato": True}
             # Uno spostamento cambia gli orari. Il titolo resta quello scelto
@@ -494,6 +567,8 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
             modifiche = {"start": inizio, "end": fine}
             if luogo:
                 modifiche["location"] = luogo
+            if nome_nuovo:
+                modifiche["subject"] = titolo
             evento = calendar_router.update_event(corrente["event_id"], **modifiche)
             event_id = corrente["event_id"]
         else:
@@ -778,8 +853,10 @@ def sweep(account_id: int, messaggi: list, adesso=None,
             else:
                 esito = dict(esito, agenda_illeggibile=True)
         if esito.get("stato") in ("confermato", "disdetto"):
+            # Il nome visualizzato di chi scrive e' la persona: l'agente, in
+            # una replica che cita la nostra mail, puo' prendere chi firma.
             nome = _nome_mittente(m)
-            if nome and (not esito.get("con") or "@" in str(esito.get("con"))):
+            if _persona_valida(nome):
                 esito = dict(esito, con=nome)
             toccato = applica(account_id, riga["thread_key"], esito,
                               controparte=mittente, oggetto=subject)
