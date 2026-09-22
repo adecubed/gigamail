@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- **L'appuntamento porta il nome del cliente, non il nostro.** La nostra
+  conferma firmata "Ufficio Vendite" dava il titolo all'evento: l'agente
+  prendeva chi firmava. Ora un nome che e' nostro (account, identity,
+  etichette d'ufficio) non vale mai come persona, il nome visualizzato di
+  chi risponde ha la precedenza, e quando il nome arriva dopo l'evento se
+  ne aggiorna solo il titolo.
+- **Da Telegram si risponde al cliente.** L'avviso "il cliente ha
+  risposto" arrivava su Telegram e li' finiva: per rispondere bisognava
+  tornare al PC. Ora sotto l'avviso c'e' il bottone Rispondi, e si puo'
+  anche rispondere direttamente al messaggio. Quello che si scrive ("ok, va
+  bene") e' un'istruzione: la bozza la scrive l'agente con identity, orari
+  liberi e presidio anti-injection, e la mail arriva in approvazione con i
+  soliti bottoni, Modifica compreso. Niente parte senza un si'.
+
+- **Una conferma ripetuta non riscrive piu' l'appuntamento.** Un "grazie, a
+  domani" del cliente veniva letto come nuova conferma: l'evento era
+  aggiornato con l'indirizzo mail al posto del nome nel titolo e con il
+  luogo vuoto, link Zoom compreso. Ora una conferma con lo stesso orario non
+  tocca il calendario, uno spostamento cambia solo gli orari (e il luogo
+  solo se ne arriva uno nuovo), e il titolo di un appuntamento nuovo usa il
+  nome del mittente invece del suo indirizzo.
+
+- **Il link personale Zoom basta, senza creare nessuna app.** Collegare Zoom
+  richiedeva un'app Server-to-Server sul marketplace, cinque minuti nel
+  browser che non tutti vogliono fare. Ora nella scheda Zoom della console
+  si incolla il link della propria riunione personale: GigaMail lo mette
+  nella mail di conferma di ogni video call, sempre dopo approvazione, e lo
+  scrive nell'evento di calendario. Un orario nuovo non genera una seconda
+  mail, perche' il link e' sempre lo stesso. Con l'app collegata resta il
+  comportamento di prima, un link diverso per ogni appuntamento.
+
+- **Una richiesta decisa toglie la sua notifica dal PC.** Approvata o
+  rifiutata su Telegram, dalla console o dalla CLI, la toast restava nel
+  centro notifiche e invitava a premere Approva su una richiesta gia'
+  chiusa. Ora approvazione, rifiuto, revoca ed esecuzione la ritirano.
+- **Una mail in testo semplice si legge con i suoi a capo.** Nella console
+  bastava un indirizzo tra parentesi angolari nel testo citato
+  (`<info@20128milano.it>`) per trattare tutta la mail come HTML: gli a capo
+  sparivano e risposta, citazione e avviso legale diventavano un blocco
+  unico. Ora conta il tipo dichiarato dal server e, se manca, un vero tag
+  HTML.
+
+- **Il calendario della console mostra davvero i giorni che chiede.** La
+  console chiedeva `/calendar?days=60`, il backend leggeva solo
+  `days_ahead` e rispondeva sempre con 7 giorni: un appuntamento fra dieci
+  giorni, gia' in calendario, nella console non c'era. Ora `days` vale
+  quanto `days_ahead`.
+
 - **SECURITY.md non spaccia piu' Telegram per Windows Hello.** Diceva che
   approvare da Telegram era della stessa natura di Hello. Non lo e': Hello
   si chiede a ogni approvazione, sul dispositivo; su Telegram basta un tap

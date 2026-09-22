@@ -104,6 +104,22 @@ test('htmlToText: documento inerte, niente esecuzione, testo leggibile', () => {
   assert.equal(w.document.querySelectorAll('img').length, 0, 'niente inserito nel documento vivo');
 });
 
+test('isHtmlBody: un indirizzo tra <> resta testo, tipo dichiarato e tag veri decidono', () => {
+  // Il 15/09 la risposta di un cliente, in testo semplice, compariva come un
+  // blocco unico: "<info@20128milano.it>" nella citazione bastava a farla
+  // trattare come HTML.
+  const v = load().MailView.isHtmlBody;
+  assert.equal(v({ body: { contentType: 'text', content: 'From: info <info@20128milano.it>\r\nciao' },
+                   body_text: 'From: info <info@20128milano.it>\r\nciao' }), false);
+  assert.equal(v({ body: { content: 'From: x <a@b.it>\nciao' }, body_text: 'From: x <a@b.it>' }), false);
+  assert.equal(v({ body: { contentType: 'text', content: '<div>finto</div>' } }), false);
+  assert.equal(v({ body: { contentType: 'html', content: 'ciao' } }), true);
+  assert.equal(v({ body: { content: '<div class="x">ciao</div>' } }), true);
+  assert.equal(v({ body_text: 'riga<br>riga' }), true);
+  assert.equal(v({}), false);
+  assert.equal(v(null), false);
+});
+
 test('htmlToText: input degeneri', () => {
   const w = load();
   for (const v of ['', null, undefined, '<<<', 'solo testo']) {
