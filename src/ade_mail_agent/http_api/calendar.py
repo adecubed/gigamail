@@ -1,5 +1,7 @@
 """Calendario: backend scelto da calendar_router (Microsoft Graph o Google)."""
 
+from typing import Optional
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -15,8 +17,15 @@ router = APIRouter()
 # ── CALENDARIO (backend via calendar_router) ─────────────────────────
 
 @router.get("/calendar")
-def calendar(days_ahead: int = 7, days_back: int = 0):
-    return calendar_router.get_events(days_ahead=days_ahead, days_back=days_back)
+def calendar(days_ahead: int = 7, days_back: int = 0,
+             days: Optional[int] = None):
+    """`days` e' il nome che usa la console (finestra calendario: 60,
+    vista agenda: 7). Il backend leggeva solo days_ahead e ignorava
+    l'altro in silenzio: la console riceveva sempre 7 giorni, e un
+    appuntamento fra dieci giorni in calendario non compariva."""
+    return calendar_router.get_events(
+        days_ahead=days if days is not None else days_ahead,
+        days_back=days_back)
 
 
 @router.get("/calendar/today")
