@@ -298,6 +298,8 @@ class ApprovalStore:
         audit("approval", {"request_id": request_id, "by": by,
                            "for_tool": (rec or {}).get("tool")},
               "approved" if ok else "approve_failed")
+        if ok:
+            _ritira_notifica(request_id)
         return ok
 
     def reject(self, request_id: str, by: str = "unknown") -> bool:
@@ -306,6 +308,8 @@ class ApprovalStore:
         audit("approval", {"request_id": request_id, "by": by,
                            "for_tool": (rec or {}).get("tool")},
               "rejected" if ok else "reject_failed")
+        if ok:
+            _ritira_notifica(request_id)
         return ok
 
     def revoke(self, request_id: str, by: str = "unknown") -> bool:
@@ -338,6 +342,8 @@ class ApprovalStore:
                            "was": (rec or {}).get("status"),
                            "for_tool": (rec or {}).get("tool")},
               "revoked" if ok else "revoke_failed")
+        if ok:
+            _ritira_notifica(request_id)
         return ok
 
     def consume_approved(self, request_id: str, tool: str) -> Optional[Dict[str, Any]]:
@@ -368,6 +374,7 @@ class ApprovalStore:
             conn.commit()
         finally:
             conn.close()
+        _ritira_notifica(request_id)
         return json.loads(row["args_json"])
 
     def record_outcome(self, request_id: str, outcome: str,
@@ -461,6 +468,16 @@ def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
             parts.append(f"{k}={v}")
     s = "; ".join(str(p) for p in parts) or json.dumps(preview, ensure_ascii=False, default=str)
     return s[:limit]
+
+
+def _ritira_notifica(request_id: str) -> None:
+    """Una richiesta decisa, da qualunque canale, non resta come toast da
+    approvare: prima un si' su Telegram lasciava la notifica sul PC."""
+    try:
+        from ade_mail_agent.core import desktop_notify
+        desktop_notify.dismiss(request_id)
+    except Exception:
+        pass
 
 
 def user_lang() -> str:

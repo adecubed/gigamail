@@ -94,6 +94,11 @@ contextBridge.exposeInMainWorld('ademail', {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dati || {}),
   }),
+  zoomLink:   (url) => apiJson(`${API}/zoom/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url || '' }),
+  }),
   zoomTest:   () => apiJson(`${API}/zoom/test`, { method: 'POST' }),
   zoomRemove: () => apiJson(`${API}/zoom/remove`, { method: 'POST' }),
 

@@ -25,6 +25,25 @@ const ZoomView = (() => {
     box.innerHTML = `<span style="color:${colore}">${esc(msg)}</span>`;
   }
 
+  // Il link personale vale da solo: chi non vuole creare l'app Zoom incolla
+  // qui il link della sua riunione personale e GigaMail lo mette nelle mail.
+  function linkHtml(s) {
+    const url = (s && s.link) || '';
+    return `
+      <div style="height:1px;background:rgba(0,0,0,0.08);margin:14px 0"></div>
+      <p style="margin:0 0 8px;line-height:1.45">
+        <b>Link personale</b> — l'alternativa all'app: un solo link, sempre lo
+        stesso, che GigaMail mette nelle mail di conferma. Tieni accesa la sala
+        d'attesa su Zoom.
+      </p>
+      <div class="field-row"><label class="field-label">Link della tua riunione personale</label>
+        <input type="text" id="zoomLink" class="field-input" autocomplete="off"
+               placeholder="https://us02web.zoom.us/j/..." value="${esc(url)}"/></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button class="chip-btn" id="btnZoomLink">Salva link</button>
+      </div>`;
+  }
+
   function bodyHtml(s) {
     if (s && s.configured) {
       return `
@@ -37,6 +56,7 @@ const ZoomView = (() => {
         <button class="chip-btn" id="btnZoomTest">Verifica</button>
         <button class="chip-btn" id="btnZoomRemove">Scollega</button>
       </div>
+      ${linkHtml(s)}
       <div id="zoomStatus" class="hint" style="margin-top:10px"></div>`;
     }
     return `
@@ -63,6 +83,7 @@ const ZoomView = (() => {
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
         <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnZoomConnect">Collega Zoom</button>
       </div>
+      ${linkHtml(s)}
       <div id="zoomStatus" class="hint" style="margin-top:10px"></div>`;
   }
 
@@ -81,6 +102,7 @@ const ZoomView = (() => {
     el('btnZoomConnect')?.addEventListener('click', connect);
     el('btnZoomTest')?.addEventListener('click', verifica);
     el('btnZoomRemove')?.addEventListener('click', scollega);
+    el('btnZoomLink')?.addEventListener('click', salvaLink);
   }
 
   async function connect() {
@@ -107,6 +129,18 @@ const ZoomView = (() => {
     }
   }
 
+  async function salvaLink() {
+    const url = (el('zoomLink')?.value || '').trim();
+    say(url ? 'Salvo il link...' : 'Tolgo il link...');
+    try {
+      await api().zoomLink(url);
+      say(url ? 'Link personale salvato: lo useremo nelle mail di conferma.'
+              : 'Link personale rimosso.', 'ok');
+    } catch (e) {
+      say(e && e.message ? e.message : 'Salvataggio non riuscito.', 'err');
+    }
+  }
+
   async function verifica() {
     say('Verifico con Zoom...');
     try {
@@ -128,7 +162,7 @@ const ZoomView = (() => {
     }
   }
 
-  return { render, bodyHtml, connect };
+  return { render, bodyHtml, connect, salvaLink };
 })();
 
 window.ZoomView = ZoomView;
