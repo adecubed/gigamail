@@ -43,7 +43,9 @@ def test_mcp_json_registra_il_server_e_inoltra_la_root():
     senza APPDATA / GIGAMAIL_ROOT il server guarderebbe una cartella vuota
     (INTEGRATIONS.md, "una regola per ogni client")."""
     srv = _load(".mcp.json")["mcpServers"]["gigamail"]
-    assert srv["command"] == "gigamail-server"
+    # GIGAMAIL_SERVER dice dove sta il server (installazione fuori dal
+    # PATH, build di prova); senza la variabile vale il nome di sempre.
+    assert srv["command"] == "${GIGAMAIL_SERVER:-gigamail-server}"
     assert {"APPDATA", "GIGAMAIL_ROOT", "ADE_ROOT", "PATH"} <= set(srv["env_vars"])
 
 
