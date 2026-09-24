@@ -41,7 +41,7 @@ def isolated(tmp_path, monkeypatch):
 def fake_world(monkeypatch):
     """Provider e agente finti. `world` raccoglie cio' che succede."""
     world = {"unread": [], "headers": DMARC_PASS, "replies": [],
-             "draft": "Buongiorno,\nin allegato trova le informazioni.\nSaluti"}
+             "draft": "Buongiorno,\nle informazioni richieste sono qui sotto.\nSaluti"}
     monkeypatch.setattr(mail_router, "get_messages",
                         lambda **kw: list(world["unread"]))
     monkeypatch.setattr(mail_router, "get_message_headers",
@@ -344,6 +344,18 @@ def test_mail_ostile_in_cartella_con_regola_attiva(fake_world):
                                 "auto_submitted"}
     assert sent["message_id"] == "666"
     assert sent["body"] == fake_world["draft"]
+
+
+def test_bozza_che_promette_allegati_senza_file_non_parte(fake_world):
+    """19 e 23 settembre 2026: una risposta e' uscita con "in allegato
+    trova le planimetrie" e zero file. Meglio fermarsi e lasciarla
+    all'umano che contraddirsi davanti al cliente."""
+    _rule(mode="semi")
+    fake_world["draft"] = "Buongiorno,\nin allegato trova le planimetrie.\nSaluti"
+    fake_world["unread"] = [_msg()]
+    watcher_mod.Watcher().tick()
+    assert policy.store().list_pending() == []
+    assert fake_world["replies"] == []
 
 
 def test_prompt_porta_gli_slot_liberi_dellagenda(fake_world, monkeypatch):

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Gli allegati seguono la mail, e una promessa a vuoto non parte.** La
+  regola di idealista aveva una terna fissa di planimetrie: partivano
+  sempre quelle, qualunque cosa chiedesse il cliente. Il 19 e il 23
+  settembre e' costato caro due volte. A chi scriveva per un quadrilocale
+  sono arrivate le planimetrie di tre trilocali del primo piano; la mail
+  successiva, quella che elencava gli appartamenti davvero richiesti,
+  diceva "in allegato trova le planimetrie" ed e' uscita senza un file.
+  Ora `core/attachments.py` legge dal testo i codici degli appartamenti
+  (`A.3.2`, `B.1.4`) e sono quelli a decidere cosa si allega; la lista
+  della regola resta come ripiego per le mail che non nominano nessun
+  appartamento. In piu' una barriera fail-closed in tutti e tre i
+  percorsi di invio: se il testo annuncia un allegato e non ne e' stato
+  risolto nemmeno uno, il watcher salta la bozza e la lascia all'umano, e
+  `send_mail` / `reply_mail` rispondono errore senza nemmeno creare la
+  richiesta di approvazione. Una mail che si contraddice davanti al
+  cliente e' peggio di una mail non spedita.
+
 - **L'appuntamento porta il nome del cliente, non il nostro.** La nostra
   conferma firmata "Ufficio Vendite" dava il titolo all'evento: l'agente
   prendeva chi firmava. Ora un nome che e' nostro (account, identity,

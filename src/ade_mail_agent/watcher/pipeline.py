@@ -203,9 +203,14 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
     if rule.get("cc"):
         args["cc"] = list(rule["cc"])
     allegati = []
-    if rule.get("attachments"):
-        allegati, mancanti = attachments_mod.resolve(
-            account_id, rule["attachments"])
+    # Gli allegati seguono la BOZZA, non la regola: la lista fissa della
+    # regola resta solo come ripiego per le mail che non nominano nessun
+    # appartamento. Prima partivano sempre gli stessi tre file, e una
+    # risposta sui quadrilocali usciva con le planimetrie dei trilocali.
+    nomi = (attachments_mod.codici_citati(body)
+            or list(rule.get("attachments") or []))
+    if nomi:
+        allegati, mancanti = attachments_mod.resolve(account_id, nomi)
         if mancanti:
             # La regola promette allegati che non esistono piu'
             # (file rinominato, identity cambiata): fermarsi e'
@@ -221,6 +226,19 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                  w.verbose)
             return "skipped"
         args["attachments"] = allegati
+    if not allegati and attachments_mod.promette_allegati(body):
+        # La bozza annuncia un allegato e non ne e' uscito nessuno:
+        # spedirla vuol dire contraddirsi davanti al cliente. Meglio
+        # fermarsi e lasciarla all'umano.
+        rs.set_status(rule_id, message_id, "skipped",
+                      "attachments-promised-missing")
+        policy.audit("watch_rule", {"rule_id": rule_id,
+                                    "message_id": message_id},
+                     "skipped", detail="bozza con allegati promessi e "
+                                       "nessun file risolto")
+        _log(f"bozza promette allegati ma non ce ne sono ({rule_id}): "
+             "salto", w.verbose)
+        return "skipped"
     preview = _preview_for(rule, full, body, mode, to_address,
                            allegati)
     request_id, created = _create_request(rule, args, preview)
