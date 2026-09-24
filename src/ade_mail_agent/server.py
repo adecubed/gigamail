@@ -173,6 +173,20 @@ def _resolve_attachments(account_id: Optional[int],
     return attachments.resolve(account_id, names)
 
 
+def _promette_allegati(body: str) -> bool:
+    """Delega a core.attachments. Sta qui perche' dentro send_mail il
+    nome `attachments` e' il parametro del tool, non il modulo."""
+    return attachments.promette_allegati(body)
+
+
+def _errore_promessa() -> dict:
+    return {"status": "error", "request_id": None,
+            "error": "Il testo annuncia un allegato ma non ne e' stato "
+                     "risolto nessuno. Indica i file in `attachments` "
+                     "(vedi list_knowledge_files) oppure togli la frase "
+                     "sull'allegato. Niente e' stato inviato."}
+
+
 def _attachments_preview(risolti: list) -> list:
     return attachments.preview(risolti)
 
@@ -574,6 +588,8 @@ def send_mail(
                          + ", ".join(mancanti)
                          + ". Usa list_knowledge_files per l'elenco. "
                            "Niente e' stato inviato."}
+    if not allegati and _promette_allegati(body):
+        return _errore_promessa()
     args = {
         "to": to, "subject": subject, "body": body,
         "cc": cc, "bcc": bcc, "account_id": account_id,
@@ -631,6 +647,8 @@ def reply_mail(
                 "error": "Nessun file registrato corrisponde a: "
                          + ", ".join(mancanti)
                          + ". Niente e' stato inviato."}
+    if not allegati and _promette_allegati(body):
+        return _errore_promessa()
     args = {"message_id": message_id, "body": body, "account_id": account_id,
             "attachments": allegati, "cc": cc}
 

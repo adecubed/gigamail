@@ -11,10 +11,43 @@ silenziosa che gia' e' costata una planimetria sbagliata a un cliente.
 import base64
 import mimetypes
 import os
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import identity_reader
+
+# I codici degli appartamenti come compaiono nel testo: A.3.2, B.1.4.
+# Sono l'unico pezzo di corpo che si puo' leggere con una regola fissa
+# senza rischiare: o il codice c'e' scritto, o non c'e'.
+_CODICE = re.compile(r"\b([AB]\.[0-9]\.[0-9])\b")
+
+# Le frasi con cui una mail promette un allegato. Servono a non spedire
+# "in allegato trova le planimetrie" con zero file: e' successo il 19 e
+# il 23 settembre, e il cliente riceve una mail che si contraddice.
+_PROMESSA = re.compile(
+    r"in allegato|in allegati|negli allegati|allegat[aeio]\b|allego\b",
+    re.IGNORECASE)
+
+
+def codici_citati(testo: str) -> List[str]:
+    """Gli appartamenti nominati nel testo, in ordine e senza ripetizioni.
+
+    Serve a far seguire gli allegati al CONTENUTO della mail. Prima la
+    regola spediva sempre la stessa terna di planimetrie: a chi chiedeva
+    un quadrilocale partivano tre trilocali, e la risposta giusta usciva
+    senza file."""
+    visti: List[str] = []
+    for m in _CODICE.finditer(str(testo or "")):
+        c = m.group(1).upper()
+        if c not in visti:
+            visti.append(c)
+    return visti
+
+
+def promette_allegati(testo: str) -> bool:
+    """Il testo annuncia un allegato."""
+    return bool(_PROMESSA.search(str(testo or "")))
 
 
 def identity_paths(account_id: Optional[int]) -> List[str]:
