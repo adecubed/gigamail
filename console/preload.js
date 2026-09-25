@@ -282,12 +282,16 @@ contextBridge.exposeInMainWorld('ademail', {
     });
   },
 
-  saveDraft: (to, subject, body, accountId = null) =>
+  // draft: { id, to, cc, bcc, subject, body, reply_to_id }. Con lo stesso id
+  // il backend aggiorna la bozza invece di crearne un'altra.
+  saveDraft: (draft, accountId = null) =>
     apiJson(`${API}/mail/draft/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, body, account_id: accountId }),
+      body: JSON.stringify({ ...draft, account_id: accountId }),
     }),
+
+  getLocalDraft: (id) => apiJson(`${API}/mail/draft/local/${encodeURIComponent(id)}`),
 
   getLocalDrafts: (accountId = null) => {
     let url = `${API}/mail/draft/local`;
@@ -295,7 +299,7 @@ contextBridge.exposeInMainWorld('ademail', {
     return apiJson(url);
   },
 
-  deleteLocalDraft: (id) => apiJson(`${API}/mail/draft/local/${id}`, { method: 'DELETE' }),
+  deleteLocalDraft: (id) => apiJson(`${API}/mail/draft/local/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   getAddresses: (q = '', accountId = null) => {
     const params = new URLSearchParams({ q });

@@ -983,6 +983,7 @@ async function refreshCurrentFolder() {
   try {
     const mails = await getCurrentMailFetcher()();
     renderMailList(mails);
+    if (currentFolder === 'drafts') await renderLocalDrafts();
     refreshCustomFolderNewCounts().catch(e => console.error('refreshCustomFolderNewCounts:', e));
     setText('statMail', Array.isArray(mails) ? mails.length : 0);
     const sampleIds = Array.isArray(mails) ? mails.slice(0, 3).map(m => m?.id).filter(Boolean).join(',') : '';
