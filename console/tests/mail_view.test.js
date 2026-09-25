@@ -70,6 +70,22 @@ test('localDraftItemHtml: bozza salvata in GigaMail, tutto escapato', () => {
   assert.ok(w.MailView.localDraftItemHtml({ draft_id: 'x', body: 'ciao' }).includes('(nessun destinatario)'));
 });
 
+test('localDraftItemHtml: dice se la bozza e\' anche nella casella', () => {
+  const w = load();
+  const html = (d) => w.MailView.localDraftItemHtml({ draft_id: 'x', body: 'ciao', ...d });
+  assert.ok(html({}).includes('non ancora nella casella'));
+  assert.ok(html({ in_mailbox: true }).includes('Salvata anche nella casella'));
+  const err = html({ sync_error: '<b>Cartella Bozze non trovata</b>' });
+  assert.ok(err.includes('Non copiata nella casella: &lt;b&gt;Cartella Bozze'), 'errore escapato');
+});
+
+test('detailHeaderHtml: CONTINUA solo nella cartella Bozze', () => {
+  const w = load();
+  const ctx = { sender: 'a@b.it', senderName: 'A', ttsUrl: '', inSpam: false };
+  assert.ok(!w.MailView.detailHeaderHtml({ subject: 's' }, ctx).includes('btnContinueDraft'));
+  assert.ok(w.MailView.detailHeaderHtml({ subject: 's' }, { ...ctx, inDrafts: true }).includes('id="btnContinueDraft"'));
+});
+
 test('senderLabel: nome, poi indirizzo, poi sender, poi ?', () => {
   const w = load();
   const s = w.MailView.senderLabel;

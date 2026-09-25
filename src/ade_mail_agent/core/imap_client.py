@@ -922,6 +922,131 @@ def _append_to_sent_folder(
         _close_conn_safely(conn)
 
 
+# ── BOZZE NELLA CASELLA ──────────────────────────────────────────────
+# IMAP non modifica un messaggio: si aggiunge la versione nuova e si toglie
+# la vecchia, come fanno Thunderbird e Outlook. Ogni bozza di GigaMail
+# porta DRAFT_HEADER con il suo id: cosi' la versione vecchia si ritrova
+# anche se l'UID e' cambiato o l'APPEND precedente e' andato a meta'.
+# Si lavora SOLO dentro la cartella Bozze: un id sbagliato non puo'
+# cancellare una mail vera altrove.
+
+DRAFT_HEADER = "X-GigaMail-Draft"
+_APPENDUID = re.compile(rb"APPENDUID\s+\d+\s+(\d+)", re.I)
+
+
+def build_draft_mime(email_addr: str, draft: Dict) -> bytes:
+    from email.message import EmailMessage
+    from email.utils import formatdate, make_msgid
+    msg = EmailMessage()
+    msg["From"] = email_addr
+    for header, key in (("To", "to"), ("Cc", "cc"), ("Bcc", "bcc")):
+        value = ", ".join(split_addresses(draft.get(key) or ""))
+        if value:
+            msg[header] = value
+    msg["Subject"] = draft.get("subject") or ""
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=(email_addr.split("@")[-1] or None))
+    msg[DRAFT_HEADER] = draft["draft_id"]
+    msg.set_content(draft.get("body") or "", charset="utf-8")
+    return msg.as_bytes()
+
+
+def _draft_uids(conn: imaplib.IMAP4_SSL, draft_id: str) -> List[str]:
+    try:
+        status, data = conn.uid("search", None, "HEADER", DRAFT_HEADER, f'"{draft_id}"')
+    except Exception as e:
+        _imap_debug_log(f"draft search error={e}")
+        return []
+    if status != "OK" or not data or not data[0]:
+        return []
+    return [u.decode() for u in data[0].split()]
+
+
+def _remove_uids(conn: imaplib.IMAP4_SSL, uids: List[str]) -> None:
+    uids = [u for u in dict.fromkeys(uids) if u and u.isdigit()]
+    if not uids:
+        return
+    uid_set = ",".join(uids)
+    conn.uid("store", uid_set, "+FLAGS", "(\\Deleted)")
+    # UID EXPUNGE toglie solo i nostri; EXPUNGE semplice (server senza
+    # UIDPLUS) toglierebbe anche altri messaggi gia' marcati \Deleted.
+    if "UIDPLUS" in getattr(conn, "capabilities", ()):
+        conn.uid("expunge", uid_set)
+    else:
+        conn.expunge()
+
+
+def save_draft(
+    imap_host: str,
+    imap_port: int,
+    email_addr: str,
+    password: str,
+    draft: Dict,
+    replace_uid: Optional[str] = None,
+) -> Dict[str, object]:
+    """Mette la bozza nella cartella Bozze e toglie la versione precedente.
+
+    `replace_uid`: la bozza che questa sostituisce, anche se non e' nata in
+    GigaMail (una ripresa da Outlook non ha il nostro header).
+    Ritorna {success, uid, folder} oppure {success: False, error}."""
+    conn: Optional[imaplib.IMAP4_SSL] = None
+    try:
+        conn = _connect(imap_host, imap_port, email_addr, password)
+        folder = _resolve_folder_strict(conn, "drafts")
+        if not folder:
+            return {"success": False, "error": "Cartella Bozze non trovata nella casella"}
+        mime = build_draft_mime(email_addr, draft)
+        status, resp = conn.append(f'"{folder}"', "(\\Draft \\Seen)",
+                                   imaplib.Time2Internaldate(time.time()), mime)
+        if status != "OK":
+            return {"success": False, "error": f"APPEND rifiutato: {resp}"}
+        conn.select(f'"{folder}"')
+        m = _APPENDUID.search(b" ".join(r for r in (resp or []) if isinstance(r, bytes)))
+        found = _draft_uids(conn, draft["draft_id"])
+        new_uid = m.group(1).decode() if m else (max(found, key=int) if found else None)
+        old = [u for u in found if u != new_uid]
+        if replace_uid and str(replace_uid) != new_uid:
+            old.append(str(replace_uid))
+        if new_uid:
+            # Senza l'UID nuovo non si sa quale tenere: meglio un doppione
+            # nelle Bozze che cancellare proprio la versione appena scritta.
+            _remove_uids(conn, old)
+        _imap_debug_log(f"save_draft folder={folder!r} uid={new_uid} removed={old if new_uid else []}")
+        return {"success": True, "uid": new_uid, "folder": folder}
+    except Exception as e:
+        _imap_debug_log(f"save_draft exception={e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        _close_conn_safely(conn)
+
+
+def delete_draft(
+    imap_host: str,
+    imap_port: int,
+    email_addr: str,
+    password: str,
+    draft_id: str,
+    uid: Optional[str] = None,
+) -> Dict[str, object]:
+    """Toglie la bozza dalla cartella Bozze (dopo l'invio o su richiesta)."""
+    conn: Optional[imaplib.IMAP4_SSL] = None
+    try:
+        conn = _connect(imap_host, imap_port, email_addr, password)
+        folder = _resolve_folder_strict(conn, "drafts")
+        if not folder:
+            return {"success": False, "error": "Cartella Bozze non trovata nella casella"}
+        uids = _draft_uids(conn, draft_id)
+        if uid:
+            uids.append(str(uid))
+        _remove_uids(conn, uids)
+        return {"success": True}
+    except Exception as e:
+        _imap_debug_log(f"delete_draft exception={e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        _close_conn_safely(conn)
+
+
 def get_messages(
     imap_host: str,
     imap_port: int,

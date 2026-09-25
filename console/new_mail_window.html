@@ -226,13 +226,19 @@ let instructionContext = '';
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ── BOZZA: salvata in GigaMail mentre si scrive ───────────────────────────────
-// Due secondi dopo l'ultimo tasto e alla chiusura. Stesso id per tutta la
-// vita della finestra: il backend aggiorna, non accumula copie. All'invio
-// riuscito la bozza si cancella. Gli allegati non si salvano (troppo pesanti).
+// In locale due secondi dopo l'ultimo tasto. Nella cartella Bozze della
+// casella (per ritrovarla su Outlook o sul telefono) alla chiusura e al
+// massimo una volta al minuto: una copia IMAP costa secondi, non millisecondi.
+// Stesso id per tutta la vita della finestra: il backend aggiorna, non
+// accumula copie. All'invio riuscito la bozza sparisce, anche dalla casella.
+// Gli allegati non si salvano (troppo pesanti).
 const DRAFT_FIELDS = ['mailTo', 'mailCc', 'mailBcc', 'mailSubject', 'mailBody'];
 const DRAFT_DELAY  = 2000;
+const SYNC_EVERY   = 60000;
 let draftId    = null;
-let draftSig   = '';
+let draftSig   = '';      // versione salvata in locale
+let syncedSig  = '';      // versione chiesta per la casella
+let lastSyncAt = Date.now();
 let draftTimer = null;
 let draftsOff  = false;   // backend senza /mail/draft/save: non insistere
 let mailSent   = false;
@@ -243,23 +249,25 @@ function draftValues() {
            subject: v('mailSubject').trim(), body: v('mailBody') };
 }
 
-async function saveDraftNow() {
+async function saveDraftNow({ sync = false } = {}) {
   if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
   if (draftsOff || mailSent) return;
   const d = draftValues();
   if (!d.to && !d.subject && !d.body.trim()) return;
   const sig = JSON.stringify([accountId, d]);
-  if (sig === draftSig) return;
+  const needSync = (sync || Date.now() - lastSyncAt > SYNC_EVERY) && sig !== syncedSig;
+  if (sig === draftSig && !needSync) return;
   try {
     const r = await fetch(`${API}/mail/draft/save`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: draftId, ...d, account_id: accountId }),
+      body: JSON.stringify({ id: draftId, ...d, account_id: accountId, sync: needSync }),
     });
     if (r.status === 404 || r.status === 405) { draftsOff = true; return; }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     draftId  = data.id || draftId;
     draftSig = sig;
+    if (needSync) { syncedSig = sig; lastSyncAt = Date.now(); }
     // Non copre messaggi piu' importanti ("Invio annullato", errori).
     const st = document.getElementById('status');
     const label = window.i18n ? window.i18n.t('draft_saved') : 'Bozza salvata';
@@ -285,11 +293,12 @@ async function loadDraft(id) {
     document.getElementById('mailBody').value    = d.body || '';
     draftId  = d.draft_id;
     draftSig = JSON.stringify([accountId, draftValues()]);
+    if (d.in_mailbox) syncedSig = draftSig;
   } catch (e) { console.error('loadDraft:', e); }
 }
 
 async function closeWindow() {
-  await saveDraftNow();
+  await saveDraftNow({ sync: true });
   window.newMailWindowAPI?.close();
 }
 
