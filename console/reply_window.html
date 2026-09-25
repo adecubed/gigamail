@@ -625,7 +625,9 @@ async function execSend() {
       return;
     }
     if (followupHours > 0) {
-      await window.replyWindowAPI?.followupSave({ message_id:mailData.id||null, account_id:mailData.account_id||0, subject, to_addr:to, hours:followupHours });
+      try {
+        await window.replyWindowAPI?.followupSave({ message_id:mailData.id||null, account_id:mailData.account_id||0, subject, to_addr:to, hours:followupHours });
+      } catch (e) { console.warn('followupSave:', e); }
     }
     window.replyWindowAPI?.close();
   } catch(e) {

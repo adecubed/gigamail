@@ -50,6 +50,26 @@ test('listItemHtml: oggetto, mittente, anteprima e id escapati', () => {
   assert.equal(host.querySelector('.mail-item').dataset.id, 'abc"><script>1</script>');
 });
 
+test('localDraftItemHtml: bozza salvata in GigaMail, tutto escapato', () => {
+  const w = load();
+  const html = w.MailView.localDraftItemHtml({
+    draft_id: 'd1"><script>1</script>',
+    to: HOSTILE,
+    subject: HOSTILE,
+    body: HOSTILE,
+    updated_at: 1790000000,
+  });
+  assert.ok(!/<img|<script/.test(html), 'nessun tag iniettato');
+  assert.ok(html.includes('class="mail-item local-draft"'));
+  const host = w.document.getElementById('host');
+  host.innerHTML = html;
+  assert.equal(host.querySelectorAll('img, script').length, 0);
+  assert.equal(host.querySelector('.local-draft').dataset.draftId, 'd1"><script>1</script>');
+  assert.equal(host.querySelector('.local-draft-delete').dataset.draftId, 'd1"><script>1</script>');
+  // senza destinatario non resta una riga vuota
+  assert.ok(w.MailView.localDraftItemHtml({ draft_id: 'x', body: 'ciao' }).includes('(nessun destinatario)'));
+});
+
 test('senderLabel: nome, poi indirizzo, poi sender, poi ?', () => {
   const w = load();
   const s = w.MailView.senderLabel;
