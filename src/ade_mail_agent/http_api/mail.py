@@ -49,9 +49,11 @@ def list_drafts(top: int = 20, account_id: Optional[int] = None):
     return mail_router.get_messages(account_id or _active_id(), folder="drafts", top=top)
 
 
-# ── BOZZE LOCALI: la console salva mentre si scrive ──────────────────
-# Non tocca la casella: e' la rete di sicurezza contro la finestra chiusa
-# per sbaglio. La sincronizzazione con la cartella Bozze verra' dopo.
+# ── BOZZE: salvate in locale mentre si scrive, copiate nella casella ──
+# Il salvataggio locale e' immediato; con sync=true la console chiede anche
+# la copia nella cartella Bozze della casella, che parte in un thread (una
+# connessione IMAP puo' prendere secondi) e si legge poi dall'elenco:
+# in_mailbox / sync_error.
 
 _DRAFT_ID = r"^[A-Za-z0-9_-]{1,64}$"
 
@@ -65,6 +67,16 @@ class DraftSaveRequest(BaseModel):
     body: str = ""
     reply_to_id: Optional[str] = None
     account_id: Optional[int] = None
+    sync: bool = False
+    # Solo riprendendo una bozza gia' nella casella (Outlook, telefono):
+    # la prossima copia sostituisce quella invece di affiancarla.
+    remote_id: Optional[str] = Field(None, max_length=512)
+    remote_folder: Optional[str] = Field(None, max_length=512)
+
+
+def _draft_state(d: dict) -> dict:
+    return {"success": True, "id": d["draft_id"], "updated_at": d["updated_at"],
+            "in_mailbox": d["in_mailbox"], "sync_error": d.get("sync_error")}
 
 
 @router.post("/mail/draft/save")
@@ -73,11 +85,14 @@ def save_draft(req: DraftSaveRequest):
     try:
         d = drafts.store().save(
             req.id, account_id=req.account_id or _active_id(),
+            remote_id=req.remote_id, remote_folder=req.remote_folder,
             to=req.to, cc=req.cc, bcc=req.bcc, subject=req.subject,
             body=req.body, reply_to_id=req.reply_to_id)
     except ValueError as e:
         raise HTTPException(413, str(e)) from e
-    return {"success": True, "id": d["draft_id"], "updated_at": d["updated_at"]}
+    if req.sync and not d["in_mailbox"]:
+        drafts.sync_in_background(d["draft_id"])
+    return _draft_state(d)
 
 
 @router.get("/mail/draft/local")
@@ -97,9 +112,13 @@ def get_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
 
 @router.delete("/mail/draft/local/{draft_id}")
 def delete_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
+    """Toglie la bozza da GigaMail e dalla casella (dopo l'invio, o dal ✕).
+    Idempotente: la console cancella dopo l'invio anche bozze mai salvate."""
     from ade_mail_agent.core import drafts
-    # Idempotente: la console cancella dopo l'invio anche bozze mai salvate.
-    return {"success": True, "deleted": drafts.store().delete(draft_id)}
+    d = drafts.discard(draft_id)
+    if d:
+        drafts.remove_from_mailbox_in_background(d)
+    return {"success": True, "deleted": d is not None}
 
 
 @router.get("/mail/folder/{folder_id}")

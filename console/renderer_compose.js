@@ -558,7 +558,8 @@ async function autosaveDraft() {
   const sig = `${activeAccountId}::${to}::${cc}::${bcc}::${subject}::${body}`;
   if (sig === autosaveSignature) return;
   try {
-    const saved = await api.saveDraft({ id: inlineDraftId, to, cc, bcc, subject, body }, activeAccountId);
+    // Ogni 30 secondi: qui si puo' chiedere anche la copia nella casella.
+    const saved = await api.saveDraft({ id: inlineDraftId, to, cc, bcc, subject, body, sync: true }, activeAccountId);
     inlineDraftId = saved?.id || inlineDraftId;
     autosaveSignature = sig;
   }

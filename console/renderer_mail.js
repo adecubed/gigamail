@@ -51,10 +51,16 @@ const MailView = (() => {
     const when    = d.updated_at ? new Date(d.updated_at * 1000).toISOString() : '';
     const preview = String(d.body || '').slice(0, 200);
     const to      = d.to ? `${T('to_label','A:')} ${d.to}` : T('no_recipient','(nessun destinatario)');
+    // Dove sta la bozza: solo qui, anche nella casella, o copia non riuscita.
+    const hint = d.sync_error
+      ? `${T('draft_sync_failed','Non copiata nella casella')}: ${d.sync_error}`
+      : d.in_mailbox ? T('draft_in_mailbox','Salvata anche nella casella')
+                     : T('local_draft_hint','Salvata in GigaMail, non ancora nella casella');
+    const mark = d.sync_error ? '✎!' : d.in_mailbox ? '✎✓' : '✎';
     return `
       <div class="mail-item local-draft" data-draft-id="${id}">
         <div class="mail-subject">
-          <span class="local-draft-badge" title="${T('local_draft_hint','Salvata in GigaMail, non ancora nella casella')}">✎</span>
+          <span class="local-draft-badge" title="${esc(hint)}">${mark}</span>
           ${esc(d.subject || '(nessun oggetto)')}
           <button class="mail-delete-btn local-draft-delete" data-draft-id="${id}" title="${T('delete','Elimina')}">✕</button>
         </div>
@@ -84,7 +90,7 @@ const MailView = (() => {
 
   /** Header del dettaglio: oggetto, meta, azioni, riassunto, allegati. */
   function detailHeaderHtml(msg, ctx) {
-    const { sender, senderName, ttsUrl, inSpam } = ctx;
+    const { sender, senderName, ttsUrl, inSpam, inDrafts } = ctx;
     return `
         <div class="mail-detail-header">
           <div class="mail-detail-subject">${esc(msg.subject || '(nessun oggetto)')}</div>
@@ -94,6 +100,7 @@ const MailView = (() => {
           <div class="mail-detail-actions">
             <audio id="mailAudio" src="${esc(ttsUrl)}" style="display:none"></audio>
             <button class="btn" id="btnAscolta" data-requires="/mail/{message_id}/tts">◉ ${T('listen','ASCOLTA')}</button>
+            ${inDrafts ? `<button class="btn" id="btnContinueDraft" data-requires="/mail/draft/save">✎ ${T('continue_draft_upper','CONTINUA')}</button>` : ''}
             <button class="btn" id="btnShowReply">↩ ${T('reply_upper','RISPONDI')}</button>
             <button class="btn" id="btnShowReplyAll">↩↩ ${T('all_upper','TUTTI')}</button>
             <button class="btn" id="btnForward">↪ ${T('forward_upper','INOLTRA')}</button>
@@ -200,6 +207,11 @@ async function renderLocalDrafts() {
   if (currentFolder !== 'drafts') return;
   list.querySelectorAll('.local-draft').forEach(el => el.remove());
   if (!Array.isArray(drafts) || !drafts.length) return;
+  // La copia nella casella di una bozza che c'e' gia' qui non va mostrata
+  // due volte: resta la voce locale, che e' la versione piu' recente.
+  drafts.forEach(d => {
+    if (d.remote_id) list.querySelector(`.mail-item:not(.local-draft)[data-id="${CSS.escape(String(d.remote_id))}"]`)?.remove();
+  });
   list.querySelector('.list-empty')?.remove();
   list.insertAdjacentHTML('afterbegin', drafts.map(MailView.localDraftItemHtml).join(''));
   list.querySelectorAll('.local-draft').forEach(item => {
@@ -215,6 +227,23 @@ async function renderLocalDrafts() {
       } catch (err) { showToast('Errore eliminazione: ' + err.message, 'error'); }
     });
   });
+}
+
+/** Una bozza iniziata altrove (Outlook, telefono) si riprende qui: diventa
+ *  una bozza di GigaMail che, alla prossima copia, SOSTITUISCE quella nella
+ *  casella invece di affiancarla. */
+async function continueMailboxDraft(msg, id, folder) {
+  const raw = msg?.body?.content || '';
+  const body = MailView.isHtmlBody(msg) ? MailView.htmlToText(raw) : (raw || msg?.body_text || '');
+  const list = (rs) => (rs || []).map(r => r?.emailAddress?.address).filter(Boolean).join('; ');
+  try {
+    const saved = await api.saveDraft({
+      to: list(msg?.toRecipients), cc: list(msg?.ccRecipients), bcc: list(msg?.bccRecipients),
+      subject: msg?.subject || '', body, remote_id: String(id), remote_folder: folder || null,
+    }, activeAccountId);
+    await openLocalDraft(saved.id);
+    if (currentFolder === 'drafts') refreshCurrentFolder();
+  } catch (e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
 async function openLocalDraft(draftId) {
@@ -292,7 +321,7 @@ async function openMail(id, overrideFolder = null) {
           <div style="flex:1;font-size:11px;font-weight:500;color:rgba(0,0,0,0.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(msg.subject || '(nessun oggetto)')}</div>
         </div>
         <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0;">
-        ${MailView.detailHeaderHtml(msg, { sender, senderName, ttsUrl, inSpam: currentFolder === 'spam' })}
+        ${MailView.detailHeaderHtml(msg, { sender, senderName, ttsUrl, inSpam: currentFolder === 'spam', inDrafts: currentFolder === 'drafts' })}
         <div class="sender-history-box" id="senderHistoryBox"></div>
         <div class="mail-body" id="mailBody"></div>
         </div><!-- /scroll wrap -->
@@ -566,6 +595,7 @@ async function openMail(id, overrideFolder = null) {
     });
     byId('btnMove')?.addEventListener('click', () => openMoveMailPanel(id));
     byId('btnForward')?.addEventListener('click', () => openForwardComposer(msg));
+    byId('btnContinueDraft')?.addEventListener('click', () => continueMailboxDraft(msg, id, folderValue));
 
     byId('btnReplyVoice')?.addEventListener('click', () => byId('btnVoice')?.click());
     byId('btnGenerateReply')?.addEventListener('click', generateReply);

@@ -253,3 +253,69 @@ def delete_message(message_id: str) -> bool:
     url = f'{GRAPH_URL}/me/messages/{message_id}/move'
     res = requests.post(url, headers=_headers(), json={'destinationId': 'deleteditems'})
     return res.status_code == 201
+
+
+# ── BOZZE NELLA CASELLA ──────────────────────────────────────────────
+# Graph, a differenza di IMAP, modifica un messaggio sul posto: la bozza
+# si crea una volta (POST /me/messages la mette in Bozze) e poi si
+# aggiorna con PATCH, stesso id. Si tocca solo cio' che e' ancora bozza:
+# un id sbagliato non puo' riscrivere o cancellare una mail vera.
+
+def _draft_payload(draft: Dict) -> Dict:
+    def _recipients(value: str) -> list:
+        return [{'emailAddress': {'address': a}} for a in split_addresses(value or '')]
+    return {
+        'subject': draft.get('subject') or '',
+        'body': {'contentType': 'Text', 'content': draft.get('body') or ''},
+        'toRecipients': _recipients(draft.get('to')),
+        'ccRecipients': _recipients(draft.get('cc')),
+        'bccRecipients': _recipients(draft.get('bcc')),
+    }
+
+
+def _is_draft(message_id: str):
+    """True/False, o None se il messaggio non esiste piu'."""
+    res = requests.get(f'{GRAPH_URL}/me/messages/{message_id}',
+                       headers=_headers(), params={'$select': 'id,isDraft'})
+    if res.status_code == 404:
+        return None
+    res.raise_for_status()
+    return bool(res.json().get('isDraft'))
+
+
+def save_draft(draft: Dict, remote_id: str = None) -> Dict:
+    """Crea o aggiorna la bozza. {success, id} oppure {success: False, error}."""
+    try:
+        payload = _draft_payload(draft)
+        if remote_id:
+            stato = _is_draft(remote_id)
+            if stato is False:
+                return {'success': False, 'error': 'Il messaggio non e\' piu\' una bozza'}
+            if stato:
+                res = requests.patch(f'{GRAPH_URL}/me/messages/{remote_id}',
+                                     headers=_headers(), json=payload)
+                if res.status_code == 200:
+                    return {'success': True, 'id': remote_id}
+                return {'success': False, 'error': f'HTTP {res.status_code}: {res.text[:300]}'}
+            # sparita (cancellata da un altro client): se ne crea una nuova
+        res = requests.post(f'{GRAPH_URL}/me/messages', headers=_headers(), json=payload)
+        if res.status_code == 201:
+            return {'success': True, 'id': res.json().get('id')}
+        return {'success': False, 'error': f'HTTP {res.status_code}: {res.text[:300]}'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def delete_draft(remote_id: str) -> Dict:
+    try:
+        stato = _is_draft(remote_id)
+        if stato is None:
+            return {'success': True}
+        if not stato:
+            return {'success': False, 'error': 'Il messaggio non e\' una bozza: non lo tocco'}
+        res = requests.delete(f'{GRAPH_URL}/me/messages/{remote_id}', headers=_headers())
+        if res.status_code in (200, 204, 404):
+            return {'success': True}
+        return {'success': False, 'error': f'HTTP {res.status_code}: {res.text[:300]}'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
