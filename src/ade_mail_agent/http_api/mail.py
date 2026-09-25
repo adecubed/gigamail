@@ -4,8 +4,8 @@ import threading
 from typing import List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Path, Response
+from pydantic import BaseModel, Field
 
 from ade_mail_agent.core import (
     mail_memory,
@@ -47,6 +47,59 @@ def list_deleted(top: int = 20, account_id: Optional[int] = None):
 @router.get("/mail/drafts")
 def list_drafts(top: int = 20, account_id: Optional[int] = None):
     return mail_router.get_messages(account_id or _active_id(), folder="drafts", top=top)
+
+
+# ── BOZZE LOCALI: la console salva mentre si scrive ──────────────────
+# Non tocca la casella: e' la rete di sicurezza contro la finestra chiusa
+# per sbaglio. La sincronizzazione con la cartella Bozze verra' dopo.
+
+_DRAFT_ID = r"^[A-Za-z0-9_-]{1,64}$"
+
+
+class DraftSaveRequest(BaseModel):
+    id: Optional[str] = Field(None, pattern=_DRAFT_ID)
+    to: str = ""
+    cc: str = ""
+    bcc: str = ""
+    subject: str = ""
+    body: str = ""
+    reply_to_id: Optional[str] = None
+    account_id: Optional[int] = None
+
+
+@router.post("/mail/draft/save")
+def save_draft(req: DraftSaveRequest):
+    from ade_mail_agent.core import drafts
+    try:
+        d = drafts.store().save(
+            req.id, account_id=req.account_id or _active_id(),
+            to=req.to, cc=req.cc, bcc=req.bcc, subject=req.subject,
+            body=req.body, reply_to_id=req.reply_to_id)
+    except ValueError as e:
+        raise HTTPException(413, str(e)) from e
+    return {"success": True, "id": d["draft_id"], "updated_at": d["updated_at"]}
+
+
+@router.get("/mail/draft/local")
+def list_local_drafts(account_id: Optional[int] = None):
+    from ade_mail_agent.core import drafts
+    return drafts.store().list(account_id)
+
+
+@router.get("/mail/draft/local/{draft_id}")
+def get_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
+    from ade_mail_agent.core import drafts
+    d = drafts.store().get(draft_id)
+    if not d:
+        raise HTTPException(404, "Bozza non trovata")
+    return d
+
+
+@router.delete("/mail/draft/local/{draft_id}")
+def delete_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
+    from ade_mail_agent.core import drafts
+    # Idempotente: la console cancella dopo l'invio anche bozze mai salvate.
+    return {"success": True, "deleted": drafts.store().delete(draft_id)}
 
 
 @router.get("/mail/folder/{folder_id}")
