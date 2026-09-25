@@ -506,6 +506,23 @@ def create_folder(
 
 # ----------------------------------------------------------- DANGEROUS
 
+def _freeze_mail_account(account_id: Optional[int]) -> int:
+    """Resolve the default once, before the approval preview is created."""
+    if account_id is not None:
+        return account_id
+    active = core_accounts.get_active_account() or {}
+    if active.get("id") is None:
+        raise ValueError("Nessun account attivo: scegli un account prima di procedere.")
+    return int(active["id"])
+
+
+def _approved_mail_account(args: dict) -> int:
+    """Old approvals with a mutable default cannot safely be executed."""
+    if args.get("account_id") is None:
+        raise ValueError("Richiesta senza account fissato: creane una nuova e falla approvare.")
+    return int(args["account_id"])
+
+
 @mcp.tool(annotations=DANGEROUS, description=_two_phase(
     """Move a message to another folder of the same account.""",
     """
@@ -528,12 +545,14 @@ def move_message(
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
+    if not request_id:
+        account_id = _freeze_mail_account(account_id)
     args = {"message_id": message_id, "folder_id": folder_id,
             "source_folder": source_folder, "account_id": account_id}
 
     def _preview():
         m = mail_router.get_message(account_id=account_id,
-                                    message_id=message_id) or {}
+                                    message_id=message_id, folder=source_folder) or {}
         return {"action": "move", "subject": m.get("subject"),
                 "from": m.get("from") or m.get("sender"),
                 "folder_from": _folder_label(account_id, source_folder) or "Inbox",
@@ -544,7 +563,7 @@ def move_message(
         preview_fn=_preview,
         execute_fn=lambda a: {
             "success": mail_router.move_to_folder(
-                account_id=a["account_id"], message_id=a["message_id"],
+                account_id=_approved_mail_account(a), message_id=a["message_id"],
                 folder_id=a["folder_id"],
                 source_folder=a["source_folder"] or None,
             )
@@ -581,14 +600,17 @@ def send_mail(
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
-    allegati, mancanti = _resolve_attachments(account_id, attachments)
+    if not request_id:
+        account_id = _freeze_mail_account(account_id)
+    # Execution uses the stored payload, not fresh inputs or the current identity.
+    allegati, mancanti = ([], []) if request_id else _resolve_attachments(account_id, attachments)
     if mancanti:
         return {"status": "error", "request_id": None,
                 "error": "Nessun file registrato corrisponde a: "
                          + ", ".join(mancanti)
                          + ". Usa list_knowledge_files per l'elenco. "
                            "Niente e' stato inviato."}
-    if not allegati and _promette_allegati(body):
+    if not request_id and not allegati and _promette_allegati(body):
         return _errore_promessa()
     args = {
         "to": to, "subject": subject, "body": body,
@@ -597,8 +619,7 @@ def send_mail(
         # esattamente il file che compare nell'anteprima approvata
         "attachments": allegati,
     }
-    sender = core_accounts.get_account_by_id(account_id) if account_id \
-        else core_accounts.get_active_account()
+    sender = core_accounts.get_account_by_id(account_id) if not request_id else None
     return policy.execute_dangerous(
         "send_mail", args, request_id,
         preview_fn=lambda: {
@@ -611,7 +632,7 @@ def send_mail(
             "attachments": _attachments_preview(allegati),
         },
         execute_fn=lambda a: mail_router.send_message(
-            account_id=a["account_id"], to=a["to"], subject=a["subject"],
+            account_id=_approved_mail_account(a), to=a["to"], subject=a["subject"],
             body=a["body"], cc=a["cc"], bcc=a["bcc"],
             attachments=_attachments_payload(a.get("attachments")),
         ),
@@ -640,21 +661,24 @@ def reply_mail(
         description="CC addresses. The reply still goes only to the From address of the original message; cc adds recipients in copy.")] = None,
     account_id: AccountId = None,
     request_id: RequestId = None,
+    folder: Annotated[str, Field(description="Folder containing the original message (IMAP only; default inbox).")] = "inbox",
 ) -> dict:
-    allegati, mancanti = _resolve_attachments(account_id, attachments)
+    if not request_id:
+        account_id = _freeze_mail_account(account_id)
+    allegati, mancanti = ([], []) if request_id else _resolve_attachments(account_id, attachments)
     if mancanti:
         return {"status": "error", "request_id": None,
                 "error": "Nessun file registrato corrisponde a: "
                          + ", ".join(mancanti)
                          + ". Niente e' stato inviato."}
-    if not allegati and _promette_allegati(body):
+    if not request_id and not allegati and _promette_allegati(body):
         return _errore_promessa()
     args = {"message_id": message_id, "body": body, "account_id": account_id,
-            "attachments": allegati, "cc": cc}
+            "attachments": allegati, "cc": cc, "folder": folder}
 
     def _preview():
         original = mail_router.get_message(
-            account_id=account_id, message_id=message_id
+            account_id=account_id, message_id=message_id, folder=folder
         ) or {}
         return {
             "replying_to": {
@@ -675,11 +699,20 @@ def reply_mail(
         # Il cc arrivava fino all'anteprima e poi spariva: execute_fn non
         # lo passava a reply_message. L'utente vedeva la copia promessa
         # nell'approvazione e il destinatario in copia non riceveva nulla.
-        execute_fn=lambda a: mail_router.reply_message(
-            account_id=a["account_id"], message_id=a["message_id"],
+        # Watcher approvals share this tool and can explicitly target a
+        # portal contact shown in the preview. Preserve that approved route
+        # even when an MCP client consumes the request before the watcher.
+        execute_fn=lambda a: mail_router.send_message(
+            account_id=_approved_mail_account(a), to=a["to"],
+            subject=a.get("subject") or "", body=a["body"],
+            attachments=_attachments_payload(a.get("attachments")),
+            cc=a.get("cc"), auto_submitted=True,
+        ) if a.get("to") else mail_router.reply_message(
+            account_id=_approved_mail_account(a), message_id=a["message_id"],
             body=a["body"],
             attachments=_attachments_payload(a.get("attachments")),
             cc=a.get("cc"),
+            folder=a.get("folder") or "inbox",
         ),
     )
 
@@ -698,10 +731,13 @@ def delete_message(
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
+    if not request_id:
+        account_id = _freeze_mail_account(account_id)
     args = {"message_id": message_id, "folder": folder, "account_id": account_id}
 
     def _preview():
-        m = mail_router.get_message(account_id=account_id, message_id=message_id) or {}
+        m = mail_router.get_message(account_id=account_id, message_id=message_id,
+                                    folder=folder) or {}
         return {"action": "delete", "subject": m.get("subject"),
                 "from": m.get("from") or m.get("sender")}
 
@@ -710,7 +746,7 @@ def delete_message(
         preview_fn=_preview,
         execute_fn=lambda a: {
             "success": mail_router.delete_message(
-                account_id=a["account_id"], message_id=a["message_id"],
+                account_id=_approved_mail_account(a), message_id=a["message_id"],
                 folder=a["folder"] or None,
             )
         },
@@ -729,13 +765,15 @@ def delete_folder(
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
+    if not request_id:
+        account_id = _freeze_mail_account(account_id)
     args = {"folder_id": folder_id, "account_id": account_id}
     return policy.execute_dangerous(
         "delete_folder", args, request_id,
         preview_fn=lambda: {"action": "delete_folder", "folder_id": folder_id},
         execute_fn=lambda a: {
             "success": mail_router.delete_folder(
-                account_id=a["account_id"], folder_id=a["folder_id"]
+                account_id=_approved_mail_account(a), folder_id=a["folder_id"]
             )
         },
     )
@@ -759,11 +797,14 @@ def create_event(
 ) -> dict:
     args = {"subject": subject, "start": start, "end": end,
             "body": body, "location": location}
+    if not request_id:
+        args["destination"] = calendar_router.capture_destination()
     return policy.execute_dangerous(
         "create_event", args, request_id,
         preview_fn=lambda: dict(args),
-        execute_fn=lambda a: calendar_router.create_event(
-            a["subject"], a["start"], a["end"],
+        execute_fn=lambda a: calendar_router.bind_action(
+            "create_event", a.get("destination") or {})(
+            subject=a["subject"], start=a["start"], end=a["end"],
             body=a["body"], location=a["location"],
         ),
     )
@@ -781,10 +822,13 @@ def delete_event(
     request_id: RequestId = None,
 ) -> dict:
     args = {"event_id": event_id}
+    if not request_id:
+        args["destination"] = calendar_router.capture_destination()
     return policy.execute_dangerous(
         "delete_event", args, request_id,
-        preview_fn=lambda: {"action": "delete_event", "event_id": event_id},
-        execute_fn=lambda a: {"success": calendar_router.delete_event(a["event_id"])},
+        preview_fn=lambda: {"action": "delete_event", **args},
+        execute_fn=lambda a: {"success": calendar_router.bind_action(
+            "delete_event", a.get("destination") or {})(event_id=a["event_id"])},
     )
 
 

@@ -15,6 +15,10 @@ _TMP = Path(tempfile.mkdtemp(prefix="gigamail-tests-"))
 (_TMP / "ADE").mkdir(parents=True, exist_ok=True)
 os.environ["APPDATA"] = str(_TMP)
 os.environ["ADE_ROOT"] = str(_TMP / "ADE")
+# Installed clients may set newer overrides, which take precedence over
+# ADE_ROOT/APPDATA. Never let a test session inherit production data paths.
+for _name in ("GIGAMAIL_ROOT", "GIGAMAIL_DATA_DIR", "ADE_MAIL_DATA_DIR"):
+    os.environ.pop(_name, None)
 os.environ.pop("ADE_AGENT_CMD", None)
 os.environ.pop("ADE_CONSOLE_TOKEN", None)
 # La suite non deve MAI aprire un prompt Windows Hello / Touch ID vero sul

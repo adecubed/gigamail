@@ -34,22 +34,42 @@ def poll_folder(rule: Dict[str, Any], *, top: int, unread_days: int,
     comunque entro unread_days. Una mail gia' letta non va mai in
     auto: l'umano l'ha vista, si propone (vedi pipeline)."""
     folder = folder_of(rule)
-    try:
-        msgs = mail_router.get_messages(
-            account_id=rule["account_id"], folder=folder, top=top) or []
-    except Exception as e:
-        _log(f"poll fallito ({rule['rule_id']}, {folder}): {e}", verbose)
-        return []
     now = datetime.now(timezone.utc)
     floor = max(
         datetime.fromtimestamp(float(rule.get("created_at") or 0), timezone.utc),
         now - timedelta(days=unread_days))
     out = []
-    for m in msgs:
-        if not isinstance(m, dict):
-            continue
-        dt = mail_router._message_datetime(str(m.get("receivedDateTime") or ""))
-        if dt is not None and dt < floor:
-            continue
-        out.append(m)
+    seen = set()
+    page_size = max(1, int(top))
+    skip = 0
+    while True:
+        try:
+            msgs = mail_router.get_messages(
+                account_id=rule["account_id"], folder=folder,
+                top=page_size, skip=skip) or []
+        except Exception as e:
+            _log(f"poll fallito ({rule['rule_id']}, {folder}): {e}", verbose)
+            break
+        if not msgs:
+            break
+        new_ids = 0
+        for m in msgs:
+            if not isinstance(m, dict) or not m.get("id"):
+                continue
+            mid = str(m["id"])
+            dt = mail_router._message_datetime(str(m.get("receivedDateTime") or ""))
+            if mid in seen:
+                continue
+            seen.add(mid)
+            new_ids += 1
+            if dt is not None and dt < floor:
+                continue
+            out.append(m)
+        # IMAP senza SORT puo' ordinare per UID, non per data: anche dopo
+        # una pagina vecchia possono esserci mail dentro il perimetro.
+        # La deduplica copre sovrapposizioni mentre arriva nuova posta;
+        # nessun ID nuovo evita un loop se un provider ignora skip.
+        if len(msgs) < page_size or not new_ids:
+            break
+        skip += len(msgs)
     return out

@@ -16,6 +16,8 @@ def client():
 @pytest.fixture()
 def spostamenti(monkeypatch):
     fatti = []
+    from ade_mail_agent import consent
+    monkeypatch.setattr(consent, "require_human", lambda reason: True)
 
     def _sposta(account_id=None, message_id="", folder_id="", source_folder=None):
         fatti.append((account_id, message_id, folder_id, source_folder))

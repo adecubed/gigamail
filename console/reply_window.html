@@ -598,7 +598,7 @@ async function execSend() {
     if (mailData.account_id) url += `?account_id=${mailData.account_id}`;
     // Manda attachments senza il campo dataUrl (non serve al backend)
     const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
-    await fetch(url, {
+    const response = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         to,
@@ -611,6 +611,19 @@ async function execSend() {
         instruction:    document.getElementById('instruction')?.value?.trim() || '',
       })
     });
+    let result = {};
+    try { result = await response.json(); } catch {}
+    if (!response.ok || result?.success !== true) {
+      const detail = Array.isArray(result?.detail)
+        ? result.detail.map(d => d?.msg || JSON.stringify(d)).join('; ')
+        : result?.detail;
+      throw new Error(detail || result?.error || `Invio non confermato (HTTP ${response.status})`);
+    }
+    if (result.dryrun) {
+      alert('Simulazione: nessuna mail inviata.');
+      resetSendBtn();
+      return;
+    }
     if (followupHours > 0) {
       await window.replyWindowAPI?.followupSave({ message_id:mailData.id||null, account_id:mailData.account_id||0, subject, to_addr:to, hours:followupHours });
     }
