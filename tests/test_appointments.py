@@ -29,7 +29,8 @@ class FintoCalendario:
                      attendees=None):
         if self.fallisce:
             raise RuntimeError("calendario irraggiungibile")
-        self.creati.append({"subject": subject, "start": start, "end": end})
+        self.creati.append({"subject": subject, "start": start, "end": end,
+                            "location": location})
         if self.senza_id:
             return {}
         self._seq += 1
@@ -153,6 +154,27 @@ def test_spostamento_non_riscrive_titolo_ne_svuota_luogo(monkeypatch, cal):
     modifica = cal.aggiornati[0]
     assert "subject" not in modifica and "location" not in modifica
     assert modifica["start"] == "2026-09-14T17:00"
+
+
+def test_lindirizzo_dellannuncio_non_diventa_il_luogo(monkeypatch, cal):
+    """Il 24/09 l'appuntamento in ufficio e' finito in agenda in Via
+    Treviglio 28, l'immobile dell'annuncio nell'oggetto: un cantiere."""
+    oggetto = ("Re: Nuovo messaggio di NICOLA Squillace sul tuo immobile, "
+               "Trilocale in Via Treviglio, 28, Precotto, Milano")
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-15T10:30",'
+                         '"luogo":"Via Treviglio, 28, Precotto, Milano"}')
+    appointments.dalla_mail(2, oggetto, "martedi alle 10.30 va bene",
+                            "ns@example.com", adesso=NOW)
+    assert cal.creati[0]["location"] == ""
+
+
+def test_il_luogo_detto_nel_messaggio_resta(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-15T10:30",'
+                         '"luogo":"Viale Tunisia 37, Milano"}')
+    appointments.dalla_mail(2, "Trilocale in Via Treviglio, 28",
+                            "la aspettiamo in Viale Tunisia 37 martedi alle 10.30",
+                            "ns@example.com", adesso=NOW)
+    assert cal.creati[0]["location"] == "Viale Tunisia 37, Milano"
 
 
 def test_il_titolo_usa_il_nome_del_mittente(monkeypatch, cal):

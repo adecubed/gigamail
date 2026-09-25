@@ -289,6 +289,10 @@ def build_prompt(testo: str, subject: str, mittente: str,
         "cliente), mai chi firma per l'azienda ne' un ufficio: nella nostra "
         "mail e' chi riceve il saluto (\"Gentile Sig.ra Rossi\"). Se non lo "
         "sai lascialo vuoto.\n"
+        "- luogo e' dove le persone si INCONTRANO, solo se il messaggio lo "
+        "dice esplicitamente (\"la aspettiamo in Viale ...\"). Non e' "
+        "l'indirizzo dell'immobile o dell'annuncio di cui si parla, "
+        "nemmeno se compare nell'oggetto. Se non e' detto lascialo vuoto.\n"
         "- Se gli orari proposti sono piu' di uno, metti in inizio il PRIMO.\n"
         "- scelta_unica vale true solo se il messaggio indica UNA data e UN "
         "orario precisi; false se ne elenca piu' d'uno o resta vago.\n"
@@ -402,9 +406,25 @@ def leggi(testo: str, subject: str, mittente: str,
         "inizio": inizio.isoformat(timespec="minutes"),
         "fine": fine.isoformat(timespec="minutes"),
         "con": str(dato.get("con") or "")[:120],
-        "luogo": str(dato.get("luogo") or "")[:200],
+        "luogo": _luogo(dato.get("luogo"), subject),
         "scelta_unica": dato.get("scelta_unica") is True,
     }
+
+
+def _luogo(proposto: Any, subject: str) -> str:
+    """Il luogo letto, se non e' l'indirizzo dell'oggetto.
+
+    L'oggetto delle mail dei portali e' l'annuncio ("Trilocale in Via
+    Treviglio, 28"): e' l'immobile di cui si parla, non dove ci si vede. Il
+    24/09 l'agente l'ha preso come luogo e l'appuntamento in ufficio e'
+    finito in agenda all'indirizzo del cantiere. Meglio un luogo vuoto,
+    che si riempie a mano, che uno sbagliato."""
+    luogo = str(proposto or "").strip()[:200]
+    n, oggetto = _norma(luogo), _norma(subject)
+    if n and oggetto and f" {n} " in f" {oggetto} ":
+        logger.info("luogo preso dall'oggetto della mail: scartato")
+        return ""
+    return luogo
 
 
 # ── SCRITTURA (sul calendario) ───────────────────────────────────────
