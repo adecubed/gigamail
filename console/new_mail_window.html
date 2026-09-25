@@ -225,17 +225,86 @@ let instructionContext = '';
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// ── BOZZA: salvata in GigaMail mentre si scrive ───────────────────────────────
+// Due secondi dopo l'ultimo tasto e alla chiusura. Stesso id per tutta la
+// vita della finestra: il backend aggiorna, non accumula copie. All'invio
+// riuscito la bozza si cancella. Gli allegati non si salvano (troppo pesanti).
+const DRAFT_FIELDS = ['mailTo', 'mailCc', 'mailBcc', 'mailSubject', 'mailBody'];
+const DRAFT_DELAY  = 2000;
+let draftId    = null;
+let draftSig   = '';
+let draftTimer = null;
+let draftsOff  = false;   // backend senza /mail/draft/save: non insistere
+let mailSent   = false;
+
+function draftValues() {
+  const v = (id) => document.getElementById(id).value;
+  return { to: v('mailTo').trim(), cc: v('mailCc').trim(), bcc: v('mailBcc').trim(),
+           subject: v('mailSubject').trim(), body: v('mailBody') };
+}
+
+async function saveDraftNow() {
+  if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
+  if (draftsOff || mailSent) return;
+  const d = draftValues();
+  if (!d.to && !d.subject && !d.body.trim()) return;
+  const sig = JSON.stringify([accountId, d]);
+  if (sig === draftSig) return;
+  try {
+    const r = await fetch(`${API}/mail/draft/save`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: draftId, ...d, account_id: accountId }),
+    });
+    if (r.status === 404 || r.status === 405) { draftsOff = true; return; }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    draftId  = data.id || draftId;
+    draftSig = sig;
+    // Non copre messaggi piu' importanti ("Invio annullato", errori).
+    const st = document.getElementById('status');
+    const label = window.i18n ? window.i18n.t('draft_saved') : 'Bozza salvata';
+    if (!st.textContent || st.textContent === label) st.textContent = label;
+  } catch (e) { console.error('saveDraft:', e); }
+}
+
+function scheduleDraftSave() {
+  if (draftTimer) clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraftNow, DRAFT_DELAY);
+}
+DRAFT_FIELDS.forEach(id => document.getElementById(id).addEventListener('input', scheduleDraftSave));
+
+async function loadDraft(id) {
+  try {
+    const r = await fetch(`${API}/mail/draft/local/${encodeURIComponent(id)}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('mailTo').value      = d.to || '';
+    document.getElementById('mailCc').value      = d.cc || '';
+    document.getElementById('mailBcc').value     = d.bcc || '';
+    document.getElementById('mailSubject').value = d.subject || '';
+    document.getElementById('mailBody').value    = d.body || '';
+    draftId  = d.draft_id;
+    draftSig = JSON.stringify([accountId, draftValues()]);
+  } catch (e) { console.error('loadDraft:', e); }
+}
+
+async function closeWindow() {
+  await saveDraftNow();
+  window.newMailWindowAPI?.close();
+}
+
 if (window.newMailWindowAPI) {
-  window.newMailWindowAPI.onLoadNewMail((data) => {
+  window.newMailWindowAPI.onLoadNewMail(async (data) => {
     accountId = data.account_id || null;
     if (data.to)      document.getElementById('mailTo').value      = data.to;
     if (data.subject) document.getElementById('mailSubject').value = data.subject;
     if (data.body)    document.getElementById('mailBody').value    = data.body;
+    if (data.draft_id) await loadDraft(data.draft_id);
     document.getElementById('mailTo').focus();
   });
 }
 
-document.getElementById('btnClose').addEventListener('click', () => window.newMailWindowAPI?.close());
+document.getElementById('btnClose').addEventListener('click', closeWindow);
 document.getElementById('btnMin').addEventListener('click',   () => window.newMailWindowAPI?.minimize());
 document.getElementById('btnMax').addEventListener('click',   () => window.newMailWindowAPI?.maximize());
 
@@ -410,6 +479,7 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject}) });
     const data = await r.json();
     ta.value = data.draft || data.text || '';
+    scheduleDraftSave();
   } catch(e) { ta.value = ''; st.textContent = 'Errore generazione'; }
   btn.textContent = '⚡ ' + (window.i18n?window.i18n.t('generate'):'GENERA'); btn.disabled = false;
 });
@@ -441,17 +511,27 @@ async function execSend() {
     let url = `${API}/mail/send`;
     if (accountId) url += `?account_id=${accountId}`;
     const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
-    await fetch(url, {
+    const r = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean})
     });
+    // Prima bastava che la richiesta tornasse: un invio rifiutato diceva
+    // "Inviata ✓". Ora conta l'esito, anche perche' qui si cancella la bozza.
+    const esito = await r.json().catch(() => ({}));
+    if (!r.ok || esito.success === false) throw new Error(esito.error || esito.detail || `HTTP ${r.status}`);
+    mailSent = true;
+    if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
+    if (draftId) {
+      fetch(`${API}/mail/draft/local/${encodeURIComponent(draftId)}`, { method: 'DELETE' })
+        .catch(e => console.error('deleteDraft:', e));
+    }
     if (followupHours > 0) {
       await window.newMailWindowAPI?.followupSave({ message_id:null, account_id:accountId, subject, to_addr:to, hours:followupHours });
     }
     st.textContent = 'Inviata ✓';
     setTimeout(() => window.newMailWindowAPI?.close(), 800);
   } catch(e) {
-    st.textContent = 'Errore invio';
+    st.textContent = 'Errore invio' + (e && e.message ? `: ${e.message}` : '');
     resetSendBtn();
   }
 }

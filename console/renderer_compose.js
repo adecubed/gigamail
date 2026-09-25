@@ -527,6 +527,10 @@ async function sendNewMail() {
           : '✓ Mail inviata!';
       }
       autosaveSignature = '';
+      if (inlineDraftId) {
+        api.deleteLocalDraft(inlineDraftId).catch(e => console.error('deleteLocalDraft:', e));
+        inlineDraftId = null;
+      }
       setTimeout(() => {
         setHidden('newMailPanel', true);
         if (byId('newMailTo'))      byId('newMailTo').value = '';
@@ -550,10 +554,14 @@ async function autosaveDraft() {
   const bcc     = byId('newMailBcc')?.value.trim() || '';
   const subject = byId('newMailSubject')?.value.trim() || '';
   const body    = byId('newMailBody')?.value.trim() || '';
-  if (!body) return;
+  if (!to && !subject && !body) return;
   const sig = `${activeAccountId}::${to}::${cc}::${bcc}::${subject}::${body}`;
   if (sig === autosaveSignature) return;
-  try { await api.saveDraft(to, subject, body, activeAccountId); autosaveSignature = sig; }
+  try {
+    const saved = await api.saveDraft({ id: inlineDraftId, to, cc, bcc, subject, body }, activeAccountId);
+    inlineDraftId = saved?.id || inlineDraftId;
+    autosaveSignature = sig;
+  }
   catch (e) { console.error('autosaveDraft:', e); }
 }
 
@@ -609,10 +617,13 @@ function bindComposeEvents() {
     if (window.electronAPI?.openNewMailWindow) {
       window.electronAPI.openNewMailWindow({ account_id: activeAccountId });
     } else {
+      inlineDraftId = null;
+      autosaveSignature = '';
       setHidden('newMailPanel', false);
     }
   });
-  on('btnCloseNewMail',    'click', () => setHidden('newMailPanel', true));
+  // Chiudere salva: e' il momento in cui il testo si perdeva.
+  on('btnCloseNewMail',    'click', async () => { await autosaveDraft(); setHidden('newMailPanel', true); });
   on('btnGenerateNewMail', 'click', generateNewMailDraft);
   on('btnSendNewMail',     'click', sendNewMail);
   on('newMailTo',          'input', () => handleAddressAutocomplete('newMailTo', 'toAutocomplete'));
