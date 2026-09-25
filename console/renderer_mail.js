@@ -44,6 +44,28 @@ const MailView = (() => {
       </div>`;
   }
 
+  /** Voce di una bozza salvata in GigaMail (non ancora nella casella).
+   *  Stessa forma di una mail, con un segno che la distingue. */
+  function localDraftItemHtml(d) {
+    const id      = esc(d.draft_id);
+    const when    = d.updated_at ? new Date(d.updated_at * 1000).toISOString() : '';
+    const preview = String(d.body || '').slice(0, 200);
+    const to      = d.to ? `${T('to_label','A:')} ${d.to}` : T('no_recipient','(nessun destinatario)');
+    return `
+      <div class="mail-item local-draft" data-draft-id="${id}">
+        <div class="mail-subject">
+          <span class="local-draft-badge" title="${T('local_draft_hint','Salvata in GigaMail, non ancora nella casella')}">✎</span>
+          ${esc(d.subject || '(nessun oggetto)')}
+          <button class="mail-delete-btn local-draft-delete" data-draft-id="${id}" title="${T('delete','Elimina')}">✕</button>
+        </div>
+        <div class="mail-meta">
+          <span class="mail-sender">${esc(to)}</span>
+          <span class="mail-date">${esc(fmtDate(when))}</span>
+        </div>
+        <div class="mail-preview">${esc(preview)}</div>
+      </div>`;
+  }
+
   function addressList(list) {
     return (list || []).map(r => esc(r?.emailAddress?.address || '')).join(', ');
   }
@@ -113,7 +135,7 @@ const MailView = (() => {
     return TAG_HTML.test(raw) || TAG_HTML.test(testo);
   }
 
-  return { senderLabel, hasAttachments, listItemHtml, detailHeaderHtml, attachmentChipsHtml, htmlToText, isHtmlBody };
+  return { senderLabel, hasAttachments, listItemHtml, localDraftItemHtml, detailHeaderHtml, attachmentChipsHtml, htmlToText, isHtmlBody };
 })();
 if (typeof window !== 'undefined') window.MailView = MailView;
 
@@ -162,6 +184,57 @@ async function deleteMail(id, folder) {
   } catch (e) {
     showToast('Errore eliminazione: ' + e.message, 'error');
   }
+}
+
+// ── BOZZE SALVATE IN GIGAMAIL ────────────────────────────────────────────────
+// Nella cartella Bozze, sopra quelle della casella: sono le mail iniziate e
+// mai partite (finestra chiusa, crash, riavvio). Un clic le riapre.
+async function renderLocalDrafts() {
+  if (!Features.has('/mail/draft/local')) return;
+  const list = byId('mailList');
+  if (!list) return;
+  let drafts = [];
+  try { drafts = await api.getLocalDrafts(activeAccountId); }
+  catch (e) { console.error('getLocalDrafts:', e); return; }
+  // La cartella puo' essere cambiata mentre aspettavamo.
+  if (currentFolder !== 'drafts') return;
+  list.querySelectorAll('.local-draft').forEach(el => el.remove());
+  if (!Array.isArray(drafts) || !drafts.length) return;
+  list.querySelector('.list-empty')?.remove();
+  list.insertAdjacentHTML('afterbegin', drafts.map(MailView.localDraftItemHtml).join(''));
+  list.querySelectorAll('.local-draft').forEach(item => {
+    item.addEventListener('click', () => openLocalDraft(item.dataset.draftId));
+  });
+  list.querySelectorAll('.local-draft-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await api.deleteLocalDraft(btn.dataset.draftId);
+        btn.closest('.local-draft')?.remove();
+        showToast(T('draft_deleted','Bozza eliminata'), 'success');
+      } catch (err) { showToast('Errore eliminazione: ' + err.message, 'error'); }
+    });
+  });
+}
+
+async function openLocalDraft(draftId) {
+  if (!draftId) return;
+  if (window.electronAPI?.openNewMailWindow) {
+    window.electronAPI.openNewMailWindow({ account_id: activeAccountId, draft_id: draftId });
+    return;
+  }
+  // fallback pannello inline
+  try {
+    const d = await api.getLocalDraft(draftId);
+    if (byId('newMailTo'))      byId('newMailTo').value      = d.to || '';
+    if (byId('newMailCc'))      byId('newMailCc').value      = d.cc || '';
+    if (byId('newMailBcc'))     byId('newMailBcc').value     = d.bcc || '';
+    if (byId('newMailSubject')) byId('newMailSubject').value = d.subject || '';
+    if (byId('newMailBody'))    byId('newMailBody').value    = d.body || '';
+    inlineDraftId = draftId;
+    autosaveSignature = '';
+    setHidden('newMailPanel', false);
+  } catch (e) { showToast('Bozza non trovata', 'error'); }
 }
 
 // ============================================================
@@ -594,6 +667,8 @@ function openForwardComposer(msg) {
     if (byId('newMailStatus')) byId('newMailStatus').textContent = '';
     pendingAttachments = [];
     renderPendingAttachments();
+    inlineDraftId = null;
+    autosaveSignature = '';
     setHidden('newMailPanel', false);
     byId('newMailTo')?.focus();
   }

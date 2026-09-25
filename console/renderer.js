@@ -17,6 +17,7 @@ let currentInstruction = '';
 let currentFolder = 'inbox';
 let currentFolderLabel = 'inbox';
 let autosaveSignature = '';
+let inlineDraftId = null;   // bozza locale del pannello inline
 let pendingAttachments  = []; // [{name, data_b64, type, size}]
 let replyAttachments   = []; // allegati per il box risposta
 let currentReplyDefaultTo = '';
