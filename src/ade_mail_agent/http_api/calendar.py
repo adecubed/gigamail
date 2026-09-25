@@ -11,6 +11,8 @@ from ade_mail_agent.core import (
     calendar_router,
 )
 
+from .common import _human_action
+
 router = APIRouter()
 
 
@@ -54,19 +56,26 @@ class EventRequest(BaseModel):
 
 @router.post("/calendar")
 def create_event(req: EventRequest):
-    return calendar_router.create_event(
-        req.subject, req.start, req.end, body=req.body, location=req.location
-    )
+    execute = calendar_router.bind_action("create_event")
+    return _human_action("create_event", req.model_dump(),
+                         f"Creare l'appuntamento {req.subject!r} del {req.start}?",
+                         lambda a: execute(**a))
 
 
 @router.patch("/calendar/{event_id}")
 def update_event(event_id: str, req: dict):
-    return calendar_router.update_event(event_id, **(req or {}))
+    execute = calendar_router.bind_action("update_event")
+    args = {"event_id": event_id, "changes": req or {}}
+    return _human_action("update_event", args, f"Modificare l'appuntamento {event_id}?",
+                         lambda a: execute(event_id=a["event_id"], **a["changes"]))
 
 
 @router.delete("/calendar/{event_id}")
 def delete_event(event_id: str):
-    return {"success": calendar_router.delete_event(event_id)}
+    execute = calendar_router.bind_action("delete_event")
+    return _human_action("delete_event", {"event_id": event_id},
+                         f"Eliminare l'appuntamento {event_id}?",
+                         lambda a: {"success": execute(event_id=a["event_id"])})
 
 
 @router.get("/calendar/primary")

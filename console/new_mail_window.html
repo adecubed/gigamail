@@ -441,17 +441,30 @@ async function execSend() {
     let url = `${API}/mail/send`;
     if (accountId) url += `?account_id=${accountId}`;
     const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
-    await fetch(url, {
+    const response = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean})
     });
+    let result = {};
+    try { result = await response.json(); } catch {}
+    if (!response.ok || result?.success !== true) {
+      const detail = Array.isArray(result?.detail)
+        ? result.detail.map(d => d?.msg || JSON.stringify(d)).join('; ')
+        : result?.detail;
+      throw new Error(detail || result?.error || `Invio non confermato (HTTP ${response.status})`);
+    }
+    if (result.dryrun) {
+      st.textContent = 'Simulazione: nessuna mail inviata.';
+      resetSendBtn();
+      return;
+    }
     if (followupHours > 0) {
       await window.newMailWindowAPI?.followupSave({ message_id:null, account_id:accountId, subject, to_addr:to, hours:followupHours });
     }
     st.textContent = 'Inviata ✓';
     setTimeout(() => window.newMailWindowAPI?.close(), 800);
   } catch(e) {
-    st.textContent = 'Errore invio';
+    st.textContent = 'Errore invio: ' + e.message;
     resetSendBtn();
   }
 }

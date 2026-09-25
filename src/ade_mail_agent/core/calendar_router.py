@@ -19,6 +19,7 @@ del login.
 from typing import Dict, List
 
 from . import accounts as core_accounts
+from . import auth as ms_auth
 from . import ms_calendar
 
 
@@ -69,7 +70,85 @@ def _backend():
     if p == 'google':
         from . import google_calendar
         return google_calendar
+    account = _microsoft_primary()
+    _select_microsoft(account)
     return ms_calendar
+
+
+def _microsoft_primary():
+    # Il contesto mail puo' appartenere a un'altra casella. Il calendario
+    # usa sempre l'account primario scelto dall'utente (o il primo Microsoft
+    # risolto da get_calendar_primary), anche nei thread del watcher.
+    account_id = core_accounts.get_calendar_primary()
+    account = (core_accounts.get_account_by_id(account_id)
+               if account_id is not None else None)
+    if (not account or account.get('type') != 'microsoft'
+            or not str(account.get('email') or '').strip()):
+        ms_auth.clear_current_account()
+        raise ms_auth.AuthRequired(
+            "Nessun account Microsoft valido per il calendario primario.")
+    return account
+
+
+def _select_microsoft(account):
+    ms_auth.set_current_account(
+        account['email'], account['id'],
+        (account.get('data') or {}).get('token_cache'))
+
+
+def capture_destination() -> Dict:
+    """Serializable calendar identity for approval payloads, without tokens."""
+    p = provider()
+    if p == 'demo':
+        return {'provider': 'demo'}
+    if p == 'google':
+        identity = core_accounts.get_google_identity() or {}
+        email = str(identity.get('email') or '').strip().lower()
+        if not email:
+            raise ValueError('Nessuna identita Google per il calendario')
+        return {'provider': 'google', 'email': email}
+    account = _microsoft_primary()
+    return {'provider': 'microsoft', 'account_id': account['id'],
+            'email': account['email'].strip().lower()}
+
+
+def bind_action(operation: str, destination: Dict = None):
+    """Bind a captured destination, or capture one for an HTTP confirmation."""
+    if operation not in ('create_event', 'update_event', 'delete_event'):
+        raise ValueError('Operazione calendario non valida')
+    target = capture_destination() if destination is None else dict(destination)
+    p = target.get('provider')
+    if p == 'demo':
+        return getattr(_CalendarioDemo, operation)
+    email = str(target.get('email') or '').strip().lower()
+    if p not in ('google', 'microsoft') or not email:
+        raise ValueError('Approvazione senza destinazione calendario fissata: '
+                         'creare una nuova richiesta')
+    if p == 'google':
+        from . import google_calendar
+        method = getattr(google_calendar, operation)
+
+        def execute_google(**args):
+            identity = core_accounts.get_google_identity(email) or {}
+            if str(identity.get('email') or '').strip().lower() != email:
+                raise ValueError('Identita Google approvata non piu disponibile')
+            return method(**{**args, 'email': email, 'calendar_id': 'primary'})
+
+        return execute_google
+    account_id = target.get('account_id')
+    if type(account_id) is not int:
+        raise ValueError('Approvazione senza account calendario fissato')
+    method = getattr(ms_calendar, operation)
+
+    def execute(**args):
+        account = core_accounts.get_account_by_id(account_id)
+        if (not account or account.get('type') != 'microsoft'
+                or str(account.get('email') or '').strip().lower() != email):
+            raise ValueError('Account Microsoft approvato non piu disponibile')
+        _select_microsoft(account)
+        return method(**args)
+
+    return execute
 
 
 def get_events(days_ahead: int = 7, days_back: int = 0) -> List[Dict]:

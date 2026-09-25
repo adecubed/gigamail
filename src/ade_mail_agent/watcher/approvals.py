@@ -67,6 +67,9 @@ def _execute_reply(request_id: str, args: Dict[str, Any]) -> Any:
             mail_router.reply_message(
                 account_id=a["account_id"], message_id=a["message_id"],
                 body=a["body"], auto_submitted=True,
+                folder=a.get("folder") or "inbox",
+                cc=a.get("cc") or None,
+                attachments=attachments_mod.payload(a.get("attachments")),
             )
         ),
     )

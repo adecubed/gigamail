@@ -148,7 +148,8 @@ class AppointmentStore:
         return dict(row) if row else None
 
     def upsert(self, account_id: int, thread_key: str, event_id: str,
-               stato: str, inizio: str, fine: str, con: str = "") -> None:
+               stato: str, inizio: str, fine: str, con: str = "",
+               updated_at: Optional[float] = None) -> None:
         with self._conn() as conn:
             conn.execute(
                 # Non INSERT OR REPLACE: rimpiazzare la riga azzererebbe il
@@ -161,7 +162,7 @@ class AppointmentStore:
                 " inizio=excluded.inizio, fine=excluded.fine,"
                 " con=excluded.con, updated_at=excluded.updated_at",
                 (int(account_id), thread_key, event_id, stato, inizio, fine,
-                 con or "", time.time()))
+                 con or "", time.time() if updated_at is None else updated_at))
 
     def delete(self, account_id: int, thread_key: str) -> None:
         with self._conn() as conn:
@@ -479,12 +480,15 @@ def _titolo(esito: Dict[str, Any], controparte: str, oggetto: str) -> str:
 
 
 def applica(account_id: int, chiave: str, esito: Dict[str, Any],
-            controparte: str = "", oggetto: str = "") -> Optional[Dict[str, Any]]:
+            controparte: str = "", oggetto: str = "",
+            received_at: Optional[float] = None) -> Optional[Dict[str, Any]]:
     """Porta l'esito in calendario. Ritorna l'evento toccato, o None.
 
     Non solleva: ogni errore del provider finisce nel log e nell'audit. Il
     calendario e' un servizio accessorio del percorso della posta, non una
-    sua precondizione."""
+    sua precondizione. Nel recupero delle risposte arretrate, received_at
+    mantiene il cutoff sulla mail elaborata, non sull'ora dello sweep:
+    una risposta successiva fallita deve restare ritentabile al giro dopo."""
     stato = esito.get("stato")
     if stato in (None, "nessuno"):
         return None
@@ -496,7 +500,8 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
             return None
         if corrente.get("event_id"):
             try:
-                calendar_router.delete_event(corrente["event_id"])
+                if not calendar_router.delete_event(corrente["event_id"]):
+                    raise RuntimeError("il calendario ha rifiutato la cancellazione")
             except Exception as e:
                 logger.warning("evento %s non cancellato: %s",
                                corrente["event_id"], e)
@@ -532,7 +537,8 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
             # spostamento in corso, e l'evento resta dov'e' finche' non
             # arriva l'accordo sul nuovo orario.
             return None
-        st.upsert(account_id, chiave, "", "proposto", inizio, fine, con)
+        st.upsert(account_id, chiave, "", "proposto", inizio, fine, con,
+                  updated_at=received_at)
         policy.audit("appointment", {"account_id": account_id,
                                      "thread": chiave, "stato": stato,
                                      "inizio": inizio}, "proposed")
@@ -557,7 +563,7 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                     calendar_router.update_event(corrente["event_id"],
                                                  subject=titolo)
                     st.upsert(account_id, chiave, corrente["event_id"], stato,
-                              inizio, fine, con)
+                              inizio, fine, con, updated_at=received_at)
                     return {"stato": stato, "event_id": corrente["event_id"],
                             "invariato": True, "rinominato": True}
                 return {"stato": stato, "event_id": corrente["event_id"],
@@ -590,7 +596,8 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                                      "thread": chiave}, "failed",
                      detail=str(e)[:200])
         return None
-    st.upsert(account_id, chiave, event_id, stato, inizio, fine, con)
+    st.upsert(account_id, chiave, event_id, stato, inizio, fine, con,
+              updated_at=received_at)
     policy.audit("appointment", {"account_id": account_id, "thread": chiave,
                                  "stato": stato, "inizio": inizio},
                  "confirmed")
@@ -815,20 +822,37 @@ def sweep(account_id: int, messaggi: list, adesso=None,
     if not aperti:
         return 0
     fatti = 0
-    for m in messaggi or []:
-        if not isinstance(m, dict):
-            continue
+    da_ritentare = set()
+    chiusi_qui = set()
+    # I provider elencano dalla piu' recente: applicare una conferma dopo
+    # il suo spostamento ripristinerebbe l'orario vecchio. Senza data si
+    # conserva l'ordine relativo ricevuto, dopo i messaggi datati.
+    ordinati = sorted(
+        (m for m in messaggi or [] if isinstance(m, dict)),
+        key=lambda m: _timestamp(m) or float("inf"))
+    for m in ordinati:
         mittente = _mittente(m)
         subject = str(m.get("subject") or "")
-        riga = aperti.get(thread_key(subject, mittente))
-        if riga is None:
+        chiave = thread_key(subject, mittente)
+        iniziale = aperti.get(chiave)
+        if iniziale is None or chiave in da_ritentare:
+            continue
+        # La risposta precedente puo' aver creato o cancellato l'evento.
+        riga = st.get(account_id, chiave)
+        if riga is None and chiave in chiusi_qui:
+            # Una disdetta non deve nascondere una nuova proposta arrivata
+            # dopo, nello stesso arretrato. Il thread resta nello scope del
+            # giro, ma l'evento eliminato non puo' piu' essere riutilizzato.
+            riga = dict(iniziale, stato="in_attesa", event_id="",
+                        inizio="", fine="", zoom_id="", zoom_url="")
+        if riga is None or riga.get("stato") not in APERTI:
             continue
         mid = str(m.get("id") or "")
         if mid and st.vista(account_id, mid):
             continue
         ricevuta = _timestamp(m)
         if (ricevuta is not None
-                and ricevuta < float(riga["updated_at"]) - _MARGINE_SECONDI):
+                and ricevuta < float(iniziale["updated_at"]) - _MARGINE_SECONDI):
             continue  # la mail a cui abbiamo risposto, non la replica
         corpo = _corpo(m)
         if not corpo.strip() and corpo_di is not None:
@@ -836,6 +860,10 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                 corpo = str(corpo_di(m) or "")
             except Exception as e:
                 logger.info("testo della risposta %s non letto: %s", mid, e)
+                # Un guasto temporaneo non equivale a una risposta letta.
+                # Non superarla con le successive dello stesso thread.
+                da_ritentare.add(chiave)
+                continue
         esito: Dict[str, Any] = {"stato": "nessuno"}
         if forse(f"{subject}\n{corpo}"):
             esito = leggi(corpo, subject, mittente, adesso)
@@ -859,15 +887,20 @@ def sweep(account_id: int, messaggi: list, adesso=None,
             if _persona_valida(nome):
                 esito = dict(esito, con=nome)
             toccato = applica(account_id, riga["thread_key"], esito,
-                              controparte=mittente, oggetto=subject)
+                              controparte=mittente, oggetto=subject,
+                              received_at=ricevuta)
+            if toccato is None:
+                da_ritentare.add(chiave)
             if toccato and not toccato.get("invariato"):
                 fatti += 1
+                if esito.get("stato") == "disdetto":
+                    chiusi_qui.add(chiave)
                 video = _video_dopo_conferma(
                     account_id, riga["thread_key"], m, mittente, subject,
                     esito, toccato)
                 if video:
                     esito = dict(esito, video=video)
-        if mid:
+        if mid and chiave not in da_ritentare:
             st.segna_vista(account_id, mid)
         if avvisa is not None:
             try:
@@ -984,12 +1017,18 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
                 "inserito nulla." if it else
                 "Several or vague times: nothing added to the calendar.")
     elif stato == "disdetto":
-        tolto = bool(toccato and toccato.get("event_id"))
-        nota = (("📅 Appuntamento disdetto"
-                 + (", tolto dal calendario." if tolto else "."))
-                if it else ("📅 Appointment cancelled"
-                            + (", removed from the calendar." if tolto
-                               else ".")))
+        if toccato is None:
+            nota = ("⚠️ Disdetta ricevuta, ma l'appuntamento NON e' stato "
+                    "rimosso dal calendario. Riprovero'." if it else
+                    "⚠️ Cancellation received, but the appointment was NOT "
+                    "removed from the calendar. I will retry.")
+        else:
+            tolto = bool(toccato.get("event_id"))
+            nota = (("📅 Appuntamento disdetto"
+                     + (", tolto dal calendario." if tolto else "."))
+                    if it else ("📅 Appointment cancelled"
+                                + (", removed from the calendar." if tolto
+                                   else ".")))
     if nota:
         righe += ["", nota]
     video = _nota_video(esito.get("video") or {}, it)
