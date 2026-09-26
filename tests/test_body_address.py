@@ -165,3 +165,31 @@ def test_il_battito_si_aggiorna_anche_dentro_il_giro():
     # e in particolare accanto al punto piu' lento: la bozza
     i = corpo.index("self.process_message(")
     assert "self.heartbeat()" in corpo[max(0, i - 200):i]
+
+
+MODULO = ("Nome e cognome: Alice Ginosa\r\n"
+          "Telefono:       3330000000\r\n"
+          "Email:          alice.ginosa@gmail.com\r\n\r\n"
+          "Messaggio\r\nSiamo interessati agli appartamenti di via Treviglio.")
+
+
+def test_modulo_del_sito_indirizzo_in_chiaro():
+    """Il 25/09 la richiesta di Alice dal sito e' rimasta senza risposta:
+    il modulo scrive "Email: ..." in chiaro, senza mailto."""
+    m = {"subject": "Messaggio inviato dal sito di 20128 Milano",
+         "body_text": MODULO}
+    assert (watcher.body_reply_address(m, "postmaster@20128milano.it")
+            == "alice.ginosa@gmail.com")
+
+
+def test_il_mailto_vince_sul_campo_in_chiaro():
+    m = _msg('<a href="mailto:pietro@gmail.com">scrivi</a>'
+             '<p>E-mail: altro@gmail.com</p>')
+    assert watcher.body_reply_address(m, RELAY) == "pietro@gmail.com"
+
+
+def test_una_email_citata_nel_testo_non_e_il_campo():
+    """Solo la riga che comincia con "Email:": un indirizzo dentro una
+    frase non basta a decidere a chi scrivere."""
+    m = {"body_text": "Salve, scrivete pure a mario@gmail.com. Grazie"}
+    assert watcher.body_reply_address(m, RELAY) is None

@@ -107,6 +107,12 @@ def is_auto_generated(headers: Dict[str, List[str]], message: Dict[str, Any]) ->
         rp = _first(headers, "return-path").strip()
         if rp in ("", "<>"):
             return "empty-return-path"
+    return noreply_sender(message)
+
+
+def noreply_sender(message: Dict[str, Any]) -> Optional[str]:
+    """La casella del From e' di quelle senza umano dietro (postmaster@,
+    noreply@...): la ragione, o None."""
     sender = sender_address(message)
     local = sender.split("@", 1)[0] if "@" in sender else sender
     for marker in _NOREPLY_LOCALPARTS:
@@ -140,13 +146,21 @@ def body_too_large(message: Dict[str, Any]) -> bool:
 
 
 def check(headers: Optional[Dict[str, List[str]]],
-          message: Dict[str, Any]) -> Verdict:
+          message: Dict[str, Any], relay: bool = False) -> Verdict:
     """Applica le barriere. `headers=None` = header non recuperabili:
     fail-closed, la mail al massimo si propone all'umano (semi), e solo se
-    il resto del messaggio e' pulito."""
+    il resto del messaggio e' pulito.
+
+    `relay`: la risposta NON va al From ma alla persona scritta nel corpo
+    (portali, modulo del sito). Allora un From postmaster@ non ferma la
+    mail: e' il robot che la inoltra, e a lui non si scrive. Tutte le
+    altre barriere restano, e la mail si puo' solo proporre all'umano."""
     reasons: List[str] = []
 
     auto_reason = is_auto_generated(headers or {}, message)
+    if auto_reason and relay and auto_reason == noreply_sender(message):
+        reasons.append(f"relay-{auto_reason}")
+        auto_reason = None
     if auto_reason:
         return Verdict(False, False, [auto_reason])
     if headers is not None and provider_says_spam(headers):
@@ -163,4 +177,5 @@ def check(headers: Optional[Dict[str, List[str]]],
     if not dmarc_pass(headers):
         reasons.append("dmarc-not-pass")
         return Verdict(True, False, reasons)
-    return Verdict(True, True, reasons)
+    # Un modulo web lo compila chiunque, spam compreso: mai in auto.
+    return Verdict(True, not reasons, reasons)

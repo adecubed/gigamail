@@ -88,3 +88,23 @@ def test_sender_address_normalizza():
         {"from": {"emailAddress": {"address": "A@B.IT"}}}) == "a@b.it"
     assert mail_guard.sender_address(
         {"from": "Nome Cognome <x@y.it>"}) == "x@y.it"
+
+
+def test_postmaster_come_relay_si_propone_soltanto():
+    """Il modulo del sito arriva da postmaster@: e' il robot che inoltra,
+    la risposta va alla persona nel corpo. Si puo' proporre, mai in auto:
+    un modulo web lo compila chiunque, spam compreso."""
+    msg = dict(CLEAN_MSG,
+               **{"from": {"emailAddress": {"address": "postmaster@20128milano.it"}}})
+    assert not mail_guard.check(DMARC_PASS, msg).reply
+    v = mail_guard.check(DMARC_PASS, msg, relay=True)
+    assert v.reply and not v.auto_ok
+    assert "relay-noreply-sender:postmaster" in v.reasons
+
+
+def test_relay_non_scavalca_le_altre_barriere():
+    msg = dict(CLEAN_MSG,
+               **{"from": {"emailAddress": {"address": "postmaster@20128milano.it"}}})
+    v = mail_guard.check({**DMARC_PASS, "auto-submitted": ["auto-generated"]},
+                         msg, relay=True)
+    assert not v.reply
