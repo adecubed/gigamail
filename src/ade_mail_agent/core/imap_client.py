@@ -659,6 +659,65 @@ def _uid_move(conn: imaplib.IMAP4_SSL, uid: str, dest_folder: str) -> bool:
         return False
 
 
+def _capabilities(conn: imaplib.IMAP4_SSL) -> set:
+    """Le capability dopo il login. `conn.capabilities` e' quella letta
+    prima del login, e molti server annunciano UIDPLUS solo dopo."""
+    try:
+        typ, data = conn.capability()
+        if typ == "OK" and data and data[0]:
+            raw = data[0].decode() if isinstance(data[0], bytes) else str(data[0])
+            return {c.upper() for c in raw.split()}
+    except Exception:
+        pass
+    return {
+        (c.decode() if isinstance(c, bytes) else str(c)).upper()
+        for c in getattr(conn, "capabilities", ())
+    }
+
+
+def _expunge_mode(conn: imaplib.IMAP4_SSL) -> Optional[str]:
+    """Come togliere UN solo messaggio dalla cartella selezionata:
+    'uid' (UID EXPUNGE), 'legacy' (EXPUNGE, ammesso solo se nessun altro
+    messaggio e' gia' \\Deleted) o None se non si puo' fare in sicurezza.
+    Va chiesto PRIMA della COPY: rinunciare dopo lascerebbe un doppione."""
+    if "UIDPLUS" in _capabilities(conn):
+        return "uid"
+    # Un EXPUNGE semplice cancella per sempre ogni messaggio \\Deleted
+    # della cartella, anche quelli segnati da un altro client.
+    status, data = conn.uid("search", None, "DELETED")
+    if status != "OK" or not data or data[0]:
+        return None
+    return "legacy"
+
+
+def _expunge_uid(conn: imaplib.IMAP4_SSL, uid: str, mode: str) -> bool:
+    """Segna \\Deleted e rimuove SOLO `uid` dalla cartella selezionata.
+    Se qualcosa va storto il segno si toglie: un \\Deleted lasciato li'
+    lo cancellerebbe per sempre il prossimo EXPUNGE di un altro client."""
+    status, _ = conn.uid("store", uid, "+FLAGS", "(\\Deleted)")
+    if status != "OK":
+        return False
+    try:
+        if mode == "uid":
+            status, _ = conn.uid("EXPUNGE", uid)
+        else:
+            status, data = conn.uid("search", None, "DELETED")
+            if status != "OK" or not data or data[0].split() != [uid.encode()]:
+                status = "NO"
+            else:
+                status, _ = conn.expunge()
+    except Exception as e:
+        _imap_debug_log(f"expunge uid={uid} mode={mode} exception={e}")
+        status = "NO"
+    if status != "OK":
+        try:
+            conn.uid("store", uid, "-FLAGS", "(\\Deleted)")
+        except Exception:
+            pass
+        return False
+    return not _uid_exists_in_selected_folder(conn, uid)
+
+
 def debug_folders(
     imap_host: str,
     imap_port: int,
@@ -1418,30 +1477,12 @@ def delete_message(
         clean_id = str(message_id)
         if not clean_id.isdigit():
             return False
-        all_folders = _list_folders(conn)
-        source_folder: Optional[str] = None
-        if folder:
-            resolved = _resolve_folder_strict(conn, folder)
-            # UIDs are folder-local: a missing explicit source must never
-            # cause a search for the same UID in a different folder.
-            if not resolved or not _uid_exists_in_selected_folder(conn, clean_id):
-                return False
-            source_folder = resolved
-        else:
-            priority = ["INBOX"] + [rf for rf in all_folders if rf != "INBOX"]
-            for rf in priority:
-                try:
-                    status, _ = conn.select(f'"{rf}"')
-                    if status != "OK":
-                        continue
-                    _, md = _uid_fetch(conn, clean_id, "(RFC822.HEADER)")
-                    if md and md[0] is not None and md[0] != b"":
-                        source_folder = rf
-                        break
-                except Exception:
-                    continue
-        if not source_folder:
+        # UIDs are folder-local: the same number in another folder is
+        # another message. No folder means INBOX, never a search.
+        resolved = _resolve_folder_strict(conn, folder or "INBOX")
+        if not resolved or not _uid_exists_in_selected_folder(conn, clean_id):
             return False
+        source_folder = resolved
         trash_name = _resolve_folder_strict(conn, "trash")
         if not trash_name:
             return False
@@ -1452,40 +1493,14 @@ def delete_message(
             if trash_name != source_folder and _uid_move(conn, clean_id, trash_name):
                 return True
 
-            capabilities = {
-                (c.decode() if isinstance(c, bytes) else str(c)).upper()
-                for c in getattr(conn, "capabilities", ())
-            }
-            targeted_expunge = "UIDPLUS" in capabilities
-            if not targeted_expunge:
-                # Legacy EXPUNGE removes every Deleted message. Refuse when
-                # another client's pending deletion would be committed too.
-                status, data = conn.uid("search", None, "DELETED")
-                if status != "OK" or not data or data[0]:
-                    return False
-
+            mode = _expunge_mode(conn)
+            if mode is None:
+                return False
             if trash_name != source_folder:
                 status, _ = conn.uid("copy", clean_id, f'"{trash_name}"')
                 if status != "OK":
                     return False
-            status, _ = conn.uid("store", clean_id, "+FLAGS", "(\\Deleted)")
-            if status != "OK":
-                return False
-            if targeted_expunge:
-                status, _ = conn.uid("EXPUNGE", clean_id)
-            else:
-                status, data = conn.uid("search", None, "DELETED")
-                if status != "OK" or not data or data[0].split() != [clean_id.encode()]:
-                    conn.uid("store", clean_id, "-FLAGS", "(\\Deleted)")
-                    return False
-                status, _ = conn.expunge()
-            if status != "OK":
-                return False
-            status, remaining = _uid_fetch(conn, clean_id, "(UID)")
-            return status == "OK" and not any(
-                isinstance(item, tuple) or item not in (None, b"")
-                for item in (remaining or [])
-            )
+            return _expunge_uid(conn, clean_id, mode)
         except Exception as e:
             print(f"[IMAP] delete_message error: {e}")
             bad_conn = True
@@ -1782,35 +1797,24 @@ def move_to_folder(
             print(f"[IMAP MOVE] ABORT dest-folder-not-found key={key!r} all_folders={all_folders}")
             return False
         # Trova la cartella sorgente dove esiste il messaggio
+        # Gli UID valgono solo nella loro cartella: lo stesso numero altrove
+        # e' un altro messaggio. Senza cartella di partenza si intende
+        # INBOX, e se il messaggio li' non c'e' ci si ferma invece di
+        # spostare quello che ha lo stesso numero in un'altra cartella.
         source_folder_resolved: Optional[str] = None
-        if source_folder:
-            try:
-                # Usa _resolve_folder (con fallback fuzzy) per supportare INBOX.SPAM e simili
-                sf_key = source_folder.strip()
-                candidate_source = _resolve_folder_strict(conn, sf_key)
-                if not candidate_source:
-                    candidate_source = _resolve_folder(conn, sf_key)
-                if candidate_source:
-                    status, _ = conn.select(f'"{candidate_source}"')
-                    if status == "OK":
-                        if _uid_exists_in_selected_folder(conn, clean_id):
-                            source_folder_resolved = candidate_source
-                            print(f"[IMAP MOVE] source-from-hint={candidate_source!r}")
-            except Exception:
-                source_folder_resolved = None
-        priority = ["INBOX"] + [rf for rf in all_folders if rf != "INBOX"]
-        if not source_folder_resolved:
-            for rf in priority:
-                try:
-                    status, _ = conn.select(f'"{rf}"')
-                    if status != "OK":
-                        continue
-                    if _uid_exists_in_selected_folder(conn, clean_id):
-                        source_folder_resolved = rf
-                        _imap_debug_log(f"move_to_folder source-detected={rf!r}")
-                        break
-                except Exception:
-                    continue
+        try:
+            # _resolve_folder (con fallback fuzzy) per INBOX.SPAM e simili
+            sf_key = (source_folder or "INBOX").strip()
+            candidate_source = _resolve_folder_strict(conn, sf_key)
+            if not candidate_source:
+                candidate_source = _resolve_folder(conn, sf_key)
+            if candidate_source:
+                status, _ = conn.select(f'"{candidate_source}"')
+                if status == "OK" and _uid_exists_in_selected_folder(conn, clean_id):
+                    source_folder_resolved = candidate_source
+                    print(f"[IMAP MOVE] source={candidate_source!r}")
+        except Exception:
+            source_folder_resolved = None
         if not source_folder_resolved:
             print(f"[IMAP MOVE] ABORT source-not-found uid={clean_id} all_folders={all_folders}")
             return False
@@ -1827,21 +1831,20 @@ def move_to_folder(
             print(f"[IMAP MOVE] SUCCESS via UID MOVE uid={clean_id} {source_folder_resolved!r} -> {dest_folder!r}")
             return True
 
+        # Senza MOVE: COPY + rimozione del solo messaggio. Un EXPUNGE
+        # semplice cancellava per sempre anche i messaggi che un altro
+        # client aveva segnato \\Deleted nella stessa cartella.
+        mode = _expunge_mode(conn)
+        if mode is None:
+            print(f"[IMAP MOVE] ABORT unsafe-expunge uid={clean_id}: altri messaggi \\Deleted nella cartella")
+            return False
         copy_res = conn.uid("copy", clean_id, f'"{dest_folder}"')
         _imap_debug_log(f"move_to_folder fallback COPY result={copy_res}")
         if not copy_res or copy_res[0] != "OK":
             print(f"[IMAP MOVE] ABORT copy-failed uid={clean_id} -> {dest_folder!r}")
             return False
-
-        store_res = conn.uid("store", clean_id, "+FLAGS", "(\\Deleted)")
-        _imap_debug_log(f"move_to_folder fallback STORE result={store_res}")
-        if not store_res or store_res[0] != "OK":
-            print(f"[IMAP MOVE] ABORT store-failed uid={clean_id}")
-            return False
-
-        conn.expunge()
-        still_exists = _uid_exists_in_selected_folder(conn, clean_id)
-        _imap_debug_log(f"move_to_folder fallback EXPUNGE still_exists={still_exists}")
-        return not still_exists
+        removed = _expunge_uid(conn, clean_id, mode)
+        _imap_debug_log(f"move_to_folder fallback expunge mode={mode} removed={removed}")
+        return removed
     finally:
         _release_connection(conn_key, conn, mark_bad=bad_conn)

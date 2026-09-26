@@ -547,6 +547,9 @@ def move_message(
 ) -> dict:
     if not request_id:
         account_id = _freeze_mail_account(account_id)
+    # Gli UID IMAP valgono solo nella loro cartella: quella dell'anteprima
+    # e' quella dell'esecuzione, mai una ricerca del numero altrove.
+    source_folder = source_folder or "INBOX"
     args = {"message_id": message_id, "folder_id": folder_id,
             "source_folder": source_folder, "account_id": account_id}
 
@@ -555,7 +558,8 @@ def move_message(
                                     message_id=message_id, folder=source_folder) or {}
         return {"action": "move", "subject": m.get("subject"),
                 "from": m.get("from") or m.get("sender"),
-                "folder_from": _folder_label(account_id, source_folder) or "Inbox",
+                "folder_from": (_folder_label(account_id, source_folder)
+                                if source_folder != "INBOX" else "") or "Inbox",
                 "folder_to": _folder_label(account_id, folder_id) or folder_id}
 
     return policy.execute_dangerous(
@@ -727,12 +731,15 @@ def reply_mail(
     same way but destroys nothing."""))
 def delete_message(
     message_id: MessageId,
-    folder: Annotated[str, Field(description="Folder of the message (IMAP only; empty = search).")] = "",
+    folder: Annotated[str, Field(description="Folder of the message (IMAP only; empty = inbox).")] = "",
     account_id: AccountId = None,
     request_id: RequestId = None,
 ) -> dict:
     if not request_id:
         account_id = _freeze_mail_account(account_id)
+    # L'anteprima legge il messaggio in questa cartella: l'esecuzione deve
+    # cancellare quello, non lo stesso UID trovato in un'altra cartella.
+    folder = folder or "INBOX"
     args = {"message_id": message_id, "folder": folder, "account_id": account_id}
 
     def _preview():
