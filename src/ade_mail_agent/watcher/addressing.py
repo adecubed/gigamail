@@ -9,6 +9,11 @@ from typing import Any, Dict, Optional
 
 _MAILTO_RE = re.compile(r'mailto:([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})',
                         re.IGNORECASE)
+# I moduli dei siti scrivono l'indirizzo in chiaro, su una riga sua:
+# "Email:          alice@example.com". Nessun link mailto.
+_CAMPO_EMAIL_RE = re.compile(
+    r'^[ \t]*e-?mail[ \t]*:[ \t]*([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})',
+    re.IGNORECASE | re.MULTILINE)
 
 
 # Caselle di servizio dei portali: a queste non si risponde mai.
@@ -45,6 +50,11 @@ def body_reply_address(message: Dict[str, Any],
 
     Si preferisce comunque un indirizzo fuori dal dominio del mittente:
     l'alias e' il ripiego, non la prima scelta.
+
+    Il modulo del sito (postmaster@ del nostro dominio) non mette link:
+    scrive "Email: ..." in chiaro. Senza leggere quel campo ogni richiesta
+    arrivata dal sito restava senza risposta (Alice, 25/09). Il campo conta
+    solo se non c'e' un mailto, che resta la fonte piu' esplicita.
     """
     corpo = ""
     for chiave in ("body_text", "bodyPreview"):
@@ -55,7 +65,8 @@ def body_reply_address(message: Dict[str, Any],
     mittente = (sender or "").lower()
     dominio = mittente.split("@")[-1] if "@" in mittente else ""
     fuori, alias = [], []
-    for trovato in _MAILTO_RE.findall(corpo):
+    trovati = _MAILTO_RE.findall(corpo) or _CAMPO_EMAIL_RE.findall(corpo)
+    for trovato in trovati:
         dest = trovato.strip().lower()
         if dest == mittente or _e_di_servizio(dest):
             continue
