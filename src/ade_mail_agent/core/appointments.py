@@ -63,6 +63,10 @@ DURATA_DEFAULT_MINUTI = 60
 # Una mail arrivata prima dell'ultimo aggiornamento del thread e' quella a
 # cui abbiamo risposto, non la replica. Margine per gli orologi dei server.
 _MARGINE_SECONDI = 300
+# Tentativi su una risposta che fallisce (testo non letto, calendario che
+# rifiuta) prima di arrendersi e dirlo all'umano. Con lo sweep ogni minuto
+# sono circa cinque minuti di guasto tollerato.
+_TENTATIVI_MAX = 5
 _ESTRATTO_MAX = 700
 _TESTO_MAX = 6000
 _TIMEOUT_SECONDI = policy._env_int("GIGAMAIL_APPOINTMENT_TIMEOUT", 180)
@@ -139,6 +143,17 @@ class AppointmentStore:
                     PRIMARY KEY (account_id, message_id)
                 )
             """)
+            # Quante volte una risposta e' fallita (testo non letto,
+            # calendario che rifiuta). Senza tetto, un calendario giu'
+            # riportava la stessa mail a ogni giro, per sempre.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS risposte_fallite (
+                    account_id  INTEGER NOT NULL,
+                    message_id  TEXT    NOT NULL,
+                    tentativi   INTEGER NOT NULL,
+                    PRIMARY KEY (account_id, message_id)
+                )
+            """)
 
     def get(self, account_id: int, thread_key: str) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:
@@ -206,6 +221,25 @@ class AppointmentStore:
                 "INSERT OR IGNORE INTO risposte_viste"
                 " (account_id, message_id, visto_il) VALUES (?,?,?)",
                 (int(account_id), str(message_id), time.time()))
+            conn.execute(
+                "DELETE FROM risposte_fallite"
+                " WHERE account_id=? AND message_id=?",
+                (int(account_id), str(message_id)))
+
+    def fallita(self, account_id: int, message_id: str) -> int:
+        """Conta un altro tentativo fallito e ritorna il totale."""
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO risposte_fallite (account_id, message_id,"
+                " tentativi) VALUES (?,?,1)"
+                " ON CONFLICT(account_id, message_id) DO UPDATE SET"
+                " tentativi=tentativi+1",
+                (int(account_id), str(message_id)))
+            row = conn.execute(
+                "SELECT tentativi FROM risposte_fallite"
+                " WHERE account_id=? AND message_id=?",
+                (int(account_id), str(message_id))).fetchone()
+        return int(row[0]) if row else 1
 
     def segna_video(self, account_id: int, thread_key: str,
                     con: str = "") -> None:
@@ -609,7 +643,9 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
                 policy.audit("appointment", {"account_id": account_id,
                                              "thread": chiave},
                              "created_without_id")
-                return None
+                # L'evento c'e': ritentare ne creerebbe un doppione a ogni
+                # giro. Lo si dice all'umano, che lo gestisce a mano.
+                return {"stato": stato, "event_id": "", "senza_id": True}
     except Exception as e:
         logger.warning("calendario non aggiornato per %s: %s", chiave, e)
         policy.audit("appointment", {"account_id": account_id,
@@ -650,7 +686,8 @@ def _video_dopo_conferma(account_id: int, chiave: str,
     mail con il link in approvazione. None se non c'era niente da fare.
     Un guasto di Zoom non tocca l'appuntamento, che resta in calendario:
     finisce nell'avviso, dove l'umano lo vede."""
-    if not toccato or esito.get("stato") != "confermato" or toccato.get("invariato"):
+    if (not toccato or esito.get("stato") != "confermato"
+            or toccato.get("invariato") or toccato.get("senza_id")):
         return None
     riga = store().get(account_id, chiave)
     if not riga or not riga.get("video"):
@@ -875,6 +912,7 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                 and ricevuta < float(iniziale["updated_at"]) - _MARGINE_SECONDI):
             continue  # la mail a cui abbiamo risposto, non la replica
         corpo = _corpo(m)
+        non_letto = False
         if not corpo.strip() and corpo_di is not None:
             try:
                 corpo = str(corpo_di(m) or "")
@@ -882,10 +920,13 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                 logger.info("testo della risposta %s non letto: %s", mid, e)
                 # Un guasto temporaneo non equivale a una risposta letta.
                 # Non superarla con le successive dello stesso thread.
-                da_ritentare.add(chiave)
-                continue
+                # Dopo _TENTATIVI_MAX ci si arrende: l'umano la legge.
+                if mid and st.fallita(account_id, mid) < _TENTATIVI_MAX:
+                    da_ritentare.add(chiave)
+                    continue
+                non_letto = True
         esito: Dict[str, Any] = {"stato": "nessuno"}
-        if forse(f"{subject}\n{corpo}"):
+        if not non_letto and forse(f"{subject}\n{corpo}"):
             esito = leggi(corpo, subject, mittente, adesso)
         toccato = None
         if esito.get("stato") == "proposto" and esito.get("scelta_unica"):
@@ -910,7 +951,17 @@ def sweep(account_id: int, messaggi: list, adesso=None,
                               controparte=mittente, oggetto=subject,
                               received_at=ricevuta)
             if toccato is None:
-                da_ritentare.add(chiave)
+                # Il calendario ha rifiutato: si riprova al giro dopo, ma
+                # l'umano lo sa UNA volta sola. Prima partiva un avviso
+                # identico ogni minuto finche' il calendario restava giu'.
+                tentativi = (st.fallita(account_id, mid) if mid
+                             else _TENTATIVI_MAX)
+                if tentativi < _TENTATIVI_MAX:
+                    da_ritentare.add(chiave)
+                    if tentativi > 1:
+                        continue
+                else:
+                    esito = dict(esito, arreso=True)
             if toccato and not toccato.get("invariato"):
                 fatti += 1
                 if esito.get("stato") == "disdetto":
@@ -1016,14 +1067,27 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
         except ValueError:
             quando = str(esito["inizio"])
     nota = ""
+    arreso = bool(esito.get("arreso"))
     if stato == "confermato" and quando:
-        if toccato:
+        if toccato and toccato.get("senza_id"):
+            nota = (f"⚠️ {quando}: inserito in calendario, ma il calendario "
+                    "non ha dato un riferimento: se cambia o salta, "
+                    "aggiornalo a mano." if it else
+                    f"⚠️ {quando}: added to the calendar without a "
+                    "reference: update it by hand if it changes.")
+        elif toccato:
             nota = (f"📅 {quando}: inserito in calendario." if it
                     else f"📅 {quando}: added to the calendar.")
+        elif arreso:
+            nota = (f"⚠️ {quando}: NON inserito, il calendario continua a "
+                    "rifiutarlo. Inseriscilo a mano." if it else
+                    f"⚠️ {quando}: NOT added, the calendar keeps refusing "
+                    "it. Add it by hand.")
         else:
             nota = (f"⚠️ {quando}: NON inserito, il calendario non ha "
-                    "accettato l'evento." if it else
-                    f"⚠️ {quando}: NOT added, the calendar refused it.")
+                    "accettato l'evento. Riprovo in automatico." if it else
+                    f"⚠️ {quando}: NOT added, the calendar refused it. "
+                    "Retrying automatically.")
     elif stato == "proposto" and quando and esito.get("occupato"):
         nota = (f"⚠️ {quando}: in calendario c'e' gia' un impegno, non "
                 "l'ho inserito." if it else
@@ -1037,7 +1101,12 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
                 "inserito nulla." if it else
                 "Several or vague times: nothing added to the calendar.")
     elif stato == "disdetto":
-        if toccato is None:
+        if toccato is None and arreso:
+            nota = ("⚠️ Disdetta ricevuta, ma il calendario continua a "
+                    "rifiutare la cancellazione. Toglilo a mano." if it else
+                    "⚠️ Cancellation received, but the calendar keeps "
+                    "refusing to remove it. Remove it by hand.")
+        elif toccato is None:
             nota = ("⚠️ Disdetta ricevuta, ma l'appuntamento NON e' stato "
                     "rimosso dal calendario. Riprovero'." if it else
                     "⚠️ Cancellation received, but the appointment was NOT "

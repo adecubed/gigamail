@@ -286,14 +286,15 @@ def test_mail_con_ordini_non_arriva_allagente(monkeypatch, cal):
 
 def test_evento_senza_id_non_viene_registrato(monkeypatch, tmp_path):
     """Un evento di cui non si conosce l'id non si potrebbe piu' ne'
-    promuovere ne' cancellare: meglio non tenerne traccia."""
+    promuovere ne' cancellare: meglio non tenerne traccia. Ma c'e': non e'
+    un fallimento da ritentare, che ne creerebbe un doppione a ogni giro."""
     finto = FintoCalendario(senza_id=True)
     monkeypatch.setattr(appointments, "calendar_router", finto)
     appointments.set_store(
         appointments.AppointmentStore(tmp_path / ".a.db"))
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00"}')
-    assert appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
-                                   adesso=NOW) is None
+    esito = appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it", adesso=NOW)
+    assert esito["senza_id"] is True and esito["event_id"] == ""
     assert appointments.store().aperti() == []
     appointments.set_store(None)
 
@@ -419,6 +420,71 @@ def test_sweep_non_rilegge_lo_stesso_messaggio(monkeypatch, cal):
         appointments.sweep(2, msg, adesso=NOW,
                            avvisa=lambda *a: avvisi.append(a))
     assert len(chiamate) == 1 and len(avvisi) == 1
+
+
+def test_calendario_giu_un_avviso_poi_silenzio_poi_la_resa(monkeypatch, cal):
+    """Con il calendario giu' la stessa conferma tornava a ogni giro dello
+    sweep, un minuto: una lettura dell'agente e un avviso identico su
+    Telegram ogni volta, per sempre. Ora: un avviso al primo guasto,
+    tentativi in silenzio, e dopo _TENTATIVI_MAX la resa, detta una volta."""
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.fallisce = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    avvisi = []
+    for _ in range(appointments._TENTATIVI_MAX + 3):
+        appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    testi = [appointments.testo_avviso(*a) for a in avvisi]
+    assert len(testi) == 2
+    assert "Riprovo in automatico" in testi[0]
+    assert "Inseriscilo a mano" in testi[1]
+    assert appointments.store().vista(2, "10")
+
+
+def test_calendario_che_torna_inserisce_al_giro_dopo(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.fallisce = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    appointments.sweep(2, msg, adesso=NOW)
+    cal.fallisce = False
+    assert appointments.sweep(2, msg, adesso=NOW) == 1
+    assert len(cal.creati) == 1
+
+
+def test_evento_senza_id_non_si_ricrea_a_ogni_giro(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.senza_id = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    avvisi = []
+    for _ in range(3):
+        appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert len(cal.creati) == 1 and len(avvisi) == 1
+    assert "aggiornalo a mano" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_testo_illeggibile_si_arrende_e_avvisa(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+
+    def _rotto(m):
+        raise RuntimeError("IMAP giu'")
+
+    avvisi = []
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com")]
+    for _ in range(appointments._TENTATIVI_MAX + 2):
+        appointments.sweep(2, msg, adesso=NOW, corpo_di=_rotto,
+                           avvisa=lambda *a: avvisi.append(a))
+    assert len(avvisi) == 1
+    assert "testo non leggibile" in appointments.testo_avviso(*avvisi[0])
 
 
 def test_sweep_applica_le_risposte_arretrate_in_ordine_cronologico(monkeypatch, cal):
