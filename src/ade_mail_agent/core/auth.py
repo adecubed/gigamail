@@ -5,6 +5,8 @@ Gestisce login, token refresh, persistenza token in locale.
 
 import json
 import os
+from contextvars import ContextVar
+from typing import NamedTuple, Optional
 
 import msal
 from dotenv import load_dotenv
@@ -71,13 +73,21 @@ class AuthRequired(Exception):
 # (fix multi-account: prima si prendeva sempre accounts[0], "l'ultimo login
 # vince"); seed e' il token_cache serializzato salvato nel DB account, usato
 # se l'identita' non e' (piu') nella cache globale.
-_current = {'email': None, 'account_id': None, 'seed': None}
+class _AccountContext(NamedTuple):
+    email: Optional[str] = None
+    account_id: Optional[int] = None
+    seed: Optional[str] = None
+
+
+# Each request/thread gets its own immutable value; never mutate a shared dict.
+_EMPTY_CONTEXT = _AccountContext()
+_current: ContextVar[_AccountContext] = ContextVar(
+    'microsoft_account', default=_EMPTY_CONTEXT)
 
 
 def set_current_account(email: str, account_id=None, token_cache_json: str = None):
-    _current['email'] = (email or '').strip().lower() or None
-    _current['account_id'] = account_id
-    _current['seed'] = token_cache_json or None
+    _current.set(_AccountContext(
+        (email or '').strip().lower() or None, account_id, token_cache_json or None))
 
 
 def clear_current_account():
@@ -110,11 +120,11 @@ def _save_cache(cache: msal.SerializableTokenCache):
             f.write(cache.serialize())
 
 
-def _match_account(app):
+def _match_account(app, context=None):
     """Seleziona l'identita' msal del contesto corrente. Con un'email
     impostata NON si ripiega mai su un'altra identita'."""
     accounts = app.get_accounts()
-    email = _current['email']
+    email = (context or _current.get()).email
     if email:
         for a in accounts:
             if str(a.get('username', '')).strip().lower() == email:
@@ -123,40 +133,42 @@ def _match_account(app):
     return accounts[0] if accounts else None
 
 
-def _persist_seed(cache):
+def _persist_seed(cache, context=None):
     """Riporta nel DB account il token cache aggiornato (refresh compresi)."""
-    if _current['account_id'] is None or not cache.has_state_changed:
+    context = context or _current.get()
+    if context.account_id is None or not cache.has_state_changed:
         return
     try:
         from . import accounts as _acc
-        _acc.update_microsoft_token(_current['account_id'], cache.serialize())
+        _acc.update_microsoft_token(context.account_id, cache.serialize())
     except Exception as e:
-        print(f'[AUTH] persistenza token account {_current["account_id"]}: {e}')
+        print(f'[AUTH] persistenza token account {context.account_id}: {e}')
 
 
 def get_token() -> str:
     """Access token valido per l'account del contesto corrente (o l'unico
     disponibile). Solo acquisizione silenziosa: mai flussi interattivi."""
+    context = _current.get()
     app, cache = _get_app()
-    acct = _match_account(app)
+    acct = _match_account(app, context)
     from_seed = False
 
-    if acct is None and _current['seed']:
+    if acct is None and context.seed:
         # l'identita' non e' nella cache globale: usa la copia per-account
-        app, cache = _build_app(_current['seed'])
-        acct = _match_account(app)
+        app, cache = _build_app(context.seed)
+        acct = _match_account(app, context)
         from_seed = True
 
     if acct is not None:
         result = app.acquire_token_silent(SCOPES, account=acct)
         if from_seed:
-            _persist_seed(cache)
+            _persist_seed(cache, context)
         else:
             _save_cache(cache)
         if result and 'access_token' in result:
             return result['access_token']
 
-    who = _current['email'] or 'account Microsoft'
+    who = context.email or 'account Microsoft'
     raise AuthRequired(
         f"Nessun token valido per {who}: esegui il login "
         f"(CLI: ade-mail-agent login, oppure dalla console)."

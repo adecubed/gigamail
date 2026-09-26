@@ -8,6 +8,7 @@ Le proprieta' sotto test sono quelle del design:
     nemmeno una mail ostile puo' dirottare la risposta
   - raffica → la regola si pausa da sola
 """
+import base64
 import time
 
 import pytest
@@ -41,9 +42,11 @@ def isolated(tmp_path, monkeypatch):
 def fake_world(monkeypatch):
     """Provider e agente finti. `world` raccoglie cio' che succede."""
     world = {"unread": [], "headers": DMARC_PASS, "replies": [],
-             "draft": "Buongiorno,\nle informazioni richieste sono qui sotto.\nSaluti"}
+             "draft": "Buongiorno,\nle informazioni richieste sono qui sotto.\nSaluti",
+             "reply_original": mail_router.reply_message}
     monkeypatch.setattr(mail_router, "get_messages",
-                        lambda **kw: list(world["unread"]))
+                        lambda **kw: world["unread"][kw.get("skip", 0):
+                                                      kw.get("skip", 0) + kw["top"]])
     monkeypatch.setattr(mail_router, "get_message_headers",
                         lambda **kw: world["headers"])
     monkeypatch.setattr(
@@ -339,9 +342,9 @@ def test_mail_ostile_in_cartella_con_regola_attiva(fake_world):
     watcher_mod.Watcher().tick()
     assert len(fake_world["replies"]) == 1
     sent = fake_world["replies"][0]
-    # il watcher passa solo message_id + body: nessun to/cc/bcc esiste
-    assert set(sent.keys()) == {"account_id", "message_id", "body",
-                                "auto_submitted"}
+    assert "to" not in sent and "bcc" not in sent
+    assert sent["cc"] is None and sent["attachments"] == []
+    assert sent["folder"] == "INBOX.Leads"
     assert sent["message_id"] == "666"
     assert sent["body"] == fake_world["draft"]
 
@@ -419,3 +422,98 @@ def test_prompt_del_drafter_marca_la_mail_come_non_fidata(fake_world, tmp_path):
     low = prompt.lower()
     # il contenuto ostile sta DOPO il delimitatore dei dati non fidati
     assert low.index("mail in arrivo") < low.index("exfil@attacker.example")
+
+
+def test_risposta_con_uid_uguali_usa_la_cartella_approvata(fake_world, monkeypatch):
+    """UID 42 di Leads e UID 42 di INBOX sono due persone diverse."""
+    _rule(trigger_kind="folder", trigger_values=["INBOX.Leads"])
+    lead = _msg(mid="42")
+    inbox = _msg(mid="42", sender="altra-persona@example.com")
+    fake_world["unread"] = [lead]
+    monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 1})
+    monkeypatch.setattr(mail_router, "get_message",
+                        lambda account_id=None, message_id="", folder="":
+                        lead if folder == "INBOX.Leads" else inbox)
+    monkeypatch.setattr(mail_router, "reply_message", fake_world["reply_original"])
+    sent = []
+    monkeypatch.setattr(mail_router, "send_message",
+                        lambda **kw: sent.append(kw) or {"success": True})
+    w = watcher_mod.Watcher()
+    w.tick()
+    request = policy.store().list_pending()[0]
+    assert request["args"]["folder"] == "INBOX.Leads"
+    policy.store().approve(request["request_id"], by="test")
+    w.tick()
+    assert len(sent) == 1
+    assert sent[0]["to"] == "cliente@fidato.it"
+
+
+def test_risposta_normale_inoltra_copia_e_allegati_approvati(fake_world, monkeypatch,
+                                                         tmp_path):
+    from ade_mail_agent.core import attachments
+
+    document = tmp_path / "A.1.4.pdf"
+    document.write_bytes(b"%PDF planimetria")
+    monkeypatch.setattr(attachments, "identity_paths", lambda aid: [str(document)])
+    _rule(cc=["ufficio@example.com"], attachments=[document.name])
+    fake_world["unread"] = [_msg()]
+    fake_world["draft"] = "Buongiorno, in allegato la planimetria A.1.4."
+    w = watcher_mod.Watcher()
+    w.tick()
+    request = policy.store().list_pending()[0]
+    assert request["preview"]["cc"] == ["ufficio@example.com"]
+    assert request["preview"]["attachments"][0]["name"] == document.name
+    policy.store().approve(request["request_id"], by="test")
+    w.tick()
+    assert len(fake_world["replies"]) == 1
+    reply = fake_world["replies"][0]
+    assert reply["cc"] == ["ufficio@example.com"]
+    assert reply["attachments"][0]["name"] == document.name
+    assert base64.b64decode(reply["attachments"][0]["data_b64"]) == document.read_bytes()
+
+
+def test_lead_oltre_la_prima_pagina_viene_elaborato(fake_world):
+    _rule()
+    fake_world["unread"] = [
+        _msg(mid=str(i), sender="newsletter@example.com") for i in range(25)
+    ] + [_msg(mid="lead-26")]
+    w = watcher_mod.Watcher()
+    assert w.tick()["processed"] == 1
+    requests = policy.store().list_pending()
+    assert len(requests) == 1
+    assert requests[0]["args"]["message_id"] == "lead-26"
+    assert w.tick()["processed"] == 0
+
+
+@pytest.mark.parametrize("outcome", ["failed", "interrupted", "dryrun"])
+def test_esecuzione_altrove_senza_invio_non_risulta_sent(fake_world, outcome):
+    rid = _rule()
+    fake_world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    request = policy.store().list_pending()[0]
+    request_id = request["request_id"]
+    policy.store().approve(request_id, by="test")
+    policy.store().consume_approved(request_id, "reply_mail")
+    policy.store().record_outcome(request_id, outcome)
+    w.execute_approved()
+    assert rules_mod.store().get_handled(rid, "101")["status"] == "failed"
+    assert rules_mod.store().sent_today(rid) == 0
+    assert fake_world["replies"] == []
+
+
+def test_esecuzione_altrove_attende_esito_senza_reinviare(fake_world):
+    rid = _rule()
+    fake_world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    request_id = policy.store().list_pending()[0]["request_id"]
+    policy.store().approve(request_id, by="test")
+    policy.store().consume_approved(request_id, "reply_mail")
+    w.execute_approved()
+    assert rules_mod.store().get_handled(rid, "101")["status"] == "awaiting_approval"
+    assert fake_world["replies"] == []
+    policy.store().record_outcome(request_id, "ok")
+    w.execute_approved()
+    assert rules_mod.store().get_handled(rid, "101")["status"] == "sent"
+    assert fake_world["replies"] == []

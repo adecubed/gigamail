@@ -520,6 +520,11 @@ async function sendNewMail() {
       cc,
       bcc
     );
+    // Simulazione (#14): niente e' partito, quindi testo e bozza restano.
+    if (result.success && result.dryrun) {
+      if (status) status.textContent = 'Simulazione: nessuna mail inviata.';
+      return;
+    }
     if (result.success) {
       if (status) {
         status.textContent = result.sent_copy_saved === false

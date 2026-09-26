@@ -31,8 +31,11 @@ HOSTILE_MAIL = {
 
 
 @pytest.fixture(autouse=True)
-def isolated_store(tmp_path):
+def isolated_store(tmp_path, monkeypatch):
     policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
+    account = {"id": 1, "email": "owner@example.test"}
+    monkeypatch.setattr(srv.core_accounts, "get_active_account", lambda: account)
+    monkeypatch.setattr(srv.core_accounts, "get_account_by_id", lambda aid: account)
     yield
     policy.set_store(None)
 

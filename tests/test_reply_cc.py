@@ -28,11 +28,11 @@ def test_cc_arriva_a_reply_message(monkeypatch):
                         lambda **kw: {"from": {"emailAddress":
                                                {"address": "cliente@x.it"}},
                                       "subject": "Appuntamento"})
-    r = srv.reply_mail(message_id="1", body="ok", cc=["ufficio@x.it"])
+    r = srv.reply_mail(message_id="1", body="ok", cc=["ufficio@x.it"], account_id=1)
     assert r["preview"]["cc"] == ["ufficio@x.it"]
     policy.store().approve(r["request_id"])
     srv.reply_mail(message_id="1", body="ok", cc=["ufficio@x.it"],
-                   request_id=r["request_id"])
+                   request_id=r["request_id"], account_id=1)
     assert inviato["cc"] == ["ufficio@x.it"]
 
 
@@ -44,7 +44,7 @@ def test_senza_cc_resta_none(monkeypatch):
                         lambda **kw: {"from": {"emailAddress":
                                                {"address": "cliente@x.it"}},
                                       "subject": "Appuntamento"})
-    r = srv.reply_mail(message_id="1", body="ok")
+    r = srv.reply_mail(message_id="1", body="ok", account_id=1)
     policy.store().approve(r["request_id"])
-    srv.reply_mail(message_id="1", body="ok", request_id=r["request_id"])
+    srv.reply_mail(message_id="1", body="ok", request_id=r["request_id"], account_id=1)
     assert inviato["cc"] is None

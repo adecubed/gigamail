@@ -115,11 +115,14 @@ def send_message(to: str, subject: str, body: str,
     if reply_to_id and not graph_atts:
         # Reply senza allegati: endpoint /reply (mantiene il thread)
         url = f'{GRAPH_URL}/me/messages/{reply_to_id}/reply'
-        # SOLO 'comment': passare anche message.body fa rifiutare la chiamata
-        # (SamePropertyContentConflictBody, "Specify either 'Comment' or
-        # 'Body'"). Scoperto dal vivo il 2026-08-21 grazie al provider_result
-        # propagato: prima il reply Graph falliva con un booleano muto.
-        payload = {'comment': body}
+        # Explicit recipients override Graph's default Reply-To routing and
+        # preserve exactly the addresses approved by the user. Only the body
+        # conflicts with comment; recipient properties are supported together.
+        payload = {'comment': body, 'message': {
+            'toRecipients': _recipients(split_addresses(to)),
+            'ccRecipients': _recipients(split_addresses(cc)),
+            'bccRecipients': _recipients(split_addresses(bcc)),
+        }}
         res = requests.post(url, headers=_headers(), json=payload)
     else:
         # sendMail: invio nuovo o forward; supporta allegati inline (<~3MB totali)
