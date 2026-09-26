@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **Destinatari, account e cartella restano quelli approvati.** SMTP non
+  include piu' l'header Ccn nel messaggio consegnato. Le risposte Graph
+  senza allegati rispettano To/CC/Ccn espliciti; le risposte IMAP usano la
+  cartella originale. Le richieste MCP fissano l'account mail o il calendario
+  prima dell'approvazione; quelle vecchie senza destinazione fissata vanno
+  ricreate. Il contesto Microsoft e' isolato fra richieste concorrenti.
+- **Le azioni dirette della console richiedono la verifica del sistema.**
+  Invio, eliminazione e spostamento mail, e scritture calendario chiedono
+  Windows Hello / Touch ID anche con un token valido. Annullamento, errore
+  del provider e dry-run conservano la bozza; errori locali di audit o rubrica
+  dopo un invio riuscito non lo fanno apparire fallito. Il popup passa
+  correttamente account e allegati all'API.
+- **IMAP non elimina l'originale se la copia nel cestino fallisce.**
+  La cartella indicata viene rispettata, si preferisce UID MOVE e si usa
+  UID EXPUNGE quando disponibile; il fallback controlla gli altri messaggi
+  gia' marcati per l'eliminazione.
+- **Il watcher recupera anche le mail oltre la prima pagina.** Mantiene
+  cartella, CC e allegati approvati, conserva gli esiti falliti e protegge
+  dall'archiviazione le mail con una risposta in attesa anche se la regola
+  viene sospesa. Gli aggiornamenti degli appuntamenti seguono l'ordine dei
+  messaggi: errori di lettura o del calendario restano da riprovare, e una
+  cancellazione fallita non viene annunciata come riuscita.
+
 - **Gli allegati seguono la mail, e una promessa a vuoto non parte.** La
   regola di idealista aveva una terna fissa di planimetrie: partivano
   sempre quelle, qualunque cosa chiedesse il cliente. Il 19 e il 23

@@ -13,7 +13,7 @@ from ade_mail_agent.core import (
 )
 
 from .addresses import _remember_message_addresses, _save_address
-from .common import _active_id
+from .common import _active_id, _human_action
 
 router = APIRouter()
 _MIME = mimetypes.MimeTypes()
@@ -157,7 +157,9 @@ def create_folder(req: FolderRequest):
 
 @router.delete("/mail/folders/{folder_id}")
 def delete_folder(folder_id: str, account_id: Optional[int] = None):
-    return {"success": mail_router.delete_folder(account_id or _active_id(), folder_id=folder_id)}
+    args = {"account_id": account_id or _active_id(), "folder_id": folder_id}
+    return _human_action("delete_folder", args, f"Eliminare la cartella {folder_id}?",
+                         lambda a: {"success": mail_router.delete_folder(**a)})
 
 
 @router.get("/mail/search/{query}")
@@ -203,26 +205,44 @@ def start_index(account_id: Optional[int] = None):
 
 # ── MAIL: AZIONI ─────────────────────────────────────────────────────
 
+class AttachmentRequest(BaseModel):
+    name: str
+    data_b64: str
+    type: str = "application/octet-stream"
+
+
 class SendRequest(BaseModel):
     to: str
     subject: str = ""
     body: str = ""
     cc: Optional[List[str]] = None
     bcc: Optional[List[str]] = None
-    attachments: Optional[List[str]] = None
+    attachments: Optional[List[AttachmentRequest]] = None
     reply_to_id: Optional[str] = None
     account_id: Optional[int] = None
 
 
 @router.post("/mail/send")
-def send_mail(req: SendRequest):
-    result = mail_router.send_message(
-        req.account_id or _active_id(),
-        to=req.to, subject=req.subject, body=req.body,
-        reply_to_id=req.reply_to_id, attachments=req.attachments,
-        cc=req.cc, bcc=req.bcc,
+def send_mail(req: SendRequest, account_id: Optional[int] = None):
+    args = req.model_dump()
+    args["account_id"] = req.account_id or account_id or _active_id()
+    if args["account_id"] is None:
+        raise HTTPException(400, "Nessun account attivo")
+    result = _human_action(
+        "send_mail", args,
+        f"Inviare dall'account {args['account_id']} a {req.to} "
+        f"(CC: {', '.join(req.cc or [])}; Ccn: {', '.join(req.bcc or [])}) "
+        f"la mail {req.subject!r}?",
+        lambda a: mail_router.send_message(**a),
     )
-    _save_address(req.to)
+    if result.get("success") and not result.get("dryrun"):
+        try:
+            _save_address(req.to)
+        except Exception:
+            # The provider already sent the message; an autocomplete storage
+            # error must not report a failed send and invite a duplicate.
+            import logging
+            logging.getLogger(__name__).exception("Cannot save recipient to address book")
     return result
 
 
@@ -265,9 +285,10 @@ def read_message(message_id: str, folder: str = "", account_id: Optional[int] = 
 
 @router.delete("/mail/{message_id}")
 def delete_message(message_id: str, folder: str = "", account_id: Optional[int] = None):
-    return {"success": mail_router.delete_message(
-        account_id or _active_id(), message_id=message_id, folder=folder or None
-    )}
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder": folder or "INBOX"}
+    return _human_action("delete_message", args, f"Eliminare il messaggio {message_id} in {folder or 'Inbox'}?",
+                         lambda a: {"success": mail_router.delete_message(**a)})
 
 
 @router.post("/mail/{message_id}/read")
@@ -300,23 +321,23 @@ def move_message(message_id: str, folder_id: Optional[str] = None,
         raise HTTPException(400, "Cartella di destinazione mancante")
     if source_folder and destinazione.lower() == source_folder.strip().lower():
         raise HTTPException(400, "La mail e' gia' in questa cartella")
-    return {"success": mail_router.move_to_folder(
-        account_id or _active_id(), message_id=message_id,
-        folder_id=destinazione, source_folder=source_folder or None,
-    )}
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": destinazione, "source_folder": source_folder or None}
+    return _human_action("move_message", args, f"Spostare il messaggio {message_id} in {destinazione}?",
+                         lambda a: {"success": mail_router.move_to_folder(**a)})
 
 
 @router.post("/mail/{message_id}/spam")
 def mark_spam(message_id: str, folder: str = "inbox", account_id: Optional[int] = None):
-    return {"success": mail_router.move_to_folder(
-        account_id or _active_id(), message_id=message_id,
-        folder_id="spam", source_folder=folder,
-    )}
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": "spam", "source_folder": folder}
+    return _human_action("move_message", args, f"Spostare il messaggio {message_id} nello spam?",
+                         lambda a: {"success": mail_router.move_to_folder(**a)})
 
 
 @router.post("/mail/{message_id}/not_spam")
 def not_spam(message_id: str, account_id: Optional[int] = None):
-    return {"success": mail_router.move_to_folder(
-        account_id or _active_id(), message_id=message_id,
-        folder_id="inbox", source_folder="spam",
-    )}
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": "inbox", "source_folder": "spam"}
+    return _human_action("move_message", args, f"Riportare il messaggio {message_id} nella posta in arrivo?",
+                         lambda a: {"success": mail_router.move_to_folder(**a)})

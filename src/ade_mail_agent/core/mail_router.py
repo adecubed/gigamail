@@ -28,7 +28,7 @@ def _account(account_id=None):
     if account_id is not None:
         # Se è già un dict account, restituiscilo direttamente
         if isinstance(account_id, dict):
-            return account_id
+            return _with_ms_context(account_id)
         # Normalizza a int
         try:
             aid = int(account_id)
@@ -156,6 +156,7 @@ def get_messages(
         password,
         folder=target,
         top=top,
+        skip=skip,
     )
 def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict:
     a = _account(account_id)
@@ -301,7 +302,8 @@ def _send_backend(
     ))
 def reply_message(account_id=None, message_id: str = '', body: str = '',
                   auto_submitted: bool = False,
-                  attachments: list = None, cc: list = None) -> Dict:
+                  attachments: list = None, cc: list = None,
+                  folder: str = '') -> Dict:
     """
     Risponde a una mail esistente.
     Recupera mittente e oggetto originale, poi invia la risposta
@@ -312,7 +314,7 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
     a = _account(account_id)
     if not a:
         return {'success': False, 'error': 'Account non trovato'}
-    msg = get_message(account_id, message_id)
+    msg = get_message(account_id, message_id, folder=folder)
     if not msg:
         return {'success': False, 'error': 'Messaggio originale non trovato'}
     # Estrai mittente originale

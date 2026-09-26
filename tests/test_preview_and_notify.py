@@ -15,7 +15,11 @@ from ade_mail_agent import policy
 
 
 @pytest.fixture(autouse=True)
-def store_isolato(tmp_path):
+def store_isolato(tmp_path, monkeypatch):
+    from ade_mail_agent.core import accounts
+    account = {"id": 1, "email": "owner@example.test"}
+    monkeypatch.setattr(accounts, "get_active_account", lambda: account)
+    monkeypatch.setattr(accounts, "get_account_by_id", lambda aid: account)
     policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
     yield
     policy.set_store(None)

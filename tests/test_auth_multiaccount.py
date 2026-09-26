@@ -3,6 +3,8 @@
 interattivi impliciti."""
 import json
 import os
+import threading
+from contextvars import copy_context
 
 import pytest
 
@@ -112,3 +114,45 @@ def test_case_insensitive_email(fake_msal):
     _write_global_cache(["Simone@X.it"])
     auth.set_current_account("simone@x.it", account_id=1)
     assert auth.get_token() == "tok-Simone@X.it"
+
+
+def test_concurrent_requests_keep_their_microsoft_identity(fake_msal, monkeypatch):
+    _write_global_cache(["first@x.it", "second@x.it"])
+    started = threading.Event()
+    resume = threading.Event()
+    real_get_app = auth._get_app
+    results = {}
+
+    def get_app():
+        if threading.current_thread().name == "account-first":
+            started.set()
+            assert resume.wait(5)
+        return real_get_app()
+
+    monkeypatch.setattr(auth, "_get_app", get_app)
+    monkeypatch.setattr(auth, "_save_cache", lambda cache: None)
+
+    def first_request():
+        auth.set_current_account("first@x.it", 1)
+        results["first"] = auth.get_token()
+
+    thread = threading.Thread(target=first_request, name="account-first")
+    thread.start()
+    try:
+        assert started.wait(5)
+        auth.set_current_account("second@x.it", 2)
+        results["second"] = auth.get_token()
+    finally:
+        resume.set()
+        thread.join(5)
+    assert not thread.is_alive()
+    assert results == {"first": "tok-first@x.it", "second": "tok-second@x.it"}
+
+
+def test_child_context_cannot_mutate_parent_identity(fake_msal):
+    _write_global_cache(["parent@x.it", "child@x.it"])
+    auth.set_current_account("parent@x.it", 1)
+    child = copy_context()
+    child.run(auth.set_current_account, "child@x.it", 2)
+    assert child.run(auth.get_token) == "tok-child@x.it"
+    assert auth.get_token() == "tok-parent@x.it"

@@ -71,7 +71,7 @@ def del_dominio(indirizzo: str, domini: Iterable[str]) -> bool:
 
 def pronta(account_id: int, message: Dict[str, Any],
            regole: List[Dict[str, Any]], unread_days: int = 7) -> bool:
-    """Nessuna regola attiva su questa casella aspetta ancora la mail.
+    """Nessuna regola su questa casella aspetta ancora la mail.
 
     Una regola guarda solo le mail arrivate dopo la sua creazione ed entro
     unread_days (ingestion.poll_folder): quelle piu' vecchie non le gestira'
@@ -93,6 +93,8 @@ def pronta(account_id: int, message: Dict[str, Any],
             if riga.get("status") not in _CONCLUSI:
                 return False
             continue
+        if regola["paused"] or regola["expired"]:
+            continue  # inattiva: nessun nuovo lavoro, ma il pendente conta
         soglia = max(float(regola.get("created_at") or 0),
                      adesso - unread_days * 86400)
         if arrivo is None or arrivo.timestamp() >= soglia:
@@ -105,7 +107,9 @@ def archivia(w) -> int:
     elenco = voci()
     if not elenco:
         return 0
-    regole = rules_mod.store().active()
+    # Pausa/scadenza fermano nuove bozze, non le approvazioni gia' aperte:
+    # anche quelle devono conservare l'originale e il suo UID IMAP.
+    regole = rules_mod.store().list_all()
     spostate = 0
     for voce in elenco:
         aid = int(voce["account_id"])

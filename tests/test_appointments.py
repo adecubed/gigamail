@@ -286,14 +286,15 @@ def test_mail_con_ordini_non_arriva_allagente(monkeypatch, cal):
 
 def test_evento_senza_id_non_viene_registrato(monkeypatch, tmp_path):
     """Un evento di cui non si conosce l'id non si potrebbe piu' ne'
-    promuovere ne' cancellare: meglio non tenerne traccia."""
+    promuovere ne' cancellare: meglio non tenerne traccia. Ma c'e': non e'
+    un fallimento da ritentare, che ne creerebbe un doppione a ogni giro."""
     finto = FintoCalendario(senza_id=True)
     monkeypatch.setattr(appointments, "calendar_router", finto)
     appointments.set_store(
         appointments.AppointmentStore(tmp_path / ".a.db"))
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00"}')
-    assert appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
-                                   adesso=NOW) is None
+    esito = appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it", adesso=NOW)
+    assert esito["senza_id"] is True and esito["event_id"] == ""
     assert appointments.store().aperti() == []
     appointments.set_store(None)
 
@@ -419,6 +420,235 @@ def test_sweep_non_rilegge_lo_stesso_messaggio(monkeypatch, cal):
         appointments.sweep(2, msg, adesso=NOW,
                            avvisa=lambda *a: avvisi.append(a))
     assert len(chiamate) == 1 and len(avvisi) == 1
+
+
+def test_calendario_giu_un_avviso_poi_silenzio_poi_la_resa(monkeypatch, cal):
+    """Con il calendario giu' la stessa conferma tornava a ogni giro dello
+    sweep, un minuto: una lettura dell'agente e un avviso identico su
+    Telegram ogni volta, per sempre. Ora: un avviso al primo guasto,
+    tentativi in silenzio, e dopo _TENTATIVI_MAX la resa, detta una volta."""
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.fallisce = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    avvisi = []
+    for _ in range(appointments._TENTATIVI_MAX + 3):
+        appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    testi = [appointments.testo_avviso(*a) for a in avvisi]
+    assert len(testi) == 2
+    assert "Riprovo in automatico" in testi[0]
+    assert "Inseriscilo a mano" in testi[1]
+    assert appointments.store().vista(2, "10")
+
+
+def test_calendario_che_torna_inserisce_al_giro_dopo(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.fallisce = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    appointments.sweep(2, msg, adesso=NOW)
+    cal.fallisce = False
+    assert appointments.sweep(2, msg, adesso=NOW) == 1
+    assert len(cal.creati) == 1
+
+
+def test_evento_senza_id_non_si_ricrea_a_ogni_giro(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+    cal.senza_id = True
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    avvisi = []
+    for _ in range(3):
+        appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert len(cal.creati) == 1 and len(avvisi) == 1
+    assert "aggiornalo a mano" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_testo_illeggibile_si_arrende_e_avvisa(monkeypatch, cal):
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
+                            "rg@example.com", adesso=NOW)
+
+    def _rotto(m):
+        raise RuntimeError("IMAP giu'")
+
+    avvisi = []
+    msg = [_risposta("Re: Via Treviglio", "rg@example.com")]
+    for _ in range(appointments._TENTATIVI_MAX + 2):
+        appointments.sweep(2, msg, adesso=NOW, corpo_di=_rotto,
+                           avvisa=lambda *a: avvisi.append(a))
+    assert len(avvisi) == 1
+    assert "testo non leggibile" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_sweep_applica_le_risposte_arretrate_in_ordine_cronologico(monkeypatch, cal):
+    """Il provider manda prima lo spostamento, poi la proposta precedente.
+    Il secondo messaggio deve vedere l'evento appena creato, anche quando
+    entrambe le risposte sono arrivate ore prima di questo sweep."""
+    monkeypatch.setattr(appointments.time, "time", lambda: NOW.timestamp())
+    appointments.segui(2, "Appuntamento", "cliente@example.com")
+    monkeypatch.setattr(appointments.time, "time",
+                        lambda: (NOW + timedelta(days=2)).timestamp())
+    esclusi = []
+    monkeypatch.setattr(appointments, "libero",
+                        lambda a, b, escludi="": esclusi.append(escludi) or True)
+    monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: {
+        "stato": "proposto", "scelta_unica": True, "accetta": True,
+        "inizio": corpo, "fine": corpo[:11] + "18:00", "con": "Mario"})
+    nuova = _risposta("Re: Appuntamento", "cliente@example.com",
+                      "2026-09-17T17:00", mid="new",
+                      data=(NOW + timedelta(minutes=20)).isoformat())
+    vecchia = _risposta("Re: Appuntamento", "cliente@example.com",
+                       "2026-09-15T17:00", mid="old",
+                       data=(NOW + timedelta(minutes=10)).isoformat())
+
+    assert appointments.sweep(2, [nuova, vecchia], adesso=NOW) == 2
+    assert cal.creati[0]["start"] == "2026-09-15T17:00"
+    assert cal.aggiornati[0]["start"] == "2026-09-17T17:00"
+    assert esclusi == ["", "ev1"]
+    riga = appointments.store().get(
+        2, appointments.thread_key("Appuntamento", "cliente@example.com"))
+    assert riga["inizio"] == "2026-09-17T17:00"
+
+
+@pytest.mark.parametrize("fallimento", [False, RuntimeError("HTTP 503")])
+def test_disdetta_fallita_conserva_evento_e_riprova(monkeypatch, cal, fallimento):
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Appuntamento", "confermo alle 17:00",
+                            "cliente@example.com", adesso=NOW)
+    chiave = appointments.thread_key("Appuntamento", "cliente@example.com")
+    prima = appointments.store().get(2, chiave)
+    _agente(monkeypatch, '{"stato":"disdetto"}')
+    tentativi = []
+
+    def _cancella(event_id):
+        tentativi.append(event_id)
+        if len(tentativi) == 1:
+            if isinstance(fallimento, Exception):
+                raise fallimento
+            return fallimento
+        return True
+
+    monkeypatch.setattr(cal, "delete_event", _cancella)
+    avvisi = []
+    msg = [_risposta("Re: Appuntamento", "cliente@example.com",
+                     "annullo l'appuntamento", mid="cancel")]
+    assert appointments.sweep(2, msg, adesso=NOW,
+                               avvisa=lambda *a: avvisi.append(a)) == 0
+    assert appointments.store().get(2, chiave) == prima
+    assert not appointments.store().vista(2, "cancel")
+    assert "NON e' stato rimosso" in appointments.testo_avviso(*avvisi[0])
+    assert "was NOT removed" in appointments.testo_avviso(*avvisi[0], lingua="en")
+
+    assert appointments.sweep(2, msg, adesso=NOW,
+                               avvisa=lambda *a: avvisi.append(a)) == 1
+    assert tentativi == ["ev1", "ev1"]
+    assert appointments.store().get(2, chiave) is None
+    assert appointments.store().vista(2, "cancel")
+    assert "tolto dal calendario" in appointments.testo_avviso(*avvisi[1])
+
+
+def test_errore_corpo_riprova_prima_delle_risposte_successive(monkeypatch, cal):
+    monkeypatch.setattr(appointments.time, "time", lambda: NOW.timestamp())
+    appointments.segui(2, "Appuntamento", "cliente@example.com")
+    monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: {
+        "stato": "confermato", "inizio": corpo,
+        "fine": corpo[:11] + "18:00", "con": "Mario"})
+    msg = [
+        _risposta("Re: Appuntamento", "cliente@example.com", "2026-09-17T17:00",
+                  mid="new", data=(NOW + timedelta(minutes=20)).isoformat()),
+        _risposta("Re: Appuntamento", "cliente@example.com", mid="old",
+                  data=(NOW + timedelta(minutes=10)).isoformat()),
+    ]
+    chiamate = []
+
+    def _scarica(m):
+        chiamate.append(m["id"])
+        if len(chiamate) == 1:
+            raise TimeoutError("IMAP temporaneamente irraggiungibile")
+        return "2026-09-15T17:00"
+
+    avvisi = []
+    assert appointments.sweep(2, msg, adesso=NOW, corpo_di=_scarica,
+                               avvisa=lambda *a: avvisi.append(a)) == 0
+    assert avvisi == [] and cal.creati == []
+    assert not appointments.store().vista(2, "old")
+    assert not appointments.store().vista(2, "new")
+
+    assert appointments.sweep(2, msg, adesso=NOW, corpo_di=_scarica) == 2
+    assert chiamate == ["old", "old"]
+    assert cal.creati[0]["start"] == "2026-09-15T17:00"
+    assert cal.aggiornati[0]["start"] == "2026-09-17T17:00"
+    assert appointments.store().vista(2, "old")
+    assert appointments.store().vista(2, "new")
+
+
+def test_disdetta_arretrata_riprova_dopo_una_conferma_nello_stesso_giro(monkeypatch, cal):
+    monkeypatch.setattr(appointments.time, "time", lambda: NOW.timestamp())
+    appointments.segui(2, "Appuntamento", "cliente@example.com")
+    monkeypatch.setattr(appointments.time, "time",
+                        lambda: (NOW + timedelta(days=2)).timestamp())
+    monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: (
+        {"stato": "disdetto"} if corpo == "annullo" else
+        {"stato": "confermato", "inizio": "2026-09-17T17:00",
+         "fine": "2026-09-17T18:00", "con": "Mario"}))
+    msg = [
+        _risposta("Re: Appuntamento", "cliente@example.com", "annullo",
+                  mid="cancel", data=(NOW + timedelta(minutes=20)).isoformat()),
+        _risposta("Re: Appuntamento", "cliente@example.com", "confermo",
+                  mid="confirm", data=(NOW + timedelta(minutes=10)).isoformat()),
+    ]
+    monkeypatch.setattr(cal, "delete_event", lambda event_id: False)
+    assert appointments.sweep(2, msg, adesso=NOW) == 1
+    assert appointments.store().vista(2, "confirm")
+    assert not appointments.store().vista(2, "cancel")
+
+    monkeypatch.setattr(cal, "delete_event", lambda event_id: True)
+    assert appointments.sweep(2, msg, adesso=NOW) == 1
+    assert appointments.store().vista(2, "cancel")
+    assert appointments.store().get(
+        2, appointments.thread_key("Appuntamento", "cliente@example.com")) is None
+
+
+def test_nuova_conferma_dopo_disdetta_nello_stesso_arretrato(monkeypatch, cal):
+    monkeypatch.setattr(appointments.time, "time", lambda: NOW.timestamp())
+    _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
+    appointments.dalla_mail(2, "Appuntamento", "confermo alle 17:00",
+                            "cliente@example.com", adesso=NOW)
+    monkeypatch.setattr(appointments.time, "time",
+                        lambda: (NOW + timedelta(days=2)).timestamp())
+    monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: (
+        {"stato": "disdetto"} if corpo == "annullo" else
+        {"stato": "proposto", "scelta_unica": True, "accetta": True,
+         "inizio": "2026-09-17T17:00", "fine": "2026-09-17T18:00", "con": "Mario"}))
+    esclusi = []
+    monkeypatch.setattr(appointments, "libero",
+                        lambda a, b, escludi="": esclusi.append(escludi) or True)
+    msg = [
+        _risposta("Re: Appuntamento", "cliente@example.com", "confermo il nuovo orario",
+                  mid="new", data=(NOW + timedelta(minutes=20)).isoformat()),
+        _risposta("Re: Appuntamento", "cliente@example.com", "annullo",
+                  mid="cancel", data=(NOW + timedelta(minutes=10)).isoformat()),
+    ]
+    avvisi = []
+    assert appointments.sweep(2, msg, adesso=NOW,
+                               avvisa=lambda *a: avvisi.append(a)) == 2
+    assert cal.cancellati == ["ev1"]
+    assert len(cal.creati) == 2 and cal.aggiornati == []
+    assert cal.creati[-1]["start"] == "2026-09-17T17:00"
+    assert esclusi == [""]
+    assert [a[1]["id"] for a in avvisi] == ["cancel", "new"]
+    assert avvisi[-1][0]["event_id"] == ""
+    assert appointments.store().vista(2, "cancel")
+    assert appointments.store().vista(2, "new")
+    assert appointments.store().get(
+        2, appointments.thread_key("Appuntamento", "cliente@example.com"))["event_id"] == "ev2"
 
 
 def test_risposta_senza_orari_a_una_regola_arriva_comunque(monkeypatch, cal):

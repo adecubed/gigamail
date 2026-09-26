@@ -182,7 +182,8 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                      f"Reply by hand."))
         return "failed"
 
-    args = {"message_id": message_id, "body": body, "account_id": account_id}
+    args = {"message_id": message_id, "body": body, "account_id": account_id,
+            "folder": folder}
     to_address = None
     if rule.get("reply_to_body_address"):
         to_address = body_reply_address(full, sender)
