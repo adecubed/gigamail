@@ -85,3 +85,20 @@ def test_mcp_execution_preserves_watcher_approved_contact(account_context, monke
     assert sent[0]["body"] == args["body"]
     assert sent[0]["cc"] == args["cc"]
     assert sent[0]["auto_submitted"] is True
+
+
+@pytest.mark.parametrize("tool,kwargs,backend,key", [
+    ("move_message", {"message_id": "42", "folder_id": "Archive"}, "move_to_folder", "source_folder"),
+    ("delete_message", {"message_id": "42"}, "delete_message", "folder"),
+])
+def test_empty_folder_is_bound_to_the_previewed_inbox(account_context, monkeypatch, tool, kwargs, backend, key):
+    """L'anteprima legge il 42 di INBOX: senza cartella nell'approvazione,
+    l'esecuzione cercava il 42 in tutte le cartelle e agiva sul primo."""
+    calls = []
+    monkeypatch.setattr(server.mail_router, backend, lambda **kw: calls.append(kw) or True)
+    function = getattr(server, tool)
+    pending = function(**kwargs)
+    assert policy.store().get(pending["request_id"])["args"][key] == "INBOX"
+    policy.store().approve(pending["request_id"])
+    function(**kwargs, request_id=pending["request_id"])
+    assert calls[0][key] == "INBOX"

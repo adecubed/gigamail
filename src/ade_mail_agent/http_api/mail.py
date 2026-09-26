@@ -267,7 +267,7 @@ def read_message(message_id: str, folder: str = "", account_id: Optional[int] = 
 @router.delete("/mail/{message_id}")
 def delete_message(message_id: str, folder: str = "", account_id: Optional[int] = None):
     args = {"account_id": account_id or _active_id(), "message_id": message_id,
-            "folder": folder or None}
+            "folder": folder or "INBOX"}
     return _human_action("delete_message", args, f"Eliminare il messaggio {message_id} in {folder or 'Inbox'}?",
                          lambda a: {"success": mail_router.delete_message(**a)})
 

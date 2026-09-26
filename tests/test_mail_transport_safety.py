@@ -211,6 +211,78 @@ def test_delete_never_falls_back_from_explicit_source(imap, folder):
     assert not any(op in {"MOVE", "COPY", "STORE"} for op, _ in imap.operations)
 
 
+def test_delete_expunge_failure_clears_the_deleted_flag(imap):
+    """Un flag Deleted lasciato li' lo cancellerebbe per sempre il prossimo
+    EXPUNGE di un altro client, mentre l'utente legge "non eliminata"."""
+    imap.expunge_status = "NO"
+    assert not delete()
+    assert "42" not in imap.deleted
+
+
+def test_delete_without_folder_means_inbox_not_a_search(imap):
+    """Gli UID valgono solo nella loro cartella: il 42 di Archive e' un
+    altro messaggio da quello mostrato nell'anteprima (INBOX)."""
+    imap.messages = {"INBOX": {"99"}, "Trash": set(), "Archive": {"42"}}
+    assert not delete(folder="")
+    assert imap.messages["Archive"] == {"42"}
+    assert not any(op in {"MOVE", "COPY", "STORE"} for op, _ in imap.operations)
+
+
+def test_uidplus_announced_after_login_is_used(imap):
+    """La lista di capability di imaplib e' quella di prima del login."""
+    imap.capabilities = (b"IMAP4rev1",)
+    imap.capability = lambda: ("OK", [b"IMAP4rev1 UIDPLUS MOVE"])
+    assert delete()
+    assert imap.messages["INBOX"] == {"99"}
+    assert ("EXPUNGE", ("42",)) in imap.operations
+
+
+@pytest.fixture
+def imap_move(monkeypatch, imap):
+    def resolve(c, folder):
+        real = next((f for f in c.messages if f.lower() == folder.lower()), folder)
+        return real if c.select(real)[0] == "OK" else None
+
+    monkeypatch.setattr(imap_client, "_resolve_folder_strict", resolve)
+    monkeypatch.setattr(imap_client, "_resolve_folder", resolve)
+    return imap
+
+
+def move(source="INBOX"):
+    return imap_client.move_to_folder(
+        "imap.test", 993, "me@example.test", "password", "42",
+        folder="Archive", source_folder=source)
+
+
+def test_move_fallback_only_removes_its_own_uid(imap_move):
+    """Senza MOVE lo spostamento faceva un EXPUNGE di tutta la cartella:
+    il 99, segnato Deleted da un altro client, spariva per sempre."""
+    assert move()
+    assert imap_move.messages["INBOX"] == {"99"}
+    assert imap_move.messages["Archive"] == {"42"}
+    assert "99" in imap_move.deleted
+    assert not any(op == "GLOBAL_EXPUNGE" for op, _ in imap_move.operations)
+
+
+def test_legacy_move_refuses_before_copying(imap_move):
+    imap_move.capabilities = (b"IMAP4rev1",)
+    assert not move()
+    assert imap_move.messages == {"INBOX": {"42", "99"}, "Trash": set(),
+                                  "Archive": set()}
+    assert not any(op in {"COPY", "STORE", "GLOBAL_EXPUNGE"}
+                   for op, _ in imap_move.operations)
+
+
+@pytest.mark.parametrize("source", ["INBOX", "", None])
+def test_move_never_searches_other_folders(imap_move, source):
+    """Il 42 non e' nella cartella indicata (o in INBOX se non indicata):
+    spostare il 42 di Trash sarebbe spostare un altro messaggio."""
+    imap_move.messages = {"INBOX": {"99"}, "Trash": {"42"}, "Archive": set()}
+    assert not move(source)
+    assert imap_move.messages["Trash"] == {"42"}
+    assert not any(op in {"MOVE", "COPY", "STORE"} for op, _ in imap_move.operations)
+
+
 def test_router_reply_reads_original_from_requested_folder(monkeypatch):
     read = {}
     sent = {}
