@@ -35,8 +35,8 @@ def spy_ms(monkeypatch):
 def spy_imap(monkeypatch):
     calls = {}
 
-    def fake_get(host, port, email_addr, password, folder="INBOX", top=20):
-        calls.update(host=host, folder=folder, email=email_addr)
+    def fake_get(host, port, email_addr, password, folder="INBOX", top=20, skip=0):
+        calls.update(host=host, folder=folder, email=email_addr, skip=skip)
         return []
 
     monkeypatch.setattr(mail_router.imap, "get_messages", fake_get)
@@ -68,9 +68,10 @@ def test_alias_cartelle_microsoft(fake_accounts, spy_ms, alias, target):
     ("sent", "sent"),
 ])
 def test_alias_cartelle_imap(fake_accounts, spy_imap, alias, target):
-    mail_router.get_messages(account_id=20, folder=alias)
+    mail_router.get_messages(account_id=20, folder=alias, skip=40)
     assert spy_imap["folder"] == target
     assert spy_imap["host"] == "imap.example.com"
+    assert spy_imap["skip"] == 40
 
 
 def test_account_inesistente_lista_vuota(fake_accounts, spy_ms, spy_imap):

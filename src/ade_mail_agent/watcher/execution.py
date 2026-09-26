@@ -30,8 +30,15 @@ def execute_approved(w) -> int:
             rs.set_status(rule_id, message_id, "rejected")
             continue
         if rec["status"] == policy.EXECUTED:
-            # eseguita da qualcun altro (es. l'agente col request_id)
-            rs.set_status(rule_id, message_id, "sent", "executed-elsewhere")
+            # Consume precede la chiamata al provider: EXECUTED da solo
+            # non prova che una mail sia partita. Se l'altro esecutore e'
+            # ancora al lavoro, si aspetta il suo esito senza reinviare.
+            outcome = rec.get("execution_outcome")
+            if outcome == "ok":
+                rs.set_status(rule_id, message_id, "sent", "executed-elsewhere")
+            elif outcome:
+                rs.set_status(rule_id, message_id, "failed",
+                              f"execution-{outcome}-elsewhere")
             continue
         # approved → esegue
         try:

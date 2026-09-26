@@ -79,7 +79,7 @@ una richiesta approvata e non ancora eseguita si può revocare.
 | Endpoint attuale | Tool MCP | Classe | Note |
 |---|---|---|---|
 | `POST /mail/{id}/read` / `unread` | `mark_read` | WRITE_SAFE | Parametro `is_read` |
-| `POST /mail/{id}/move` | `move_message` | DANGEROUS | Due fasi; dalla console resta immediato |
+| `POST /mail/{id}/move` | `move_message` | DANGEROUS | Due fasi MCP; dalla console verifica Windows Hello / Touch ID |
 | `POST /mail/folders` | `create_folder` | WRITE_SAFE | |
 | `DELETE /mail/folders/{id}` | `delete_folder` | DANGEROUS | Conferma a due fasi |
 | `POST /mail/send` | `send_mail` | DANGEROUS | Due fasi: anteprima (to/cc/subject/body/allegati) → token → invio |

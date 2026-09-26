@@ -22,7 +22,8 @@ def _msg(mid, mittente, minuti_fa=1):
 
 
 @pytest.fixture()
-def casella(monkeypatch):
+def casella(monkeypatch, tmp_path):
+    monkeypatch.setattr(rules_mod, "_store", rules_mod.RuleStore(tmp_path / "rules.db"))
     impostazioni, spostate, posta = {}, [], []
     monkeypatch.setattr(archive.core_accounts, "get_setting",
                         lambda k, d="": impostazioni.get(k, d))
@@ -77,6 +78,33 @@ def test_bozza_fallita_resta_nella_posta_in_arrivo(casella):
     posta[:] = [_msg("f1", "reply@idealista.it", minuti_fa=-1)]
     rules_mod.store().record(rid, ACCOUNT, "f1", "reply@idealista.it", "failed")
     assert archive.archivia(W) == 0 and spostate == []
+
+
+@pytest.mark.parametrize("inactive", ["paused", "expired"])
+def test_regola_inattiva_non_perde_originale_in_approvazione(casella, inactive):
+    posta, spostate = casella
+    rid = _regola()
+    posta[:] = [_msg("pending-inactive", "reply@idealista.it", minuti_fa=-1)]
+    store = rules_mod.store()
+    store.record(rid, ACCOUNT, "pending-inactive", "reply@idealista.it",
+                 "awaiting_approval", "", "req_pending")
+    if inactive == "paused":
+        store.pause(rid)
+    else:
+        with store._conn() as conn:
+            conn.execute("UPDATE rules SET expires_at=? WHERE rule_id=?",
+                         (time.time() - 1, rid))
+    assert archive.archivia(W) == 0 and spostate == []
+    store.set_status(rid, "pending-inactive", "sent")
+    assert archive.archivia(W) == 1
+
+
+def test_regola_in_pausa_non_blocca_mail_non_gestite(casella):
+    posta, _ = casella
+    rid = _regola()
+    posta[:] = [_msg("new-inactive", "reply@idealista.it", minuti_fa=-1)]
+    rules_mod.store().pause(rid)
+    assert archive.archivia(W) == 1
 
 
 def test_mail_precedente_alla_regola_non_si_aspetta(casella):
