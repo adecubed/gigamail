@@ -152,7 +152,7 @@ def _msg(mid, corpo, subject="Re: Bilocali Via Treviglio"):
 
 def _conferma(monkeypatch, mid="zoom-1", inizio="2026-09-16T16:00"):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"%s",'
-                         '"scelta_unica":true}' % inizio)
+                         '"scelta_unica":true,"accetta":true}' % inizio)
     avvisi = []
     n = appointments.sweep(2, [_msg(mid, "va bene alle 16:00")], adesso=NOW,
                            avvisa=lambda *a: avvisi.append(a))

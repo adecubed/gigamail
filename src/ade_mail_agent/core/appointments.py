@@ -314,7 +314,8 @@ def build_prompt(testo: str, subject: str, mittente: str,
         "- Rispondi SOLO con un oggetto JSON, niente testo prima o dopo,\n"
         "  niente blocchi di codice.\n"
         '- Forma esatta: {"stato": "...", "inizio": "...", "fine": "...",'
-        ' "con": "...", "luogo": "...", "scelta_unica": true}\n'
+        ' "con": "...", "luogo": "...", "scelta_unica": true,'
+        ' "accetta": true}\n'
         "- stato vale uno di: proposto (si offrono uno o piu' orari, "
         "nessuno ancora accettato), confermato (un orario preciso e' stato "
         "accettato da entrambe le parti), disdetto (l'incontro salta e non "
@@ -331,6 +332,10 @@ def build_prompt(testo: str, subject: str, mittente: str,
         "- Se gli orari proposti sono piu' di uno, metti in inizio il PRIMO.\n"
         "- scelta_unica vale true solo se il messaggio indica UNA data e UN "
         "orario precisi; false se ne elenca piu' d'uno o resta vago.\n"
+        "- accetta vale true solo se chi scrive ACCETTA un orario che gli "
+        "era stato offerto (\"va bene giovedi' alle 17\"); false se propone "
+        "un orario nuovo o chiede se e' possibile (\"potrei martedi' alle "
+        "10.30, sarebbe possibile?\"): quello aspetta ancora una risposta.\n"
         "- inizio e fine in formato YYYY-MM-DDTHH:MM, ora locale. Se manca "
         "l'ora di fine lascia fine a null.\n"
         "- Se la data non e' certa, o e' ricavata da una citazione di un "
@@ -443,6 +448,7 @@ def leggi(testo: str, subject: str, mittente: str,
         "con": str(dato.get("con") or "")[:120],
         "luogo": _luogo(dato.get("luogo"), subject),
         "scelta_unica": dato.get("scelta_unica") is True,
+        "accetta": dato.get("accetta") is True,
     }
 
 
@@ -929,10 +935,14 @@ def sweep(account_id: int, messaggi: list, adesso=None,
         if not non_letto and forse(f"{subject}\n{corpo}"):
             esito = leggi(corpo, subject, mittente, adesso)
         toccato = None
-        if esito.get("stato") == "proposto" and esito.get("scelta_unica"):
-            # Il cliente ha scelto un orario preciso: se l'agenda e' libera
-            # entra in calendario subito, senza aspettare un'altra mail.
-            # Con piu' orari, o un orario vago, decide l'umano.
+        if (esito.get("stato") == "proposto" and esito.get("scelta_unica")
+                and esito.get("accetta")):
+            # Il cliente ha scelto un orario preciso fra quelli offerti: se
+            # l'agenda e' libera entra in calendario subito, senza aspettare
+            # un'altra mail. Con piu' orari, un orario vago o un orario
+            # nuovo decide l'umano: il 24/09 "potrei martedi' alle 10.30,
+            # sarebbe possibile?" e' entrato in agenda come fissato prima
+            # che qualcuno gli avesse risposto.
             esito_agenda = libero(esito["inizio"], esito["fine"],
                                   escludi=riga.get("event_id") or "")
             if esito_agenda:
@@ -1096,6 +1106,12 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
         nota = (f"⚠️ {quando}: calendario non leggibile, non l'ho "
                 "inserito." if it else
                 f"⚠️ {quando}: calendar unreadable, not added.")
+    elif (stato == "proposto" and quando and esito.get("scelta_unica")
+          and not esito.get("accetta")):
+        nota = (f"❓ Chiede {quando}: aspetta la tua risposta, in "
+                "calendario non ho inserito nulla." if it else
+                f"❓ Asks for {quando}: awaiting your reply, nothing "
+                "added to the calendar.")
     elif stato == "proposto" and quando:
         nota = ("Piu' orari o un orario non preciso: in calendario non ho "
                 "inserito nulla." if it else

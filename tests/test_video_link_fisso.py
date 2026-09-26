@@ -67,7 +67,7 @@ def _msg(mid, corpo):
 
 
 def _conferma(monkeypatch, mid, inizio):
-    _agente(monkeypatch, '{"stato":"proposto","inizio":"%s","scelta_unica":true}' % inizio)
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"%s","scelta_unica":true,"accetta":true}' % inizio)
     avvisi = []
     appointments.sweep(2, [_msg(mid, "va bene alle 16:00")], adesso=NOW,
                        avvisa=lambda *a: avvisi.append(a))
