@@ -511,14 +511,23 @@ async function execSend() {
     let url = `${API}/mail/send`;
     if (accountId) url += `?account_id=${accountId}`;
     const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
-    const r = await fetch(url, {
+    const response = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean})
     });
-    // Prima bastava che la richiesta tornasse: un invio rifiutato diceva
-    // "Inviata ✓". Ora conta l'esito, anche perche' qui si cancella la bozza.
-    const esito = await r.json().catch(() => ({}));
-    if (!r.ok || esito.success === false) throw new Error(esito.error || esito.detail || `HTTP ${r.status}`);
+    let result = {};
+    try { result = await response.json(); } catch {}
+    if (!response.ok || result?.success !== true) {
+      const detail = Array.isArray(result?.detail)
+        ? result.detail.map(d => d?.msg || JSON.stringify(d)).join('; ')
+        : result?.detail;
+      throw new Error(detail || result?.error || `Invio non confermato (HTTP ${response.status})`);
+    }
+    if (result.dryrun) {
+      st.textContent = 'Simulazione: nessuna mail inviata.';
+      resetSendBtn();
+      return;
+    }
     mailSent = true;
     if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
     if (draftId) {
@@ -526,7 +535,9 @@ async function execSend() {
         .catch(e => console.error('deleteDraft:', e));
     }
     if (followupHours > 0) {
-      await window.newMailWindowAPI?.followupSave({ message_id:null, account_id:accountId, subject, to_addr:to, hours:followupHours });
+      try {
+        await window.newMailWindowAPI?.followupSave({ message_id:null, account_id:accountId, subject, to_addr:to, hours:followupHours });
+      } catch (e) { console.warn('followupSave:', e); }
     }
     st.textContent = 'Inviata ✓';
     setTimeout(() => window.newMailWindowAPI?.close(), 800);

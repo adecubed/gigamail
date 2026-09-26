@@ -529,23 +529,58 @@ def fetch_messages_by_uids(
         _release_connection(conn_key, conn, mark_bad=bad_conn)
 
 
+_IMAP_DATE_BATCH_SIZE = 500
+
+
 def _uid_recent_ids(conn: imaplib.IMAP4_SSL, top: int) -> List[bytes]:
     """
     Prova a ottenere direttamente gli UID più recenti con SORT.
-    Fallback a SEARCH ALL se il server non supporta SORT.
+    Senza SORT, ordina gli UID usando solo le intestazioni Date, a batch.
+    Gli UID indicano l'ordine di inserimento nella cartella, non la data:
+    una vecchia mail importata non deve nascondere una risposta recente.
     """
+    if top <= 0:
+        return []
     try:
         typ, data = conn.uid("SORT", "(REVERSE DATE)", "UTF-8", "ALL")
-        if typ == "OK" and data and data[0]:
-            ordered = data[0].split()
+        if typ == "OK":
+            ordered = data[0].split() if data and data[0] else []
             return ordered[:top]
     except Exception:
         pass
 
-    ids = _uid_search(conn, "ALL")
+    # ALL contains no text: no charset is needed (some servers reject UTF-8).
+    typ, data = conn.uid("search", None, "ALL")
+    if typ != "OK":
+        raise RuntimeError(f"IMAP UID search failed: {typ}")
+    ids = data[0].split() if data and data[0] else []
     if not ids:
         return []
-    return ids[-top:][::-1]
+    dates = {}
+    for offset in range(0, len(ids), _IMAP_DATE_BATCH_SIZE):
+        batch = ids[offset:offset + _IMAP_DATE_BATCH_SIZE]
+        typ, items = _uid_fetch(
+            conn, ",".join(uid.decode() for uid in batch),
+            "(UID BODY.PEEK[HEADER.FIELDS (DATE)])")
+        if typ != "OK":
+            raise RuntimeError(f"IMAP date header fetch failed: {typ}")
+        for part in items or []:
+            if not isinstance(part, tuple) or len(part) < 2:
+                continue
+            meta_raw, raw = part
+            meta = meta_raw.decode(errors="replace") if isinstance(meta_raw, bytes) else str(meta_raw)
+            uid_match = re.search(r"UID\s+(\d+)", meta, re.IGNORECASE)
+            if not uid_match or not isinstance(raw, (bytes, bytearray)):
+                continue
+            uid = uid_match.group(1).encode()
+            try:
+                message = email.message_from_bytes(bytes(raw))
+                stamp = parsedate_to_datetime(message.get("Date", "")).timestamp()
+            except Exception:
+                stamp = 0.0
+            dates[uid] = stamp
+    # A UID tie-breaker makes equal/missing dates stable across page requests.
+    return sorted(dates, key=lambda uid: (dates[uid], int(uid)), reverse=True)[:top]
 
 
 def _fetch_recent_headers_by_sequence(conn: imaplib.IMAP4_SSL, top: int, total: Optional[int] = None) -> List[Dict[str, str]]:
@@ -622,6 +657,65 @@ def _uid_move(conn: imaplib.IMAP4_SSL, uid: str, dest_folder: str) -> bool:
     except Exception as e:
         _imap_debug_log(f"UID MOVE uid={uid} dest={dest_folder} exception={e}")
         return False
+
+
+def _capabilities(conn: imaplib.IMAP4_SSL) -> set:
+    """Le capability dopo il login. `conn.capabilities` e' quella letta
+    prima del login, e molti server annunciano UIDPLUS solo dopo."""
+    try:
+        typ, data = conn.capability()
+        if typ == "OK" and data and data[0]:
+            raw = data[0].decode() if isinstance(data[0], bytes) else str(data[0])
+            return {c.upper() for c in raw.split()}
+    except Exception:
+        pass
+    return {
+        (c.decode() if isinstance(c, bytes) else str(c)).upper()
+        for c in getattr(conn, "capabilities", ())
+    }
+
+
+def _expunge_mode(conn: imaplib.IMAP4_SSL) -> Optional[str]:
+    """Come togliere UN solo messaggio dalla cartella selezionata:
+    'uid' (UID EXPUNGE), 'legacy' (EXPUNGE, ammesso solo se nessun altro
+    messaggio e' gia' \\Deleted) o None se non si puo' fare in sicurezza.
+    Va chiesto PRIMA della COPY: rinunciare dopo lascerebbe un doppione."""
+    if "UIDPLUS" in _capabilities(conn):
+        return "uid"
+    # Un EXPUNGE semplice cancella per sempre ogni messaggio \\Deleted
+    # della cartella, anche quelli segnati da un altro client.
+    status, data = conn.uid("search", None, "DELETED")
+    if status != "OK" or not data or data[0]:
+        return None
+    return "legacy"
+
+
+def _expunge_uid(conn: imaplib.IMAP4_SSL, uid: str, mode: str) -> bool:
+    """Segna \\Deleted e rimuove SOLO `uid` dalla cartella selezionata.
+    Se qualcosa va storto il segno si toglie: un \\Deleted lasciato li'
+    lo cancellerebbe per sempre il prossimo EXPUNGE di un altro client."""
+    status, _ = conn.uid("store", uid, "+FLAGS", "(\\Deleted)")
+    if status != "OK":
+        return False
+    try:
+        if mode == "uid":
+            status, _ = conn.uid("EXPUNGE", uid)
+        else:
+            status, data = conn.uid("search", None, "DELETED")
+            if status != "OK" or not data or data[0].split() != [uid.encode()]:
+                status = "NO"
+            else:
+                status, _ = conn.expunge()
+    except Exception as e:
+        _imap_debug_log(f"expunge uid={uid} mode={mode} exception={e}")
+        status = "NO"
+    if status != "OK":
+        try:
+            conn.uid("store", uid, "-FLAGS", "(\\Deleted)")
+        except Exception:
+            pass
+        return False
+    return not _uid_exists_in_selected_folder(conn, uid)
 
 
 def debug_folders(
@@ -929,9 +1023,14 @@ def get_messages(
     password: str,
     folder: str = "INBOX",
     top: int = 20,
+    skip: int = 0,
 ) -> List[Dict]:
     started_total = time.perf_counter()
     requested = (folder or "INBOX").strip()
+    top = max(int(top), 0)
+    skip = max(int(skip), 0)
+    if not top:
+        return []
 
     for attempt in range(2):
         conn_key = None
@@ -946,7 +1045,6 @@ def get_messages(
                 force_new=(attempt > 0),
             )
             started_select = time.perf_counter()
-            selected_total: Optional[int] = None
             if requested.upper() == "INBOX":
                 resolved = _resolve_folder(conn, requested)
             else:
@@ -954,37 +1052,34 @@ def get_messages(
                 if not resolved:
                     _imap_debug_log(f"get_messages folder request={requested!r} resolved=None email={email_addr}")
                     return []
-            select_status, select_data = conn.select(f'"{resolved}"')
+            select_status, _ = conn.select(f'"{resolved}"')
             if select_status != "OK":
                 _imap_debug_log(f"get_messages select-failed folder={resolved!r} status={select_status}")
                 return []
-            try:
-                selected_total = int((select_data[0] or b"0").decode(errors="replace")) if select_data and select_data[0] else 0
-            except Exception:
-                selected_total = None
             _imap_debug_log(f"get_messages folder request={requested!r} resolved={resolved!r} email={email_addr}")
             _imap_timing_log("select_folder", started_select, f"folder={resolved}")
             messages: List[Dict] = []
             started_headers = time.perf_counter()
-            header_items = _fetch_recent_headers_by_sequence(conn, top, total=selected_total)
-            if not header_items:
-                ids = _uid_recent_ids(conn, top)
-                header_items = []
-                for uid in ids:
-                    try:
-                        _, msg_data = _uid_fetch(
-                            conn,
-                            uid.decode(),
-                            "(FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE CONTENT-TYPE)])",
-                        )
-                        if not msg_data or not msg_data[0] or not isinstance(msg_data[0], tuple):
-                            continue
-                        meta_raw = msg_data[0][0]
-                        meta = meta_raw.decode("utf-8", errors="replace") if isinstance(meta_raw, bytes) else str(meta_raw)
-                        header_items.append({"uid": uid.decode(), "raw": msg_data[0][1], "meta": meta})
-                    except Exception as e:
-                        print(f"[IMAP] Errore fetch uid {uid}: {e}")
+            # Page the ordered UID list, not an expanding physical window:
+            # every page must use the same order to avoid skipped messages.
+            ids = _uid_recent_ids(conn, top + skip)[skip:skip + top]
+            header_items = []
+            if ids:
+                status, msg_data = _uid_fetch(
+                    conn,
+                    ",".join(uid.decode() for uid in ids),
+                    "(UID FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE CONTENT-TYPE)])",
+                )
+                if status != "OK":
+                    raise RuntimeError(f"IMAP header fetch failed: {status}")
+                for part in msg_data or []:
+                    if not isinstance(part, tuple) or len(part) < 2:
                         continue
+                    meta_raw, raw = part
+                    meta = meta_raw.decode("utf-8", errors="replace") if isinstance(meta_raw, bytes) else str(meta_raw)
+                    uid_match = re.search(r"UID\s+(\d+)", meta, re.IGNORECASE)
+                    if uid_match:
+                        header_items.append({"uid": uid_match.group(1), "raw": raw, "meta": meta})
             _imap_timing_log("fetch_recent_headers", started_headers, f"count={len(header_items)} folder={resolved}")
 
             for item in header_items:
@@ -1286,8 +1381,8 @@ def send_message(
         msg[hk] = hv
     if cc:
         msg["Cc"] = ", ".join(cc)
-    if bcc:
-        msg["Bcc"] = ", ".join(bcc)
+    # BCC belongs only in the SMTP envelope. sendmail() sends MIME headers
+    # unchanged, so a Bcc header would disclose hidden recipients to everyone.
     msg.attach(MIMEText(body, "plain", "utf-8"))
     # La busta vuole indirizzi, uno per RCPT: "a@x.it, b@y.it" passata
     # intera diventa UN destinatario malformato e meta' della gente non
@@ -1375,57 +1470,41 @@ def delete_message(
     message_id: str,
     folder: Optional[str] = None,
 ) -> bool:
-    """Sposta il messaggio nel Trash IMAP (flag \\Deleted + expunge)."""
+    """Move to Trash, refusing to expunge an uncopied or unrelated message."""
     conn_key, conn = _acquire_connection(imap_host, imap_port, email_addr, password)
     bad_conn = False
     try:
-        clean_id = "".join(c for c in str(message_id) if c.isdigit())
-        if not clean_id:
+        clean_id = str(message_id)
+        if not clean_id.isdigit():
             return False
-        all_folders = _list_folders(conn)
-        source_folder: Optional[str] = None
-        if folder:
-            resolved = _resolve_folder(conn, folder)
-            _, md = _uid_fetch(conn, clean_id, "(RFC822.HEADER)")
-            if md and md[0] is not None:
-                source_folder = resolved
-        if not source_folder:
-            priority = ["INBOX"] + [rf for rf in all_folders if rf != "INBOX"]
-            for rf in priority:
-                try:
-                    status, _ = conn.select(f'"{rf}"')
-                    if status != "OK":
-                        continue
-                    _, md = _uid_fetch(conn, clean_id, "(RFC822.HEADER)")
-                    if md and md[0] is not None and md[0] != b"":
-                        source_folder = rf
-                        break
-                except Exception:
-                    continue
-        if not source_folder:
+        # UIDs are folder-local: the same number in another folder is
+        # another message. No folder means INBOX, never a search.
+        resolved = _resolve_folder_strict(conn, folder or "INBOX")
+        if not resolved or not _uid_exists_in_selected_folder(conn, clean_id):
             return False
-        trash_name: Optional[str] = None
-        for candidate in _FOLDER_ALIASES.get("trash", []):
-            if candidate in all_folders:
-                trash_name = candidate
-                break
+        source_folder = resolved
+        trash_name = _resolve_folder_strict(conn, "trash")
         if not trash_name:
-            for rf in all_folders:
-                rf_low = rf.lower()
-                if "trash" in rf_low or "deleted" in rf_low or "cestino" in rf_low:
-                    trash_name = rf
-                    break
-        conn.select(f'"{source_folder}"')
+            return False
+        status, _ = conn.select(f'"{source_folder}"')
+        if status != "OK":
+            return False
         try:
-            if trash_name and trash_name != source_folder:
-                conn.uid("copy", clean_id, f'"{trash_name}"')
-            conn.uid("store", clean_id, "+FLAGS", "\\Deleted")
-            conn.expunge()
+            if trash_name != source_folder and _uid_move(conn, clean_id, trash_name):
+                return True
+
+            mode = _expunge_mode(conn)
+            if mode is None:
+                return False
+            if trash_name != source_folder:
+                status, _ = conn.uid("copy", clean_id, f'"{trash_name}"')
+                if status != "OK":
+                    return False
+            return _expunge_uid(conn, clean_id, mode)
         except Exception as e:
             print(f"[IMAP] delete_message error: {e}")
             bad_conn = True
             return False
-        return True
     finally:
         _release_connection(conn_key, conn, mark_bad=bad_conn)
 def get_attachment(
@@ -1718,35 +1797,24 @@ def move_to_folder(
             print(f"[IMAP MOVE] ABORT dest-folder-not-found key={key!r} all_folders={all_folders}")
             return False
         # Trova la cartella sorgente dove esiste il messaggio
+        # Gli UID valgono solo nella loro cartella: lo stesso numero altrove
+        # e' un altro messaggio. Senza cartella di partenza si intende
+        # INBOX, e se il messaggio li' non c'e' ci si ferma invece di
+        # spostare quello che ha lo stesso numero in un'altra cartella.
         source_folder_resolved: Optional[str] = None
-        if source_folder:
-            try:
-                # Usa _resolve_folder (con fallback fuzzy) per supportare INBOX.SPAM e simili
-                sf_key = source_folder.strip()
-                candidate_source = _resolve_folder_strict(conn, sf_key)
-                if not candidate_source:
-                    candidate_source = _resolve_folder(conn, sf_key)
-                if candidate_source:
-                    status, _ = conn.select(f'"{candidate_source}"')
-                    if status == "OK":
-                        if _uid_exists_in_selected_folder(conn, clean_id):
-                            source_folder_resolved = candidate_source
-                            print(f"[IMAP MOVE] source-from-hint={candidate_source!r}")
-            except Exception:
-                source_folder_resolved = None
-        priority = ["INBOX"] + [rf for rf in all_folders if rf != "INBOX"]
-        if not source_folder_resolved:
-            for rf in priority:
-                try:
-                    status, _ = conn.select(f'"{rf}"')
-                    if status != "OK":
-                        continue
-                    if _uid_exists_in_selected_folder(conn, clean_id):
-                        source_folder_resolved = rf
-                        _imap_debug_log(f"move_to_folder source-detected={rf!r}")
-                        break
-                except Exception:
-                    continue
+        try:
+            # _resolve_folder (con fallback fuzzy) per INBOX.SPAM e simili
+            sf_key = (source_folder or "INBOX").strip()
+            candidate_source = _resolve_folder_strict(conn, sf_key)
+            if not candidate_source:
+                candidate_source = _resolve_folder(conn, sf_key)
+            if candidate_source:
+                status, _ = conn.select(f'"{candidate_source}"')
+                if status == "OK" and _uid_exists_in_selected_folder(conn, clean_id):
+                    source_folder_resolved = candidate_source
+                    print(f"[IMAP MOVE] source={candidate_source!r}")
+        except Exception:
+            source_folder_resolved = None
         if not source_folder_resolved:
             print(f"[IMAP MOVE] ABORT source-not-found uid={clean_id} all_folders={all_folders}")
             return False
@@ -1763,21 +1831,20 @@ def move_to_folder(
             print(f"[IMAP MOVE] SUCCESS via UID MOVE uid={clean_id} {source_folder_resolved!r} -> {dest_folder!r}")
             return True
 
+        # Senza MOVE: COPY + rimozione del solo messaggio. Un EXPUNGE
+        # semplice cancellava per sempre anche i messaggi che un altro
+        # client aveva segnato \\Deleted nella stessa cartella.
+        mode = _expunge_mode(conn)
+        if mode is None:
+            print(f"[IMAP MOVE] ABORT unsafe-expunge uid={clean_id}: altri messaggi \\Deleted nella cartella")
+            return False
         copy_res = conn.uid("copy", clean_id, f'"{dest_folder}"')
         _imap_debug_log(f"move_to_folder fallback COPY result={copy_res}")
         if not copy_res or copy_res[0] != "OK":
             print(f"[IMAP MOVE] ABORT copy-failed uid={clean_id} -> {dest_folder!r}")
             return False
-
-        store_res = conn.uid("store", clean_id, "+FLAGS", "(\\Deleted)")
-        _imap_debug_log(f"move_to_folder fallback STORE result={store_res}")
-        if not store_res or store_res[0] != "OK":
-            print(f"[IMAP MOVE] ABORT store-failed uid={clean_id}")
-            return False
-
-        conn.expunge()
-        still_exists = _uid_exists_in_selected_folder(conn, clean_id)
-        _imap_debug_log(f"move_to_folder fallback EXPUNGE still_exists={still_exists}")
-        return not still_exists
+        removed = _expunge_uid(conn, clean_id, mode)
+        _imap_debug_log(f"move_to_folder fallback expunge mode={mode} removed={removed}")
+        return removed
     finally:
         _release_connection(conn_key, conn, mark_bad=bad_conn)
