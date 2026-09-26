@@ -13,7 +13,8 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent.core import drafts, imap_client, mail as ms_mail, mail_router
+from ade_mail_agent.core import drafts, imap_client, mail_router
+from ade_mail_agent.core import mail as ms_mail
 
 
 @pytest.fixture()
