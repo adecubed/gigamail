@@ -342,6 +342,39 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
     )
     return result if isinstance(result, dict) else {'success': bool(result)}
 
+def save_draft(account_id=None, draft: Dict = None, remote_id: str = None) -> Dict:
+    """Bozza nella cartella Bozze della casella: {success, remote_id,
+    remote_folder} oppure {success: False, error}. Con `remote_id` sostituisce
+    quella versione invece di crearne un'altra."""
+    a = _account(account_id)
+    if not a:
+        return {'success': False, 'error': 'Account non trovato'}
+    if _demo(a):
+        return {'success': False, 'error': 'La casella demo non ha bozze sincronizzate'}
+    if a.get('type', 'microsoft') == 'microsoft':
+        r = ms_mail.save_draft(draft, remote_id=remote_id)
+        return {'success': r['success'], 'remote_id': r.get('id'),
+                'remote_folder': 'drafts', 'error': r.get('error')}
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    r = imap.save_draft(imap_host, imap_port, email_addr, password, draft,
+                        replace_uid=remote_id)
+    return {'success': r['success'], 'remote_id': r.get('uid'),
+            'remote_folder': r.get('folder'), 'error': r.get('error')}
+
+
+def delete_draft(account_id=None, draft_id: str = '', remote_id: str = None) -> Dict:
+    a = _account(account_id)
+    if not a:
+        return {'success': False, 'error': 'Account non trovato'}
+    if _demo(a):
+        return {'success': True}
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.delete_draft(remote_id) if remote_id else {'success': True}
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.delete_draft(imap_host, imap_port, email_addr, password,
+                             draft_id, uid=remote_id)
+
+
 def get_priority_messages(account_id=None, top: int = 20) -> List[Dict]:
     a = _account(account_id)
     if not a:

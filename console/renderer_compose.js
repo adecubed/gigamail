@@ -520,6 +520,11 @@ async function sendNewMail() {
       cc,
       bcc
     );
+    // Simulazione (#14): niente e' partito, quindi testo e bozza restano.
+    if (result.success && result.dryrun) {
+      if (status) status.textContent = 'Simulazione: nessuna mail inviata.';
+      return;
+    }
     if (result.success) {
       if (status) {
         status.textContent = result.sent_copy_saved === false
@@ -558,7 +563,8 @@ async function autosaveDraft() {
   const sig = `${activeAccountId}::${to}::${cc}::${bcc}::${subject}::${body}`;
   if (sig === autosaveSignature) return;
   try {
-    const saved = await api.saveDraft({ id: inlineDraftId, to, cc, bcc, subject, body }, activeAccountId);
+    // Ogni 30 secondi: qui si puo' chiedere anche la copia nella casella.
+    const saved = await api.saveDraft({ id: inlineDraftId, to, cc, bcc, subject, body, sync: true }, activeAccountId);
     inlineDraftId = saved?.id || inlineDraftId;
     autosaveSignature = sig;
   }

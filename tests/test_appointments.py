@@ -499,7 +499,7 @@ def test_sweep_applica_le_risposte_arretrate_in_ordine_cronologico(monkeypatch, 
     monkeypatch.setattr(appointments, "libero",
                         lambda a, b, escludi="": esclusi.append(escludi) or True)
     monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: {
-        "stato": "proposto", "scelta_unica": True,
+        "stato": "proposto", "scelta_unica": True, "accetta": True,
         "inizio": corpo, "fine": corpo[:11] + "18:00", "con": "Mario"})
     nuova = _risposta("Re: Appuntamento", "cliente@example.com",
                       "2026-09-17T17:00", mid="new",
@@ -625,7 +625,7 @@ def test_nuova_conferma_dopo_disdetta_nello_stesso_arretrato(monkeypatch, cal):
                         lambda: (NOW + timedelta(days=2)).timestamp())
     monkeypatch.setattr(appointments, "leggi", lambda corpo, *a: (
         {"stato": "disdetto"} if corpo == "annullo" else
-        {"stato": "proposto", "scelta_unica": True,
+        {"stato": "proposto", "scelta_unica": True, "accetta": True,
          "inizio": "2026-09-17T17:00", "fine": "2026-09-17T18:00", "con": "Mario"}))
     esclusi = []
     monkeypatch.setattr(appointments, "libero",
@@ -779,7 +779,7 @@ def _proposta_aperta(monkeypatch):
 def test_orario_scelto_e_libero_entra_in_calendario(monkeypatch, cal):
     _proposta_aperta(monkeypatch)
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
-                         '"scelta_unica":true,"con":"Roberto Galioto"}')
+                         '"scelta_unica":true,"accetta":true,"con":"Roberto Galioto"}')
     avvisi = []
     n = appointments.sweep(
         2, [_risposta("Re: Via Treviglio", "rg@example.com",
@@ -801,7 +801,7 @@ def test_orario_scelto_ma_occupato_non_entra(monkeypatch, cal):
                    "end": {"dateTime": "2026-09-17T17:30:00",
                            "timeZone": "Europe/Rome"}}]
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
-                         '"scelta_unica":true}')
+                         '"scelta_unica":true,"accetta":true}')
     avvisi = []
     n = appointments.sweep(
         2, [_risposta("Re: Via Treviglio", "rg@example.com",
@@ -809,6 +809,32 @@ def test_orario_scelto_ma_occupato_non_entra(monkeypatch, cal):
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
     assert "gia' un impegno" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_orario_nuovo_chiesto_dal_cliente_non_entra(monkeypatch, cal):
+    """Il 24/09 "potrei martedi' alle 10.30, sarebbe possibile?" e' entrato
+    in agenda come fissato: era una domanda, nessuno aveva ancora detto si'."""
+    _proposta_aperta(monkeypatch)
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-15T10:30",'
+                         '"scelta_unica":true,"accetta":false}')
+    avvisi = []
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "Potrei martedi 15 alle ore 10.30: sarebbe possibile?")],
+        adesso=NOW, avvisa=lambda *a: avvisi.append(a))
+    assert n == 0 and cal.creati == []
+    assert "aspetta la tua risposta" in appointments.testo_avviso(*avvisi[0])
+
+
+def test_senza_accetta_non_si_inserisce(monkeypatch, cal):
+    """Fail-closed: un agente che non dice se accetta non fissa niente."""
+    _proposta_aperta(monkeypatch)
+    _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
+                         '"scelta_unica":true}')
+    n = appointments.sweep(
+        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+                      "giovedi 17 alle 17:00")], adesso=NOW)
+    assert n == 0 and cal.creati == []
 
 
 def test_piu_orari_non_entrano_in_calendario(monkeypatch, cal):
@@ -826,7 +852,7 @@ def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
     _proposta_aperta(monkeypatch)
     cal.lettura_rotta = True
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
-                         '"scelta_unica":true}')
+                         '"scelta_unica":true,"accetta":true}')
     avvisi = []
     n = appointments.sweep(
         2, [_risposta("Re: Via Treviglio", "rg@example.com",

@@ -113,7 +113,8 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         # comunque sugli header, gia' letti sopra.
         logger.debug("messaggio intero %s non letto, uso la lista: %s", message_id, e)
         full = message
-    verdict = mail_guard.check(headers, full)
+    verdict = mail_guard.check(headers, full,
+                               relay=bool(rule.get("reply_to_body_address")))
     if not verdict.reply:
         return _skip("guard:" + ",".join(verdict.reasons))
 
