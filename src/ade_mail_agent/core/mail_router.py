@@ -159,9 +159,34 @@ def get_messages(
         skip=skip,
     )
 def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict:
+    """Dal server; e se il server non ce l'ha piu', dall'archivio.
+
+    Un id "arch-..." viene dalla ricerca nell'archivio e si legge solo li'.
+    Un id del provider che il server non trova piu' (Outlook l'ha tolto,
+    qualcuno l'ha cancellato) si cerca nell'archivio prima di arrendersi."""
     a = _account(account_id)
     if not a:
         return {}
+    from . import archivio
+    aid = a.get('id')
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        m = archivio.leggi(aid, message_id)
+        if not m:
+            raise ValueError(f"Messaggio non trovato nell'archivio: {message_id}")
+        return m
+    try:
+        m = _get_message_provider(a, account_id, message_id, folder)
+    except Exception:
+        m = archivio.leggi(aid, message_id, folder)
+        if m:
+            return m
+        raise
+    if not m:
+        m = archivio.leggi(aid, message_id, folder) or {}
+    return m
+
+
+def _get_message_provider(a, account_id, message_id: str, folder: str) -> Dict:
     if _demo(a):
         return demo.get_message(a, message_id)
     if a.get('type', 'microsoft') == 'microsoft':
@@ -330,12 +355,19 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
         reply_subject = original_subject
     else:
         reply_subject = f"Re: {original_subject}"
+    # Una mail letta dall'archivio non ha un id valido sul server: si
+    # risponde con l'id del provider se lo conosciamo, altrimenti come
+    # messaggio nuovo con il "Re:" nell'oggetto.
+    from . import archivio
+    risposta_a = message_id
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        risposta_a = msg.get('provider_id') or None
     result = send_message(
         account_id=account_id,
         to=to_addr,
         subject=reply_subject,
         body=body,
-        reply_to_id=message_id,
+        reply_to_id=risposta_a,
         auto_submitted=auto_submitted,
         attachments=attachments,
         cc=cc,
@@ -589,9 +621,27 @@ def delete_message(account_id=None, message_id: str = '', folder: str = None) ->
         folder=folder,
     )
 def get_attachment(account_id=None, message_id: str = '', filename: str = '', folder: str = '') -> tuple:
+    """Come get_message: dal server, con l'archivio di riserva."""
     a = _account(account_id)
     if not a:
         raise ValueError('Account non trovato')
+    from . import archivio
+    aid = a.get('id')
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        dati = archivio.leggi_allegato(aid, message_id, filename)
+        if dati is None:
+            raise ValueError(f"Messaggio non trovato nell'archivio: {message_id}")
+        return dati
+    try:
+        return _get_attachment_provider(a, message_id, filename, folder)
+    except Exception:
+        dati = archivio.leggi_allegato(aid, message_id, filename, folder)
+        if dati is not None:
+            return dati
+        raise
+
+
+def _get_attachment_provider(a, message_id: str, filename: str, folder: str) -> tuple:
     if _demo(a):
         return demo.get_attachment(a, message_id, filename)
     if a.get('type', 'microsoft') == 'microsoft':

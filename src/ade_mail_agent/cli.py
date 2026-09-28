@@ -1048,6 +1048,67 @@ def cmd_index(args) -> int:
     return 0
 
 
+def cmd_archive_sync(args) -> int:
+    """Primo caricamento o riallineamento: gira finche' non ha finito."""
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import archivio_sync
+    ids = ([args.account_id] if args.account_id else
+           [int(a["id"]) for a in core_accounts.get_accounts()
+            if a.get("type") != "demo"])
+    for aid in ids:
+        totale = 0
+        while True:
+            try:
+                esito = archivio_sync.sincronizza(aid, limite=1000)
+            except Exception as e:
+                print(f"account {aid}: errore {e}")
+                break
+            totale += int(esito.get("nuovi", 0))
+            print(f"account {aid}: +{esito.get('nuovi', 0)} "
+                  f"(gia' presenti {esito.get('gia_presenti', 0)}, "
+                  f"restano {esito.get('restano', 0)})")
+            if not esito.get("restano"):
+                break
+        print(f"account {aid}: {totale} mail nuove in archivio")
+    return 0
+
+
+def cmd_archive_status(args) -> int:
+    from ade_mail_agent.core import accounts as core_accounts
+    from ade_mail_agent.core import archivio, outlook_import
+    st = archivio.store()
+    for a in core_accounts.get_accounts():
+        aid = int(a["id"])
+        conta = st.conta(aid)
+        imp = st.import_stato(aid, outlook_import.FONTE) or {}
+        print(f"{aid} {a.get('email')}: {sum(conta.values())} mail "
+              f"{conta} | import Outlook: {imp.get('status', 'mai')} "
+              f"{imp.get('count', '')}")
+    return 0
+
+
+def cmd_archive_import_outlook(args) -> int:
+    """Lanciato dal watcher al primo giro, o a mano con --force."""
+    from ade_mail_agent.core import archivio, outlook_import
+    if not outlook_import.disponibile():
+        print("Outlook non e' installato su questo PC: niente da importare.")
+        return 0
+    if args.force:
+        archivio.store().import_segna(args.account_id, outlook_import.FONTE,
+                                      "failed", detail="tentativo:0 forzato")
+    return outlook_import.esegui(args.account_id)
+
+
+def cmd_archive_search(args) -> int:
+    from ade_mail_agent.core import archivio
+    for r in archivio.cerca(args.account_id, " ".join(args.query), top=args.top):
+        allegati = ", ".join(r.get("attachmentNames") or [])
+        print(f"{r['receivedDateTime'][:10]}  {r['id']:>10}  "
+              f"{r['from']['emailAddress']['address']:<35} {r['subject'][:70]}"
+              + (f"  [{allegati}]" if allegati else ""))
+    return 0
+
+
 def cmd_purge(args) -> int:
     from ade_mail_agent.core import mail_memory
     confirm = input(
@@ -1333,6 +1394,26 @@ def main(argv=None) -> int:
     p_idx = sub.add_parser("index")
     p_idx.add_argument("account_id", type=int, nargs="?", default=None)
     p_idx.set_defaults(fn=cmd_index)
+
+    p_arc = sub.add_parser(
+        "archive", help="la copia locale di tutta la posta, allegati compresi")
+    arc_sub = p_arc.add_subparsers(dest="archive_cmd", required=True)
+    p_as = arc_sub.add_parser("sync", help="scarica nell'archivio tutto cio' che manca")
+    p_as.add_argument("--account-id", type=int, default=None)
+    p_as.set_defaults(fn=cmd_archive_sync)
+    arc_sub.add_parser("status", help="quante mail ci sono e da dove").set_defaults(
+        fn=cmd_archive_status)
+    p_ai = arc_sub.add_parser(
+        "import-outlook", help="importa lo storico che Outlook conserva sul PC")
+    p_ai.add_argument("--account-id", type=int, required=True)
+    p_ai.add_argument("--force", action="store_true",
+                      help="rifallo anche se e' gia' stato fatto")
+    p_ai.set_defaults(fn=cmd_archive_import_outlook)
+    p_ase = arc_sub.add_parser("search", help="cerca nell'archivio")
+    p_ase.add_argument("query", nargs="+")
+    p_ase.add_argument("--account-id", type=int, default=None)
+    p_ase.add_argument("--top", type=int, default=20)
+    p_ase.set_defaults(fn=cmd_archive_search)
 
     p_purge = sub.add_parser("purge")
     p_purge.add_argument("account_id", type=int)

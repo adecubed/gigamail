@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+- **GigaMail ha il suo archivio: ogni mail, per intero, per sempre.**
+  Prima non teneva niente di suo e leggeva solo il server. Ma il server
+  non e' un archivio: Outlook, configurato come quasi sempre, scarica la
+  posta e dopo un paio di settimane la cancella dal server. Il 28/09 una
+  bolletta arrivata a gennaio esisteva solo nel file di Outlook, e la
+  ricerca di GigaMail rispondeva "nessun risultato" con piena sicurezza.
+  Ora `core/archivio.py` salva ogni messaggio cosi' com'e' arrivato, MIME
+  compresso con gli allegati, di ogni casella e ogni cartella tranne le
+  bozze, con un indice full text su oggetto, mittente, destinatari, testo
+  completo e nomi degli allegati. Le parole si cercano per prefisso,
+  cosi' "mediocasa" trova info@mediocasaimmobiliare.eu, e senza accenti.
+  La stessa mail vista dal server e da Outlook, o spostata di cartella,
+  resta una riga sola grazie al Message-ID.
+- **Sincronizzazione continua.** A ogni giro il watcher porta
+  nell'archivio cio' che e' arrivato sui server (IMAP per ultimo UID e
+  UIDVALIDITY, Graph dal piu' recente), con un tetto per giro cosi' un
+  primo caricamento di migliaia di mail non blocca le regole.
+  `gigamail archive sync` fa il primo caricamento tutto d'un fiato.
+- **Lo storico di Outlook si importa da solo, una volta.** Al primo giro
+  su un account il watcher lancia in un processo a parte l'import di
+  tutto cio' che Outlook conserva sul PC per quell'indirizzo: e' il
+  default, non un'opzione da scoprire. Outlook non espone il MIME, quindi
+  il messaggio si ricostruisce dalle intestazioni internet originali, dal
+  corpo e dagli allegati; se la stessa mail e' ancora sul server, vince
+  la copia del server. Dopo, GigaMail non chiede piu' niente a Outlook.
+  Tre tentativi al massimo, poi smette.
+- **Ricerca e lettura passano dall'archivio.** `search_mail` restituisce
+  prima i risultati dell'archivio (id `arch-...`), che `read_message` e
+  `read_attachment` leggono anche quando il server non ha piu' la mail.
+  Un id del server che il server non trova piu' si cerca nell'archivio
+  prima di dare errore. Se il server non risponde affatto, la ricerca
+  resta in piedi con l'archivio da solo.
+- **La ricerca IMAP con gli accenti non funzionava.** Il tentativo in
+  UTF-8 era scritto senza la parola CHARSET e il server lo rifiutava
+  sempre: restava solo la ricerca ASCII, che "proprieta'" non la trova.
+
 - **La bozza non ricopia piu' le risposte vecchie, e se sbaglia si
   corregge.** Il vincolo sulla tipologia non bastava: le risposte inviate
   entravano ancora nel prompt per intero, insieme al "template suggerito"

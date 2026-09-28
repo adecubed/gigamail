@@ -73,7 +73,7 @@ class Watcher:
 
     def tick(self) -> Dict[str, int]:
         stats = {"executed": 0, "processed": 0, "appointments": 0,
-                 "archived": 0}
+                 "archived": 0, "salvate": 0}
         # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
         # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
         # soglia oltre la quale running_state() dichiara morto il watcher:
@@ -102,7 +102,48 @@ class Watcher:
         # regola l'ha gia' gestita in questo stesso giro o in uno precedente.
         stats["archived"] = self.archive_mail()
         self.heartbeat()
+        # Per ultima: la copia locale di tutto cio' che il server ha adesso,
+        # spostamenti di questo giro compresi.
+        stats["salvate"] = self.archivia_posta()
+        self.heartbeat()
         return stats
+
+    # -- fase E: la copia locale di tutta la posta ------------------------
+
+    def archivia_posta(self) -> int:
+        """Salva nell'archivio di GigaMail cio' che e' arrivato sui server,
+        e al primo giro su un account lancia l'import dello storico da
+        Outlook. Un server lento o un Outlook assente non fermano il
+        watcher: si riprova al giro dopo."""
+        from ade_mail_agent.core import accounts as core_accounts
+        from ade_mail_agent.core import archivio_sync, outlook_import
+
+        nuovi = 0
+        for a in core_accounts.get_accounts():
+            aid = int(a["id"])
+            if a.get("type") == "demo":
+                continue
+            try:
+                esito = archivio_sync.sincronizza(
+                    aid, limite=archivio_sync.LIMITE_GIRO,
+                    battito=self.heartbeat)
+                nuovi += int(esito.get("nuovi", 0))
+                if esito.get("restano"):
+                    _log(f"archivio {aid}: {esito['nuovi']} salvate, "
+                         f"ne restano {esito['restano']} per i prossimi giri",
+                         self.verbose)
+            except Exception as e:
+                _log(f"archivio {aid} non aggiornato: {e}", self.verbose)
+            try:
+                esito_import = outlook_import.avvia_se_serve(aid)
+                if esito_import == "avviato":
+                    _log(f"archivio {aid}: avviato l'import dello storico "
+                         "da Outlook", True)
+            except Exception as e:
+                _log(f"import da Outlook non avviato per {aid}: {e}",
+                     self.verbose)
+            self.heartbeat()
+        return nuovi
 
     # -- fase D: archiviazione automatica ----------------------------------
 
@@ -237,7 +278,8 @@ class Watcher:
             try:
                 stats = self.tick()
                 if (stats["processed"] or stats["executed"]
-                        or stats["appointments"] or stats["archived"]):
+                        or stats["appointments"] or stats["archived"]
+                        or stats["salvate"]):
                     _log(f"tick: {stats}", True)
             except KeyboardInterrupt:
                 raise

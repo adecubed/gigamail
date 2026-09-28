@@ -1704,19 +1704,21 @@ def _uid_search_safe(conn: imaplib.IMAP4_SSL, field: str, query: str) -> List[by
     if not q:
         return []
 
-    attempts = [
-        ("UTF-8", field, f'"{q}"'),
-        (None, field, f'"{q}"'),
-    ]
-
-    for charset, key, value in attempts:
-        try:
-            typ, data = conn.uid("search", charset, key, value)
-            if typ == "OK" and data and data[0]:
-                return data[0].split()
-        except Exception:
-            continue
-
+    # Il tentativo in UTF-8 era scritto `UID SEARCH UTF-8 FROM "x"`, senza
+    # la parola CHARSET: il server lo rifiutava sempre ("Unknown argument
+    # UTF-8") e restava solo la ricerca ASCII, che con "proprietà" o
+    # "Nicolò" non trova niente. Con CHARSET il valore non-ASCII va
+    # mandato come literal, non tra virgolette.
+    try:
+        if q.isascii():
+            typ, data = conn.uid("search", None, field, f'"{q}"')
+        else:
+            conn.literal = q.encode("utf-8")
+            typ, data = conn.uid("search", "CHARSET", "UTF-8", field)
+        if typ == "OK" and data and data[0]:
+            return data[0].split()
+    except Exception:
+        pass
     return []
 
 
