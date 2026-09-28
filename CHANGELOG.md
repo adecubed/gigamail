@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **La bozza risponde alla domanda di QUESTA mail, non a quella di
+  prima.** Il 27 settembre un cliente ha scritto per un bilocale e si e'
+  visto proporre tre trilocali da 379.000 euro in su, planimetrie
+  comprese. Gli allegati erano corretti, seguivano il testo: era il testo
+  a rispondere alla domanda sbagliata. La causa sta nel prompt, che
+  riceve gli esempi delle ultime risposte inviate e un "template
+  suggerito" scelto per somiglianza di oggetto. Gli avvisi dei portali
+  hanno oggetti quasi identici, cambia solo la tipologia, quindi il
+  template era sempre l'ultima risposta sui trilocali e l'agente la
+  ricopiava. Ora `core/tipologie.py` legge la tipologia richiesta dal
+  titolo dell'annuncio, che il portale mette nell'oggetto, e la mette nel
+  prompt come vincolo; gli esempi passati sono dichiarati validi per il
+  tono e mai per il contenuto. A valle il watcher controlla la bozza: se
+  elenca appartamenti e nessuno e' della tipologia richiesta, la salta e
+  la lascia all'umano invece di spedirla. Una risposta fuori tipologia
+  non e' uno sbaglio di forma, e' una risposta a un altro cliente.
+
 - **Destinatari, account e cartella restano quelli approvati.** SMTP non
   include piu' l'header Ccn nel messaggio consegnato. Le risposte Graph
   senza allegati rispettano To/CC/Ccn espliciti; le risposte IMAP usano la

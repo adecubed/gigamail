@@ -22,6 +22,7 @@ from ade_mail_agent.core import (
     mail_guard,
     mail_router,
     telegram_channel,
+    tipologie,
 )
 from ade_mail_agent.core import rules as rules_mod
 
@@ -228,6 +229,20 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                  w.verbose)
             return "skipped"
         args["attachments"] = allegati
+    chiesta = tipologie.chiesta(str(full.get("subject") or ""),
+                                drafting._message_body_text(full))
+    if not tipologie.coerente(chiesta, body):
+        # La bozza propone appartamenti e nessuno e' del tipo richiesto:
+        # e' la risposta precedente ricopiata. Spedirla vuol dire
+        # rispondere a una domanda che il cliente non ha fatto.
+        dettaglio = tipologie.spiega(chiesta, body)
+        rs.set_status(rule_id, message_id, "skipped", "typology-mismatch")
+        policy.audit("watch_rule", {"rule_id": rule_id,
+                                    "message_id": message_id},
+                     "skipped", detail="tipologia non coerente: " + dettaglio)
+        _log(f"tipologia non coerente ({rule_id}): {dettaglio}: salto",
+             w.verbose)
+        return "skipped"
     if not allegati and attachments_mod.promette_allegati(body):
         # La bozza annuncia un allegato e non ne e' uscito nessuno:
         # spedirla vuol dire contraddirsi davanti al cliente. Meglio
