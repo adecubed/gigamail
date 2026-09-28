@@ -141,7 +141,8 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
     obs = ""
     try:
         obs = observer.get_context_for_prompt(account_id, sender=sender,
-                                              subject=subject) or ""
+                                              subject=subject,
+                                              includi_esempi=False) or ""
     except Exception as e:
         logger.debug("observer non disponibile per %s: %s", account_id, e)
     docs = _rule_docs_text(rule)

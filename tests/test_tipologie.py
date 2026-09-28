@@ -158,3 +158,91 @@ def test_il_prompt_dichiara_la_tipologia_richiesta():
     assert "TIPOLOGIA RICHIESTA: bilocale" in prompt
     # gli esempi passati sono dichiarati come stile, non come contenuto
     assert "mai al contenuto" in prompt
+
+
+# ── la bozza sbagliata si riscrive da sola ───────────────────────────
+
+def test_bozza_sbagliata_viene_riscritta_e_arriva_quella_giusta(mondo, monkeypatch):
+    """In modalita' semi l'umano deve ricevere la bozza giusta, non un
+    avviso: al primo giro l'agente ricopia i trilocali, al secondo, con
+    la correzione, propone i bilocali."""
+    prompts = []
+    bozze = iter([BOZZA_SBAGLIATA, BOZZA_GIUSTA])
+
+    def agente(prompt, **kw):
+        prompts.append(prompt)
+        return next(bozze)
+
+    monkeypatch.setattr(agent_bridge, "run", agente)
+    _regola()
+    mondo["unread"] = [_msg()]
+    watcher_mod.Watcher().tick()
+    pending = policy.store().list_pending()
+    assert len(pending) == 1
+    assert pending[0]["args"]["body"] == BOZZA_GIUSTA
+    # la seconda richiesta all'agente porta la correzione concreta
+    assert len(prompts) == 2
+    assert "ha scritto per un bilocale" in prompts[1]
+    assert "trilocali" in prompts[1]
+
+
+def test_se_sbaglia_due_volte_si_ferma_e_avvisa(mondo, monkeypatch):
+    avvisi = []
+    monkeypatch.setattr(policy, "notify_approval_requested",
+                        lambda *a, **kw: avvisi.append(kw.get("message") or ""))
+    _regola()
+    mondo["draft"] = BOZZA_SBAGLIATA
+    mondo["unread"] = [_msg()]
+    watcher_mod.Watcher().tick()
+    assert policy.store().list_pending() == []
+    assert mondo["replies"] == []
+    assert any("bilocale" in a and "Rispondi a mano" in a for a in avvisi)
+
+
+def test_la_correzione_dice_cosa_era_sbagliato():
+    testo = tipologie.correzione("bilocale", BOZZA_SBAGLIATA)
+    assert "trilocali" in testo and "bilocale" in testo
+    assert "SOLO bilocali" in testo
+
+
+def test_vincolo_usa_il_plurale_giusto():
+    assert "bilocali disponibili" in tipologie.vincolo("bilocale")
+    assert "bilocalei" not in tipologie.vincolo("bilocale")
+
+
+# ── la bozza automatica non vede le risposte vecchie ────────────────
+
+def test_il_watcher_chiede_allobserver_solo_lo_stile(monkeypatch):
+    from ade_mail_agent.core import observer
+
+    chiamate = []
+    monkeypatch.setattr(
+        observer, "get_context_for_prompt",
+        lambda *a, **kw: chiamate.append(kw) or "")
+    rule = rules_mod.store().get(_regola())
+    watcher_mod.build_draft_prompt(rule, 1, _msg())
+    assert chiamate and chiamate[0].get("includi_esempi") is False
+
+
+def test_observer_senza_esempi_non_restituisce_risposte_vecchie(tmp_path, monkeypatch):
+    import sqlite3
+
+    from ade_mail_agent.core import observer
+
+    db = tmp_path / "obs.db"
+    monkeypatch.setattr(observer, "DB_PATH", str(db))
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE patterns (account_id INT, pattern_type TEXT,"
+                     " pattern_value TEXT, frequency INT)")
+        conn.execute("CREATE TABLE interactions (account_id INT, original_draft"
+                     " TEXT, final_text TEXT, instruction TEXT, sent_at TEXT)")
+        conn.execute("INSERT INTO patterns VALUES (1,'preferred_word','cordialmente',5)")
+        conn.execute("INSERT INTO interactions VALUES (1,'x','- B.1.3: trilocale di "
+                     "80,43 mq','', '2026-09-27')")
+    monkeypatch.setattr(observer, "find_similar_template", lambda *a, **kw: None)
+    con = observer.get_context_for_prompt(1, includi_esempi=True)
+    senza = observer.get_context_for_prompt(1, includi_esempi=False)
+    assert "trilocale" in con
+    assert "trilocale" not in senza
+    assert "cordialmente" in senza          # lo stile resta
+

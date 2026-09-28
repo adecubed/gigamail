@@ -272,11 +272,20 @@ def find_similar_template(
     return None
 
 
-def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "") -> str:
+def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "",
+                           includi_esempi: bool = True) -> str:
     """
     Ritorna un contesto da iniettare nel prompt LLM con:
     - pattern di stile appresi
     - template suggerito se disponibile
+
+    includi_esempi=False lascia SOLO lo stile (parole, lunghezza): niente
+    risposte inviate ricopiate, niente template. E' cio' che usa la bozza
+    automatica del watcher. Con le risposte vecchie davanti l'agente le
+    ricopiava invece di leggere la mail: il 27/09 a chi chiedeva un
+    bilocale sono partiti tre trilocali presi dalla risposta precedente,
+    perche' gli avvisi dei portali hanno oggetti quasi identici e il
+    "template suggerito" era sempre quello.
     """
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -313,7 +322,7 @@ def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "")
             lines.append(f'- Lunghezza preferita: {length}')
 
     # Esempi recenti
-    if interactions:
+    if includi_esempi and interactions:
         lines.append('\n[ESEMPI RISPOSTE RECENTI]:')
         for _orig, final, instr in interactions[:3]:
             if instr:
@@ -321,7 +330,7 @@ def get_context_for_prompt(account_id: int, sender: str = "", subject: str = "")
             lines.append(f'  Risposta inviata: {(final or "")[:200]}')
 
     # Template suggerito per questa mail specifica
-    if sender or subject:
+    if includi_esempi and (sender or subject):
         tmpl = find_similar_template(account_id, sender, subject)
         if tmpl:
             match_label = {

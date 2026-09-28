@@ -78,6 +78,27 @@ def spiega(tipologia: Optional[str], bozza: str) -> str:
     return f"chiesto {tipologia or 'non dichiarato'}, proposte: {proposte}"
 
 
+def plurale(tipologia: str) -> str:
+    """bilocale -> bilocali."""
+    return tipologia[:-1] + "i" if tipologia.endswith("e") else tipologia
+
+
+def correzione(tipologia: Optional[str], bozza: str) -> str:
+    """Cosa dire all'agente quando la bozza ha sbagliato tipologia.
+
+    Il testo e' concreto di proposito: nomina cosa ha proposto e cosa
+    andava proposto. Un generico "riprova" produce la stessa bozza."""
+    proposte = ", ".join(plurale(t) for t in sorted(elencate(bozza))) or "altro"
+    t = tipologia or "la tipologia indicata"
+    return (f"La bozza propone {proposte}, ma il cliente ha scritto per un "
+            f"{t}: lo dice il titolo dell'annuncio nell'oggetto della mail. "
+            f"Riscrivi la risposta proponendo SOLO {plurale(t)} presi dai "
+            f"documenti, con metratura, balcone, totale commerciale e "
+            f"prezzo di ciascuno. Se nei documenti non ci sono {plurale(t)} "
+            f"disponibili, dillo chiaramente invece di proporre altro. Non "
+            f"ripartire dalla bozza sbagliata.")
+
+
 def vincolo(tipologia: Optional[str]) -> str:
     """La riga da mettere nel prompt della bozza."""
     if not tipologia:
@@ -86,7 +107,7 @@ def vincolo(tipologia: Optional[str]) -> str:
                 "chiedila.")
     return (f"TIPOLOGIA RICHIESTA: {tipologia}. Le soluzioni che elenchi "
             f"devono essere di questo tipo, prese dai documenti. Se nei "
-            f"documenti non ci sono {tipologia}i disponibili, dillo "
+            f"documenti non ci sono {plurale(tipologia)} disponibili, dillo "
             f"chiaramente invece di proporre un'altra tipologia.")
 
 

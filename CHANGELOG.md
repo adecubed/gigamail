@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **La bozza non ricopia piu' le risposte vecchie, e se sbaglia si
+  corregge.** Il vincolo sulla tipologia non bastava: le risposte inviate
+  entravano ancora nel prompt per intero, insieme al "template suggerito"
+  della risposta precedente, e con quelle davanti l'agente ricopiava
+  invece di leggere la mail. Quando poi sbagliava, la bozza veniva solo
+  scartata: in modalita' semi l'umano riceveva un avviso invece di una
+  risposta da approvare. Ora la bozza automatica riceve dall'observer
+  SOLO lo stile appreso, parole e lunghezza (`includi_esempi=False`),
+  senza risposte ne' template. E se propone appartamenti di un'altra
+  tipologia, il watcher gliela fa riscrivere subito con una correzione
+  concreta: cosa ha proposto, cosa andava proposto, da dove prenderlo.
+  Si ferma e avvisa l'umano solo se sbaglia anche al secondo giro.
+
 - **Su Telegram la bozza si legge intera.** La notifica tagliava la bozza
   a 400 caratteri: una risposta con quattro appartamenti, metrature e
   prezzi si fermava alla seconda riga, e il resto di cio' che si stava

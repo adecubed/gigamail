@@ -183,6 +183,52 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                      f"Reply by hand."))
         return "failed"
 
+    # TIPOLOGIA: in modalita' semi l'umano deve ricevere una bozza
+    # GIUSTA da approvare, non un avviso che la bozza era sbagliata. Se
+    # l'agente propone appartamenti di un'altra tipologia, gliela si fa
+    # riscrivere subito dicendogli cosa ha sbagliato; ci si ferma solo se
+    # sbaglia anche la seconda volta.
+    chiesta = tipologie.chiesta(str(full.get("subject") or ""),
+                                drafting._message_body_text(full))
+    if not tipologie.coerente(chiesta, body):
+        prima = tipologie.spiega(chiesta, body)
+        corretta = ""
+        try:
+            corretta = drafting.draft_reply(
+                rule, account_id, full,
+                feedback=tipologie.correzione(chiesta, body),
+                previous_body=body)
+        except (drafting.MailConOrdini, agent_bridge.AgentUnavailable) as e:
+            logger.info("riscrittura per tipologia non riuscita: %s", e)
+        if corretta and tipologie.coerente(chiesta, corretta):
+            policy.audit("watch_rule", {"rule_id": rule_id,
+                                        "message_id": message_id},
+                         "typology_redrafted", detail=prima[:160])
+            _log(f"tipologia corretta al secondo giro ({rule_id}): {prima}",
+                 w.verbose)
+            body = corretta
+        else:
+            dettaglio = tipologie.spiega(chiesta, corretta or body)
+            rs.set_status(rule_id, message_id, "skipped", "typology-mismatch")
+            policy.audit("watch_rule", {"rule_id": rule_id,
+                                        "message_id": message_id},
+                         "skipped", detail="tipologia non coerente anche "
+                                           "dopo la riscrittura: " + dettaglio)
+            _log(f"tipologia sbagliata due volte ({rule_id}): {dettaglio}",
+                 w.verbose)
+            policy.notify_approval_requested(
+                "-", f"draft_typology:{rule_id}", {"action": "draft typology"},
+                message=(f"Nessuna bozza per la mail da {sender} "
+                         f"({rule_id}): il cliente chiede un "
+                         f"{chiesta}, l'agente ha proposto due volte "
+                         f"un'altra tipologia ({dettaglio}). Rispondi a mano."
+                         if policy.user_lang() == "it" else
+                         f"No draft for the mail from {sender} ({rule_id}): "
+                         f"the client asks for a {chiesta}, the agent "
+                         f"proposed another flat type twice ({dettaglio}). "
+                         f"Reply by hand."))
+            return "skipped"
+
     args = {"message_id": message_id, "body": body, "account_id": account_id,
             "folder": folder}
     to_address = None
@@ -229,20 +275,6 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                  w.verbose)
             return "skipped"
         args["attachments"] = allegati
-    chiesta = tipologie.chiesta(str(full.get("subject") or ""),
-                                drafting._message_body_text(full))
-    if not tipologie.coerente(chiesta, body):
-        # La bozza propone appartamenti e nessuno e' del tipo richiesto:
-        # e' la risposta precedente ricopiata. Spedirla vuol dire
-        # rispondere a una domanda che il cliente non ha fatto.
-        dettaglio = tipologie.spiega(chiesta, body)
-        rs.set_status(rule_id, message_id, "skipped", "typology-mismatch")
-        policy.audit("watch_rule", {"rule_id": rule_id,
-                                    "message_id": message_id},
-                     "skipped", detail="tipologia non coerente: " + dettaglio)
-        _log(f"tipologia non coerente ({rule_id}): {dettaglio}: salto",
-             w.verbose)
-        return "skipped"
     if not allegati and attachments_mod.promette_allegati(body):
         # La bozza annuncia un allegato e non ne e' uscito nessuno:
         # spedirla vuol dire contraddirsi davanti al cliente. Meglio
