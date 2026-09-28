@@ -97,6 +97,10 @@ class Telegram:
 
     # ------------------------------------------------------------ out
 
+    # Telegram rifiuta i messaggi oltre 4096 caratteri. Si sta sotto con
+    # un margine: il testo viene spezzato, mai troncato.
+    TG_MAX_CHARS = 3900
+
     def send_to(self, chat_id: int, text: str) -> bool:
         """Messaggio a una chat specifica: serve per avvisare la chat
         fidata PRECEDENTE quando qualcuno cambia il chat_id configurato."""
@@ -117,18 +121,54 @@ class Telegram:
                      html: bool = False) -> int:
         """Come send, ma ritorna il message_id (0 se non e' partito): serve
         a riconoscere quale messaggio l'utente sta citando quando risponde."""
-        params: Dict[str, Any] = {"chat_id": self.chat_id, "text": text[:4000]}
-        if html:
-            params["parse_mode"] = "HTML"
-        if buttons:
-            params["reply_markup"] = {"inline_keyboard": buttons}
-        data = self._call("sendMessage", **params)
-        if not data:
-            return 0
-        try:
-            return int((data.get("result") or {}).get("message_id") or 0) or 1
-        except Exception:
-            return 1
+        pezzi = self.a_pezzi(text)
+        ultimo = 0
+        for i, pezzo in enumerate(pezzi):
+            params: Dict[str, Any] = {"chat_id": self.chat_id, "text": pezzo}
+            if html:
+                params["parse_mode"] = "HTML"
+            if buttons and i == len(pezzi) - 1:
+                params["reply_markup"] = {"inline_keyboard": buttons}
+            data = self._call("sendMessage", **params)
+            if not data:
+                return 0
+            try:
+                ultimo = int((data.get("result") or {}).get("message_id") or 0) or 1
+            except Exception:
+                ultimo = 1
+        return ultimo
+
+    @classmethod
+    def a_pezzi(cls, text: str, limite: int = 0) -> List[str]:
+        """Il testo in pezzi che Telegram accetta, tagliando sugli a capo.
+
+        Prima il messaggio si fermava a 4000 caratteri e la coda spariva
+        senza che nulla lo dicesse: chi leggeva sul telefono non vedeva
+        la fine della bozza che stava approvando.
+
+        Il taglio non deve cadere dentro un'entita' HTML (&amp;, &lt;):
+        con parse_mode HTML meta' entita' fa fallire l'invio, e allora il
+        messaggio non arriva per niente."""
+        limite = limite or cls.TG_MAX_CHARS
+        testo = str(text or "")
+        if len(testo) <= limite:
+            return [testo]
+        pezzi: List[str] = []
+        resto = testo
+        while len(resto) > limite:
+            taglio = resto.rfind("\n", 0, limite)
+            if taglio < limite // 2:
+                taglio = resto.rfind(" ", 0, limite)
+            if taglio < limite // 2:
+                taglio = limite
+            amp = resto.rfind("&", 0, taglio)
+            if amp != -1 and ";" not in resto[amp:taglio]:
+                taglio = amp
+            pezzi.append(resto[:taglio].rstrip())
+            resto = resto[taglio:].lstrip("\n")
+        if resto:
+            pezzi.append(resto)
+        return pezzi
 
     @staticmethod
     def safe_html(text: str) -> str:

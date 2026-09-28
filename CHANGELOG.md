@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Su Telegram la bozza si legge intera.** La notifica tagliava la bozza
+  a 400 caratteri: una risposta con quattro appartamenti, metrature e
+  prezzi si fermava alla seconda riga, e il resto di cio' che si stava
+  approvando esisteva solo nella console. Ora la bozza entra intera
+  (`GIGAMAIL_NOTIFY_BODY_CHARS`, 3000 di default, con un segno visibile
+  se mai si taglia). E il canale non tronca piu' in silenzio oltre il
+  limite di Telegram: un testo lungo viene diviso in piu' messaggi,
+  tagliando sugli a capo e mai dentro un'entita' HTML, con i bottoni di
+  approvazione sull'ultimo pezzo, sotto la fine del testo.
+
 - **La bozza risponde alla domanda di QUESTA mail, non a quella di
   prima.** Il 27 settembre un cliente ha scritto per un bilocale e si e'
   visto proporre tre trilocali da 379.000 euro in su, planimetrie

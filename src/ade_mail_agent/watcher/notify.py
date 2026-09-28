@@ -11,7 +11,21 @@ from typing import Any, Dict
 from ade_mail_agent import policy
 from ade_mail_agent.core import mail_guard
 
-_NOTIFY_BODY_CHARS = 400
+# La bozza va letta INTERA sul telefono: e' la cosa che si approva.
+# A 400 caratteri una risposta con quattro appartamenti e i prezzi si
+# fermava alla seconda riga, e per vedere il resto bisognava aprire la
+# console. Telegram accetta 4096 caratteri per messaggio, e il canale
+# spezza da solo i testi piu' lunghi invece di troncarli.
+_NOTIFY_BODY_CHARS = policy._env_int("GIGAMAIL_NOTIFY_BODY_CHARS", 3000)
+_TRONCATO = "\n[...]"
+
+
+def _corpo(body: str) -> str:
+    """La bozza per la notifica, tagliata solo se e' davvero enorme."""
+    testo = str(body or "")
+    if len(testo) <= _NOTIFY_BODY_CHARS:
+        return testo
+    return testo[:_NOTIFY_BODY_CHARS].rstrip() + _TRONCATO
 
 
 def _sender_subject(message: Dict[str, Any]) -> tuple:
@@ -25,7 +39,7 @@ def _sender_subject(message: Dict[str, Any]) -> tuple:
 def _semi_notify_text(rule: Dict[str, Any], message: Dict[str, Any],
                       body: str, request_id: str) -> str:
     sender, subject = _sender_subject(message)
-    draft = body[:_NOTIFY_BODY_CHARS]
+    draft = _corpo(body)
     if policy.user_lang() == "it":
         return (
             f"E' arrivata una mail da {sender} — «{subject}».\n"
@@ -42,7 +56,7 @@ def _semi_notify_text(rule: Dict[str, Any], message: Dict[str, Any],
 def _auto_notify_text(rule: Dict[str, Any], message: Dict[str, Any],
                       body: str, ok: bool) -> str:
     sender, subject = _sender_subject(message)
-    draft = body[:_NOTIFY_BODY_CHARS]
+    draft = _corpo(body)
     if policy.user_lang() == "it":
         if not ok:
             return (f"INVIO FALLITO (regola {rule['rule_id']}, automode) — "
