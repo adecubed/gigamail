@@ -519,6 +519,9 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
       body: JSON.stringify({ instruction, body_text:mailData.body_text||mailData.bodyPreview||'', subject:mailData.subject||'', sender:mailData.sender||'' })
     });
     const data = await r.json();
+    // Un errore del server (agente non collegato, login scaduto) va detto:
+    // un campo vuoto sembra una bozza che non arriva mai.
+    if (!r.ok) throw (data.detail || `HTTP ${r.status}`);
     const guard = document.getElementById('guardBanner');
     guard.style.display = 'none';
     document.getElementById('suggestedBanner').style.display = 'none';

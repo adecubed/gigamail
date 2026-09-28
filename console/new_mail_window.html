@@ -487,9 +487,10 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
     if (accountId) url += `?account_id=${accountId}`;
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject}) });
     const data = await r.json();
+    if (!r.ok) throw (data.detail || `HTTP ${r.status}`);
     ta.value = data.draft || data.text || '';
     scheduleDraftSave();
-  } catch(e) { ta.value = ''; st.textContent = 'Errore generazione'; }
+  } catch(e) { ta.value = ''; st.textContent = `Errore generazione: ${e}`; }
   btn.textContent = '⚡ ' + (window.i18n?window.i18n.t('generate'):'GENERA'); btn.disabled = false;
 });
 
