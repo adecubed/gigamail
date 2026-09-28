@@ -234,6 +234,13 @@ and neither survives in a deleted database.
 
 ## Fixed
 
+- **Unreleased — an approved attachment could be swapped before sending
+  (Loopjacking).** Requests bound the attachment's path, not its content:
+  replacing the file on disk between approval and execution sent different
+  bytes under a valid approval. Attachments are now bound to their SHA-256
+  and size when the request is created; the preview shows the fingerprint,
+  and execution re-hashes the file and fails closed on a mismatch.
+  Legacy requests without a hash are refused and must be recreated.
 - **v0.1.1 — agent could self-approve destructive actions.** v0.1.0 returned
   a one-time confirmation token inside the tool result, so it entered the
   model's context: an injected instruction could call the tool again with the

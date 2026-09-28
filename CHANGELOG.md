@@ -42,6 +42,17 @@
   la lascia all'umano invece di spedirla. Una risposta fuori tipologia
   non e' uno sbaglio di forma, e' una risposta a un altro cliente.
 
+- **L'allegato approvato e' quello che parte, byte per byte.** La
+  richiesta fissava il percorso del file, non il contenuto: fra
+  l'approvazione e l'invio bastava sostituire il file su disco
+  (Loopjacking) e partiva un altro documento con lo stesso nome, sotto
+  un'approvazione valida. Ora `core/attachments.resolve()` legge i byte
+  quando crea la richiesta e ne fissa SHA-256 e dimensione negli
+  argomenti approvati; l'anteprima mostra peso e impronta (`sha256`, 12
+  caratteri) e `payload()` ricalcola l'hash all'invio. Se non coincide,
+  o se la richiesta e' vecchia e non ne ha uno, solleva
+  `AttachmentChanged` e non parte niente: la richiesta va ricreata.
+
 - **Destinatari, account e cartella restano quelli approvati.** SMTP non
   include piu' l'header Ccn nel messaggio consegnato. Le risposte Graph
   senza allegati rispettano To/CC/Ccn espliciti; le risposte IMAP usano la
