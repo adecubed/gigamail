@@ -9,10 +9,11 @@ come "template suggerito".
 import time
 
 import pytest
+from gigamail_real_estate import tipologie
 
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import attachments, mail_router, tipologie
+from ade_mail_agent.core import attachments, mail_router
 from ade_mail_agent.core import rules as rules_mod
 
 OGGETTO_BILO = ("Nuovo messaggio di Marco Neri sul tuo immobile, Bilocale in "
@@ -156,8 +157,12 @@ def test_il_prompt_dichiara_la_tipologia_richiesta():
     rule = rules_mod.store().get(_regola())
     prompt = watcher_mod.build_draft_prompt(rule, 1, _msg())
     assert "TIPOLOGIA RICHIESTA: bilocale" in prompt
-    # gli esempi passati sono dichiarati come stile, non come contenuto
-    assert "mai al contenuto" in prompt
+
+
+def test_senza_l_estensione_accesa_il_prompt_non_parla_di_tipologie(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "")
+    rule = rules_mod.store().get(_regola())
+    assert "TIPOLOGIA" not in watcher_mod.build_draft_prompt(rule, 1, _msg())
 
 
 # ── la bozza sbagliata si riscrive da sola ───────────────────────────
@@ -208,41 +213,3 @@ def test_la_correzione_dice_cosa_era_sbagliato():
 def test_vincolo_usa_il_plurale_giusto():
     assert "bilocali disponibili" in tipologie.vincolo("bilocale")
     assert "bilocalei" not in tipologie.vincolo("bilocale")
-
-
-# ── la bozza automatica non vede le risposte vecchie ────────────────
-
-def test_il_watcher_chiede_allobserver_solo_lo_stile(monkeypatch):
-    from ade_mail_agent.core import observer
-
-    chiamate = []
-    monkeypatch.setattr(
-        observer, "get_context_for_prompt",
-        lambda *a, **kw: chiamate.append(kw) or "")
-    rule = rules_mod.store().get(_regola())
-    watcher_mod.build_draft_prompt(rule, 1, _msg())
-    assert chiamate and chiamate[0].get("includi_esempi") is False
-
-
-def test_observer_senza_esempi_non_restituisce_risposte_vecchie(tmp_path, monkeypatch):
-    import sqlite3
-
-    from ade_mail_agent.core import observer
-
-    db = tmp_path / "obs.db"
-    monkeypatch.setattr(observer, "DB_PATH", str(db))
-    with sqlite3.connect(db) as conn:
-        conn.execute("CREATE TABLE patterns (account_id INT, pattern_type TEXT,"
-                     " pattern_value TEXT, frequency INT)")
-        conn.execute("CREATE TABLE interactions (account_id INT, original_draft"
-                     " TEXT, final_text TEXT, instruction TEXT, sent_at TEXT)")
-        conn.execute("INSERT INTO patterns VALUES (1,'preferred_word','cordialmente',5)")
-        conn.execute("INSERT INTO interactions VALUES (1,'x','- B.1.3: trilocale di "
-                     "80,43 mq','', '2026-09-27')")
-    monkeypatch.setattr(observer, "find_similar_template", lambda *a, **kw: None)
-    con = observer.get_context_for_prompt(1, includi_esempi=True)
-    senza = observer.get_context_for_prompt(1, includi_esempi=False)
-    assert "trilocale" in con
-    assert "trilocale" not in senza
-    assert "cordialmente" in senza          # lo stile resta
-

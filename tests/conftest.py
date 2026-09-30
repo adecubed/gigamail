@@ -30,6 +30,9 @@ os.environ["GIGAMAIL_NOTIFY_DESKTOP"] = "0"
 # Lingua delle notifiche pinnata: la suite deve dare lo stesso esito sul
 # PC italiano di Paolo e sui runner CI in inglese.
 os.environ["GIGAMAIL_LANG"] = "it"
+# Nessuna estensione accesa di default: la suite prova il core nudo. I test
+# che ne vogliono una la accendono con le fixture qui sotto.
+os.environ["GIGAMAIL_EXTENSIONS"] = ""
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -37,6 +40,34 @@ sys.path.insert(0, str(ROOT / "src"))
 import pytest  # noqa: E402
 
 import ade_mail_agent  # noqa: E402,F401 — attiva lo shim per core/
+
+
+@pytest.fixture(autouse=True)
+def _estensioni_pulite(monkeypatch):
+    from ade_mail_agent.core import extensions
+    monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "")
+    extensions.reset()
+    yield
+    extensions.reset()
+
+
+@pytest.fixture()
+def appointments_on(monkeypatch):
+    """Gli appuntamenti (mail -> calendario) accesi."""
+    monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "appointments")
+
+
+@pytest.fixture()
+def estensione(monkeypatch):
+    """Accende un'estensione di prova senza installarla: estensione(obj)."""
+    from ade_mail_agent.core import extensions
+
+    def accendi(ext):
+        extensions.register(ext)
+        attuali = [n for n in os.environ.get("GIGAMAIL_EXTENSIONS", "").split(",") if n]
+        monkeypatch.setenv("GIGAMAIL_EXTENSIONS", ",".join(attuali + [ext.name]))
+        return ext
+    return accendi
 
 
 @pytest.fixture()

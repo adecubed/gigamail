@@ -163,8 +163,10 @@ class Watcher:
         rileggono solo i thread aperti (una regola ha risposto, un orario
         e' stato proposto o fissato) e ogni risposta nuova arriva
         all'umano su Telegram, anche quando il calendario non cambia."""
-        from ade_mail_agent.core import appointments, mail_router
+        from ade_mail_agent.core import appointments, extensions, mail_router
 
+        if not extensions.enabled("appointments"):
+            return 0
         aperti = appointments.store().aperti()
         if not aperti:
             return 0

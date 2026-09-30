@@ -237,7 +237,7 @@ def test_un_aggiornamento_non_perde_il_segno_video(monkeypatch, tmp_path):
 
 # ── ogni mail verso l'esterno resta in ascolto ───────────────────────
 
-def test_invio_nuovo_verso_esterni_in_ascolto(monkeypatch, tmp_path):
+def test_invio_nuovo_verso_esterni_in_ascolto(monkeypatch, tmp_path, appointments_on):
     """Il 15/09 la risposta a una mail nuova con listino e planimetrie non
     ha fatto scattare nessun avviso: si seguivano solo le risposte."""
     from ade_mail_agent.core import mail_router

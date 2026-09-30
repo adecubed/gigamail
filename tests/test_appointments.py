@@ -711,7 +711,7 @@ def test_avviso_senza_il_nostro_messaggio_citato():
     assert "ha risposto" not in testo and "Oggetto" not in testo
 
 
-def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch):
+def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch, appointments_on):
     from ade_mail_agent.core import mail_router
 
     seguiti = []
@@ -730,7 +730,7 @@ def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch):
     assert seguiti == [(2, "Re: x", "c@example.com")]
 
 
-def test_risposta_dellagente_mette_il_thread_in_ascolto(monkeypatch):
+def test_risposta_dellagente_mette_il_thread_in_ascolto(monkeypatch, appointments_on):
     """Regressione del 15/09: la replica di una cliente a una risposta
     mandata dall'agente, non da una regola, non faceva scattare l'avviso.
     Un inoltro verso un nostro indirizzo invece non si segue: non deve

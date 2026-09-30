@@ -6,11 +6,13 @@ del primo piano, e la mail giusta, quella che elencava gli appartamenti
 davvero richiesti, e' uscita senza nessun file pur scrivendo "in allegato
 trova le planimetrie".
 """
+import re
+
 import pytest
 
 from ade_mail_agent import policy
 from ade_mail_agent import server as srv
-from ade_mail_agent.core import attachments
+from ade_mail_agent.core import attachments, extensions
 
 
 @pytest.fixture(autouse=True)
@@ -20,24 +22,31 @@ def store_isolato(tmp_path):
     policy.set_store(None)
 
 
-# ── quali appartamenti cita il testo ─────────────────────────────────
+# ── quali codici cita il testo: lo decidono le estensioni ────────────
 
-def test_codici_in_ordine_e_senza_ripetizioni():
-    testo = ("- A.3.2: quadrilocale di 103,26 mq, prezzo 499.000\n"
-             "- B.0.1: quadrilocale di 109,07 mq\n"
-             "Le planimetrie di A.3.2 e B.0.1 sono in allegato.")
+class _Codici(extensions.Extension):
+    name = "codici_prova"
+
+    def cited_codes(self, text):
+        return re.findall(r"\b[A-Z]\.[0-9]\.[0-9]\b", text or "")
+
+
+def test_senza_estensioni_nessun_codice():
+    """Il core non sa che forma abbia un codice: senza estensioni resta
+    la lista fissa della regola."""
+    assert attachments.codici_citati("La scheda A.3.2 in allegato.") == []
+
+
+def test_codici_dalle_estensioni_in_ordine_e_senza_ripetizioni(estensione):
+    estensione(_Codici())
+    testo = "A.3.2 e B.0.1, poi di nuovo A.3.2."
     assert attachments.codici_citati(testo) == ["A.3.2", "B.0.1"]
 
 
-def test_i_prezzi_non_sono_codici():
-    """499.000 e 2028 non devono diventare allegati."""
-    assert attachments.codici_citati(
-        "prezzo 499.000 euro, consegna primavera 2028") == []
-
-
-def test_nessun_codice_su_testo_qualunque():
-    assert attachments.codici_citati("Le confermo l'appuntamento.") == []
-    assert attachments.codici_citati("") == []
+def test_estensione_accesa_ma_assente_non_passa_in_silenzio(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "inesistente")
+    with pytest.raises(extensions.ExtensionError):
+        attachments.codici_citati("A.3.2")
 
 
 # ── la mail promette un allegato? ────────────────────────────────────

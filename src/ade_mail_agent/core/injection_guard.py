@@ -225,7 +225,7 @@ _SCHEMI = [
         re.compile(
             r"\bnon\s+(?:informare|avvisare|dire|comunicare|disturbare|"
             r"menzionare|riferire)\b[^.\n]{0,30}\b(?:utente|titolare|"
-            r"proprietari\w+|umano|paolo|nessuno)\b"
+            r"proprietari\w+|umano|nessuno)\b"
             r"|\bsenza\s+(?:informare|avvisare|disturbare|coinvolgere|"
             r"chiedere\s+(?:a|al|all))\b[^.\n]{0,30}\b(?:utente|titolare|"
             r"umano|conferma|approvazione)\b"

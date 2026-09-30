@@ -17,7 +17,7 @@ jobs:
       - name: Ruff
         run: |
           pip install ruff
-          ruff check src tests
+          ruff check src tests extras
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
@@ -49,5 +49,11 @@ jobs:
         run: pytest -q
         # I test DPAPI si auto-skippano su Linux; tutto il resto gira
         # su entrambi gli OS senza rete ne' credenziali.
+      - name: Estensioni (extras/)
+        # Il core si prova da solo, senza estensioni installate. Poi ogni
+        # estensione si installa accanto e si prova con la sua suite.
+        run: |
+          pip install -e extras/real_estate
+          pytest -q extras/real_estate/tests
       - name: Tool map allineata al server
         run: python -m ade_mail_agent.gen_toolmap --check

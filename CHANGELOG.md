@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Il mestiere esce dal core.** Chi installa gigamail non si porta piu'
+  dietro l'agenzia in cui e' nato. Le tipologie (bilocale, trilocale...)
+  e i codici delle unita' (`A.3.2`) che scelgono gli allegati sono
+  diventati l'estensione `extras/real_estate`, un pacchetto a parte che
+  si installa con pip e si accende con `gigamail extensions enable
+  real_estate`. Il core offre gli agganci (`core/extensions.py`): un
+  vincolo nel prompt della bozza, un controllo sulla bozza con una
+  riscrittura automatica prima di fermarsi, i codici citati nel testo.
+  Senza estensioni gli allegati seguono la lista della regola.
+- **Gli appuntamenti sono spenti di default.** Prima ogni mail inviata
+  passava dall'agente in cerca di un appuntamento, e i thread venivano
+  seguiti per inoltrare le risposte su Telegram, per chiunque. Ora si
+  accendono con `gigamail extensions enable appointments`. Chi li usava
+  gia' (esiste `.appointments.db`) li ritrova accesi all'aggiornamento:
+  la migrazione avviene una volta sola.
+- **Un'estensione accesa che non si carica non passa in silenzio.** Le
+  bozze automatiche si fermano come quando l'agente non risponde: tre
+  tentativi, poi l'avviso all'umano. Nessuna bozza parte creduta
+  verificata senza esserlo. Accendere un'estensione chiede Windows Hello
+  / Touch ID, come creare una regola: cambia cio' che il watcher fa da
+  solo.
+- **Il presidio anti-injection non conosce piu' il nome del titolare.**
+  "Non avvisare <nome>" era riconosciuto solo per un nome scritto nel
+  codice; restano utente, titolare, proprietario, umano, nessuno.
+
 - **GigaMail ha il suo archivio: ogni mail, per intero, per sempre.**
   Prima non teneva niente di suo e leggeva solo il server. Ma il server
   non e' un archivio: Outlook, configurato come quasi sempre, scarica la

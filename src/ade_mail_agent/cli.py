@@ -1048,6 +1048,48 @@ def cmd_index(args) -> int:
     return 0
 
 
+def cmd_extensions_list(args) -> int:
+    from ade_mail_agent.core import extensions
+    accese = extensions.enabled_names()
+    for nome, origine in extensions.available().items():
+        stato = "accesa" if nome in accese else "spenta"
+        print(f"{nome:<16} {stato:<7} {origine}")
+    for nome in sorted(accese - set(extensions.available())):
+        print(f"{nome:<16} accesa  NON INSTALLATA: le bozze automatiche si fermano")
+    return 0
+
+
+def cmd_extensions_enable(args) -> int:
+    """Accendere un'estensione cambia cio' che il watcher fa da solo (gli
+    appuntamenti scrivono in calendario, un controllo decide quali bozze
+    arrivano all'umano): come una regola, lo decide solo l'utente fisico."""
+    from ade_mail_agent import consent
+    from ade_mail_agent.core import extensions
+    nome = args.name.strip().lower()
+    if nome not in extensions.available():
+        print(f"Estensione '{nome}' non installata. Disponibili: "
+              + ", ".join(extensions.available()))
+        return 1
+    try:
+        ok = consent.require_human(f"GigaMail: accendere l'estensione {nome}")
+    except consent.ConsentUnavailable as e:
+        print(f"Impossibile accendere da CLI: {e}")
+        return 2
+    if not ok:
+        print("Verifica non superata o annullata: nulla e' cambiato.")
+        return 1
+    extensions.set_enabled(nome, True)
+    print(f"Estensione {nome} accesa.")
+    return 0
+
+
+def cmd_extensions_disable(args) -> int:
+    from ade_mail_agent.core import extensions
+    extensions.set_enabled(args.name, False)
+    print(f"Estensione {args.name.strip().lower()} spenta.")
+    return 0
+
+
 def cmd_archive_sync(args) -> int:
     """Primo caricamento o riallineamento: gira finche' non ha finito."""
     from ade_mail_agent.core import accounts as core_accounts
@@ -1341,6 +1383,17 @@ def main(argv=None) -> int:
     p_rrm = rules_sub.add_parser("remove")
     p_rrm.add_argument("rule_id")
     p_rrm.set_defaults(fn=cmd_rules_remove)
+
+    p_ext = sub.add_parser(
+        "extensions", help="funzioni opzionali e verticali (appointments, real_estate...)")
+    ext_sub = p_ext.add_subparsers(dest="subcommand", required=True)
+    ext_sub.add_parser("list").set_defaults(fn=cmd_extensions_list)
+    p_exon = ext_sub.add_parser("enable", help="accende (chiede Hello / Touch ID)")
+    p_exon.add_argument("name")
+    p_exon.set_defaults(fn=cmd_extensions_enable)
+    p_exoff = ext_sub.add_parser("disable")
+    p_exoff.add_argument("name")
+    p_exoff.set_defaults(fn=cmd_extensions_disable)
 
     p_tg = sub.add_parser(
         "telegram", help="Telegram: notifiche e (opzionale) approvazione dal telefono")

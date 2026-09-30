@@ -18,11 +18,11 @@ from typing import Any, Dict, Optional
 from ade_mail_agent import agent_bridge, policy
 from ade_mail_agent.core import attachments as attachments_mod
 from ade_mail_agent.core import (
+    extensions,
     injection_guard,
     mail_guard,
     mail_router,
     telegram_channel,
-    tipologie,
 )
 from ade_mail_agent.core import rules as rules_mod
 
@@ -183,50 +183,61 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                      f"Reply by hand."))
         return "failed"
 
-    # TIPOLOGIA: in modalita' semi l'umano deve ricevere una bozza
-    # GIUSTA da approvare, non un avviso che la bozza era sbagliata. Se
-    # l'agente propone appartamenti di un'altra tipologia, gliela si fa
-    # riscrivere subito dicendogli cosa ha sbagliato; ci si ferma solo se
-    # sbaglia anche la seconda volta.
-    chiesta = tipologie.chiesta(str(full.get("subject") or ""),
-                                drafting._message_body_text(full))
-    if not tipologie.coerente(chiesta, body):
-        prima = tipologie.spiega(chiesta, body)
+    # Le estensioni accese verificano la bozza (per l'immobiliare: la
+    # tipologia richiesta). In modalita' semi l'umano deve ricevere una
+    # bozza GIUSTA da approvare, non un avviso che era sbagliata: se un
+    # controllo fallisce, l'agente la riscrive subito con la correzione
+    # concreta, e la riscritta ripassa da TUTTI i controlli. Ci si ferma
+    # solo se sbaglia anche la seconda volta.
+    subject_in = str(full.get("subject") or "")
+    body_in = drafting._message_body_text(full)
+
+    def _respinta(testo):
+        for ext in extensions.active():
+            esito = ext.check_draft(subject_in, body_in, testo)
+            if esito is not None and not esito.ok:
+                return ext, esito
+        return None
+
+    primo = _respinta(body)
+    if primo:
+        ext, esito = primo
         corretta = ""
         try:
             corretta = drafting.draft_reply(
-                rule, account_id, full,
-                feedback=tipologie.correzione(chiesta, body),
+                rule, account_id, full, feedback=esito.feedback,
                 previous_body=body)
         except (drafting.MailConOrdini, agent_bridge.AgentUnavailable) as e:
-            logger.info("riscrittura per tipologia non riuscita: %s", e)
-        if corretta and tipologie.coerente(chiesta, corretta):
+            logger.info("riscrittura per %s non riuscita: %s", ext.name, e)
+        secondo = _respinta(corretta) if corretta else primo
+        if not secondo:
             policy.audit("watch_rule", {"rule_id": rule_id,
                                         "message_id": message_id},
-                         "typology_redrafted", detail=prima[:160])
-            _log(f"tipologia corretta al secondo giro ({rule_id}): {prima}",
-                 w.verbose)
+                         "draft_redrafted",
+                         detail=f"{ext.name}: {esito.detail}"[:160])
+            _log(f"bozza corretta al secondo giro ({rule_id}, {ext.name}): "
+                 f"{esito.detail}", w.verbose)
             body = corretta
         else:
-            dettaglio = tipologie.spiega(chiesta, corretta or body)
-            rs.set_status(rule_id, message_id, "skipped", "typology-mismatch")
+            ext, esito = secondo
+            rs.set_status(rule_id, message_id, "skipped",
+                          f"extension-check:{ext.name}")
             policy.audit("watch_rule", {"rule_id": rule_id,
                                         "message_id": message_id},
-                         "skipped", detail="tipologia non coerente anche "
-                                           "dopo la riscrittura: " + dettaglio)
-            _log(f"tipologia sbagliata due volte ({rule_id}): {dettaglio}",
-                 w.verbose)
+                         "skipped", detail=f"{ext.name}, anche dopo la "
+                                           f"riscrittura: {esito.detail}"[:200])
+            _log(f"bozza respinta due volte ({rule_id}, {ext.name}): "
+                 f"{esito.detail}", w.verbose)
+            avviso = esito.notice or {}
+            testo = avviso.get(policy.user_lang()) or avviso.get("en") or (
+                f"Nessuna bozza per la mail da {{sender}} ({rule_id}): "
+                f"controllo {ext.name} non superato ({esito.detail}). "
+                f"Rispondi a mano." if policy.user_lang() == "it" else
+                f"No draft for the mail from {{sender}} ({rule_id}): "
+                f"{ext.name} check failed ({esito.detail}). Reply by hand.")
             policy.notify_approval_requested(
-                "-", f"draft_typology:{rule_id}", {"action": "draft typology"},
-                message=(f"Nessuna bozza per la mail da {sender} "
-                         f"({rule_id}): il cliente chiede un "
-                         f"{chiesta}, l'agente ha proposto due volte "
-                         f"un'altra tipologia ({dettaglio}). Rispondi a mano."
-                         if policy.user_lang() == "it" else
-                         f"No draft for the mail from {sender} ({rule_id}): "
-                         f"the client asks for a {chiesta}, the agent "
-                         f"proposed another flat type twice ({dettaglio}). "
-                         f"Reply by hand."))
+                "-", f"draft_check:{rule_id}", {"action": "draft check"},
+                message=testo.replace("{sender}", sender))
             return "skipped"
 
     args = {"message_id": message_id, "body": body, "account_id": account_id,

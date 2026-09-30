@@ -224,7 +224,8 @@ def send_message(
     bcc: list = None,
     auto_submitted: bool = False,
 ) -> Dict:
-    """Invia, e se la mail parlava di un appuntamento lo porta in agenda.
+    """Invia, e con gli appuntamenti accesi (`gigamail extensions enable
+    appointments`) porta in agenda quelli di cui la mail parla.
 
     L'aggancio sta qui e non nei singoli tool perche' qui passano TUTTE le
     mail in uscita: quelle dell'agente via MCP, quelle delle regole del
@@ -241,7 +242,8 @@ def send_message(
         if isinstance(esito, dict) and esito.get('success'):
             a = _account(account_id)
             aid = (a or {}).get('id')
-            if aid is not None:
+            from . import extensions
+            if aid is not None and extensions.enabled("appointments"):
                 from . import appointments
                 # Ogni mail che esce verso l'esterno, risposta o invio
                 # nuovo, mette il thread in ascolto: la replica del cliente

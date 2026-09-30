@@ -18,11 +18,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from ade_mail_agent.core import accounts as core_accounts
 from ade_mail_agent.core import identity_reader
 
-# I codici degli appartamenti come compaiono nel testo: A.3.2, B.1.4.
-# Sono l'unico pezzo di corpo che si puo' leggere con una regola fissa
-# senza rischiare: o il codice c'e' scritto, o non c'e'.
-_CODICE = re.compile(r"\b([AB]\.[0-9]\.[0-9])\b")
-
 # Le frasi con cui una mail promette un allegato. Servono a non spedire
 # "in allegato trova le planimetrie" con zero file: e' successo il 19 e
 # il 23 settembre, e il cliente riceve una mail che si contraddice.
@@ -44,17 +39,20 @@ def _sha256(data: bytes) -> str:
 
 
 def codici_citati(testo: str) -> List[str]:
-    """Gli appartamenti nominati nel testo, in ordine e senza ripetizioni.
+    """I codici di documento nominati nel testo, in ordine e senza
+    ripetizioni, secondo le estensioni accese.
 
-    Serve a far seguire gli allegati al CONTENUTO della mail. Prima la
-    regola spediva sempre la stessa terna di planimetrie: a chi chiedeva
-    un quadrilocale partivano tre trilocali, e la risposta giusta usciva
-    senza file."""
+    Serve a far seguire gli allegati al CONTENUTO della mail: una lista
+    fissa nella regola spedirebbe sempre gli stessi file, qualunque cosa
+    chieda il cliente. Il core non sa che forma abbia un codice (A.3.2 per
+    un'agenzia, SKU-12 per un negozio): lo dice l'estensione. Senza
+    estensioni non si legge niente e resta la lista della regola."""
+    from ade_mail_agent.core import extensions
     visti: List[str] = []
-    for m in _CODICE.finditer(str(testo or "")):
-        c = m.group(1).upper()
-        if c not in visti:
-            visti.append(c)
+    for ext in extensions.active():
+        for c in ext.cited_codes(testo) or []:
+            if c not in visti:
+                visti.append(c)
     return visti
 
 

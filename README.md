@@ -225,6 +225,27 @@ executable attachments → no reply at all; the first message from a new
 sender always goes through you; a burst of matches pauses the rule by
 itself. Details in [SECURITY.md](SECURITY.md).
 
+## Extensions: the trade stays out of the core
+
+The `gigamail` package does mail: accounts, index, search, two-phase
+send, calendar, knowledge files, audit. What only makes sense for one
+trade lives outside it and is off until you turn it on:
+
+- **`appointments`** (built in, off by default): reads every sent mail
+  for an appointment, puts confirmed ones in the calendar, and forwards
+  client replies on followed threads to Telegram.
+- **`real_estate`** ([extras/real_estate](extras/real_estate)): flat-type
+  check on drafts and unit codes that pick the attachments, for agencies
+  answering property-portal enquiries. This is where GigaMail grew up.
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # asks for Windows Hello / Touch ID
+```
+
+An enabled extension that fails to load stops automatic drafts and tells
+the human; it is never skipped silently.
+
 ## License
 
 **AGPL-3.0-or-later.** Free to use, study, modify and share. If you
@@ -443,6 +464,28 @@ il verdetto spam del provider, allegati eseguibili → nessuna risposta; il
 primo messaggio di un mittente nuovo passa sempre da te; una raffica di
 match mette in pausa la regola da sola. Dettagli in
 [SECURITY.md](SECURITY.md).
+
+## Estensioni: il mestiere resta fuori dal core
+
+Il pacchetto `gigamail` fa posta: account, indice, ricerca, invio a due
+fasi, calendario, documenti, audit. Cio' che serve a un solo mestiere
+vive fuori ed e' spento finche' non lo accendi:
+
+- **`appointments`** (incluso, spento di default): legge ogni mail
+  inviata in cerca di un appuntamento, porta in calendario quelli
+  confermati e inoltra su Telegram le risposte dei clienti.
+- **`real_estate`** ([extras/real_estate](extras/real_estate)): controllo
+  della tipologia sulle bozze e codici delle unita' che scelgono gli
+  allegati, per le agenzie che rispondono ai portali. E' qui che GigaMail
+  e' nato.
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # chiede Windows Hello / Touch ID
+```
+
+Un'estensione accesa che non si carica ferma le bozze automatiche e
+avvisa l'umano: non viene mai saltata in silenzio.
 
 ## Licenza
 
