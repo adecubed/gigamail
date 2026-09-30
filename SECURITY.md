@@ -234,7 +234,14 @@ and neither survives in a deleted database.
 
 ## Fixed
 
-- **Unreleased — an approved attachment could be swapped before sending
+- **Unreleased — the IMAP server certificate was not verified.** The IMAP
+  client connected with certificate checks off, so on a hostile network
+  anyone in the middle could receive the account password (SMTP was
+  already verified). The certificate is now verified by default; a server
+  with a self-signed certificate is accepted only for the account that
+  declares it (`gigamail accounts tls <id> --insecure`, behind Windows
+  Hello / Touch ID), and a rejected certificate is not retried.
+- **v0.4.0 — an approved attachment could be swapped before sending
   (Loopjacking).** Requests bound the attachment's path, not its content:
   replacing the file on disk between approval and execution sent different
   bytes under a valid approval. Attachments are now bound to their SHA-256

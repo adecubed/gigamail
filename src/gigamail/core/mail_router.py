@@ -66,12 +66,15 @@ def _is_microsoft(account_id=None) -> bool:
 def _imap_credentials(a: dict) -> tuple:
     """Estrae credenziali IMAP/SMTP da un oggetto account."""
     d = a.get('data', a)
-    return (
+    cred = (
         d.get('imap_host', a.get('imap_host', '')),
         d.get('imap_port', a.get('imap_port', 993)),
         a.get('email', ''),
         d.get('password', a.get('password', '')),
     )
+    if d.get('insecure_tls'):
+        imap.consenti_tls_non_verificato(*cred[:3])
+    return cred
 def _smtp_credentials(a: dict) -> tuple:
     """Estrae credenziali SMTP da un oggetto account."""
     d = a.get('data', a)

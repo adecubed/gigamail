@@ -176,6 +176,24 @@ def delete_account(account_id: int):
             except Exception:
                 pass
         conn.commit()
+def set_insecure_tls(account_id: int, on: bool) -> bool:
+    """Accende o spegne l'eccezione TLS di un account IMAP (certificato
+    self-signed). Ritorna False se l'account non e' IMAP."""
+    acc = get_account_by_id(account_id)
+    if not acc or acc.get('type') != 'imap':
+        return False
+    data = dict(acc.get('data') or {})
+    if on:
+        data['insecure_tls'] = True
+    else:
+        data.pop('insecure_tls', None)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute('UPDATE accounts SET data_enc=? WHERE id=?',
+                     (_encrypt(json.dumps(data)), account_id))
+        conn.commit()
+    return True
+
+
 def update_demo_seed(account_id: int, seed_path: str, email: str = '') -> None:
     """Cambia il file da cui pesca un account demo. Serve a passare da una
     casella all'altra (per esempio fra italiano e inglese) senza rifare

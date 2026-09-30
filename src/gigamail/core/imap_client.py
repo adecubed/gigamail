@@ -203,6 +203,32 @@ _IMAP_CONNECT_TIMEOUT = 10   # secondi — timeout connessione SSL
 _IMAP_MAX_RETRIES     = 2    # tentativi in caso di timeout
 
 
+# Account che hanno dichiarato un server IMAP con certificato self-signed
+# (insecure_tls, opt-in esplicito, lo stesso flag che vale per SMTP). Li
+# registra mail_router quando legge le credenziali: tutti gli altri
+# verificano il certificato. Prima NESSUNO lo verificava: su una rete
+# ostile la password IMAP andava a chiunque si mettesse in mezzo.
+_TLS_NON_VERIFICATO: set = set()
+
+
+def consenti_tls_non_verificato(imap_host: str, imap_port: int, email_addr: str) -> None:
+    _TLS_NON_VERIFICATO.add((str(imap_host).lower(), int(imap_port),
+                             str(email_addr).lower()))
+
+
+def _tls_context(imap_host: str, imap_port: int, email_addr: str) -> ssl.SSLContext:
+    ctx = ssl.create_default_context()
+    if (str(imap_host).lower(), int(imap_port),
+            str(email_addr).lower()) in _TLS_NON_VERIFICATO:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+class CertificatoNonValido(ConnectionError):
+    """Il server IMAP ha presentato un certificato che non si verifica."""
+
+
 def _connect(
     imap_host: str,
     imap_port: int,
@@ -219,9 +245,7 @@ def _connect(
 
     for attempt in range(1, _IMAP_MAX_RETRIES + 1):
         try:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
+            ctx = _tls_context(imap_host, imap_port, email_addr)
 
             # Imposta timeout a livello socket PRIMA della connessione SSL
             # per evitare hang su server lenti o irraggiungibili
@@ -238,6 +262,14 @@ def _connect(
             _imap_timing_log("connect_login", started, f"email={email_addr} attempt={attempt}")
             return conn
 
+        except ssl.SSLCertVerificationError as e:
+            # Non si ritenta: il certificato non cambia fra un tentativo e
+            # l'altro, e la password non deve partire verso quel server.
+            raise CertificatoNonValido(
+                f"certificato TLS di {imap_host}:{imap_port} non valido "
+                f"({e.verify_message or e}). Se il server e' tuo e usa un "
+                f"certificato self-signed: gigamail accounts tls <id> "
+                f"--insecure (chiede Windows Hello / Touch ID)") from e
         except (TimeoutError, OSError, imaplib.IMAP4.error) as e:
             last_exc = e
             _imap_debug_log(f"_connect attempt {attempt}/{_IMAP_MAX_RETRIES} failed: {e} ({email_addr})")

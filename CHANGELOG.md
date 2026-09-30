@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The IMAP server certificate is verified.** Until now the IMAP client
+  connected with certificate checks switched off: on a hostile network
+  (a public Wi-Fi) whoever sat in the middle could receive the account
+  password. SMTP already verified. Now IMAP verifies too; a server with a
+  self-signed certificate is accepted only for the account that declares
+  it, with `gigamail accounts tls <id> --insecure`, which asks for Windows
+  Hello / Touch ID (`--verify` turns checks back on). A rejected
+  certificate is not retried, so the password is not sent again, and the
+  error says which command to run.
 - **`gigamail check`: onboarding verified end to end on a real account.**
   Until now "verified" stopped at "the agent sees the tools". The command
   searches the mailbox, prepares a mail to the account's own address,

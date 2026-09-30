@@ -92,6 +92,34 @@ def cmd_accounts_add_imap(_args) -> int:
     return 0
 
 
+def cmd_accounts_tls(args) -> int:
+    """Il certificato TLS del server IMAP/SMTP si verifica sempre. Un
+    server con certificato self-signed si accetta solo per l'account che
+    lo dichiara, e solo dopo la verifica dell'utente fisico: abbassare la
+    guardia sul canale che porta la password non lo decide un agente."""
+    from gigamail import consent
+    from gigamail.core import accounts as core_accounts
+    acc = core_accounts.get_account_by_id(args.account_id)
+    if not acc or acc.get("type") != "imap":
+        print(f"Account {args.account_id}: non e' un account IMAP (vedi 'accounts list').")
+        return 1
+    if args.insecure:
+        try:
+            ok = consent.require_human(
+                f"GigaMail: accettare certificati non verificati per {acc.get('email')}")
+        except consent.ConsentUnavailable as e:
+            print(f"Impossibile da CLI: {e}")
+            return 2
+        if not ok:
+            print("Verifica non superata o annullata: nulla e' cambiato.")
+            return 1
+    core_accounts.set_insecure_tls(args.account_id, bool(args.insecure))
+    print(f"{acc.get('email')}: certificato TLS "
+          + ("NON verificato (self-signed accettato)." if args.insecure
+             else "verificato."))
+    return 0
+
+
 def cmd_accounts_remove(args) -> int:
     from gigamail.core import accounts as core_accounts
     a = core_accounts.get_account_by_id(args.account_id)
@@ -1340,6 +1368,15 @@ def main(argv=None) -> int:
     p_rm = acc_sub.add_parser("remove")
     p_rm.add_argument("account_id", type=int)
     p_rm.set_defaults(fn=cmd_accounts_remove)
+    p_tls = acc_sub.add_parser(
+        "tls", help="certificato del server IMAP/SMTP: verificato (default) "
+                    "o self-signed accettato per questo account")
+    p_tls.add_argument("account_id", type=int)
+    grp = p_tls.add_mutually_exclusive_group(required=True)
+    grp.add_argument("--insecure", action="store_true",
+                     help="accetta un certificato self-signed (chiede Hello / Touch ID)")
+    grp.add_argument("--verify", action="store_true", help="torna a verificarlo")
+    p_tls.set_defaults(fn=cmd_accounts_tls)
 
     p_id = sub.add_parser("identity", help="identity dell'account e sue copie locali")
     id_sub = p_id.add_subparsers(dest="subcommand", required=True)
