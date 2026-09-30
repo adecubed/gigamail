@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- **`gigamail check`: onboarding verified end to end on a real account.**
+  Until now "verified" stopped at "the agent sees the tools". The command
+  searches the mailbox, prepares a mail to the account's own address,
+  shows that it stays held, waits for a human to approve it (Windows
+  Hello / Touch ID from `gigamail approvals approve`, or the console),
+  sends it and finds it again. Same steps on Microsoft Graph and on IMAP;
+  one mail, to yourself, nothing else.
+- **The same path runs in CI on a real IMAP/SMTP server.** A new job
+  starts GreenMail (jar pinned by SHA-256) and runs
+  `tests/test_e2e_imap.py`: search, a reply held until approved,
+  approval, the reply arriving in the other mailbox, the approval refused
+  when reused.
+- **`add_imap_account` accepts `insecure_tls`** for an SMTP server with a
+  self-signed certificate: an explicit opt-in, for that account only.
+- **A half-finished install no longer crashes `extensions install`.** A
+  pip upgrade interrupted while `gigamail.exe` was in use left the venv
+  without package metadata; the command now says what happened and how
+  to fix it.
+
 ## v0.4.0 — 2026-09-30
 
 - **The package is called gigamail.** The internal name `ade_mail_agent`

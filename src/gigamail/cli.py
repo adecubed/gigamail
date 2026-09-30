@@ -1048,6 +1048,14 @@ def cmd_index(args) -> int:
     return 0
 
 
+def cmd_check(args) -> int:
+    from gigamail import onboarding_check
+    argv = ["--timeout", str(args.timeout)]
+    if args.account_id:
+        argv += ["--account-id", str(args.account_id)]
+    return onboarding_check.main(argv)
+
+
 def cmd_extensions_list(args) -> int:
     from gigamail.core import extensions
     accese = extensions.enabled_names()
@@ -1415,6 +1423,13 @@ def main(argv=None) -> int:
     p_rrm = rules_sub.add_parser("remove")
     p_rrm.add_argument("rule_id")
     p_rrm.set_defaults(fn=cmd_rules_remove)
+
+    p_chk = sub.add_parser(
+        "check", help="prova l'account da capo a fondo: ricerca, bozza in "
+                      "attesa, la tua approvazione, invio a te stesso")
+    p_chk.add_argument("--account-id", type=int, default=None)
+    p_chk.add_argument("--timeout", type=int, default=600)
+    p_chk.set_defaults(fn=cmd_check)
 
     p_ext = sub.add_parser(
         "extensions", help="funzioni opzionali e verticali (appointments, real_estate...)")

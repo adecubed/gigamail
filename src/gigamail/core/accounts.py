@@ -119,14 +119,20 @@ def add_microsoft_account(name: str, email: str, token_cache: str) -> int:
         return cur.lastrowid
 def add_imap_account(name: str, email: str, password: str,
                      imap_host: str, imap_port: int,
-                     smtp_host: str, smtp_port: int) -> int:
-    data = json.dumps({
+                     smtp_host: str, smtp_port: int,
+                     insecure_tls: bool = False) -> int:
+    """insecure_tls: il server SMTP ha un certificato self-signed.
+    Opt-in esplicito, per questo account soltanto."""
+    dati = {
         'password': password,
         'imap_host': imap_host,
         'imap_port': imap_port,
         'smtp_host': smtp_host,
         'smtp_port': smtp_port,
-    })
+    }
+    if insecure_tls:
+        dati['insecure_tls'] = True
+    data = json.dumps(dati)
     data_enc = _encrypt(data)
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute(

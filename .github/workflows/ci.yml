@@ -57,3 +57,38 @@ jobs:
           pytest -q extras/real_estate/tests
       - name: Tool map allineata al server
         run: python -m gigamail.gen_toolmap --check
+
+  # Onboarding end to end su un server IMAP/SMTP vero (GreenMail): account,
+  # ricerca, bozza che non parte da sola, approvazione, invio che arriva.
+  # I test sopra usano provider finti; questo prova il percorso intero.
+  e2e-imap:
+    runs-on: ubuntu-latest
+    env:
+      GREENMAIL_VERSION: "2.1.3"
+      GREENMAIL_SHA256: "9457fdaf45ded6c87bf84a321a5ced4b4b5e72b1d03686b778df381378afc4c8"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -e ".[all,dev]"
+      - name: Server di posta di prova (GreenMail)
+        # 465 e 993: GigaMail usa SMTP_SSL solo sulla 465, come i provider
+        # veri. Porte sotto 1024, quindi sudo. Il jar e' verificato per hash.
+        run: |
+          curl -sSfL -o greenmail.jar "https://repo1.maven.org/maven2/com/icegreen/greenmail-standalone/${GREENMAIL_VERSION}/greenmail-standalone-${GREENMAIL_VERSION}.jar"
+          echo "${GREENMAIL_SHA256}  greenmail.jar" | sha256sum -c -
+          sudo nohup java -Dgreenmail.smtps.hostname=127.0.0.1 -Dgreenmail.smtps.port=465 \
+            -Dgreenmail.imaps.hostname=127.0.0.1 -Dgreenmail.imaps.port=993 \
+            -Dgreenmail.auth.disabled -jar greenmail.jar > greenmail.log 2>&1 &
+          for i in $(seq 1 30); do
+            (echo > /dev/tcp/127.0.0.1/993) 2>/dev/null && (echo > /dev/tcp/127.0.0.1/465) 2>/dev/null && exit 0
+            sleep 1
+          done
+          cat greenmail.log; exit 1
+      - name: Onboarding end to end
+        env:
+          GIGAMAIL_E2E_IMAP_HOST: 127.0.0.1
+        run: pytest -q -rs tests/test_e2e_imap.py

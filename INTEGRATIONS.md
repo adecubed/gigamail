@@ -12,6 +12,25 @@ real data. It does **not** mean we have exercised full model-driven
 workflows (draft → approval → send) inside that client. Claude Code /
 Claude Desktop is the platform GigaMail runs on in daily production use.
 
+## Onboarding check
+
+"Verified" for a client below means the tools are visible. The mail path
+itself is checked two ways:
+
+- **In CI, on every push:** `tests/test_e2e_imap.py` runs against a real
+  IMAP/SMTP server (GreenMail): account, search, a reply that stays held
+  until approved, approval, the reply reaching the other mailbox, and the
+  same approval refused a second time.
+- **On your own account, Graph or IMAP:** `gigamail check` searches,
+  prepares a mail to your own address, waits for YOU to approve it
+  (`gigamail approvals approve <id>` from another terminal, with Windows
+  Hello / Touch ID, or from the console), sends it and finds it again. It
+  sends nothing else. The last line is a one-line result to record here.
+
+| Date | Version | Provider | OS | Result |
+|------|---------|----------|----|--------|
+| 2026-09-30 | 0.4.0 | IMAP (GreenMail, test server) | Linux | 8/8 |
+
 ## Setups in daily use
 
 "Verified" above a client means the tools are there. This section is the

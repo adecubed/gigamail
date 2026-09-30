@@ -83,6 +83,7 @@ pip install "gigamail[all]"
 
 gigamail login                # Microsoft device flow
 gigamail accounts add-imap    # or IMAP: Aruba, Gmail, Libero, ...
+gigamail check                # search, a draft held for your approval, a test mail to yourself
 ```
 
 > **Microsoft login note**: the bundled Azure app is not yet
@@ -333,6 +334,7 @@ pip install "gigamail[all]"
 
 gigamail login                # device flow Microsoft
 gigamail accounts add-imap    # oppure IMAP: Aruba, Gmail, Libero, ...
+gigamail check                # ricerca, bozza in attesa della tua approvazione, mail di prova a te stesso
 ```
 
 > **Nota sul login Microsoft**: l'app Azure inclusa non è ancora
@@ -562,6 +564,7 @@ pip install "gigamail[all]"
 
 gigamail login                # Microsoft 设备码登录
 gigamail accounts add-imap    # 或任意 IMAP 提供商
+gigamail check                # 搜索、等待你批准的草稿、给自己发一封测试邮件
 ```
 
 为账户设置身份与知识（这是让回复"像你"的关键）：
