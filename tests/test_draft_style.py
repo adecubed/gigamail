@@ -5,9 +5,9 @@ import time
 
 import pytest
 
-from ade_mail_agent import policy
-from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import policy
+from gigamail import watcher as watcher_mod
+from gigamail.core import rules as rules_mod
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +41,7 @@ def test_gli_esempi_sono_dichiarati_come_stile():
 
 
 def test_il_watcher_chiede_allobserver_solo_lo_stile(monkeypatch):
-    from ade_mail_agent.core import observer
+    from gigamail.core import observer
 
     chiamate = []
     monkeypatch.setattr(
@@ -55,7 +55,7 @@ def test_il_watcher_chiede_allobserver_solo_lo_stile(monkeypatch):
 def test_observer_senza_esempi_non_restituisce_risposte_vecchie(tmp_path, monkeypatch):
     import sqlite3
 
-    from ade_mail_agent.core import observer
+    from gigamail.core import observer
 
     db = tmp_path / "obs.db"
     monkeypatch.setattr(observer, "DB_PATH", str(db))

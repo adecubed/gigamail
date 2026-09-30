@@ -28,7 +28,7 @@ STATO.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(RADICE / "src"))
 
-from ade_mail_agent.core import accounts, demo_mailbox  # noqa: E402
+from gigamail.core import accounts, demo_mailbox  # noqa: E402
 
 LINGUE = ("it", "en")
 MITTENTE = {"it": "paolo@fingroup-immobiliare.example",
@@ -443,7 +443,7 @@ def salta_onboarding() -> None:
     c'e'. Su una radice dati nuova, com'e' quella della demo, l'overlay
     copre la casella e sembra che l'applicazione sia bloccata: la posta c'e'
     ma non si vede."""
-    from ade_mail_agent.core import rules
+    from gigamail.core import rules
     rules.store().kv_set("onboarding_done", "1")
 
 

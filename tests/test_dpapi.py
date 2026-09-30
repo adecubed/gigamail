@@ -4,8 +4,8 @@ import sys
 
 import pytest
 
-from ade_mail_agent.core import accounts as core_accounts
-from ade_mail_agent.core import win_dpapi
+from gigamail.core import accounts as core_accounts
+from gigamail.core import win_dpapi
 
 pytestmark = pytest.mark.skipif(
     sys.platform != "win32", reason="DPAPI solo su Windows"

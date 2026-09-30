@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from ade_mail_agent.core import file_extractor, identity_reader
+from gigamail.core import file_extractor, identity_reader
 
 
 @pytest.fixture()

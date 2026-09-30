@@ -1,8 +1,8 @@
 """Scansione paginata: arretrato, perimetro temporale e pagine sovrapposte."""
 from datetime import datetime, timedelta, timezone
 
-from ade_mail_agent.core import mail_router
-from ade_mail_agent.watcher import ingestion
+from gigamail.core import mail_router
+from gigamail.watcher import ingestion
 
 
 def _message(mid, when):

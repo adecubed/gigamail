@@ -12,8 +12,8 @@ import hashlib
 
 import pytest
 
-from ade_mail_agent import policy, server
-from ade_mail_agent.core import attachments as att
+from gigamail import policy, server
+from gigamail.core import attachments as att
 
 ORIGINALE = b"%PDF-1.4 planimetria A.1.4"
 

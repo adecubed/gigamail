@@ -39,12 +39,12 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import pytest  # noqa: E402
 
-import ade_mail_agent  # noqa: E402,F401 — attiva lo shim per core/
+import gigamail  # noqa: E402,F401 — attiva lo shim per core/
 
 
 @pytest.fixture(autouse=True)
 def _estensioni_pulite(monkeypatch):
-    from ade_mail_agent.core import extensions
+    from gigamail.core import extensions
     monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "")
     extensions.reset()
     yield
@@ -60,7 +60,7 @@ def appointments_on(monkeypatch):
 @pytest.fixture()
 def estensione(monkeypatch):
     """Accende un'estensione di prova senza installarla: estensione(obj)."""
-    from ade_mail_agent.core import extensions
+    from gigamail.core import extensions
 
     def accendi(ext):
         extensions.register(ext)

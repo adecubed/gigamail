@@ -88,7 +88,7 @@ places:
 2. The client JSON: the path in `GOOGLE_CLIENT_SECRETS`, the file
    installed by `gigamail google setup`, or a `client_secret_*.json` left
    in the data directory under its original name.
-3. `src/ade_mail_agent/core/google_config.json`, shipped in the package.
+3. `src/gigamail/core/google_config.json`, shipped in the package.
    This is the one to fill for a public build: for a desktop client the
    secret is not really secret, and it travels in the package exactly
    like `client_id` in `ms_config.json`.

@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client(monkeypatch):
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "token-ob")
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     importlib.reload(http_api)
     with TestClient(http_api.app) as c:
         yield c
@@ -52,7 +52,7 @@ def test_onboarding_status_shape(client):
 
 
 def test_onboarding_done_persists(client):
-    from ade_mail_agent.core import rules
+    from gigamail.core import rules
     rules.store().kv_set("onboarding_done", "")
     assert client.get("/onboarding", headers=H).json()["done"] is False
     assert client.post("/onboarding/done", headers=H).json() == {"done": True}
@@ -91,7 +91,7 @@ def test_imap_campi_vuoti_400(client):
 
 
 def test_imap_password_sbagliata_non_salva(client, monkeypatch):
-    from ade_mail_agent.core import imap_client
+    from gigamail.core import imap_client
 
     def _boom(host, port, email, password, timeout=None):
         raise imap_client.imaplib.IMAP4.error("b'[AUTHENTICATIONFAILED] Invalid credentials'")
@@ -107,7 +107,7 @@ def test_imap_password_sbagliata_non_salva(client, monkeypatch):
 
 
 def test_imap_host_irraggiungibile_400(client, monkeypatch):
-    from ade_mail_agent.core import imap_client
+    from gigamail.core import imap_client
     monkeypatch.setattr(imap_client, "_connect",
                         lambda *a, **k: (_ for _ in ()).throw(TimeoutError("timed out")))
     r = client.post("/accounts/imap", headers=H, json={
@@ -118,8 +118,8 @@ def test_imap_host_irraggiungibile_400(client, monkeypatch):
 
 
 def test_imap_provider_risolve_host_e_primo_account_attivo(client, monkeypatch):
-    from ade_mail_agent.core import accounts as core_accounts
-    from ade_mail_agent.core import imap_client
+    from gigamail.core import accounts as core_accounts
+    from gigamail.core import imap_client
 
     seen = {}
 
@@ -150,7 +150,7 @@ def test_imap_provider_risolve_host_e_primo_account_attivo(client, monkeypatch):
 
 
 def test_imap_host_espliciti_vincono_sul_provider(client, monkeypatch):
-    from ade_mail_agent.core import imap_client
+    from gigamail.core import imap_client
     seen = {}
     monkeypatch.setattr(imap_client, "_connect",
                         lambda host, port, email, password, timeout=None: (seen.update(host=host, port=port), _FakeConn())[1])

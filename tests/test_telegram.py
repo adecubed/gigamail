@@ -7,10 +7,10 @@ import time
 
 import pytest
 
-from ade_mail_agent import agent_bridge, policy
-from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import mail_router, telegram_channel
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import agent_bridge, policy
+from gigamail import watcher as watcher_mod
+from gigamail.core import mail_router, telegram_channel
+from gigamail.core import rules as rules_mod
 
 CHAT = 1484306713
 DMARC_PASS = {"authentication-results": ["mx; dmarc=pass header.from=fidato.it"]}
@@ -191,7 +191,7 @@ def test_modifica_rifa_la_bozza_col_feedback(world):
     w.tick()
     rid = _pending_id()
     prompts = []
-    import ade_mail_agent.agent_bridge as ab
+    import gigamail.agent_bridge as ab
     orig = ab.run
     ab.run = lambda prompt, **kw: prompts.append(prompt) or "Bozza due"
     try:
@@ -319,7 +319,7 @@ def test_approvazione_di_un_tool_ha_i_bottoni(monkeypatch):
     """I messaggi Telegram delle richieste nate da un tool arrivavano
     muti: require_approval passava gli actions della toast ma non i
     buttons di Telegram."""
-    from ade_mail_agent import policy
+    from gigamail import policy
     monkeypatch.setattr(telegram_channel, "channel", lambda: FakeTG())
     b = policy.telegram_buttons("req_abc123")
     assert b is not None
@@ -331,7 +331,7 @@ def test_su_telegram_si_vede_la_mail_intera():
     """La toast puo' restare corta perche' ha il bottone Leggi; Telegram
     quel secondo passo non ce l'ha. Se il corpo non e' nel messaggio si
     finisce ad approvare una mail di cui si e' letto solo l'oggetto."""
-    from ade_mail_agent import policy
+    from gigamail import policy
     preview = {
         "from": "info@20128milano.it", "to": "sam@partner.example",
         "cc": ["info@fingroupspa.com"], "subject": "Re: Appuntamento",
@@ -350,7 +350,7 @@ def test_su_telegram_si_vede_la_mail_intera():
 def test_il_corpo_lungo_viene_troncato_ma_dichiarato():
     """Telegram taglia a 4096: meglio dire che manca un pezzo che farlo
     sparire in silenzio."""
-    from ade_mail_agent import policy
+    from gigamail import policy
     t = policy.full_preview_text(
         "send_mail", {"to": "a@x.it", "subject": "s", "body": "x" * 9000})
     assert len(t) < 4096
@@ -358,7 +358,7 @@ def test_il_corpo_lungo_viene_troncato_ma_dichiarato():
 
 
 def test_senza_corpo_resta_il_riassunto():
-    from ade_mail_agent import policy
+    from gigamail import policy
     t = policy.full_preview_text("delete_message", {"action": "elimina"})
     assert "action=elimina" in t
 
@@ -412,7 +412,7 @@ def test_il_log_non_dichiara_attiva_un_approvazione_spenta(world, monkeypatch, c
     Hello = approvazione SPENTA. Il watcher scriveva comunque "Telegram
     con approvazione", e lo scoprivi solo premendo Approva e vedendoti
     rispondere di no."""
-    from ade_mail_agent.core import rules as rules_mod
+    from gigamail.core import rules as rules_mod
     rs = rules_mod.store()
     rs.kv_set("tg_trusted_chat", "")          # mai registrata
     w = watcher_mod.Watcher()
@@ -430,8 +430,8 @@ def test_il_log_non_dichiara_attiva_un_approvazione_spenta(world, monkeypatch, c
 
 
 def _con_pin(pin="739104"):
-    from ade_mail_agent.core import approval_pin
-    from ade_mail_agent.core import rules as rules_mod
+    from gigamail.core import approval_pin
+    from gigamail.core import rules as rules_mod
     rs = rules_mod.store()
     rs.kv_set("tg_approve_pin", approval_pin.hash_pin(pin))
     rs.kv_set("tg_pin_fails", "0")

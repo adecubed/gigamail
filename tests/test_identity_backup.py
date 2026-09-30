@@ -4,7 +4,7 @@
 """Storia locale dell'identity: copie sul computer, mai nel repository."""
 import json
 
-from ade_mail_agent.core import identity_backup as ib
+from gigamail.core import identity_backup as ib
 
 IDENTITA = {
     "who_am_i": "Ufficio vendite",
@@ -56,7 +56,7 @@ def test_scrivere_l_identity_salva_la_versione_precedente(tmp_path, monkeypatch)
     """Il momento della sovrascrittura e' l'unico in cui la versione
     precedente esiste ancora: se la copia non parte di li', la storia
     dipende dal ricordarsi di un comando."""
-    from ade_mail_agent.core import accounts
+    from gigamail.core import accounts
 
     monkeypatch.setattr(ib, "cartella", lambda root=None: str(tmp_path))
     accounts.set_identity(7, who_am_i="prima", key_info="regola uno")
@@ -72,7 +72,7 @@ def test_scrivere_l_identity_salva_la_versione_precedente(tmp_path, monkeypatch)
 def test_una_copia_che_fallisce_non_blocca_la_modifica(monkeypatch):
     """La copia e' un servizio, non un cancello: se la cartella non e'
     scrivibile l'identity si deve poter cambiare lo stesso."""
-    from ade_mail_agent.core import accounts
+    from gigamail.core import accounts
 
     def _rotto(*a, **k):
         raise OSError("disco pieno")

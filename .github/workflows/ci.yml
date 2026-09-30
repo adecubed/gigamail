@@ -56,4 +56,4 @@ jobs:
           pip install -e extras/real_estate
           pytest -q extras/real_estate/tests
       - name: Tool map allineata al server
-        run: python -m ade_mail_agent.gen_toolmap --check
+        run: python -m gigamail.gen_toolmap --check

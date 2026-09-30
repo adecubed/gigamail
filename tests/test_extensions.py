@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from ade_mail_agent.core import appointments, extensions
-from ade_mail_agent.core import rules as rules_mod
+from gigamail.core import appointments, extensions
+from gigamail.core import rules as rules_mod
 
 
 @pytest.fixture()
@@ -16,7 +16,7 @@ def store(tmp_path, monkeypatch):
 
 
 def test_di_default_nessuna_estensione(store, monkeypatch, tmp_path):
-    monkeypatch.setattr("ade_mail_agent.core.data_paths.app_root", lambda: tmp_path)
+    monkeypatch.setattr("gigamail.core.data_paths.app_root", lambda: tmp_path)
     assert extensions.enabled_names() == set()
     assert not extensions.enabled("appointments")
     assert extensions.active() == []
@@ -26,7 +26,7 @@ def test_chi_usava_gli_appuntamenti_li_ritrova_accesi(store, monkeypatch, tmp_pa
     """Spegnerli in silenzio con l'aggiornamento vorrebbe dire conferme dei
     clienti che non arrivano piu' in agenda."""
     (tmp_path / ".appointments.db").write_bytes(b"")
-    monkeypatch.setattr("ade_mail_agent.core.data_paths.app_root", lambda: tmp_path)
+    monkeypatch.setattr("gigamail.core.data_paths.app_root", lambda: tmp_path)
     assert extensions.enabled("appointments")
     # la migrazione avviene una volta sola: spenti a mano restano spenti
     extensions.set_enabled("appointments", False)
@@ -34,7 +34,7 @@ def test_chi_usava_gli_appuntamenti_li_ritrova_accesi(store, monkeypatch, tmp_pa
 
 
 def test_accendere_e_spegnere(store, monkeypatch, tmp_path):
-    monkeypatch.setattr("ade_mail_agent.core.data_paths.app_root", lambda: tmp_path)
+    monkeypatch.setattr("gigamail.core.data_paths.app_root", lambda: tmp_path)
     extensions.set_enabled("Appointments", True)
     assert extensions.enabled("appointments")
     extensions.set_enabled("appointments", False)
@@ -61,7 +61,7 @@ def test_le_builtin_non_si_caricano_come_pacchetti(monkeypatch):
 def test_invio_con_appuntamenti_spenti_non_chiama_l_agente(monkeypatch):
     """Il core nudo non manda ogni mail inviata all'agente per cercarci un
     appuntamento, e non segue i thread."""
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     chiamate = []
     monkeypatch.setattr(mail_router, "_send_backend", lambda **kw: {"success": True})
@@ -75,7 +75,7 @@ def test_invio_con_appuntamenti_spenti_non_chiama_l_agente(monkeypatch):
 
 
 def test_watcher_con_appuntamenti_spenti_non_legge_i_thread(monkeypatch):
-    from ade_mail_agent import watcher as watcher_mod
+    from gigamail import watcher as watcher_mod
 
     monkeypatch.setattr(appointments, "store",
                         lambda: pytest.fail("store degli appuntamenti aperto"))
@@ -83,7 +83,7 @@ def test_watcher_con_appuntamenti_spenti_non_legge_i_thread(monkeypatch):
 
 
 def test_cli_enable_chiede_la_verifica(store, monkeypatch, capsys):
-    from ade_mail_agent import cli
+    from gigamail import cli
 
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
     assert cli.main(["extensions", "enable", "appointments"]) == 1
@@ -97,7 +97,7 @@ def test_cli_enable_chiede_la_verifica(store, monkeypatch, capsys):
 
 
 def test_cli_enable_rifiuta_i_nomi_sconosciuti(store, monkeypatch):
-    from ade_mail_agent import cli
+    from gigamail import cli
 
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
@@ -124,8 +124,8 @@ class _Vieta(extensions.Extension):
 
 @pytest.fixture()
 def mondo(tmp_path, monkeypatch):
-    from ade_mail_agent import agent_bridge, policy
-    from ade_mail_agent.core import mail_router
+    from gigamail import agent_bridge, policy
+    from gigamail.core import mail_router
 
     policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
     rules_mod.set_store(rules_mod.RuleStore(tmp_path / "rules.db"))
@@ -155,12 +155,12 @@ def mondo(tmp_path, monkeypatch):
 
 
 def _pending():
-    from ade_mail_agent import policy
+    from gigamail import policy
     return policy.store().list_pending()
 
 
 def test_il_vincolo_entra_nel_prompt(mondo, estensione):
-    from ade_mail_agent import watcher as watcher_mod
+    from gigamail import watcher as watcher_mod
     estensione(_Vieta("a", "PIPPO"))
     mondo["bozze"] = ["va bene"]
     watcher_mod.Watcher().tick()
@@ -169,7 +169,7 @@ def test_il_vincolo_entra_nel_prompt(mondo, estensione):
 
 
 def test_bozza_respinta_si_riscrive_una_volta(mondo, estensione):
-    from ade_mail_agent import watcher as watcher_mod
+    from gigamail import watcher as watcher_mod
     estensione(_Vieta("a", "PIPPO"))
     mondo["bozze"] = ["c'e' PIPPO", "pulita"]
     watcher_mod.Watcher().tick()
@@ -179,7 +179,7 @@ def test_bozza_respinta_si_riscrive_una_volta(mondo, estensione):
 
 def test_la_riscritta_ripassa_da_tutti_i_controlli(mondo, estensione):
     """Corretta per un'estensione, sbagliata per l'altra: non passa."""
-    from ade_mail_agent import watcher as watcher_mod
+    from gigamail import watcher as watcher_mod
     estensione(_Vieta("a", "PIPPO"))
     estensione(_Vieta("b", "PLUTO"))
     mondo["bozze"] = ["PIPPO", "PLUTO"]
@@ -189,7 +189,7 @@ def test_la_riscritta_ripassa_da_tutti_i_controlli(mondo, estensione):
 
 
 def test_estensione_accesa_ma_assente_ferma_la_bozza(mondo, monkeypatch):
-    from ade_mail_agent import watcher as watcher_mod
+    from gigamail import watcher as watcher_mod
     monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "inesistente")
     mondo["bozze"] = ["x", "x", "x"]
     watcher_mod.Watcher().tick()
@@ -204,7 +204,7 @@ def _finta_estensione(cartella, nome="prova_dati"):
     pkg = cartella / f"gm_{nome}"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text(
-        "from ade_mail_agent.core.extensions import Extension\n"
+        "from gigamail.core.extensions import Extension\n"
         "class E(Extension):\n"
         f"    name = '{nome}'\n"
         "    def draft_constraint(self, subject, body):\n"
@@ -284,7 +284,7 @@ def test_install_usa_pip_target_senza_dipendenze(radice, monkeypatch):
 
 
 def test_cli_install_chiede_la_verifica(radice, store, monkeypatch):
-    from ade_mail_agent import cli
+    from gigamail import cli
     chiamate = []
     monkeypatch.setattr(extensions, "install", lambda spec: chiamate.append(spec) or (0, ""))
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")

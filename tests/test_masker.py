@@ -1,5 +1,5 @@
 """ade_masker: detect / mask / unmask round-trip."""
-from ade_mail_agent.core import ade_masker
+from gigamail.core import ade_masker
 
 TESTO = (
     "Buongiorno, l'IBAN e' IT60X0542811101000000123456, "

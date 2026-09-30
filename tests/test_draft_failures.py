@@ -5,7 +5,7 @@
 
 import pytest
 
-from ade_mail_agent import agent_bridge
+from gigamail import agent_bridge
 
 
 def test_il_comando_si_ri_risolve_dopo_un_aggiornamento(tmp_path, monkeypatch):
@@ -91,7 +91,7 @@ def test_i_tentativi_falliti_si_accumulano(tmp_path, monkeypatch):
     dopo, ripartiva da 1 ogni volta: la regola riprovava all'infinito e
     non raggiungeva mai la soglia che avvisa l'umano. Osservato dal vivo
     il 2026-09-03: 18 fallimenti di fila, tutti 'attempt 1'."""
-    from ade_mail_agent.core import rules as rules_mod
+    from gigamail.core import rules as rules_mod
     rs = rules_mod.store()
     RULE, MSG = "rule_test", "999"
 

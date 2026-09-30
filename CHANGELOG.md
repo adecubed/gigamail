@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Il package si chiama gigamail.** Il nome interno `ade_mail_agent`
+  compariva nei traceback, nei comandi dei messaggi di errore (`CLI:
+  ade-mail-agent login`) e in ogni `python -m`. Ora il package e' `gigamail`
+  (`python -m gigamail.server`, `from gigamail.core import ...`), e la
+  guida della CLI e gli errori dicono `gigamail`. Il vecchio nome resta
+  come alias: `ade_mail_agent.X` e' lo stesso modulo di `gigamail.X`, non
+  una copia, e `python -m ade_mail_agent.cli` funziona ancora. Per questo
+  non si rompono le configurazioni MCP esistenti ne' il protocollo
+  gigamail:// registrato in HKLM con il nome vecchio, che resta
+  riconosciuto: le notifiche non perdono i bottoni. Restano anche i
+  comandi `ade-mail-agent` e la cartella dati `%APPDATA%\ADE`.
+
 - **Il mestiere esce dal core.** Chi installa gigamail non si porta piu'
   dietro l'agenzia in cui e' nato. Le tipologie (bilocale, trilocale...)
   e i codici delle unita' (`A.3.2`) che scelgono gli allegati sono

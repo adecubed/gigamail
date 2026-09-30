@@ -22,7 +22,7 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _real_estate_acceso(monkeypatch):
-    from ade_mail_agent.core import extensions
+    from gigamail.core import extensions
     monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "real_estate")
     extensions.reset()
     yield

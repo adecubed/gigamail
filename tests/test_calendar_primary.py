@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ade_mail_agent.core import auth, calendar_router, mail_router, ms_calendar
+from gigamail.core import auth, calendar_router, mail_router, ms_calendar
 
 
 @pytest.fixture(autouse=True)
@@ -101,7 +101,7 @@ def test_bound_action_preserves_microsoft_primary_during_confirmation(monkeypatc
 
 
 def test_bound_action_preserves_google_identity_during_confirmation(monkeypatch):
-    from ade_mail_agent.core import google_calendar
+    from gigamail.core import google_calendar
     email = ["first@example.com"]
     monkeypatch.setattr(calendar_router, "provider", lambda: "google")
     monkeypatch.setattr(calendar_router.core_accounts, "get_google_identity",

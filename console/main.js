@@ -259,7 +259,7 @@ function startPythonServer() {
     console.log('[GIGAMAIL] Avvio backend console...');
     serverProcess = spawn(pythonPath, [
       '-s',   // mai il site-packages utente: solo cio' che l'installer porta
-      '-X', 'utf8', '-c', 'from ade_mail_agent.http_api import main; main()',
+      '-X', 'utf8', '-c', 'from gigamail.http_api import main; main()',
     ], {
       windowsHide: true,
       detached: true,   // il backend sopravvive alla chiusura dell'app

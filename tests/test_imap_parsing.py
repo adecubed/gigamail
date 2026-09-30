@@ -4,7 +4,7 @@ restituisce come email.header.Header invece che str)."""
 import email
 import email.header
 
-from ade_mail_agent.core import imap_client
+from gigamail.core import imap_client
 
 
 def _malformed_msg() -> email.message.Message:

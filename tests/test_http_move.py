@@ -3,12 +3,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent.http_api import mail as mail_api
+from gigamail.http_api import mail as mail_api
 
 
 @pytest.fixture()
 def client():
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c
 
@@ -16,7 +16,7 @@ def client():
 @pytest.fixture()
 def spostamenti(monkeypatch):
     fatti = []
-    from ade_mail_agent import consent
+    from gigamail import consent
     monkeypatch.setattr(consent, "require_human", lambda reason: True)
 
     def _sposta(account_id=None, message_id="", folder_id="", source_folder=None):

@@ -1,8 +1,8 @@
 [project]
 # Nome della distribuzione (quello che si digita in `pip install`).
-# Il package importabile resta `ade_mail_agent`: distribuzione e modulo sono
-# indipendenti (come pillow/PIL, beautifulsoup4/bs4) e rinominare il modulo
-# non darebbe alcun beneficio a chi usa i comandi o l'MCP.
+# Il package importabile e' `gigamail`, come la distribuzione. Il vecchio
+# nome `ade_mail_agent` resta come alias (src/ade_mail_agent): import,
+# `python -m ade_mail_agent.cli` e le registrazioni gia' fatte funzionano.
 name = "gigamail"
 version = "0.3.4"
 description = "GigaMail — mail for your AI agent: MCP server giving agents safe, permission-controlled access to email (Microsoft Graph + IMAP), calendar and knowledge files."
@@ -50,12 +50,12 @@ all = [
 
 [project.scripts]
 # Nomi ufficiali (GigaMail)
-gigamail = "ade_mail_agent.cli:main"
-gigamail-server = "ade_mail_agent.server:main"
-gigamail-console-api = "ade_mail_agent.http_api:main"
+gigamail = "gigamail.cli:main"
+gigamail-server = "gigamail.server:main"
+gigamail-console-api = "gigamail.http_api:main"
 # Alias storici: non rompono installazioni e config MCP esistenti
-ade-mail-agent = "ade_mail_agent.cli:main"
-ade-mail-agent-server = "ade_mail_agent.server:main"
+ade-mail-agent = "gigamail.cli:main"
+ade-mail-agent-server = "gigamail.server:main"
 
 [project.urls]
 Homepage = "https://gigamail.ai"
@@ -68,7 +68,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ade_mail_agent"]
+packages = ["src/gigamail", "src/ade_mail_agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

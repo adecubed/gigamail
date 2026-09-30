@@ -13,10 +13,10 @@ import time
 
 import pytest
 
-from ade_mail_agent import agent_bridge, policy
-from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import mail_router
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import agent_bridge, policy
+from gigamail import watcher as watcher_mod
+from gigamail.core import mail_router
+from gigamail.core import rules as rules_mod
 
 DMARC_PASS = {"authentication-results": ["mx; dmarc=pass header.from=fidato.it"]}
 DMARC_FAIL = {"authentication-results": ["mx; dmarc=fail header.from=fidato.it"]}
@@ -365,7 +365,7 @@ def test_prompt_porta_gli_slot_liberi_dellagenda(fake_world, monkeypatch):
     """Il verso agenda -> bozza. Prima l'agente scriveva senza vedere il
     calendario e proponeva orari gia' occupati; peggio, un appuntamento
     proposto per mail non finiva da nessuna parte."""
-    from ade_mail_agent.watcher import drafting
+    from gigamail.watcher import drafting
 
     monkeypatch.setattr(
         drafting.calendar_router, "get_events",
@@ -386,7 +386,7 @@ def test_regole_agenda_lette_dalle_impostazioni(monkeypatch):
     """La fascia degli appuntamenti e' un dato di chi usa GigaMail: fissa
     dalle 09:30 ha fatto proporre le 9.30 di lunedi' a un ufficio che apre
     alle 10."""
-    from ade_mail_agent.watcher import drafting
+    from gigamail.watcher import drafting
 
     valori = {"slot_work_start": "17:00", "slot_work_end": "25:99",
               "slot_patrono": "12-07"}
@@ -401,7 +401,7 @@ def test_regole_agenda_lette_dalle_impostazioni(monkeypatch):
 
 def test_agenda_irraggiungibile_vieta_di_proporre_orari(fake_world, monkeypatch):
     """Fail-closed: senza calendario non si inventano orari."""
-    from ade_mail_agent.watcher import drafting
+    from gigamail.watcher import drafting
 
     def _esplode(**kw):
         raise RuntimeError("token scaduto")
@@ -450,7 +450,7 @@ def test_risposta_con_uid_uguali_usa_la_cartella_approvata(fake_world, monkeypat
 
 def test_risposta_normale_inoltra_copia_e_allegati_approvati(fake_world, monkeypatch,
                                                          tmp_path):
-    from ade_mail_agent.core import attachments
+    from gigamail.core import attachments
 
     document = tmp_path / "A.1.4.pdf"
     document.write_bytes(b"%PDF planimetria")

@@ -6,8 +6,8 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent import policy
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import policy
+from gigamail.core import rules as rules_mod
 
 H = {"X-ADE-Token": "t-rules"}
 
@@ -17,7 +17,7 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "t-rules")
     rules_mod.set_store(rules_mod.RuleStore(tmp_path / "rules.db"))
     policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     importlib.reload(http_api)
     with TestClient(http_api.app) as c:
         yield c

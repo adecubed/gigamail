@@ -1,7 +1,7 @@
 """Dispatch del router: account Microsoft vs IMAP, alias cartelle."""
 import pytest
 
-from ade_mail_agent.core import mail_router
+from gigamail.core import mail_router
 
 MS_ACCOUNT = {"id": 10, "type": "microsoft", "email": "ms@example.com"}
 IMAP_ACCOUNT = {

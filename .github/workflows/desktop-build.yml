@@ -89,7 +89,7 @@ jobs:
           Start-Process -Wait -FilePath "console/dist/GigaMail Setup $ver.exe" -ArgumentList "/S"
           $dir = Join-Path $env:ProgramFiles "GigaMail"
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
-          foreach ($p in @("GigaMail.exe", "resources\python\python.exe", "resources\gigamail\src\ade_mail_agent")) {
+          foreach ($p in @("GigaMail.exe", "resources\python\python.exe", "resources\gigamail\src\gigamail")) {
             if (-not (Test-Path (Join-Path $dir $p))) {
               Get-ChildItem $dir -Recurse -Depth 2 | Select-Object FullName
               throw "manca $p in $dir"
@@ -120,7 +120,7 @@ jobs:
           $dir = Join-Path $env:ProgramFiles "GigaMail"
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
           $env:PYTHONPATH = Join-Path $dir "resources\gigamail\src"
-          & (Join-Path $dir "resources\python\python.exe") -c "import ade_mail_agent, fastapi, uvicorn, mcp; print('backend import OK')"
+          & (Join-Path $dir "resources\python\python.exe") -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
           if ($LASTEXITCODE -ne 0) { throw "import fallito" }
 
       - name: Disinstallazione silenziosa

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from ade_mail_agent.core import rules as rules_mod
+from gigamail.core import rules as rules_mod
 
 
 @pytest.fixture()

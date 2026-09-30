@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from ade_mail_agent import policy
+from gigamail import policy
 
 
 @pytest.fixture(autouse=True)

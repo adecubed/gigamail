@@ -4,13 +4,13 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent import consent, policy
-from ade_mail_agent.http_api import calendar, mail
+from gigamail import consent, policy
+from gigamail.http_api import calendar, mail
 
 
 @pytest.fixture
 def client(monkeypatch):
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "local-test-token")
     monkeypatch.delenv("ADE_MAIL_DRYRUN", raising=False)
     monkeypatch.setattr(calendar.calendar_router, "bind_action",

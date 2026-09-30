@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ade_mail_agent.core import imap_client, mail, mail_router
+from gigamail.core import imap_client, mail, mail_router
 
 
 @pytest.mark.parametrize("port", [465, 587])

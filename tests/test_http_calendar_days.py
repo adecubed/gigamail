@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent.http_api import calendar as calendar_api
+from gigamail.http_api import calendar as calendar_api
 
 
 @pytest.fixture()
@@ -11,7 +11,7 @@ def richieste(monkeypatch):
     fatte = []
     monkeypatch.setattr(calendar_api.calendar_router, "get_events",
                         lambda days_ahead=7, days_back=0: fatte.append((days_ahead, days_back)) or [])
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c, fatte
 

@@ -18,8 +18,8 @@ import sys
 
 import allestimento as demo  # dirotta la radice dati, va importato per primo
 
-from ade_mail_agent import agent_bridge  # noqa: E402
-from ade_mail_agent.core import accounts, demo_mailbox  # noqa: E402
+from gigamail import agent_bridge  # noqa: E402
+from gigamail.core import accounts, demo_mailbox  # noqa: E402
 
 
 # ── I fogli di ripresa ───────────────────────────────────────────────

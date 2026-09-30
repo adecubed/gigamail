@@ -10,7 +10,7 @@ import sqlite3
 
 import pytest
 
-from ade_mail_agent.core import accounts, calendar_router, google_drive
+from gigamail.core import accounts, calendar_router, google_drive
 
 
 @pytest.fixture(autouse=True)

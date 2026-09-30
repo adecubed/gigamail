@@ -4,8 +4,8 @@
 """Allegati: solo i file che l'utente ha registrato per quell'account."""
 import pytest
 
-from ade_mail_agent import server
-from ade_mail_agent.core import attachments as att
+from gigamail import server
+from gigamail.core import attachments as att
 
 
 @pytest.fixture
@@ -77,7 +77,7 @@ def test_codice_puntato_non_pesca_la_scheda_sbagliata(tmp_path, monkeypatch):
     B.1.4. Nessun errore: la mail partiva con la planimetria di un altro
     appartamento. Vale anche per read_knowledge_file, che leggeva il file
     sbagliato."""
-    from ade_mail_agent.core import identity_reader
+    from gigamail.core import identity_reader
     reg = tmp_path / "schede"
     reg.mkdir()
     for code in ("B.1.1", "B.1.2", "B.1.3", "B.1.4", "A.1.4"):

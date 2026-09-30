@@ -12,9 +12,9 @@ import json
 
 import pytest
 
-import ade_mail_agent.server as srv
-from ade_mail_agent import policy
-from ade_mail_agent.core import mail_router
+import gigamail.server as srv
+from gigamail import policy
+from gigamail.core import mail_router
 
 HOSTILE_MAIL = {
     "id": "666",

@@ -13,8 +13,8 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent.core import drafts, imap_client, mail_router
-from ade_mail_agent.core import mail as ms_mail
+from gigamail.core import drafts, imap_client, mail_router
+from gigamail.core import mail as ms_mail
 
 
 @pytest.fixture()
@@ -134,7 +134,7 @@ def test_ripresa_da_outlook_ricorda_la_copia_da_sostituire(store, casella):
 
 @pytest.fixture()
 def client(store):
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c
 

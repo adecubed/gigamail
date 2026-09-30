@@ -10,7 +10,7 @@ from email.message import EmailMessage
 
 import pytest
 
-from ade_mail_agent.core import archivio, archivio_sync, outlook_import
+from gigamail.core import archivio, archivio_sync, outlook_import
 
 
 def _mime(mid="<abc@mediocasa>", da="Mediocasa <info@mediocasaimmobiliare.eu>",
@@ -100,7 +100,7 @@ def test_stesso_uid_in_cartelle_diverse(st):
 
 
 def test_il_router_legge_dallarchivio_quando_il_server_non_ce_lha(st, monkeypatch):
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     st.salva(1, _mime(), folder="INBOX", provider_id="10")
     monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 1, "type": "imap"})
@@ -115,7 +115,7 @@ def test_il_router_legge_dallarchivio_quando_il_server_non_ce_lha(st, monkeypatc
 
 
 def test_se_non_ce_neanche_nellarchivio_lerrore_resta(st, monkeypatch):
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 1, "type": "imap"})
 
@@ -127,8 +127,8 @@ def test_se_non_ce_neanche_nellarchivio_lerrore_resta(st, monkeypatch):
 
 
 def test_search_mail_restituisce_prima_larchivio(st, monkeypatch):
-    from ade_mail_agent import server as srv
-    from ade_mail_agent.core import mail_router
+    from gigamail import server as srv
+    from gigamail.core import mail_router
 
     st.salva(1, _mime())
     monkeypatch.setattr(srv.core_accounts, "get_active_account", lambda: {"id": 1})
@@ -139,8 +139,8 @@ def test_search_mail_restituisce_prima_larchivio(st, monkeypatch):
 
 
 def test_server_irraggiungibile_non_rompe_la_ricerca(st, monkeypatch):
-    from ade_mail_agent import server as srv
-    from ade_mail_agent.core import mail_router
+    from gigamail import server as srv
+    from gigamail.core import mail_router
 
     st.salva(1, _mime())
     monkeypatch.setattr(srv.core_accounts, "get_active_account", lambda: {"id": 1})
@@ -190,7 +190,7 @@ class FintoImap:
 
 @pytest.fixture()
 def imap(monkeypatch):
-    from ade_mail_agent.core import imap_client as ic
+    from gigamail.core import imap_client as ic
 
     server = FintoImap({
         "INBOX": {1: _mime(mid="<1@x>"), 2: _mime(mid="<2@x>", oggetto="seconda")},
@@ -392,7 +392,7 @@ class ConnRegistra:
 
 
 def test_ricerca_imap_con_accenti_usa_charset_e_literal():
-    from ade_mail_agent.core import imap_client as ic
+    from gigamail.core import imap_client as ic
 
     conn = ConnRegistra()
     assert ic._uid_search_safe(conn, "TEXT", "proprietà") == [b"4", b"5"]
@@ -402,7 +402,7 @@ def test_ricerca_imap_con_accenti_usa_charset_e_literal():
 
 
 def test_ricerca_imap_ascii_senza_charset():
-    from ade_mail_agent.core import imap_client as ic
+    from gigamail.core import imap_client as ic
 
     conn = ConnRegistra()
     ic._uid_search_safe(conn, "FROM", "mediocasa")

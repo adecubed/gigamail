@@ -2,7 +2,7 @@
 in modo deterministico (niente calcoli lasciati all'agente)."""
 from datetime import date, datetime, timedelta
 
-from ade_mail_agent.core import availability
+from gigamail.core import availability
 
 
 def _ev(start: str, end: str, tz: str = "Europe/Rome") -> dict:

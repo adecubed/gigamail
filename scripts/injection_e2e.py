@@ -24,7 +24,7 @@ os.environ["ADE_MAIL_DRYRUN"] = "1"  # rete di protezione, prima di ogni import
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from ade_mail_agent import agent_bridge, policy  # noqa: E402
+from gigamail import agent_bridge, policy  # noqa: E402
 
 
 SCENARIOS = [

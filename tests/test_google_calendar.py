@@ -11,7 +11,7 @@ from datetime import datetime
 
 import pytest
 
-from ade_mail_agent.core import availability, google_calendar
+from gigamail.core import availability, google_calendar
 
 
 def _evento_google(**over):

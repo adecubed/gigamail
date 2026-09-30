@@ -8,7 +8,7 @@ from contextvars import copy_context
 
 import pytest
 
-from ade_mail_agent.core import auth
+from gigamail.core import auth
 
 
 class FakeCache:
@@ -94,7 +94,7 @@ def test_seed_dal_db_quando_manca_dalla_cache_globale(fake_msal, monkeypatch):
     auth.set_current_account("db-only@x.it", account_id=7, token_cache_json=seed)
 
     persisted = {}
-    from ade_mail_agent.core import accounts as core_accounts
+    from gigamail.core import accounts as core_accounts
     monkeypatch.setattr(core_accounts, "update_microsoft_token",
                         lambda aid, tc: persisted.update(aid=aid))
     assert auth.get_token() == "tok-db-only@x.it"

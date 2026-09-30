@@ -8,9 +8,9 @@ from datetime import datetime
 
 import pytest
 
-from ade_mail_agent import policy
-from ade_mail_agent.core import appointments, video_call, zoom
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import policy
+from gigamail.core import appointments, video_call, zoom
+from gigamail.core import rules as rules_mod
 
 # martedi' 15 settembre 2026, ore 09:00
 NOW = datetime(2026, 9, 15, 9, 0)
@@ -240,7 +240,7 @@ def test_un_aggiornamento_non_perde_il_segno_video(monkeypatch, tmp_path):
 def test_invio_nuovo_verso_esterni_in_ascolto(monkeypatch, tmp_path, appointments_on):
     """Il 15/09 la risposta a una mail nuova con listino e planimetrie non
     ha fatto scattare nessun avviso: si seguivano solo le risposte."""
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     appointments.set_store(appointments.AppointmentStore(tmp_path / "d.db"))
     monkeypatch.setattr(mail_router, "_send_backend",

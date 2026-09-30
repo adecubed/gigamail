@@ -4,7 +4,7 @@
 """Il PIN che serve per approvare da un canale senza Hello."""
 import pytest
 
-from ade_mail_agent.core import approval_pin as ap
+from gigamail.core import approval_pin as ap
 
 
 def test_il_pin_non_viene_mai_conservato_in_chiaro():

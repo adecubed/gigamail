@@ -5,12 +5,12 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent.core import zoom
+from gigamail.core import zoom
 
 
 @pytest.fixture()
 def client():
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c
 

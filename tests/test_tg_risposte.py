@@ -3,11 +3,11 @@ la bozza passa dall'approvazione come tutte le altre."""
 
 import pytest
 
-from ade_mail_agent import agent_bridge, policy
-from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import mail_router, telegram_channel
-from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent.watcher import tg_risposte
+from gigamail import agent_bridge, policy
+from gigamail import watcher as watcher_mod
+from gigamail.core import mail_router, telegram_channel
+from gigamail.core import rules as rules_mod
+from gigamail.watcher import tg_risposte
 
 CHAT = 1484306713
 

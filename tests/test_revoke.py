@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Adecubed
 # Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Ritirare un'approvazione data ma non ancora eseguita."""
-from ade_mail_agent import policy
+from gigamail import policy
 
 
 def _richiesta():

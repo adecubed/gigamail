@@ -1,6 +1,6 @@
 """La mappa tool documentata deve coincidere con i tool reali del server."""
 
-from ade_mail_agent import gen_toolmap
+from gigamail import gen_toolmap
 
 
 def test_mappa_allineata_al_server():
@@ -8,14 +8,14 @@ def test_mappa_allineata_al_server():
     current = path.read_text(encoding="utf-8")
     assert gen_toolmap.render(current) == current, (
         "MAPPA_MCP.md divergente dai tool del server: "
-        "rigenera con `python -m ade_mail_agent.gen_toolmap`"
+        "rigenera con `python -m gigamail.gen_toolmap`"
     )
 
 
 def test_classificazione_dangerous_da_schema():
     import asyncio
 
-    from ade_mail_agent.server import mcp
+    from gigamail.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
     by_name = {t.name: t for t in tools}
     assert gen_toolmap._classify(by_name["send_mail"]) == "DANGEROUS"
@@ -37,7 +37,7 @@ def test_qualita_descrizioni_tool():
     parametri descritti nello schema."""
     import asyncio
 
-    from ade_mail_agent.server import mcp
+    from gigamail.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
     assert len(tools) == 29
     for t in tools:

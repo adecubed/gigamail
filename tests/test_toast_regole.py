@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Adecubed
 # Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Le bozze da regola hanno gli stessi bottoni di ogni altra approvazione."""
-from ade_mail_agent import policy
+from gigamail import policy
 
 
 def test_la_toast_di_una_regola_ha_anche_modifica():
@@ -21,7 +21,7 @@ def test_le_regole_e_i_tool_usano_la_stessa_funzione():
     esattamente cosi' che Modifica era sparita da un canale solo."""
     import inspect
 
-    from ade_mail_agent.watcher import pipeline
+    from gigamail.watcher import pipeline
     src = inspect.getsource(pipeline)
     assert "policy.toast_actions(request_id)" in src
     assert "gigamail://approve/{request_id}" not in src
@@ -30,8 +30,8 @@ def test_le_regole_e_i_tool_usano_la_stessa_funzione():
 def test_modifica_su_una_bozza_da_regola_la_rifa(monkeypatch):
     """Per una bozza \"Modifica\" significa rifalla cosi': annullarla e
     basta lascerebbe il cliente senza risposta."""
-    from ade_mail_agent import cli
-    from ade_mail_agent.core import rules as rules_mod
+    from gigamail import cli
+    from gigamail.core import rules as rules_mod
 
     chiamate = {}
 
@@ -50,8 +50,8 @@ def test_modifica_su_una_bozza_da_regola_la_rifa(monkeypatch):
 def test_modifica_su_una_richiesta_di_un_tool_non_finge(monkeypatch):
     """Senza una regola dietro non c'e' niente da rifare: si annulla e la
     nota torna all'agente, senza promettere una bozza che non arrivera'."""
-    from ade_mail_agent import cli
-    from ade_mail_agent.core import rules as rules_mod
+    from gigamail import cli
+    from gigamail.core import rules as rules_mod
 
     class _RS:
         def find_by_request(self, rid):
@@ -69,8 +69,8 @@ def test_i_bottoni_e_il_gestore_accettano_gli_stessi_id():
     import inspect
     import re
 
-    from ade_mail_agent import cli
-    from ade_mail_agent.core import desktop_notify as d
+    from gigamail import cli
+    from gigamail.core import desktop_notify as d
 
     src = inspect.getsource(cli.cmd_open_url)
     regex = re.search(r'r"(\^gigamail://[^"]+)"', src).group(1)
@@ -87,7 +87,7 @@ def test_una_notifica_vecchia_lo_dice(capsys, monkeypatch):
     richiesta e' sparita rispondeva "inesistente": sembra un guasto del
     programma invece di "questa e' vecchia, non devi fare niente". Dire
     quante richieste ci sono davvero in attesa chiude la domanda."""
-    from ade_mail_agent import cli, policy
+    from gigamail import cli, policy
 
     class _Store:
         def list_pending(self):
@@ -101,7 +101,7 @@ def test_una_notifica_vecchia_lo_dice(capsys, monkeypatch):
 
 
 def test_se_invece_c_e_qualcosa_in_attesa_lo_elenca(capsys, monkeypatch):
-    from ade_mail_agent import cli, policy
+    from gigamail import cli, policy
 
     class _Store:
         def list_pending(self):
@@ -119,7 +119,7 @@ def test_la_finestra_non_muore_senza_input(monkeypatch):
     """La finestra aperta da una toast si chiude con INVIO. Senza stdin
     finiva con un traceback: l'ultima cosa che l'utente vede sarebbe un
     errore che non lo riguarda."""
-    from ade_mail_agent import cli
+    from gigamail import cli
 
     def _boom(_):
         raise EOFError

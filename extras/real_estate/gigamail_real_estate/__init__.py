@@ -22,7 +22,7 @@ Si installa accanto a gigamail e si accende esplicitamente:
 import re
 from typing import List, Optional
 
-from ade_mail_agent.core.extensions import DraftCheck, Extension
+from gigamail.core.extensions import DraftCheck, Extension
 
 from . import tipologie
 

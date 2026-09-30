@@ -17,8 +17,8 @@ import types
 
 import pytest
 
-from ade_mail_agent import policy
-from ade_mail_agent.core import imap_client
+from gigamail import policy
+from gigamail.core import imap_client
 
 
 @pytest.fixture(autouse=True)
@@ -202,7 +202,7 @@ def test_dryrun_segnato_sulla_riga(monkeypatch):
 # ----------------------------------------------------------------- Graph
 
 def test_graph_dichiara_che_non_verifica_per_destinatario(monkeypatch):
-    from ade_mail_agent.core import mail as ms_mail
+    from gigamail.core import mail as ms_mail
     fake_res = types.SimpleNamespace(status_code=202, text="", headers={"request-id": "abc"})
     monkeypatch.setattr(ms_mail.requests, "post", lambda *a, **k: fake_res)
     monkeypatch.setattr(ms_mail, "_headers", lambda: {})

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from ade_mail_agent.core import mail_router
-from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent.watcher import archive
+from gigamail.core import mail_router
+from gigamail.core import rules as rules_mod
+from gigamail.watcher import archive
 
 ACCOUNT = 902
 W = SimpleNamespace(verbose=False)

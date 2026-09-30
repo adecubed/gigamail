@@ -3,8 +3,8 @@ import json, sys, numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
 
-SRC = "C:/Users/user/Desktop/ade_mail_agent/docs/brand/gigamail-logo-256.png"
-OUT = "C:/Users/user/Desktop/ade_mail_agent/docs/brand/gigamail-logo.shapes.json"
+SRC = "C:/Users/user/Desktop/gigamail/docs/brand/gigamail-logo-256.png"
+OUT = "C:/Users/user/Desktop/gigamail/docs/brand/gigamail-logo.shapes.json"
 UP = 4  # sovracampionamento per contorni morbidi
 
 im = Image.open(SRC).convert("RGBA")

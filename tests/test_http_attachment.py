@@ -9,14 +9,14 @@ from fastapi.testclient import TestClient
 
 def _client(monkeypatch):
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "tok-att")
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     importlib.reload(http_api)
     return TestClient(http_api.app), http_api
 
 
 def test_allegato_scaricato_con_nome_e_tipo(monkeypatch):
     client, http_api = _client(monkeypatch)
-    from ade_mail_agent.http_api import mail as mail_api
+    from gigamail.http_api import mail as mail_api
     visti = {}
 
     def finto(account_id=None, message_id="", filename="", folder=""):
@@ -36,7 +36,7 @@ def test_allegato_scaricato_con_nome_e_tipo(monkeypatch):
 
 def test_allegato_inesistente_e_404_con_motivo(monkeypatch):
     client, http_api = _client(monkeypatch)
-    from ade_mail_agent.http_api import mail as mail_api
+    from gigamail.http_api import mail as mail_api
 
     def manca(**kw):
         raise ValueError('Allegato "x.pdf" non trovato nella mail 9')
@@ -49,7 +49,7 @@ def test_allegato_inesistente_e_404_con_motivo(monkeypatch):
 
 def test_tipo_dedotto_dal_nome_se_il_provider_non_lo_dice(monkeypatch):
     client, http_api = _client(monkeypatch)
-    from ade_mail_agent.http_api import mail as mail_api
+    from gigamail.http_api import mail as mail_api
     monkeypatch.setattr(mail_api.mail_router, "get_attachment", lambda **kw: (b"a,b\n1,2\n", None))
     r = client.get("/mail/1/attachment/dati.csv", headers={"X-ADE-Token": "tok-att"})
     assert r.status_code == 200

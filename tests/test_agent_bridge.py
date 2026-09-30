@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from ade_mail_agent import agent_bridge
+from gigamail import agent_bridge
 
 PY = sys.executable
 

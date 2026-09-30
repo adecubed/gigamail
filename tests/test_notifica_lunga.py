@@ -9,9 +9,9 @@ import time
 
 import pytest
 
-from ade_mail_agent.core import rules as rules_mod
-from ade_mail_agent.core.telegram_channel import Telegram
-from ade_mail_agent.watcher import notify
+from gigamail.core import rules as rules_mod
+from gigamail.core.telegram_channel import Telegram
+from gigamail.watcher import notify
 
 BOZZA_LUNGA = "\n".join(
     [f"- A.{p}.{n}: bilocale di 62,3{n} mq con balcone di 10,3{n} mq, "

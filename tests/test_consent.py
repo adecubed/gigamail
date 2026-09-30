@@ -17,7 +17,7 @@ import types
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent import consent, policy
+from gigamail import consent, policy
 
 
 @pytest.fixture(autouse=True)
@@ -118,7 +118,7 @@ def test_macos_contesto_fresco_per_ogni_approvazione(monkeypatch):
 # ------------------------------------------------------------------- CLI
 
 def _run_cli(argv):
-    from ade_mail_agent import cli
+    from gigamail import cli
     return cli.main(argv)
 
 
@@ -167,7 +167,7 @@ def test_cli_reject_non_richiede_consenso(monkeypatch):
 @pytest.fixture()
 def client(monkeypatch):
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "tok")
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     importlib.reload(http_api)
     with TestClient(http_api.app) as c:
         yield c

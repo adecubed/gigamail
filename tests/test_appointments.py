@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from ade_mail_agent.core import appointments
+from gigamail.core import appointments
 
 # mercoledì 9 settembre 2026, ore 09:00
 NOW = datetime(2026, 9, 9, 9, 0)
@@ -712,7 +712,7 @@ def test_avviso_senza_il_nostro_messaggio_citato():
 
 
 def test_risposta_da_regola_mette_il_thread_in_ascolto(monkeypatch, appointments_on):
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     seguiti = []
     monkeypatch.setattr(mail_router, "_send_backend",
@@ -735,7 +735,7 @@ def test_risposta_dellagente_mette_il_thread_in_ascolto(monkeypatch, appointment
     mandata dall'agente, non da una regola, non faceva scattare l'avviso.
     Un inoltro verso un nostro indirizzo invece non si segue: non deve
     accendere allarmi."""
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     seguiti = []
     monkeypatch.setattr(mail_router, "_send_backend",
@@ -754,7 +754,7 @@ def test_risposta_dellagente_mette_il_thread_in_ascolto(monkeypatch, appointment
 
 
 def test_invio_fallito_non_mette_in_ascolto(monkeypatch):
-    from ade_mail_agent.core import mail_router
+    from gigamail.core import mail_router
 
     seguiti = []
     monkeypatch.setattr(mail_router, "_send_backend",
@@ -866,7 +866,7 @@ def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
 
 @pytest.fixture()
 def nostri(monkeypatch):
-    from ade_mail_agent.core import accounts
+    from gigamail.core import accounts
     monkeypatch.setattr(accounts, "get_accounts",
                         lambda: [{"id": 2, "name": "20128", "email": "info@20128milano.it"},
                                  {"id": 5, "name": "Paolo Conti", "email": "s@msn.com"}])

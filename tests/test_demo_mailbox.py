@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from ade_mail_agent.core import accounts, demo_mailbox, mail_router
+from gigamail.core import accounts, demo_mailbox, mail_router
 
 MITTENTE = "io@studio.example"
 
@@ -81,7 +81,7 @@ def test_riparti_rimette_tutto_al_via(demo_account):
 
 
 def test_il_calendario_demo_e_vuoto_e_non_chiede_login(demo_account):
-    from ade_mail_agent.core import calendar_router
+    from gigamail.core import calendar_router
     assert calendar_router.provider() == "demo"
     assert calendar_router.get_events() == []
 

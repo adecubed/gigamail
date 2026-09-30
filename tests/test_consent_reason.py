@@ -4,7 +4,7 @@
 """Quando Hello dice di no, deve dire anche perche'."""
 import pytest
 
-from ade_mail_agent import consent
+from gigamail import consent
 
 
 class _Esito(int):

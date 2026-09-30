@@ -11,12 +11,12 @@ import time
 
 import pytest
 
-from ade_mail_agent import policy
+from gigamail import policy
 
 
 @pytest.fixture(autouse=True)
 def store_isolato(tmp_path, monkeypatch):
-    from ade_mail_agent.core import accounts
+    from gigamail.core import accounts
     account = {"id": 1, "email": "owner@example.test"}
     monkeypatch.setattr(accounts, "get_active_account", lambda: account)
     monkeypatch.setattr(accounts, "get_account_by_id", lambda aid: account)
@@ -51,7 +51,7 @@ def test_lista_separata_da_virgole_e_punto_e_virgola():
 
 def test_preview_send_mail_contiene_recipients():
     """Il tool send_mail del server mette describe_recipients nella preview."""
-    from ade_mail_agent import server
+    from gigamail import server
     out = server.send_mail.fn(to="Cliente <c@x.it>", subject="s", body="b",
                               cc=["Lista Clienti"]) if hasattr(server.send_mail, "fn") \
         else server.send_mail(to="Cliente <c@x.it>", subject="s", body="b", cc=["Lista Clienti"])
@@ -153,7 +153,7 @@ def test_toast_di_un_tool_ha_i_quattro_bottoni(monkeypatch):
         visti["expires_in"] = expires_in
         return True
 
-    from ade_mail_agent.core import desktop_notify
+    from gigamail.core import desktop_notify
     monkeypatch.setattr(desktop_notify, "notify", _spia)
     monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
     monkeypatch.setenv("GIGAMAIL_LANG", "it")
@@ -175,7 +175,7 @@ def test_url_dei_bottoni_accettati_dal_parser():
     "URL non riconosciuto" invece dell'azione."""
     import re
 
-    from ade_mail_agent import cli
+    from gigamail import cli
     src = io.open(cli.__file__.replace(".pyc", ".py"), encoding="utf-8").read()
     verbi = re.search(r"gigamail://\(([a-z|]+)\)/", src).group(1).split("|")
     for _, url in policy.toast_actions("req_deadbeef"):
@@ -219,7 +219,7 @@ def test_comando_da_notify_json_se_manca_env(monkeypatch, tmp_path):
 
 
 def test_desktop_notify_spento_via_env(monkeypatch):
-    from ade_mail_agent.core import desktop_notify
+    from gigamail.core import desktop_notify
     monkeypatch.setenv("GIGAMAIL_NOTIFY_DESKTOP", "0")
     assert desktop_notify.enabled() is False
     assert desktop_notify.notify("t", "b", background=False) is False
@@ -238,7 +238,7 @@ def test_notifica_non_approva_niente(monkeypatch, tmp_path):
 def test_toast_xml_con_azioni_protocol():
     """I bottoni della toast aprono gigamail://... (activationType=protocol):
     la toast non approva, lancia la CLI che alza Hello."""
-    from ade_mail_agent.core import desktop_notify
+    from gigamail.core import desktop_notify
     xml = desktop_notify.build_toast_xml(
         "GigaMail", "corpo <b>", [("Approva", "gigamail://approve/req_1"),
                                   ("Rifiuta", "gigamail://reject/req_1")])
@@ -249,7 +249,7 @@ def test_toast_xml_con_azioni_protocol():
 
 
 def test_open_url_accetta_solo_approve_reject(monkeypatch):
-    from ade_mail_agent import cli
+    from gigamail import cli
     calls = []
     monkeypatch.setattr(cli, "cmd_approvals_approve", lambda a: calls.append(("a", a.request_id)) or 0)
     monkeypatch.setattr(cli, "cmd_approvals_reject", lambda a: calls.append(("r", a.request_id)) or 0)
@@ -270,7 +270,7 @@ def test_bottoni_toast_non_legati_a_un_solo_interprete(monkeypatch):
     sys.executable, quindi un secondo interprete sulla macchina (il python
     di sistema accanto a quello del venv) faceva uscire la toast MUTA, in
     silenzio. Conta il comando registrato, non chi lo sta leggendo."""
-    from ade_mail_agent.core import desktop_notify as d
+    from gigamail.core import desktop_notify as d
     monkeypatch.setattr(d.os.path, "exists", lambda p: True)
     args = d._PROTOCOL_ARGS
 
@@ -292,7 +292,7 @@ def test_toast_non_si_accorpano_e_restano():
     altre spariscono. E la toast di un'approvazione non deve svanire dopo
     pochi secondi mentre la richiesta vive 15 minuti — scenario=reminder
     la tiene a schermo finche' l'umano decide."""
-    from ade_mail_agent.core import desktop_notify as d
+    from gigamail.core import desktop_notify as d
 
     tag = [d._toast_tag(policy.toast_actions(r))
            for r in ("req_aaa111", "req_bbb222", "req_ccc333")]
@@ -319,7 +319,7 @@ def _call(tool, **kw):
 def test_move_message_non_sposta_alla_prima_chiamata(monkeypatch):
     """Spostare non distrugge nulla, ma basta a nascondere una mail
     all'umano che dovrebbe sorvegliare: prima chiamata = anteprima."""
-    from ade_mail_agent import server
+    from gigamail import server
 
     mosse = []
     monkeypatch.setattr(server.mail_router, "get_message",

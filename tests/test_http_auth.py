@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client_con_token(monkeypatch):
     monkeypatch.setenv("ADE_CONSOLE_TOKEN", "token-test-123")
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     importlib.reload(http_api)  # rilegge il token dall'ambiente
     with TestClient(http_api.app) as c:
         yield c

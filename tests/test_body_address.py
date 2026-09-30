@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Adecubed
 # Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Portali: il mittente e' un relay, la persona sta nel corpo."""
-from ade_mail_agent import watcher
+from gigamail import watcher
 
 RELAY = "reply@idealista.it"
 
@@ -64,7 +64,7 @@ def test_anteprima_segnala_che_il_destinatario_viene_dal_corpo():
 
 def test_il_campo_della_regola_e_spento_di_default():
     """L'indirizzamento fisso resta la norma: si devia solo dicendolo."""
-    from ade_mail_agent.core import rules
+    from gigamail.core import rules
     assert "reply_to_body_address" in rules.RuleStore.create.__doc__ or True
     import inspect
     firma = inspect.signature(rules.RuleStore.create)
@@ -81,7 +81,7 @@ def _regola(**kw):
 def test_anteprima_mostra_copia_e_allegati(tmp_path, monkeypatch):
     """cc e allegati sono ciò che parte davvero: devono stare
     nell'anteprima, non solo nel database della regola."""
-    from ade_mail_agent.core import attachments as att
+    from gigamail.core import attachments as att
     reg = tmp_path / "schede"
     reg.mkdir()
     (reg / "B.1.3.pdf").write_bytes(b"%PDF planimetria")
@@ -106,7 +106,7 @@ def test_senza_copia_ne_allegati_anteprima_invariata():
 def test_i_campi_della_regola_sono_vuoti_di_default():
     import inspect
 
-    from ade_mail_agent.core import rules
+    from gigamail.core import rules
     firma = inspect.signature(rules.RuleStore.create)
     assert firma.parameters["cc"].default is None
     assert firma.parameters["attachments"].default is None
@@ -157,7 +157,7 @@ def test_il_battito_si_aggiorna_anche_dentro_il_giro():
     stesso controllo, poteva farne partire un secondo."""
     import inspect
 
-    from ade_mail_agent.watcher import runner
+    from gigamail.watcher import runner
     corpo = inspect.getsource(runner.Watcher.tick)
     assert corpo.count("self.heartbeat()") >= 4, (
         "il battito deve essere aggiornato anche fra un'operazione lunga "

@@ -33,7 +33,7 @@ jobs:
         run: |
           pip install -e ".[all,dev]"
           pytest -q
-          python -m ade_mail_agent.gen_toolmap --check
+          python -m gigamail.gen_toolmap --check
 
       - name: Build sdist + wheel
         run: |

@@ -11,10 +11,10 @@ import time
 import pytest
 from gigamail_real_estate import tipologie
 
-from ade_mail_agent import agent_bridge, policy
-from ade_mail_agent import watcher as watcher_mod
-from ade_mail_agent.core import attachments, mail_router
-from ade_mail_agent.core import rules as rules_mod
+from gigamail import agent_bridge, policy
+from gigamail import watcher as watcher_mod
+from gigamail.core import attachments, mail_router
+from gigamail.core import rules as rules_mod
 
 OGGETTO_BILO = ("Nuovo messaggio di Marco Neri sul tuo immobile, Bilocale in "
                 "Via Treviglio, 28, Precotto, Milano")

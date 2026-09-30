@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from ade_mail_agent import policy, server
-from ade_mail_agent.core import calendar_router, google_calendar, ms_calendar
+from gigamail import policy, server
+from gigamail.core import calendar_router, google_calendar, ms_calendar
 
 
 @pytest.fixture

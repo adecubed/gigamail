@@ -89,7 +89,7 @@ gigamail accounts add-imap    # or IMAP: Aruba, Gmail, Libero, ...
 > publisher-verified, so the consent screen shows an "unverified" notice
 > (works fine; some corporate tenants may block it). Standard alternative:
 > register your own Azure app and set your `client_id` in
-> `src/ade_mail_agent/core/ms_config.json`. IMAP needs none of this.
+> `src/gigamail/core/ms_config.json`. IMAP needs none of this.
 
 Give the account its identity and knowledge (this is what makes replies yours):
 
@@ -110,7 +110,9 @@ Register in Claude Desktop / Claude Code (`mcpServers`):
 ```
 
 The commands are also available under their legacy names
-(`ade-mail-agent`, `ade-mail-agent-server`), so existing setups keep working.
+(`ade-mail-agent`, `ade-mail-agent-server`), and the Python package answers
+to its old name `ade_mail_agent` too (`python -m ade_mail_agent.server`),
+so existing setups keep working.
 
 Using **Codex**? The repository is a Codex plugin: it registers the
 `gigamail` MCP server and adds a skill that teaches Codex the approval gate.
@@ -337,7 +339,7 @@ gigamail accounts add-imap    # oppure IMAP: Aruba, Gmail, Libero, ...
 > publisher-verified, quindi la schermata di consenso mostra l'avviso
 > "unverified" (funziona comunque; alcuni tenant aziendali potrebbero
 > bloccarla). Alternativa standard: registra la tua app Azure e metti il
-> tuo `client_id` in `src/ade_mail_agent/core/ms_config.json`.
+> tuo `client_id` in `src/gigamail/core/ms_config.json`.
 > Per IMAP non serve nulla di tutto questo.
 
 Dai all'account la sua identità e la sua conoscenza (è ciò che rende le
@@ -360,8 +362,9 @@ Registrazione in Claude Desktop / Claude Code (`mcpServers`):
 ```
 
 I comandi restano disponibili anche con i vecchi nomi
-(`ade-mail-agent`, `ade-mail-agent-server`), così le installazioni esistenti
-continuano a funzionare.
+(`ade-mail-agent`, `ade-mail-agent-server`), e il package Python risponde
+anche al vecchio nome `ade_mail_agent` (`python -m ade_mail_agent.server`),
+così le installazioni esistenti continuano a funzionare.
 
 Usi **Codex**? Il repository è un plugin Codex: registra il server MCP
 `gigamail` e aggiunge una skill che insegna a Codex il gate di approvazione.

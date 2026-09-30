@@ -10,9 +10,9 @@ import re
 
 import pytest
 
-from ade_mail_agent import policy
-from ade_mail_agent import server as srv
-from ade_mail_agent.core import attachments, extensions
+from gigamail import policy
+from gigamail import server as srv
+from gigamail.core import attachments, extensions
 
 
 @pytest.fixture(autouse=True)

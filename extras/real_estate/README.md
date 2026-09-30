@@ -37,8 +37,8 @@ branch instead.
 With the Windows desktop app the CLI is in the app's own Python:
 
 ```bat
-"C:\Program Files\GigaMail\resources\python\python.exe" -m ade_mail_agent.cli extensions install real_estate
-"C:\Program Files\GigaMail\resources\python\python.exe" -m ade_mail_agent.cli extensions enable real_estate
+"C:\Program Files\GigaMail\resources\python\python.exe" -m gigamail.cli extensions install real_estate
+"C:\Program Files\GigaMail\resources\python\python.exe" -m gigamail.cli extensions enable real_estate
 ```
 
 An extension that is enabled but not installed is not skipped: automatic

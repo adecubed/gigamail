@@ -21,7 +21,7 @@ def _load(rel):
 
 
 def _server_tools():
-    from ade_mail_agent.server import mcp
+    from gigamail.server import mcp
 
     return {t.name for t in asyncio.new_event_loop().run_until_complete(mcp.list_tools())}
 

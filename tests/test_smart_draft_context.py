@@ -6,8 +6,8 @@ e una mail con dentro ordini per l'assistente veniva generata come le altre.
 """
 import pytest
 
-from ade_mail_agent.core import accounts, identity_reader
-from ade_mail_agent.http_api import agent as agent_api
+from gigamail.core import accounts, identity_reader
+from gigamail.http_api import agent as agent_api
 
 ACCOUNT = 4242
 

@@ -1,7 +1,7 @@
 """Approval payloads bind a mailbox, never the mutable active-account default."""
 import pytest
 
-from ade_mail_agent import policy, server
+from gigamail import policy, server
 
 
 @pytest.fixture

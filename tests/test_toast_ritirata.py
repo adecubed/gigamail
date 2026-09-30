@@ -4,8 +4,8 @@ import types
 
 import pytest
 
-from ade_mail_agent import policy
-from ade_mail_agent.core import desktop_notify
+from gigamail import policy
+from gigamail.core import desktop_notify
 
 
 @pytest.fixture()

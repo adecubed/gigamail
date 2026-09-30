@@ -3,13 +3,13 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent import agent_bridge
-from ade_mail_agent.http_api import agent as agent_api
+from gigamail import agent_bridge
+from gigamail.http_api import agent as agent_api
 
 
 @pytest.fixture()
 def client():
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c
 

@@ -2,8 +2,8 @@
 # Copyright (C) 2026 Adecubed
 # Licensed under the GNU AGPL v3 or later. See LICENSE.
 """Destinatari: anteprima e busta devono dire la stessa cosa."""
-from ade_mail_agent import policy
-from ade_mail_agent.core.addresses import split_addresses
+from gigamail import policy
+from gigamail.core.addresses import split_addresses
 
 
 def test_stringa_con_piu_indirizzi_non_e_un_destinatario():

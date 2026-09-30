@@ -5,9 +5,9 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from ade_mail_agent import policy
-from ade_mail_agent.core import accounts as core_accounts
-from ade_mail_agent.core import appointments, video_call
+from gigamail import policy
+from gigamail.core import accounts as core_accounts
+from gigamail.core import appointments, video_call
 
 # mercoledi' 16 settembre 2026, ore 09:00
 NOW = datetime(2026, 9, 16, 9, 0)
@@ -110,7 +110,7 @@ def test_senza_link_e_senza_app_lo_dice(monkeypatch, mondo):
 
 @pytest.fixture()
 def client():
-    from ade_mail_agent import http_api
+    from gigamail import http_api
     with TestClient(http_api.app) as c:
         yield c
 

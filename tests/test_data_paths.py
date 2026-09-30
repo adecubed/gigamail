@@ -8,7 +8,7 @@ leggevano mai: fallimento silenzioso del gate di approvazione.
 Ora data_paths.py e' l'unica fonte; questi test impediscono la ricaduta.
 """
 
-from ade_mail_agent.core import data_paths
+from gigamail.core import data_paths
 
 
 def test_data_root_sotto_app_root():
@@ -68,8 +68,8 @@ def test_nuovo_nome_vince_sull_alias(monkeypatch, tmp_path):
 def test_moduli_concordano_sui_percorsi():
     """I DB calcolati a import-time dai moduli core devono stare tutti
     sotto data_root(): nessun modulo calcola i percorsi per conto suo."""
-    from ade_mail_agent import policy
-    from ade_mail_agent.core import accounts, ade_masker, mail_memory, observer
+    from gigamail import policy
+    from gigamail.core import accounts, ade_masker, mail_memory, observer
 
     root = str(data_paths.data_root())
     assert accounts._ADE_DATA == root

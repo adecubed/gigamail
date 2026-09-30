@@ -7,7 +7,7 @@ blocca e' inutilizzabile, perche' l'utente lo spegne il primo giorno.
 """
 import pytest
 
-from ade_mail_agent.core import injection_guard
+from gigamail.core import injection_guard
 
 LEGITTIME = [
     (
@@ -151,8 +151,8 @@ def test_testo_vuoto():
 def test_il_watcher_non_fa_scrivere_una_mail_con_ordini(monkeypatch):
     """Il percorso delle regole e' il piu' esposto dei due, perche' puo'
     anche spedire da solo: il presidio deve fermarlo prima dell'agente."""
-    from ade_mail_agent import agent_bridge
-    from ade_mail_agent.watcher import drafting
+    from gigamail import agent_bridge
+    from gigamail.watcher import drafting
 
     def esplodi(*a, **k):
         raise AssertionError("l'agente non doveva essere chiamato")
@@ -171,8 +171,8 @@ def test_il_watcher_non_fa_scrivere_una_mail_con_ordini(monkeypatch):
 
 
 def test_il_watcher_lascia_passare_la_posta_vera(monkeypatch):
-    from ade_mail_agent import agent_bridge
-    from ade_mail_agent.watcher import drafting
+    from gigamail import agent_bridge
+    from gigamail.watcher import drafting
 
     monkeypatch.setattr(agent_bridge, "run", lambda *a, **k: "Buongiorno, ...")
     messaggio = {"subject": "Informazioni A12",

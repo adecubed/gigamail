@@ -7,7 +7,7 @@ import urllib.parse
 
 import pytest
 
-from ade_mail_agent.core import accounts, google_auth
+from gigamail.core import accounts, google_auth
 
 
 @pytest.fixture()

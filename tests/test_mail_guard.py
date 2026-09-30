@@ -1,6 +1,6 @@
 """Barriere anti-spam (0.2): deterministiche, locali, fail-closed.
 reply=False → non si risponde; auto_ok=False → al massimo semi."""
-from ade_mail_agent.core import mail_guard
+from gigamail.core import mail_guard
 
 CLEAN_MSG = {
     "from": {"emailAddress": {"address": "cliente@fidato.it"}},
