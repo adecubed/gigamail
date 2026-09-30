@@ -294,3 +294,16 @@ def test_cli_install_chiede_la_verifica(radice, store, monkeypatch):
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
     assert cli.main(["extensions", "install", "pkg"]) == 0
     assert chiamate == ["pkg"]
+
+
+def test_installazione_a_meta_da_un_messaggio_non_un_traceback(monkeypatch, capsys):
+    """pip interrotto con gigamail.exe in uso lascia la venv senza metadati."""
+    import importlib.metadata as md
+
+    from gigamail import cli
+
+    def manca(nome):
+        raise md.PackageNotFoundError(nome)
+    monkeypatch.setattr(md, "version", manca)
+    assert cli.main(["extensions", "install", "real_estate"]) == 1
+    assert "installazione" in capsys.readouterr().out

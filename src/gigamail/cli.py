@@ -1065,7 +1065,11 @@ def cmd_extensions_install(args) -> int:
     l'utente fisico, come accenderlo."""
     from gigamail import consent
     from gigamail.core import extensions
-    spec = extensions.spec_for(args.name, getattr(args, "ref", None))
+    try:
+        spec = extensions.spec_for(args.name, getattr(args, "ref", None))
+    except ValueError as e:
+        print(f"Impossibile installare: {e}")
+        return 1
     print(f"Installo {spec}\n  in {extensions.site_dir()}")
     try:
         ok = consent.require_human(f"GigaMail: installare l'estensione {args.name}")

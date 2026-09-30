@@ -192,8 +192,17 @@ def spec_for(name: str, ref: Optional[str] = None) -> str:
     if nome not in KNOWN:
         return name.strip()
     if not ref:
-        from importlib.metadata import version
-        ref = f"tags/v{version('gigamail')}"
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            ref = f"tags/v{version('gigamail')}"
+        except PackageNotFoundError as e:
+            # Succede con un'installazione a meta' (pip interrotto mentre
+            # gigamail.exe era in uso): senza versione non si sa quale tag.
+            raise ValueError(
+                "versione di gigamail non leggibile: l'installazione e' "
+                "incompleta. Chiudi watcher, console e client MCP e rifai "
+                "`pip install gigamail` (o `pip install -e .`), oppure "
+                "indica il tag con --ref tags/vX.Y.Z") from e"
     elif "/" not in ref:
         ref = f"heads/{ref}"
     url = _REPO_ARCHIVE.format(ref=ref)
