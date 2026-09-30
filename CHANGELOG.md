@@ -2,238 +2,237 @@
 
 ## v0.4.0 — 2026-09-30
 
-- **Il package si chiama gigamail.** Il nome interno `ade_mail_agent`
-  compariva nei traceback, nei comandi dei messaggi di errore (`CLI:
-  ade-mail-agent login`) e in ogni `python -m`. Ora il package e' `gigamail`
-  (`python -m gigamail.server`, `from gigamail.core import ...`), e la
-  guida della CLI e gli errori dicono `gigamail`. Il vecchio nome resta
-  come alias: `ade_mail_agent.X` e' lo stesso modulo di `gigamail.X`, non
-  una copia, e `python -m ade_mail_agent.cli` funziona ancora. Per questo
-  non si rompono le configurazioni MCP esistenti ne' il protocollo
-  gigamail:// registrato in HKLM con il nome vecchio, che resta
-  riconosciuto: le notifiche non perdono i bottoni. Restano anche i
-  comandi `ade-mail-agent` e la cartella dati `%APPDATA%\ADE`.
+- **The package is called gigamail.** The internal name `ade_mail_agent`
+  showed up in tracebacks, in the commands given by error messages
+  (`CLI: ade-mail-agent login`) and in every `python -m`. The package is
+  now `gigamail` (`python -m gigamail.server`,
+  `from gigamail.core import ...`), and the CLI help and the errors say
+  `gigamail`. The old name stays as an alias: `ade_mail_agent.X` is the
+  same module as `gigamail.X`, not a copy, and
+  `python -m ade_mail_agent.cli` still works. This is why existing MCP
+  configurations do not break, and neither does the gigamail:// protocol
+  registered in HKLM under the old name, which is still recognised:
+  notifications keep their buttons. The `ade-mail-agent` commands and the
+  `%APPDATA%\ADE` data folder stay too.
 
-- **Il mestiere esce dal core.** Chi installa gigamail non si porta piu'
-  dietro l'agenzia in cui e' nato. Le tipologie (bilocale, trilocale...)
-  e i codici delle unita' (`A.3.2`) che scelgono gli allegati sono
-  diventati l'estensione `extras/real_estate`, un pacchetto a parte che
-  si installa con pip e si accende con `gigamail extensions enable
-  real_estate`. Il core offre gli agganci (`core/extensions.py`): un
-  vincolo nel prompt della bozza, un controllo sulla bozza con una
-  riscrittura automatica prima di fermarsi, i codici citati nel testo.
-  Senza estensioni gli allegati seguono la lista della regola.
-- **Le estensioni si installano nella cartella dati.** `gigamail
-  extensions install real_estate` le mette in `%APPDATA%\ADE\extensions`
-  (`~/.ade/extensions`), non nel Python dell'applicazione: l'app desktop
-  lo sostituisce a ogni aggiornamento, e un'estensione installata li'
-  spariva. Niente privilegi di amministratore, niente git: l'estensione
-  arriva dall'archivio del tag della versione installata, cosi' core ed
-  estensione vengono dallo stesso commit. La cartella entra in coda a
-  `sys.path` (non puo' coprire un modulo del core) e i suoi `.pth` non si
-  eseguono. Installare chiede Windows Hello / Touch ID, come accendere.
-- **Gli appuntamenti sono spenti di default.** Prima ogni mail inviata
-  passava dall'agente in cerca di un appuntamento, e i thread venivano
-  seguiti per inoltrare le risposte su Telegram, per chiunque. Ora si
-  accendono con `gigamail extensions enable appointments`. Chi li usava
-  gia' (esiste `.appointments.db`) li ritrova accesi all'aggiornamento:
-  la migrazione avviene una volta sola.
-- **Un'estensione accesa che non si carica non passa in silenzio.** Le
-  bozze automatiche si fermano come quando l'agente non risponde: tre
-  tentativi, poi l'avviso all'umano. Nessuna bozza parte creduta
-  verificata senza esserlo. Accendere un'estensione chiede Windows Hello
-  / Touch ID, come creare una regola: cambia cio' che il watcher fa da
-  solo.
-- **Il presidio anti-injection non conosce piu' il nome del titolare.**
-  "Non avvisare <nome>" era riconosciuto solo per un nome scritto nel
-  codice; restano utente, titolare, proprietario, umano, nessuno.
+- **The trade moves out of the core.** Whoever installs gigamail no
+  longer carries along the agency it was born in. The flat types
+  (two-room flat, three-room flat...) and the unit codes (`A.3.2`) that
+  choose the attachments have become the `extras/real_estate` extension,
+  a separate package that is installed with pip and switched on with
+  `gigamail extensions enable real_estate`. The core offers the hooks
+  (`core/extensions.py`): a constraint in the draft prompt, a check on
+  the draft with an automatic rewrite before stopping, the codes cited in
+  the text. Without extensions, attachments follow the rule's list.
+- **Extensions are installed in the data folder.**
+  `gigamail extensions install real_estate` puts them in
+  `%APPDATA%\ADE\extensions` (`~/.ade/extensions`), not in the
+  application's Python: the desktop app replaces that at every update,
+  and an extension installed there disappeared. No administrator
+  privileges, no git: the extension comes from the archive of the
+  installed version's tag, so core and extension come from the same
+  commit. The folder is appended at the end of `sys.path` (it cannot
+  shadow a core module) and its `.pth` files are not executed. Installing
+  asks for Windows Hello / Touch ID, as switching on does.
+- **Appointments are off by default.** Before, every sent mail went
+  through the agent in search of an appointment, and threads were
+  followed to forward the replies to Telegram, for everyone. Now they are
+  switched on with `gigamail extensions enable appointments`. Those who
+  already used them (`.appointments.db` exists) find them switched on
+  after the update: the migration happens only once.
+- **An extension that is switched on but fails to load does not go
+  unnoticed.** Automatic drafts stop as they do when the agent does not
+  respond: three attempts, then the alert to the human. No draft goes out
+  believed verified without being so. Switching on an extension asks for
+  Windows Hello / Touch ID, like creating a rule: it changes what the
+  watcher does on its own.
+- **The anti-injection guard no longer knows the owner's name.** "Non
+  avvisare <nome>" ("do not alert <name>") was recognised only for a name
+  written in the code; the generic Italian words remain (utente,
+  titolare, proprietario, umano, nessuno: user, account holder, owner,
+  human, nobody).
 
-- **GigaMail ha il suo archivio: ogni mail, per intero, per sempre.**
-  Prima non teneva niente di suo e leggeva solo il server. Ma il server
-  non e' un archivio: Outlook, configurato come quasi sempre, scarica la
-  posta e dopo un paio di settimane la cancella dal server. Il 28/09 una
-  bolletta arrivata a gennaio esisteva solo nel file di Outlook, e la
-  ricerca di GigaMail rispondeva "nessun risultato" con piena sicurezza.
-  Ora `core/archivio.py` salva ogni messaggio cosi' com'e' arrivato, MIME
-  compresso con gli allegati, di ogni casella e ogni cartella tranne le
-  bozze, con un indice full text su oggetto, mittente, destinatari, testo
-  completo e nomi degli allegati. Le parole si cercano per prefisso,
-  cosi' "mediocasa" trova info@mediocasaimmobiliare.eu, e senza accenti.
-  La stessa mail vista dal server e da Outlook, o spostata di cartella,
-  resta una riga sola grazie al Message-ID.
-- **Sincronizzazione continua.** A ogni giro il watcher porta
-  nell'archivio cio' che e' arrivato sui server (IMAP per ultimo UID e
-  UIDVALIDITY, Graph dal piu' recente), con un tetto per giro cosi' un
-  primo caricamento di migliaia di mail non blocca le regole.
-  `gigamail archive sync` fa il primo caricamento tutto d'un fiato.
-- **Lo storico di Outlook si importa da solo, una volta.** Al primo giro
-  su un account il watcher lancia in un processo a parte l'import di
-  tutto cio' che Outlook conserva sul PC per quell'indirizzo: e' il
-  default, non un'opzione da scoprire. Outlook non espone il MIME, quindi
-  il messaggio si ricostruisce dalle intestazioni internet originali, dal
-  corpo e dagli allegati; se la stessa mail e' ancora sul server, vince
-  la copia del server. Dopo, GigaMail non chiede piu' niente a Outlook.
-  Tre tentativi al massimo, poi smette.
-- **Ricerca e lettura passano dall'archivio.** `search_mail` restituisce
-  prima i risultati dell'archivio (id `arch-...`), che `read_message` e
-  `read_attachment` leggono anche quando il server non ha piu' la mail.
-  Un id del server che il server non trova piu' si cerca nell'archivio
-  prima di dare errore. Se il server non risponde affatto, la ricerca
-  resta in piedi con l'archivio da solo.
-- **La ricerca IMAP con gli accenti non funzionava.** Il tentativo in
-  UTF-8 era scritto senza la parola CHARSET e il server lo rifiutava
-  sempre: restava solo la ricerca ASCII, che "proprieta'" non la trova.
+- **GigaMail has its own archive: every mail, in full, forever.** Before,
+  it kept nothing of its own and only read the server. But the server is
+  not an archive: Outlook, configured as it almost always is, downloads
+  the mail and deletes it from the server after a couple of weeks. On
+  28/09 a bill that arrived in January existed only in the Outlook file,
+  and GigaMail's search answered "no results" with complete confidence.
+  Now `core/archivio.py` saves every message as it arrived, compressed
+  MIME with the attachments, from every mailbox and every folder except
+  drafts, with a full-text index on subject, sender, recipients, complete
+  text and attachment names. Words are searched by prefix, so "mediocasa"
+  finds info@mediocasaimmobiliare.eu, and without accents. The same mail
+  seen from the server and from Outlook, or moved to another folder,
+  remains a single row thanks to the Message-ID.
+- **Continuous sync.** On every pass the watcher brings into the archive
+  what has arrived on the servers (IMAP by last UID and UIDVALIDITY,
+  Graph from the most recent), with a cap per pass so that a first load
+  of thousands of mails does not hold up the rules.
+  `gigamail archive sync` does the first load in one go.
+- **Outlook's history is imported on its own, once.** On the first pass
+  over an account the watcher launches, in a separate process, the import
+  of everything Outlook keeps on the PC for that address: it is the
+  default, not an option to discover. Outlook does not expose the MIME,
+  so the message is rebuilt from the original internet headers, the body
+  and the attachments; if the same mail is still on the server, the
+  server's copy wins. After that, GigaMail asks Outlook for nothing more.
+  Three attempts at most, then it stops.
+- **Search and reading go through the archive.** `search_mail` returns
+  the archive's results first (id `arch-...`), which `read_message` and
+  `read_attachment` read even when the server no longer has the mail. A
+  server id that the server can no longer find is looked up in the
+  archive before returning an error. If the server does not answer at
+  all, search keeps working with the archive alone.
+- **IMAP search with accents did not work.** The UTF-8 attempt was
+  written without the word CHARSET and the server always rejected it:
+  only the ASCII search was left, and that does not find "proprieta'".
 
-- **La bozza non ricopia piu' le risposte vecchie, e se sbaglia si
-  corregge.** Il vincolo sulla tipologia non bastava: le risposte inviate
-  entravano ancora nel prompt per intero, insieme al "template suggerito"
-  della risposta precedente, e con quelle davanti l'agente ricopiava
-  invece di leggere la mail. Quando poi sbagliava, la bozza veniva solo
-  scartata: in modalita' semi l'umano riceveva un avviso invece di una
-  risposta da approvare. Ora la bozza automatica riceve dall'observer
-  SOLO lo stile appreso, parole e lunghezza (`includi_esempi=False`),
-  senza risposte ne' template. E se propone appartamenti di un'altra
-  tipologia, il watcher gliela fa riscrivere subito con una correzione
-  concreta: cosa ha proposto, cosa andava proposto, da dove prenderlo.
-  Si ferma e avvisa l'umano solo se sbaglia anche al secondo giro.
+- **The draft no longer copies old replies, and if it gets it wrong it
+  corrects itself.** The flat-type constraint was not enough: sent
+  replies still went into the prompt in full, together with the
+  "suggested template" of the previous reply, and with those in front of
+  it the agent copied instead of reading the mail. And when it got it
+  wrong, the draft was simply discarded: in semi mode the human received
+  an alert instead of a reply to approve. Now the automatic draft
+  receives from the observer ONLY the learned style, words and length
+  (`includi_esempi=False`), with no replies or templates. And if it
+  proposes flats of another type, the watcher has it rewritten straight
+  away with a concrete correction: what it proposed, what should have
+  been proposed, where to take it from. It stops and alerts the human
+  only if it gets it wrong on the second pass as well.
 
-- **Su Telegram la bozza si legge intera.** La notifica tagliava la bozza
-  a 400 caratteri: una risposta con quattro appartamenti, metrature e
-  prezzi si fermava alla seconda riga, e il resto di cio' che si stava
-  approvando esisteva solo nella console. Ora la bozza entra intera
-  (`GIGAMAIL_NOTIFY_BODY_CHARS`, 3000 di default, con un segno visibile
-  se mai si taglia). E il canale non tronca piu' in silenzio oltre il
-  limite di Telegram: un testo lungo viene diviso in piu' messaggi,
-  tagliando sugli a capo e mai dentro un'entita' HTML, con i bottoni di
-  approvazione sull'ultimo pezzo, sotto la fine del testo.
+- **On Telegram the draft can be read in full.** The notification cut the
+  draft at 400 characters: a reply with four flats, floor areas and
+  prices stopped at the second line, and the rest of what was being
+  approved existed only in the console. Now the draft goes in whole
+  (`GIGAMAIL_NOTIFY_BODY_CHARS`, 3000 by default, with a visible mark if
+  it is ever cut). And the channel no longer truncates silently past
+  Telegram's limit: a long text is split into several messages, cutting
+  at line breaks and never inside an HTML entity, with the approval
+  buttons on the last piece, below the end of the text.
 
-- **La bozza risponde alla domanda di QUESTA mail, non a quella di
-  prima.** Il 27 settembre un cliente ha scritto per un bilocale e si e'
-  visto proporre tre trilocali da 379.000 euro in su, planimetrie
-  comprese. Gli allegati erano corretti, seguivano il testo: era il testo
-  a rispondere alla domanda sbagliata. La causa sta nel prompt, che
-  riceve gli esempi delle ultime risposte inviate e un "template
-  suggerito" scelto per somiglianza di oggetto. Gli avvisi dei portali
-  hanno oggetti quasi identici, cambia solo la tipologia, quindi il
-  template era sempre l'ultima risposta sui trilocali e l'agente la
-  ricopiava. Ora `core/tipologie.py` legge la tipologia richiesta dal
-  titolo dell'annuncio, che il portale mette nell'oggetto, e la mette nel
-  prompt come vincolo; gli esempi passati sono dichiarati validi per il
-  tono e mai per il contenuto. A valle il watcher controlla la bozza: se
-  elenca appartamenti e nessuno e' della tipologia richiesta, la salta e
-  la lascia all'umano invece di spedirla. Una risposta fuori tipologia
-  non e' uno sbaglio di forma, e' una risposta a un altro cliente.
+- **The draft answers the question in THIS mail, not the one before.** On
+  27 September a client wrote about a two-room flat and was offered three
+  three-room flats from 379,000 euros up, floor plans included. The
+  attachments were correct, they followed the text: it was the text that
+  answered the wrong question. The cause lies in the prompt, which
+  receives examples of the latest sent replies and a "suggested template"
+  chosen by subject similarity. Portal alerts have almost identical
+  subjects, only the flat type changes, so the template was always the
+  latest reply about three-room flats and the agent copied it. Now
+  `core/tipologie.py` reads the requested flat type from the listing
+  title, which the portal puts in the subject, and puts it in the prompt
+  as a constraint; past examples are declared valid for tone and never
+  for content. Downstream, the watcher checks the draft: if it lists
+  flats and none is of the requested type, it skips it and leaves it to
+  the human instead of sending it. A reply for the wrong flat type is not
+  a slip of form, it is a reply to another client.
 
-- **L'allegato approvato e' quello che parte, byte per byte.** La
-  richiesta fissava il percorso del file, non il contenuto: fra
-  l'approvazione e l'invio bastava sostituire il file su disco
-  (Loopjacking) e partiva un altro documento con lo stesso nome, sotto
-  un'approvazione valida. Ora `core/attachments.resolve()` legge i byte
-  quando crea la richiesta e ne fissa SHA-256 e dimensione negli
-  argomenti approvati; l'anteprima mostra peso e impronta (`sha256`, 12
-  caratteri) e `payload()` ricalcola l'hash all'invio. Se non coincide,
-  o se la richiesta e' vecchia e non ne ha uno, solleva
-  `AttachmentChanged` e non parte niente: la richiesta va ricreata.
+- **The approved attachment is the one that goes out, byte for byte.**
+  The request pinned the file path, not the content: between approval and
+  sending it was enough to replace the file on disk (Loopjacking) and a
+  different document went out with the same name, under a valid approval.
+  Now `core/attachments.resolve()` reads the bytes when it creates the
+  request and pins their SHA-256 and size in the approved arguments; the
+  preview shows size and fingerprint (`sha256`, 12 characters) and
+  `payload()` recomputes the hash at send time. If it does not match, or
+  if the request is old and has none, it raises `AttachmentChanged` and
+  nothing goes out: the request has to be recreated.
 
-- **Destinatari, account e cartella restano quelli approvati.** SMTP non
-  include piu' l'header Ccn nel messaggio consegnato. Le risposte Graph
-  senza allegati rispettano To/CC/Ccn espliciti; le risposte IMAP usano la
-  cartella originale. Le richieste MCP fissano l'account mail o il calendario
-  prima dell'approvazione; quelle vecchie senza destinazione fissata vanno
-  ricreate. Il contesto Microsoft e' isolato fra richieste concorrenti.
-- **Le azioni dirette della console richiedono la verifica del sistema.**
-  Invio, eliminazione e spostamento mail, e scritture calendario chiedono
-  Windows Hello / Touch ID anche con un token valido. Annullamento, errore
-  del provider e dry-run conservano la bozza; errori locali di audit o rubrica
-  dopo un invio riuscito non lo fanno apparire fallito. Il popup passa
-  correttamente account e allegati all'API.
-- **IMAP non elimina l'originale se la copia nel cestino fallisce.**
-  La cartella indicata viene rispettata, si preferisce UID MOVE e si usa
-  UID EXPUNGE quando disponibile; il fallback controlla gli altri messaggi
-  gia' marcati per l'eliminazione.
-- **Il watcher recupera anche le mail oltre la prima pagina.** Mantiene
-  cartella, CC e allegati approvati, conserva gli esiti falliti e protegge
-  dall'archiviazione le mail con una risposta in attesa anche se la regola
-  viene sospesa. Gli aggiornamenti degli appuntamenti seguono l'ordine dei
-  messaggi: errori di lettura o del calendario restano da riprovare, e una
-  cancellazione fallita non viene annunciata come riuscita.
+- **Recipients, account and folder stay the approved ones.** SMTP no
+  longer includes the Bcc header in the delivered message. Graph replies
+  without attachments respect explicit To/CC/Bcc; IMAP replies use the
+  original folder. MCP requests pin the mail account or the calendar
+  before approval; old ones with no pinned destination have to be
+  recreated. The Microsoft context is isolated between concurrent
+  requests.
+- **Direct actions from the console require system verification.**
+  Sending, deleting and moving mail, and calendar writes, ask for Windows
+  Hello / Touch ID even with a valid token. Cancellation, a provider
+  error and dry-run keep the draft; local audit or address-book errors
+  after a successful send no longer make it look failed. The popup passes
+  account and attachments to the API correctly.
+- **IMAP does not delete the original if the copy to the trash fails.**
+  The given folder is respected, UID MOVE is preferred and UID EXPUNGE is
+  used when available; the fallback checks the other messages already
+  flagged for deletion.
+- **The watcher also fetches mail beyond the first page.** It keeps the
+  approved folder, CC and attachments, retains failed outcomes and
+  protects mail with a pending reply from archiving even if the rule is
+  suspended. Appointment updates follow the order of the messages: read
+  or calendar errors stay to be retried, and a failed cancellation is not
+  announced as successful.
 
-- **Gli allegati seguono la mail, e una promessa a vuoto non parte.** La
-  regola di idealista aveva una terna fissa di planimetrie: partivano
-  sempre quelle, qualunque cosa chiedesse il cliente. Il 19 e il 23
-  settembre e' costato caro due volte. A chi scriveva per un quadrilocale
-  sono arrivate le planimetrie di tre trilocali del primo piano; la mail
-  successiva, quella che elencava gli appartamenti davvero richiesti,
-  diceva "in allegato trova le planimetrie" ed e' uscita senza un file.
-  Ora `core/attachments.py` legge dal testo i codici degli appartamenti
-  (`A.3.2`, `B.1.4`) e sono quelli a decidere cosa si allega; la lista
-  della regola resta come ripiego per le mail che non nominano nessun
-  appartamento. In piu' una barriera fail-closed in tutti e tre i
-  percorsi di invio: se il testo annuncia un allegato e non ne e' stato
-  risolto nemmeno uno, il watcher salta la bozza e la lascia all'umano, e
-  `send_mail` / `reply_mail` rispondono errore senza nemmeno creare la
-  richiesta di approvazione. Una mail che si contraddice davanti al
-  cliente e' peggio di una mail non spedita.
+- **Attachments follow the mail, and an empty promise does not go out.**
+  The idealista rule had a fixed set of three floor plans: those always
+  went out, whatever the client asked for. On 19 and 23 September it cost
+  dearly, twice. Someone who wrote about a four-room flat received the
+  floor plans of three first-floor three-room flats; the next mail, the
+  one that listed the flats actually requested, said "please find the
+  floor plans attached" and went out without a single file. Now
+  `core/attachments.py` reads the flat codes from the text (`A.3.2`,
+  `B.1.4`) and those decide what is attached; the rule's list stays as a
+  fallback for mails that name no flat. On top of that, a fail-closed
+  barrier in all three send paths: if the text announces an attachment
+  and not even one has been resolved, the watcher skips the draft and
+  leaves it to the human, and `send_mail` / `reply_mail` return an error
+  without even creating the approval request. A mail that contradicts
+  itself in front of the client is worse than a mail not sent.
 
-- **L'appuntamento porta il nome del cliente, non il nostro.** La nostra
-  conferma firmata "Ufficio Vendite" dava il titolo all'evento: l'agente
-  prendeva chi firmava. Ora un nome che e' nostro (account, identity,
-  etichette d'ufficio) non vale mai come persona, il nome visualizzato di
-  chi risponde ha la precedenza, e quando il nome arriva dopo l'evento se
-  ne aggiorna solo il titolo.
-- **Da Telegram si risponde al cliente.** L'avviso "il cliente ha
-  risposto" arrivava su Telegram e li' finiva: per rispondere bisognava
-  tornare al PC. Ora sotto l'avviso c'e' il bottone Rispondi, e si puo'
-  anche rispondere direttamente al messaggio. Quello che si scrive ("ok, va
-  bene") e' un'istruzione: la bozza la scrive l'agente con identity, orari
-  liberi e presidio anti-injection, e la mail arriva in approvazione con i
-  soliti bottoni, Modifica compreso. Niente parte senza un si'.
+- **The appointment carries the client's name, not ours.** Our
+  confirmation signed "Ufficio Vendite" gave the event its title: the
+  agent took whoever had signed. Now a name that is ours (account,
+  identity, office labels) never counts as a person, the display name of
+  whoever replies takes precedence, and when the name arrives after the
+  event only its title is updated.
+- **You can reply to the client from Telegram.** The "the client has
+  replied" alert arrived on Telegram and ended there: to reply you had to
+  go back to the PC. Now there is a Reply button under the alert, and you
+  can also reply directly to the message. What you write ("ok, that's
+  fine") is an instruction: the agent writes the draft with identity,
+  free slots and the anti-injection guard, and the mail arrives for
+  approval with the usual buttons, Edit included. Nothing goes out
+  without a yes.
 
-- **Una conferma ripetuta non riscrive piu' l'appuntamento.** Un "grazie, a
-  domani" del cliente veniva letto come nuova conferma: l'evento era
-  aggiornato con l'indirizzo mail al posto del nome nel titolo e con il
-  luogo vuoto, link Zoom compreso. Ora una conferma con lo stesso orario non
-  tocca il calendario, uno spostamento cambia solo gli orari (e il luogo
-  solo se ne arriva uno nuovo), e il titolo di un appuntamento nuovo usa il
-  nome del mittente invece del suo indirizzo.
+- **A repeated confirmation no longer rewrites the appointment.** A
+  client's "thanks, see you tomorrow" was read as a new confirmation: the
+  event was updated with the email address instead of the name in the
+  title and with an empty location, Zoom link included. Now a
+  confirmation with the same time does not touch the calendar, a
+  reschedule changes only the times (and the location only if a new one
+  arrives), and the title of a new appointment uses the sender's name
+  instead of their address.
 
-- **Il link personale Zoom basta, senza creare nessuna app.** Collegare Zoom
-  richiedeva un'app Server-to-Server sul marketplace, cinque minuti nel
-  browser che non tutti vogliono fare. Ora nella scheda Zoom della console
-  si incolla il link della propria riunione personale: GigaMail lo mette
-  nella mail di conferma di ogni video call, sempre dopo approvazione, e lo
-  scrive nell'evento di calendario. Un orario nuovo non genera una seconda
-  mail, perche' il link e' sempre lo stesso. Con l'app collegata resta il
-  comportamento di prima, un link diverso per ogni appuntamento.
+- **The personal Zoom link is enough, with no app to create.** Connecting
+  Zoom required a Server-to-Server app on the marketplace, five minutes
+  in the browser that not everyone wants to spend. Now you paste the link
+  of your personal meeting room into the console's Zoom tab: GigaMail
+  puts it in the confirmation mail of every video call, always after
+  approval, and writes it into the calendar event. A new time does not
+  generate a second mail, because the link is always the same. With the
+  app connected the previous behaviour stays, a different link for each
+  appointment.
 
-- **Una richiesta decisa toglie la sua notifica dal PC.** Approvata o
-  rifiutata su Telegram, dalla console o dalla CLI, la toast restava nel
-  centro notifiche e invitava a premere Approva su una richiesta gia'
-  chiusa. Ora approvazione, rifiuto, revoca ed esecuzione la ritirano.
-- **Una mail in testo semplice si legge con i suoi a capo.** Nella console
-  bastava un indirizzo tra parentesi angolari nel testo citato
-  (`<info@20128milano.it>`) per trattare tutta la mail come HTML: gli a capo
-  sparivano e risposta, citazione e avviso legale diventavano un blocco
-  unico. Ora conta il tipo dichiarato dal server e, se manca, un vero tag
-  HTML.
+- **A decided request removes its notification from the PC.** Approved or
+  rejected on Telegram, from the console or from the CLI, the toast
+  stayed in the notification centre and invited you to press Approve on a
+  request already closed. Now approval, rejection, revocation and
+  execution withdraw it.
+- **A plain-text mail is shown with its line breaks.** In the console, an
+  address in angle brackets in the quoted text (`<info@20128milano.it>`)
+  was enough to treat the whole mail as HTML: line breaks disappeared and
+  reply, quote and legal notice became a single block. Now what counts is
+  the type declared by the server and, if that is missing, a real HTML
+  tag.
 
-- **Il calendario della console mostra davvero i giorni che chiede.** La
-  console chiedeva `/calendar?days=60`, il backend leggeva solo
-  `days_ahead` e rispondeva sempre con 7 giorni: un appuntamento fra dieci
-  giorni, gia' in calendario, nella console non c'era. Ora `days` vale
-  quanto `days_ahead`.
+- **The console calendar really shows the days it asks for.** The console
+  requested `/calendar?days=60`, the backend read only `days_ahead` and
+  always answered with 7 days: an appointment ten days away, already in
+  the calendar, was missing from the console. Now `days` counts the same
+  as `days_ahead`.
 
-- **SECURITY.md non spaccia piu' Telegram per Windows Hello.** Diceva che
-  approvare da Telegram era della stessa natura di Hello. Non lo e': Hello
-  si chiede a ogni approvazione, sul dispositivo; su Telegram basta un tap
-  in qualunque client collegato all'account, compreso Telegram Desktop
-  aperto sul PC dove gira l'agente. Ora la pagina lo dice, spiega cosa
-  regge oggi (l'approvazione da Telegram e' opzionale, senza `--approve`
-  resta solo notifica) e cosa e' in programma: approvazione solo dal
-  telefono, dentro una Mini App che chiede la sua biometria. Segnalato su
-  Reddit da **u/Bitter-Connection506**. Grazie.
-
-  *EN* — **SECURITY.md no longer passes Telegram off as Windows Hello.**
+- **SECURITY.md no longer passes Telegram off as Windows Hello.**
   It said approving from Telegram was of the same nature as Hello. It is
   not: Hello is asked for at every approval, on the device; on Telegram one
   tap is enough in any client signed into the account, including Telegram
@@ -245,127 +244,128 @@
 
 ## v0.3.4 — 2026-09-15
 
-- **Le mail di idealista finiscono da sole nella cartella idealista.** Nessuno
-  le spostava: la cartella si era fermata al 30 agosto e la posta in arrivo
-  ne conteneva 138. Il watcher ha una fase nuova che sposta nella cartella
-  configurata le mail di un dominio e dei suoi sottodomini, arrivate dopo
-  l'attivazione. Una mail si sposta solo quando nessuna regola ha piu'
-  bisogno di trovarla nella posta in arrivo (inviata, scartata, rifiutata o
-  scaduta): IMAP cambia l'id di una mail spostata, e una bozza in
-  approvazione o da rifare non la ritroverebbe. Una bozza fallita resta
-  dov'e', perche' la veda un umano. Uno spostamento fallito si riprova al
-  massimo tre volte.
+- **Mail from idealista ends up in the idealista folder on its own.**
+  Nobody was moving it: the folder had stopped at 30 August and the inbox
+  held 138 of those mails. The watcher has a new phase that moves into
+  the configured folder the mails from a domain and its subdomains that
+  arrived after activation. A mail is moved only when no rule needs to
+  find it in the inbox any more (sent, discarded, rejected or expired):
+  IMAP changes the id of a moved mail, and a draft awaiting approval or
+  to be redone would not find it again. A failed draft stays where it is,
+  so that a human sees it. A failed move is retried at most three times.
 
-- **Il tasto Sposta della console funziona, e la finestra si chiude.** La
-  console mandava la cartella nel corpo della richiesta, il backend la
-  voleva in query: ogni clic finiva in un 422 e la finestra restava aperta.
-  In piu' la X in alto non era collegata a niente. Ora il backend accetta
-  entrambe le forme, la X chiude, la cartella proposta non e' piu' quella
-  in cui la mail si trova gia', un esito negativo del server di posta
-  compare a video e gli errori di validazione non si leggono piu' come
-  "[object Object]".
+- **The console's Move button works, and the window closes.** The console
+  sent the folder in the request body, the backend wanted it in the
+  query: every click ended in a 422 and the window stayed open. On top of
+  that, the X at the top was wired to nothing. Now the backend accepts
+  both forms, the X closes, the proposed folder is no longer the one the
+  mail is already in, a failure from the mail server is shown on screen
+  and validation errors no longer read as "[object Object]".
 
-- **"Chiedi alle mail" trova le mail anche senza agente.** Con l'agente
-  scollegato la finestra mostrava "(nessuna risposta)", anche quando la
-  mail cercata c'era in un'altra casella. Ora, se l'agente non risponde, la
-  domanda diventa una ricerca per parole chiave in tutte le caselle, con le
-  mail trovate cliccabili e il motivo scritto nella risposta. Un errore del
-  backend compare a video con il suo messaggio.
+- **"Ask your mail" finds mail even without the agent.** With the agent
+  disconnected the window showed "(no answer)", even when the mail being
+  looked for was in another mailbox. Now, if the agent does not respond,
+  the question becomes a keyword search across all mailboxes, with the
+  mails found clickable and the reason written in the answer. A backend
+  error is shown on screen with its message.
 
-- **Zoom collegato: una video call confermata ha subito il suo link.**
-  Prima il link lo creava l'utente a mano e lo spediva con un altro giro
-  di richieste. Ora una mail che parla di video call segna il thread; quando
-  il cliente conferma l'orario GigaMail crea la riunione Zoom (sala d'attesa
-  accesa), mette il link nell'evento e prepara la mail con il link, che
-  parte solo dopo l'approvazione ed e' eseguita dal watcher. Un nuovo orario
-  sposta la stessa riunione senza un'altra mail, una disdetta la cancella.
-  Si collega dalla console (Aggiungi account > Zoom) con i tre codici di
-  un'app Server-to-Server OAuth, verificati subito con Zoom: credenziali
-  rifiutate non restano salvate, e il segreto resta cifrato e non torna mai
-  alla pagina. Dal terminale restano `gigamail zoom setup|test|remove`.
-  Nuovo tool MCP a due fasi
-  `create_zoom_meeting`. Senza Zoom collegato l'avviso lo dice e non si
-  crea nulla.
-- **Ogni mail verso l'esterno mette il thread in ascolto.** Si seguivano
-  solo le risposte: il cliente che rispondeva a una mail nuova, con listino
-  e planimetrie, non generava avvisi. Restano fuori gli indirizzi dei nostri
-  account (per i domini aziendali l'intero dominio, per i provider pubblici
-  l'indirizzo esatto).
+- **Zoom connected: a confirmed video call gets its link straight away.**
+  Before, the user created the link by hand and sent it with another
+  round of requests. Now a mail that talks about a video call marks the
+  thread; when the client confirms the time GigaMail creates the Zoom
+  meeting (waiting room on), puts the link in the event and prepares the
+  mail with the link, which goes out only after approval and is executed
+  by the watcher. A new time moves the same meeting without another mail,
+  a cancellation deletes it. It is connected from the console (Add
+  account > Zoom) with the three codes of a Server-to-Server OAuth app,
+  checked with Zoom straight away: rejected credentials are not kept, and
+  the secret stays encrypted and never goes back to the page. From the
+  terminal, `gigamail zoom setup|test|remove` remain. New two-phase MCP
+  tool `create_zoom_meeting`. Without Zoom connected the alert says so
+  and nothing is created.
+- **Every outgoing mail puts the thread on watch.** Only replies were
+  followed: a client replying to a new mail, with price list and floor
+  plans, generated no alerts. The addresses of our own accounts stay out
+  (for company domains the whole domain, for public providers the exact
+  address).
 
-- **L'orario scelto dal cliente entra in calendario, e l'avviso mostra la
-  risposta.** L'avviso diceva chi aveva risposto e l'oggetto: la notizia
-  che esiste una mail, non cosa c'e' scritto. Ora porta solo il nome e il
-  testo della risposta, senza la citazione, piu' una riga su cosa e'
-  successo in agenda. Quando il cliente indica una sola data e un solo
-  orario precisi e l'agenda e' libera, l'appuntamento viene inserito
-  subito. Se l'orario e' occupato, se ne indica piu' d'uno o se il
-  calendario non si legge, non si inserisce nulla e l'avviso lo dice.
+- **The time the client picks goes into the calendar, and the alert shows
+  the reply.** The alert said who had replied and the subject: the news
+  that a mail exists, not what it says. Now it carries only the name and
+  the text of the reply, without the quote, plus a line on what happened
+  in the calendar. When the client gives a single precise date and a
+  single precise time and the calendar is free, the appointment is
+  inserted straight away. If the time is taken, if more than one is given
+  or if the calendar cannot be read, nothing is inserted and the alert
+  says so.
 
-- **Un agente scollegato non scrive piu' le bozze.** Claude Code senza
-  login esce con codice 1 e stampa "Not logged in · Please run /login" su
-  stdout. `agent_bridge.run` scartava l'errore quando l'output non era
-  vuoto, e restituiva quella frase come risposta: una bozza con quel testo
-  sarebbe arrivata in approvazione come mail per un cliente, e la lettura
-  degli appuntamenti falliva senza dire perche'. Ora un'uscita con errore
-  e' sempre `AgentUnavailable`, e cosi' un messaggio di login breve anche
-  con uscita 0.
+- **A disconnected agent no longer writes drafts.** Claude Code without a
+  login exits with code 1 and prints "Not logged in · Please run /login"
+  on stdout. `agent_bridge.run` discarded the error when the output was
+  not empty, and returned that sentence as the answer: a draft with that
+  text would have arrived for approval as a mail to a client, and reading
+  appointments failed without saying why. Now an exit with an error is
+  always `AgentUnavailable`, and so is a short login message even with
+  exit 0.
 
-- **Una proposta non si inventa piu' un appuntamento, e la risposta del
-  cliente arriva a un umano.** Trovati dal vivo, su un cliente che aveva
-  scelto lunedi' mattina senza che nessuno lo vedesse:
-  - la fase che rilegge i thread aperti giudicava le risposte dal solo
-    oggetto, perche' la lista IMAP non porta il testo. Ora il testo si
-    scarica per i soli messaggi dei thread aperti, e ognuno si guarda una
-    volta sola;
-  - chi rispondeva dalla propria casella invece che dal portale non
-    generava alcun avviso. Le risposte partite da una regola mettono il
-    thread in ascolto, e ogni replica nuova arriva su Telegram con
-    l'orario letto e il testo senza la nostra citazione;
-  - una proposta diventava un blocco `[da confermare]` sul primo degli
-    orari offerti, promemoria compreso, anche per chi non rispondeva mai.
-    Ora in calendario entra solo la conferma;
-  - la fascia degli slot era fissa dalle 09:30. Ora si legge dalle
-    impostazioni (`slot_work_start`, `slot_work_end`, `slot_patrono`,
-    `slot_skip_holidays`), i festivi italiani sono esclusi e la bozza
-    invita sempre a suggerire un'alternativa;
-  - leggere una mail via IMAP la segnava come letta (`RFC822` invece di
-    `BODY.PEEK[]`): il watcher avrebbe tolto dai non letti proprio le
-    risposte che deve segnalare.
+- **A proposal no longer invents an appointment, and the client's reply
+  reaches a human.** Found live, on a client who had picked Monday
+  morning without anyone seeing it:
+  - the phase that rereads open threads judged replies by the subject
+    alone, because the IMAP list does not carry the text. Now the text is
+    downloaded only for messages in open threads, and each one is looked
+    at only once;
+  - someone replying from their own mailbox instead of from the portal
+    generated no alert at all. Replies sent by a rule put the thread on
+    watch, and every new reply arrives on Telegram with the time that was
+    read and the text without our quote;
+  - a proposal became a `[da confermare]` block on the first of the
+    offered times, reminder included, even for people who never replied.
+    Now only the confirmation goes into the calendar;
+  - the slot window was fixed from 09:30. Now it is read from the
+    settings (`slot_work_start`, `slot_work_end`, `slot_patrono`,
+    `slot_skip_holidays`), Italian public holidays are excluded and the
+    draft always invites the client to suggest an alternative;
+  - reading a mail via IMAP marked it as read (`RFC822` instead of
+    `BODY.PEEK[]`): the watcher would have removed from the unread mail
+    precisely the replies it has to report.
 
 ## v0.3.3 — 2026-09-11
 
-- **Posta e calendario si parlano, nei due versi.** Erano due mondi
-  separati: `calendar_router` lo chiamavano solo console, API HTTP e CLI,
-  mai il percorso della posta. Si poteva proporre un appuntamento in una
-  mail, spedirla, e non trovarne traccia in agenda — succedeva davvero, e
-  non lo si scopre finche' il cliente non si presenta (o finche' non ci si
-  presenta noi). In uscita `mail_router.send_message` passa ora ogni mail
-  spedita, da qualunque strada arrivi (MCP, regole del watcher, console),
-  al nuovo `core/appointments.py`: una proposta diventa un blocco
-  `[da confermare]`, la conferma del cliente lo promuove, una disdetta lo
-  toglie. In ingresso il watcher ha una fase nuova che rilegge SOLO i
-  thread con un appuntamento aperto. A leggere il messaggio e' l'agente
-  dell'utente, non una regex sulle date, ma prima c'e' un filtro a costo
-  zero: una mail senza orari ne' parole di appuntamento non fa nemmeno
-  partire il processo. L'invio non aspetta mai il calendario (thread a
-  perdere) e ogni passaggio e' fail-closed: agente assente, JSON
-  illeggibile, data mancante, nel passato o oltre l'anno, evento creato
-  senza id => il calendario non si tocca e resta una riga nel log. Una
-  mail che impartisce ordini all'assistente non entra nel prompt.
-- **L'agente vede l'agenda PRIMA di proporre un orario.** Il prompt della
-  bozza diceva "non usare tool" e non portava il calendario: l'agente
-  proponeva date a caso e l'utente si ritrovava due cose nella stessa
-  fascia. Ora `build_draft_prompt` include gli slot liberi calcolati da
-  `availability.find_free_slots` (non dall'agente: weekend, fusi e
-  sovrapposizioni li sbaglia) e vieta di proporne altri. Se il calendario
-  non risponde la sezione lo dichiara e proibisce orari precisi.
-  `GIGAMAIL_SLOT_DAYS` sposta l'orizzonte, `GIGAMAIL_SLOTS_SABATO=1` serve
-  a chi riceve anche di sabato.
-- **Il cc di `reply_mail` non partiva.** Il tool lo accettava, finiva negli
-  args e compariva nell'anteprima approvata dall'umano, ma `execute_fn`
-  non lo passava a `reply_message`: chi approvava vedeva la copia promessa
-  e il destinatario in copia non riceveva niente, senza un errore da
-  nessuna parte. Una riga, piu' la regressione a presidiarla.
+- **Mail and calendar talk to each other, both ways.** They were two
+  separate worlds: `calendar_router` was called only by the console, the
+  HTTP API and the CLI, never by the mail path. You could propose an
+  appointment in a mail, send it, and find no trace of it in the calendar
+  — it really happened, and you don't find out until the client turns up
+  (or until we turn up). On the way out, `mail_router.send_message` now
+  passes every sent mail, whichever route it comes by (MCP, watcher
+  rules, console), to the new `core/appointments.py`: a proposal becomes
+  a `[da confermare]` block, the client's confirmation promotes it, a
+  cancellation removes it. On the way in, the watcher has a new phase
+  that rereads ONLY the threads with an open appointment. What reads the
+  message is the user's agent, not a regex on dates, but first there is a
+  zero-cost filter: a mail with no times and no appointment words does
+  not even start the process. Sending never waits for the calendar
+  (fire-and-forget thread) and every step is fail-closed: agent missing,
+  unreadable JSON, date missing, in the past or more than a year ahead,
+  event created without an id => the calendar is not touched and a line
+  is left in the log. A mail that gives orders to the assistant does not
+  get into the prompt.
+- **The agent sees the calendar BEFORE proposing a time.** The draft
+  prompt said "do not use tools" and did not carry the calendar: the
+  agent proposed dates at random and the user ended up with two things in
+  the same slot. Now `build_draft_prompt` includes the free slots
+  computed by `availability.find_free_slots` (not by the agent: it gets
+  weekends, time zones and overlaps wrong) and forbids proposing others.
+  If the calendar does not respond, the section says so and forbids
+  precise times. `GIGAMAIL_SLOT_DAYS` moves the horizon,
+  `GIGAMAIL_SLOTS_SABATO=1` is for those who also see clients on
+  Saturdays.
+- **The cc of `reply_mail` was never sent.** The tool accepted it, it
+  ended up in the args and appeared in the preview the human approved,
+  but `execute_fn` did not pass it to `reply_message`: whoever approved
+  saw the promised copy and the cc recipient received nothing, with no
+  error anywhere. One line, plus the regression test to guard it.
 
 - **A Codex plugin.** `codex plugin marketplace add adecubed/gigamail`,
   then `codex plugin add gigamail@gigamail`, installs GigaMail in Codex
@@ -384,110 +384,113 @@
   (it pointed to SECURITY.md) and its category is Communication, where
   Codex lists the other mail plugins.
 
-- **Il prompt della bozza arrivava mutilato all'agente.** npm installa
-  `claude` e `codex` come wrapper `.cmd`, quindi CreateProcess li lancia
-  attraverso cmd.exe, che la riga di comando la tronca al primo a capo.
-  Il processo partiva, l'agente riceveva la prima riga e basta: identity,
-  documenti e corpo della mail non uscivano mai da `agent_bridge`. La
-  bozza tornava con "non vedo l'email a cui rispondere" e sembrava un
-  problema del modello. `run()` mandava gia' il prompt su stdin quando era
-  troppo lungo; ora lo fa anche quando va a capo, cioe' sempre.
+- **The draft prompt reached the agent truncated.** npm installs `claude`
+  and `codex` as `.cmd` wrappers, so CreateProcess launches them through
+  cmd.exe, which cuts the command line at the first line break. The
+  process started, the agent received the first line and nothing else:
+  identity, documents and mail body never left `agent_bridge`. The draft
+  came back with "I can't see the email to reply to" and looked like a
+  model problem. `run()` already sent the prompt on stdin when it was too
+  long; now it also does so when it contains a line break, that is,
+  always.
 
-- **La bozza segue la lingua di chi ha scritto.** Era cablata in italiano
-  dentro il prompt, in due punti: a un cliente che scriveva in inglese
-  l'agente rispondeva in italiano, ed e' un errore che si vede subito. Ora
-  la risposta esce nella lingua della mail ricevuta, e il testo che si
-  compone da zero segue la lingua dell'istruzione. Il marcatore di cio' che
-  manca ha la sua forma per lingua: `[DA COMPLETARE]` o `[TO BE COMPLETED]`.
+- **The draft follows the language of the sender.** It was hardwired to
+  Italian inside the prompt, in two places: to a client writing in
+  English the agent replied in Italian, and that is a mistake that shows
+  at once. Now the reply comes out in the language of the mail received,
+  and text composed from scratch follows the language of the instruction.
+  The marker for what is missing has its own form per language:
+  `[DA COMPLETARE]` or `[TO BE COMPLETED]`.
 
-- **Il presidio contro le mail che impartiscono ordini all'assistente.**
-  Il corpo di una mail e' dato, non istruzione, ma finiva nel prompt
-  accanto alla richiesta di scrivere una bozza. `injection_guard` gira
-  PRIMA della generazione: se scatta non viene scritta nessuna bozza e non
-  viene proposto nessun allegato, e la mail torna all'utente con i motivi e
-  il passaggio incriminato. E' deterministico e locale — schemi, nessun
-  modello — quindi il testo che analizza non puo' manipolarlo. Limite
-  dichiarato: riconosce le formulazioni note, e' il primo strato e non
-  l'ultimo. Copre i due percorsi in cui una mail ricevuta entra nel
-  prompt: `smart_draft` della console e il drafter delle regole. Il
-  secondo e' il piu' esposto, perche' la regola in modo auto puo' anche
-  spedire da sola: li' la mail con ordini non produce nessuna bozza, non
-  viene ritentata, e l'umano la vede con il motivo del blocco. Non basta nominare una password per far scattare il
-  controllo, serve un verbo che la chieda: la posta vera parla di password
-  e di inoltri di continuo, e un presidio che blocca il notaio viene spento
-  il primo giorno. In inglese la prima persona e l'imperativo hanno la
-  stessa forma, quindi "I will send the file passwords separately" faceva
-  scattare il controllo: adesso si guarda anche chi c'e' davanti al verbo.
-  I motivi viaggiano come codici e non come frasi italiane, perche' in una
-  console inglese comparivano cosi' com'erano dentro l'avviso di sicurezza.
+- **The guard against mails that give orders to the assistant.** The body
+  of a mail is data, not instruction, but it ended up in the prompt next
+  to the request to write a draft. `injection_guard` runs BEFORE
+  generation: if it triggers, no draft is written and no attachment is
+  proposed, and the mail goes back to the user with the reasons and the
+  offending passage. It is deterministic and local — patterns, no model —
+  so the text it analyses cannot manipulate it. Declared limit: it
+  recognises known phrasings; it is the first layer, not the last. It
+  covers the two paths by which a received mail gets into the prompt: the
+  console's `smart_draft` and the rules' drafter. The second is the more
+  exposed, because a rule in auto mode can also send on its own: there,
+  the mail giving orders produces no draft, is not retried, and the human
+  sees it with the reason for the block. Mentioning a password is not
+  enough to trigger the check, it takes a verb asking for it: real mail
+  talks about passwords and forwarding all the time, and a guard that
+  blocks the notary gets switched off on day one. In English the first
+  person and the imperative have the same form, so "I will send the file
+  passwords separately" triggered the check: now it also looks at who
+  comes before the verb. Reasons travel as codes and not as Italian
+  sentences, because in an English console they showed up as they were
+  inside the security alert.
 
-- **L'identity di cartella adesso arriva davvero alla bozza.** Si poteva
-  configurare dalla console e salvare nel database, ma nessuno la leggeva:
-  `smart_draft` prendeva sempre e solo l'identity dell'account, quindi la
-  stessa mail riceveva la stessa risposta in Lead e in Clienti. Ora la
-  cartella copre i campi che ha valorizzato e i suoi percorsi di
-  conoscenza si sommano a quelli generali.
+- **Folder identity now actually reaches the draft.** It could be
+  configured from the console and saved in the database, but nothing read
+  it: `smart_draft` always took only the account identity, so the same
+  mail got the same reply in Lead and in Clienti. Now the folder
+  overrides the fields it has filled in, and its knowledge paths are
+  added to the general ones.
 
-- **I documenti entrano nella bozza, con la disciplina che serve.** I file
-  di conoscenza venivano scelti per nome per proporre gli allegati, ma non
-  venivano mai letti: il prezzo stava nel listino sullo stesso disco e la
-  bozza rispondeva lo stesso "non disponiamo di questa informazione".
-  `read_relevant_excerpts` mette il contenuto nel prompt sotto l'etichetta
-  `DATI SPECIFICI DALLA DOCUMENTAZIONE`, dichiarata attendibile. Il
-  permesso e' stretto e vale per quel blocco soltanto: fuori non si afferma
-  ne' si nega l'esistenza di servizi, convenzioni o condizioni che nei
-  documenti non ci sono, non si promettono tempi, e cio' che manca si
-  scrive `[DA COMPLETARE]`, alla lettera. Senza quelle righe la bozza si e'
-  inventata delle convenzioni bancarie che non esistevano.
+- **Documents go into the draft, with the discipline that takes.**
+  Knowledge files were chosen by name to propose attachments, but they
+  were never read: the price was in the price list on the same disk and
+  the draft still answered "we do not have this information".
+  `read_relevant_excerpts` puts the content in the prompt under the label
+  `DATI SPECIFICI DALLA DOCUMENTAZIONE`, declared reliable. The
+  permission is narrow and applies to that block only: outside it, the
+  draft neither asserts nor denies the existence of services, agreements
+  or conditions that are not in the documents, promises no timings, and
+  writes whatever is missing as `[DA COMPLETARE]`, literally. Without
+  those lines the draft invented bank agreements that did not exist.
 
-- **Una casella su file, per le riprese e per le prove.** `demo_mailbox`
-  serve la posta da un JSON invece che da IMAP o Graph: nessuna
-  connessione, nessuna credenziale, e cio' che l'agente 'invia' finisce
-  nella posta inviata del file. La console, il server MCP e le regole
-  passano dallo stesso codice di sempre. Non e' una modalita' globale e
-  non si accende con una variabile d'ambiente: esiste solo se qualcuno
-  crea un account di tipo `demo`, e l'installer non ne crea nessuno. Un
-  account demo non ha calendario collegato, e il router adesso lo dice
-  invece di cadere su Microsoft e chiedere un login che non esiste.
+- **A mailbox in a file, for filming and for testing.** `demo_mailbox`
+  serves mail from a JSON file instead of IMAP or Graph: no connection,
+  no credentials, and what the agent 'sends' ends up in the file's sent
+  mail. The console, the MCP server and the rules go through the same
+  code as always. It is not a global mode and is not switched on by an
+  environment variable: it exists only if someone creates an account of
+  type `demo`, and the installer creates none. A demo account has no
+  connected calendar, and the router now says so instead of falling back
+  to Microsoft and asking for a login that does not exist.
 
-- **La console mostra quando il presidio ferma una mail.** Senza questo,
-  premere GENERA su una mail ostile lasciava il campo vuoto e sembrava un
-  guasto dell'applicazione. Ora compare una fascia con cio' che e' stato
-  riconosciuto e il passaggio incriminato, e nessun allegato viene
-  proposto.
+- **The console shows when the guard stops a mail.** Without this,
+  pressing GENERATE on a hostile mail left the field empty and looked
+  like an application fault. Now a banner appears with what was
+  recognised and the offending passage, and no attachment is proposed.
 
-- **Prova a vuoto delle scene del video.** `demo_video/preflight_test.py`
-  gira sulla pipeline vera con dati finiti: nessuna casella aperta, radice
-  dati dirottata su una cartella usa e getta. Undici verifiche sulle
-  quattro scene, stabili su tre giri. `demo_video/allestisci.py --scena N`
-  monta la casella per una scena sola e stampa il foglio di ripresa, cosi'
-  ogni scena diventa un video corto a se'. Salta anche la procedura di
-  primo avvio: su una radice dati nuova l'overlay copriva la casella e
-  sembrava che l'applicazione fosse bloccata. `demo_video/registra.py`
-  pilota la console vera via CDP e consegna l'mp4 della scena: le finestre
-  vengono fotografate dai loro renderer e composte, quindi nel video entra
-  solo l'applicazione e mai il resto del desktop di chi gira. Ogni scena
-  lascia accanto al suo mp4 i punti del copione, e `demo_video/unisci.py`
-  ne fa un video unico con cartelli e sottotitoli agganciati a quei punti:
-  la durata di un tratto cambia a ogni ripresa, quindi sottotitoli decisi a
-  tavolino scivolerebbero via al primo rifacimento.
+- **Dry run of the video scenes.** `demo_video/preflight_test.py` runs on
+  the real pipeline with made-up data: no mailbox opened, data root
+  redirected to a throwaway folder. Eleven checks across the four scenes,
+  stable over three runs. `demo_video/allestisci.py --scena N` sets up
+  the mailbox for a single scene and prints the shooting sheet, so each
+  scene becomes a short video of its own. It also skips the first-run
+  procedure: on a fresh data root the overlay covered the mailbox and the
+  application looked stuck. `demo_video/registra.py` drives the real
+  console via CDP and delivers the scene's mp4: the windows are captured
+  from their renderers and composited, so only the application gets into
+  the video and never the rest of the desktop of whoever is recording.
+  Each scene leaves the script cues next to its mp4, and
+  `demo_video/unisci.py` turns them into a single video with title cards
+  and subtitles anchored to those cues: the length of a stretch changes
+  with every take, so subtitles fixed on paper would drift off at the
+  first retake.
 
 
-- **Spostare una mail ora chiede l'approvazione.** `move_message` stava
-  fra le scritture libere perche' non distrugge niente e si annulla
-  rimettendo il messaggio dov'era. Solo che il raggio d'azione e il costo
-  di sorveglianza non sono lo stesso asse: un agente che sposta una mail
-  in una cartella che l'umano non guarda gliela ha nascosta, senza
-  cancellare nulla e senza passare da nessun gate. Passa a due fasi come
-  invio e cancellazione. L'anteprima mostra mittente, oggetto e — la cosa
-  che conta — cartella di partenza e di arrivo con il nome leggibile, non
-  l'id opaco di Graph; `full_preview_text` e il riassunto della toast
-  hanno imparato quei due campi, perche' con mittente e oggetto presenti
-  la destinazione non veniva stampata da nessuna parte su Telegram.
-  Gli spostamenti fatti dall'umano dalla console passano da
-  `POST /mail/{id}/move` e restano immediati: nessuno chiede il permesso
-  a se stesso. Costo dichiarato: il riordino automatico di molte mail
-  diventa impraticabile, il tetto resta 20 richieste per tool all'ora.
+- **Moving a mail now asks for approval.** `move_message` sat among the
+  free writes because it destroys nothing and is undone by putting the
+  message back where it was. Except that blast radius and cost of
+  oversight are not the same axis: an agent that moves a mail into a
+  folder the human does not look at has hidden it from them, without
+  deleting anything and without going through any gate. It becomes
+  two-phase, like sending and deleting. The preview shows sender, subject
+  and — the thing that matters — source and destination folder with their
+  readable names, not Graph's opaque id; `full_preview_text` and the
+  toast summary have learnt those two fields, because with sender and
+  subject present the destination was not printed anywhere on Telegram.
+  Moves the human makes from the console go through
+  `POST /mail/{id}/move` and stay immediate: nobody asks themselves for
+  permission. Declared cost: automatically tidying many mails becomes
+  impractical; the cap stays at 20 requests per tool per hour.
 The Google side still needs an OAuth client from a Google Cloud project
 before any of it can run — see [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
 
