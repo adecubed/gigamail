@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.4.0 — 2026-09-30
 
 - **Il package si chiama gigamail.** Il nome interno `ade_mail_agent`
   compariva nei traceback, nei comandi dei messaggi di errore (`CLI:
