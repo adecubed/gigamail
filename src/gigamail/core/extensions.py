@@ -202,7 +202,7 @@ def spec_for(name: str, ref: Optional[str] = None) -> str:
                 "versione di gigamail non leggibile: l'installazione e' "
                 "incompleta. Chiudi watcher, console e client MCP e rifai "
                 "`pip install gigamail` (o `pip install -e .`), oppure "
-                "indica il tag con --ref tags/vX.Y.Z") from e"
+                "indica il tag con --ref tags/vX.Y.Z") from e
     elif "/" not in ref:
         ref = f"heads/{ref}"
     url = _REPO_ARCHIVE.format(ref=ref)
