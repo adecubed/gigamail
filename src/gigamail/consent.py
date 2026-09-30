@@ -24,11 +24,18 @@ Backend
            immediata dopo una VERIFIED → nuovo prompt, 24 s di attesa
            umana). Si apre anche da un processo senza finestra.
   macOS    LocalAuthentication (Touch ID / password), reuse duration 0.
-  Linux    nessun backend affidabile senza desktop → NON disponibile.
+  Altri    (Linux) PIN locale, digitato in un terminale interattivo.
+
+Il PIN locale e' PIU' DEBOLE di Hello e lo dichiariamo: un processo che
+gira come l'utente puo' leggere lo store o simulare un terminale. Chiude
+pero' il caso normale, l'agente che lancia `gigamail approvals approve`
+da uno script: senza terminale il prompt non si apre, e senza il PIN non
+passa. Hash scrypt, blocco dopo 3 errori. Si imposta con
+`gigamail approvals pin`; senza PIN impostato non c'e' backend.
 
 Regola: se nessun backend puo' chiedere a un umano, require_human() dice
-NO. Mai fail-open. Il chiamante (CLI, console) deve rifiutare l'azione e
-indicare la console, non degradare a una conferma da tastiera.
+NO. Mai fail-open. Il chiamante (CLI, console) deve rifiutare l'azione,
+non degradare a un "sei sicuro? [s/N]".
 
 Test (ADE_MAIL_DRYRUN / suite): GIGAMAIL_CONSENT_BACKEND=deny|allow forza
 l'esito senza UI. `allow` e' ammesso SOLO se ADE_MAIL_DRYRUN e' attivo:
@@ -164,6 +171,91 @@ def _mac_ask(reason: str) -> bool:
     return result["ok"]
 
 
+# ------------------------------------------------- PIN locale (Linux & co.)
+
+_PIN_KV = "local_approve_pin"
+_PIN_FAILS = "local_pin_fails"
+_PIN_LOCKED = "local_pin_locked_until"
+PIN_MAX_FAILS = 3
+PIN_LOCK_SECONDS = 15 * 60
+
+
+def _rules_store():
+    from gigamail.core import rules as rules_mod
+    return rules_mod.store()
+
+
+def _terminale() -> bool:
+    """Un umano davanti a un terminale vero. Un agente che lancia il
+    comando da uno script ha stdin/stdout su pipe."""
+    try:
+        return sys.stdin.isatty() and sys.stdout.isatty()
+    except Exception:
+        return False
+
+
+def local_pin_set() -> bool:
+    try:
+        return bool(_rules_store().kv_get(_PIN_KV, ""))
+    except Exception:
+        return False
+
+
+def local_pin_locked() -> int:
+    """Secondi di blocco rimanenti dopo troppi PIN sbagliati, 0 se libero."""
+    import time
+    fino = float(_rules_store().kv_get(_PIN_LOCKED, "0") or 0)
+    resta = int(fino - time.time())
+    return resta if resta > 0 else 0
+
+
+def verify_local_pin(pin: str) -> bool:
+    """Controlla il PIN e tiene il conto degli errori (blocco dopo 3)."""
+    import time
+
+    from gigamail.core import approval_pin
+    rs = _rules_store()
+    if local_pin_locked():
+        return False
+    if approval_pin.verify_pin(pin, rs.kv_get(_PIN_KV, "")):
+        rs.kv_set(_PIN_FAILS, "0")
+        return True
+    falliti = int(rs.kv_get(_PIN_FAILS, "0") or 0) + 1
+    if falliti >= PIN_MAX_FAILS:
+        rs.kv_set(_PIN_FAILS, "0")
+        rs.kv_set(_PIN_LOCKED, str(time.time() + PIN_LOCK_SECONDS))
+    else:
+        rs.kv_set(_PIN_FAILS, str(falliti))
+    return False
+
+
+def set_local_pin(pin_hash: str) -> None:
+    rs = _rules_store()
+    rs.kv_set(_PIN_KV, pin_hash)
+    rs.kv_set(_PIN_FAILS, "0")
+    rs.kv_set(_PIN_LOCKED, "0")
+
+
+def _pin_available() -> bool:
+    return not _WIN and not _MAC and local_pin_set() and _terminale()
+
+
+def _pin_ask(reason: str) -> bool:
+    global _ultimo_motivo
+    import getpass
+    bloccato = local_pin_locked()
+    if bloccato:
+        _ultimo_motivo = f"PIN bloccato per altri {bloccato}s dopo troppi errori"
+        return False
+    print(f"\n{reason}")
+    pin = getpass.getpass("PIN di approvazione (non viene mostrato): ").strip()
+    ok = verify_local_pin(pin)
+    if not ok:
+        _ultimo_motivo = ("PIN errato" if not local_pin_locked() else
+                          f"PIN errato: bloccato per {PIN_LOCK_SECONDS // 60} minuti")
+    return ok
+
+
 # ----------------------------------------------------------------- registry
 
 def _test_override() -> Optional[Callable[[str], bool]]:
@@ -187,6 +279,8 @@ def backend_name() -> Optional[str]:
         return "windows-hello"
     if _MAC and _mac_available():
         return "macos-local-authentication"
+    if _pin_available():
+        return "terminal-pin"
     return None
 
 
@@ -212,6 +306,17 @@ def require_human(reason: str) -> bool:
         return _win_ask(reason)
     if _MAC and _mac_available():
         return _mac_ask(reason)
+    if _pin_available():
+        return _pin_ask(reason)
+    if not _WIN and not _MAC:
+        raise ConsentUnavailable(
+            "nessun Windows Hello o Touch ID su questa macchina. Imposta un "
+            "PIN locale con `gigamail approvals pin`, poi approva da un "
+            "terminale interattivo (non da uno script)."
+            if not local_pin_set() else
+            "il PIN locale si digita in un terminale interattivo: questo "
+            "comando non ne ha uno (lanciato da uno script o da un agente?)."
+        )
     raise ConsentUnavailable(
         "Nessun modo di chiedere conferma all'utente su questa macchina "
         "(serve Windows Hello o macOS LocalAuthentication). Approva dalla "

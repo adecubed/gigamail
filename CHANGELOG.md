@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Linux can approve, with a local PIN typed in a terminal.** Without
+  Windows Hello or Touch ID nothing could approve a send or a deletion
+  except Telegram, which made the weakest channel the only one. Now
+  `gigamail approvals pin` sets a PIN (scrypt hash, 3 wrong attempts lock
+  it for 15 minutes; changing or removing it needs the current one), and
+  `gigamail approvals approve` asks for it, only in an interactive
+  terminal: an agent running the command from a script gets no prompt.
+  Weaker than Hello, and SECURITY.md says so. Windows and macOS are
+  unchanged.
+- **The approval channels are ranked in the docs.** Hello / Touch ID
+  first, the Linux PIN second, Telegram last, stated as a convenience
+  rather than the normal path. Telegram itself is unchanged.
 - **The IMAP server certificate is verified.** Until now the IMAP client
   connected with certificate checks switched off: on a hostile network
   (a public Wi-Fi) whoever sat in the middle could receive the account

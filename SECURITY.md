@@ -80,6 +80,24 @@ Not because they don't matter, but because they aren't ours to fix:
 
 ## Approval requires a human — not just a command
 
+Approval channels, strongest first:
+
+1. **Windows Hello / Touch ID** (console or `gigamail approvals approve`):
+   asked at every approval, on the device. The default and the only one
+   on by default on Windows and macOS.
+2. **Local PIN on Linux** (`gigamail approvals pin`): typed in an
+   interactive terminal, stored only as a scrypt hash, locked for 15
+   minutes after 3 wrong attempts. An agent that runs the command from a
+   script has no terminal and gets no prompt. Weaker than Hello: a
+   program running as you can read the data store or fake a terminal.
+3. **Telegram** (opt-in, `gigamail telegram setup --approve` behind the
+   OS prompt): a tap from any client signed into your account. The
+   weakest; details below.
+
+Whatever the channel, the approved request executes exactly the arguments
+frozen when it was created: account, recipients, folder, attachment
+hashes. Rejecting never needs any of them.
+
 Until v0.1.3 we listed "an agent with shell access can run the approval
 CLI" as a different threat model. **u/ranbuman** (r/mcp) pointed out that
 this is exactly the agent the gate exists to supervise — Claude Code,
@@ -103,9 +121,10 @@ OpenClaw and Hermes all hold a shell — so "out of band from MCP" was not
   mailbox or calendar destination; legacy requests without that binding
   must be recreated before execution.
 - **No backend, no approval.** On a machine without Windows Hello or
-  LocalAuthentication (headless Linux, a server), the CLI refuses and the
-  console returns 503. We fail closed rather than fall back to a keyboard
-  confirmation.
+  LocalAuthentication, approval needs the local PIN typed in an
+  interactive terminal. With no PIN set, or no terminal (a script, an
+  agent, the console's HTTP API), the CLI refuses and the console returns
+  503. We fail closed rather than fall back to a "are you sure? [y/N]".
 - Rejecting never needs the prompt: saying no is always safe.
 
 **What we measured, not what the docs promise** (Windows 11, 2026-08-19,

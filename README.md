@@ -172,7 +172,10 @@ returns only an inert `request_id`, and approving it — from the console or
 from `gigamail approvals approve` — requires an OS-level verification of
 the person at the machine (**Windows Hello** / **Touch ID**). A process,
 including an agent that holds a shell, can open that prompt but cannot
-pass it; with no such backend available, nothing approves. No secret ever
+pass it. On Linux, where neither exists, a local PIN typed in an
+interactive terminal stands in (`gigamail approvals pin`): weaker, and
+declared so in [SECURITY.md](SECURITY.md). Telegram approval is opt-in and
+the weakest channel of the three. No secret ever
 enters the model context, so an injected instruction has nothing to
 spend. Repeating the id just returns *awaiting approval*. The agent
 can only read files explicitly registered by the user, never the rest of the
@@ -213,7 +216,9 @@ injected instruction cannot enable autopilot.
   them clickable; they open the approval, which raises Hello) and
   **Telegram** (`gigamail telegram setup`, your own bot: ✅ approve if you
   opted in with `--approve` behind Hello, ❌ reject, ✏️ ask for changes —
-  accepted only from your chat).
+  accepted only from your chat). Telegram approval is a convenience, not
+  the normal path: any device signed into your Telegram can tap it, so it
+  is weaker than Hello (see SECURITY.md).
 - **auto**: the request is born approved, `decided_by automode:<rule_id>` —
   you gave that approval when you created the rule, for a precise scope,
   with a mandatory expiry, a daily cap and a per-sender cooldown. The

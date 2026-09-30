@@ -674,6 +674,56 @@ def cmd_identity_backup(args) -> int:
         print("Nessuna modifica dall'ultima copia: non ne serviva una nuova.")
     return 0
 
+def _audit_local_pin(outcome: str) -> None:
+    from gigamail.policy import audit
+    audit("approvals", {"by": _cli_who()}, outcome)
+
+
+def cmd_approvals_pin(args) -> int:
+    """PIN locale per approvare dove non ci sono Windows Hello ne' Touch ID
+    (Linux). Si digita solo in un terminale interattivo; per cambiarlo o
+    toglierlo serve quello attuale. Piu' debole di Hello: vedi SECURITY.md."""
+    from gigamail import consent
+    from gigamail.core import approval_pin
+    if consent._WIN or consent._MAC:
+        print("Su questa macchina si approva con Windows Hello / Touch ID: "
+              "il PIN locale serve solo dove non ci sono (Linux).")
+        return 1
+    if not consent._terminale():
+        print("Il PIN si imposta da un terminale interattivo, non da uno script.")
+        return 2
+    if consent.local_pin_set():
+        bloccato = consent.local_pin_locked()
+        if bloccato:
+            print(f"PIN bloccato per altri {bloccato}s dopo troppi errori.")
+            return 1
+        attuale = getpass.getpass("PIN attuale: ").strip()
+        if not consent.verify_local_pin(attuale):
+            print("PIN errato: nulla e' cambiato.")
+            return 1
+    if getattr(args, "remove", False):
+        consent.set_local_pin("")
+        _audit_local_pin("local_pin_removed")
+        print("PIN locale rimosso: da qui non si potra' piu' approvare.")
+        return 0
+    print("Il PIN locale approva invio e cancellazione dove non c'e' Windows")
+    print("Hello. Si digita solo in un terminale: un agente che lancia il")
+    print("comando da uno script non ha il prompt. Non e' forte come Hello:")
+    print("un programma che gira come te puo' leggere lo store dei dati.")
+    pin = getpass.getpass("Nuovo PIN (non viene mostrato): ").strip()
+    ok, perche = approval_pin.valid_pin(pin)
+    if not ok:
+        print(perche)
+        return 1
+    if getpass.getpass("Ripetilo: ").strip() != pin:
+        print("I due PIN non coincidono.")
+        return 1
+    consent.set_local_pin(approval_pin.hash_pin(pin))
+    _audit_local_pin("local_pin_set")
+    print("PIN locale impostato. Approva con: gigamail approvals approve <id>")
+    return 0
+
+
 def cmd_telegram_pin(args) -> int:
     """Imposta (o rimuove) il PIN che serve per approvare da Telegram.
 
@@ -1408,6 +1458,10 @@ def main(argv=None) -> int:
     p_appr = sub.add_parser("approvals", help="approva le azioni richieste dall'agente")
     appr_sub = p_appr.add_subparsers(dest="subcommand", required=True)
     appr_sub.add_parser("list").set_defaults(fn=cmd_approvals_list)
+    p_apin = appr_sub.add_parser(
+        "pin", help="PIN locale per approvare dove non c'e' Hello / Touch ID (Linux)")
+    p_apin.add_argument("--remove", action="store_true")
+    p_apin.set_defaults(fn=cmd_approvals_pin)
     p_ok = appr_sub.add_parser(
         "approve",
         help="approva una richiesta (richiede Windows Hello / Touch ID)")
