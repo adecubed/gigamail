@@ -12,6 +12,39 @@ real data. It does **not** mean we have exercised full model-driven
 workflows (draft → approval → send) inside that client. Claude Code /
 Claude Desktop is the platform GigaMail runs on in daily production use.
 
+## Setups in daily use
+
+"Verified" above a client means the tools are there. This section is the
+other half: installations that run every day, what they use, and the bugs
+that path has produced. A path nobody runs is not listed here.
+
+### A. Real-estate agency — since 2026-08
+
+- Agent: Claude Code. Watcher on, semi-auto reply rules.
+- Mail: <!-- TODO: Microsoft Graph / IMAP, which provider -->
+- On: Telegram approvals and replies, Zoom links, the site contact form
+  (`reply_to_body_address`), extensions `appointments` and `real_estate`.
+- Bugs found on this path: see CHANGELOG, most entries since 0.2.
+
+### B. Plain IMAP + SMTP, nothing else — from <!-- TODO: date -->
+
+The same install with none of A's extras, to prove the core stands on
+its own.
+
+- Mail: one IMAP + SMTP mailbox (`gigamail accounts add-imap`), no
+  Microsoft account, no Google.
+- Off: Telegram, Zoom, site form, all extensions
+  (`gigamail extensions list` shows everything off).
+- Approvals: console or `gigamail approvals approve <id>` (Windows Hello /
+  Touch ID) only.
+- Flow exercised every day: search, a semi-auto rule on one sender or
+  folder, the draft reaching the approval queue, human approval, the
+  send landing in the IMAP Sent folder.
+
+| Date | What happened | Fixed in |
+|------|---------------|----------|
+| <!-- --> | <!-- --> | <!-- --> |
+
 ## Codex CLI (OpenAI) — verified
 
 Two directions, both tested on Windows with **codex-cli 0.135.0** and
