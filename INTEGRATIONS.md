@@ -271,11 +271,10 @@ Test with `hermes mcp test gigamail`, hot-reload with `/reload-mcp`.
 
 A catalog manifest for `hermes mcp install gigamail` (Hermes's curated
 `optional-mcps/` catalog, entered by PR to hermes-agent) is in
-[integrations/hermes/](integrations/hermes/). Verified locally: install
-from the manifest, `uvx --from "gigamail[all]==0.1.3" gigamail-server`,
-24 tools discovered, read + safe-write tools enabled by default and the 6
-dangerous ones opt-in. Not yet submitted — Nous's pin policy requires the
-pinned release to be at least two weeks old.
+[integrations/hermes/](integrations/hermes/), pinned to 0.3.4 (29 tools:
+read + safe-write tools enabled by default, the 9 dangerous ones opt-in).
+Submitted to hermes-agent as a PR on 2026-09-25/26. First verified locally
+on 0.1.3 (install from the manifest, 24 tools discovered).
 
 Optional hardening on any client that supports tool filters (both above
 do): restrict to read-only tools with an include list, e.g. Hermes

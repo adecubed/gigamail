@@ -14,16 +14,17 @@ Catalog rules that shape this manifest:
 - **No secrets through Hermes**: mailbox login happens once with the
   GigaMail CLI, in a shell. The only variable Hermes passes is `ADE_ROOT`
   (non-secret) — Hermes gives stdio servers a filtered environment.
-- **Read-mostly default**: `tools.default_enabled` lists the 15 read tools
-  and the 3 audited safe writes. The 6 dangerous tools are opt-in at
+- **Read-mostly default**: `tools.default_enabled` lists the 17 read tools
+  and the 3 audited safe writes. The 9 dangerous tools are opt-in at
   install time, and even when enabled they execute only after out-of-band
   human approval.
 
-Verified locally (2026-08-18) by dropping the manifest into a Hermes
+Verified locally (2026-08-18, with the manifest then pinned to 0.1.3) by dropping the manifest into a Hermes
 0.19.0 install: `hermes mcp catalog` lists it, `hermes mcp install
 gigamail` prompts for `ADE_ROOT`, probes, prints `post_install`;
 `hermes mcp test gigamail` → Connected, 24 tools, transport `uvx` from
 PyPI.
 
-To submit: copy `optional-mcps/gigamail/` into the hermes-agent repo and
-open a PR, once the pinned release is ≥ 14 days old.
+Pinned to **0.3.4** (released 2026-09-15, eligible from 2026-09-29). The
+PR to hermes-agent was opened on 2026-09-25/26; this directory mirrors it.
+The next bump (0.4.0, released 2026-09-30) is eligible from 2026-10-14.
