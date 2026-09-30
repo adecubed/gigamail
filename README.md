@@ -581,6 +581,10 @@ gigamail identity add-file C:\docs\pricelist.xlsx
 }
 ```
 
+命令也保留旧名称（`ade-mail-agent`、`ade-mail-agent-server`），Python 包也
+响应旧名 `ade_mail_agent`（`python -m ade_mail_agent.server`），现有配置
+继续可用。
+
 使用 **Codex**？本仓库本身就是一个 Codex 插件：它注册 `gigamail` MCP
 服务器，并附带一个教 Codex 如何面对审批关卡的 skill。
 
@@ -603,13 +607,13 @@ codex plugin add gigamail@gigamail
 
 ## 工具
 
-28 个类型化工具，由服务器本身生成：
+29 个类型化工具，由服务器本身生成：
 
 - **读取（17）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
   附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本
 - **安全写入（3，有审计）** —— 标记已读、移动邮件、新建文件夹
-- **危险操作（8，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
-  创建/删除日历事件、上传文件到 Drive、将 Drive 文件移入回收站
+- **危险操作（9，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
+  创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站
 
 日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；
 工具完全相同。Drive 使用 `drive.file` 权限，只能看到 GigaMail 自己创建的
@@ -655,6 +659,25 @@ MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：�
 永不 auto；自动生成的邮件、邮件列表、no-reply 发件人、提供商的垃圾邮件判定、
 可执行附件 → 一律不回复；新发件人的第一封邮件永远经过你；短时间内大量命中
 会让规则自动暂停。详见 [SECURITY.md](SECURITY.md)。
+
+## 扩展：行业逻辑留在核心之外
+
+`gigamail` 包只做邮件：账户、索引、搜索、两阶段发送、日历、知识文件、审计。
+只对某一个行业有意义的功能放在核心之外，默认关闭，需要时才开启：
+
+- **`appointments`**（内置，默认关闭）：在每封已发送邮件中查找预约，把已确认的
+  写入日历，并把客户在跟进线程中的回复转发到 Telegram。
+- **`real_estate`**（[extras/real_estate](extras/real_estate)）：为回复房产门户
+  询盘的中介检查草稿中的户型，并按房源编号选择附件。GigaMail 就是在这里成长起来的。
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # 需要 Windows Hello / Touch ID
+gigamail extensions install real_estate   # 装在数据目录中：应用更新后仍然保留
+gigamail extensions enable real_estate
+```
+
+已开启但无法加载的扩展会停止自动草稿并通知人类，绝不会被悄悄跳过。
 
 ## 许可证
 
