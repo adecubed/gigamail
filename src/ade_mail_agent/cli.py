@@ -1059,6 +1059,34 @@ def cmd_extensions_list(args) -> int:
     return 0
 
 
+def cmd_extensions_install(args) -> int:
+    """Installa nella cartella dati, dove gli aggiornamenti dell'app non
+    arrivano. Installare codice che il watcher eseguira' lo decide solo
+    l'utente fisico, come accenderlo."""
+    from ade_mail_agent import consent
+    from ade_mail_agent.core import extensions
+    spec = extensions.spec_for(args.name, getattr(args, "ref", None))
+    print(f"Installo {spec}\n  in {extensions.site_dir()}")
+    try:
+        ok = consent.require_human(f"GigaMail: installare l'estensione {args.name}")
+    except consent.ConsentUnavailable as e:
+        print(f"Impossibile installare da CLI: {e}")
+        return 2
+    if not ok:
+        print("Verifica non superata o annullata: nulla e' cambiato.")
+        return 1
+    codice, output = extensions.install(spec)
+    if codice != 0:
+        print(output.strip()[-2000:])
+        print("Installazione non riuscita: nulla e' cambiato.")
+        return 1
+    nome = args.name.strip().lower()
+    print("Installata. Per usarla: gigamail extensions enable "
+          + (nome if nome in extensions.KNOWN else "<nome>")
+          + "  (i nomi: gigamail extensions list)")
+    return 0
+
+
 def cmd_extensions_enable(args) -> int:
     """Accendere un'estensione cambia cio' che il watcher fa da solo (gli
     appuntamenti scrivono in calendario, un controllo decide quali bozze
@@ -1388,6 +1416,12 @@ def main(argv=None) -> int:
         "extensions", help="funzioni opzionali e verticali (appointments, real_estate...)")
     ext_sub = p_ext.add_subparsers(dest="subcommand", required=True)
     ext_sub.add_parser("list").set_defaults(fn=cmd_extensions_list)
+    p_exin = ext_sub.add_parser(
+        "install", help="installa nella cartella dati (chiede Hello / Touch ID)")
+    p_exin.add_argument("name", help="real_estate, oppure un requisito pip")
+    p_exin.add_argument("--ref", help="branch o tag da cui prenderla (default: "
+                                      "il tag della versione installata)")
+    p_exin.set_defaults(fn=cmd_extensions_install)
     p_exon = ext_sub.add_parser("enable", help="accende (chiede Hello / Touch ID)")
     p_exon.add_argument("name")
     p_exon.set_defaults(fn=cmd_extensions_enable)

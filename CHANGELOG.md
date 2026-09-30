@@ -11,6 +11,15 @@
   vincolo nel prompt della bozza, un controllo sulla bozza con una
   riscrittura automatica prima di fermarsi, i codici citati nel testo.
   Senza estensioni gli allegati seguono la lista della regola.
+- **Le estensioni si installano nella cartella dati.** `gigamail
+  extensions install real_estate` le mette in `%APPDATA%\ADE\extensions`
+  (`~/.ade/extensions`), non nel Python dell'applicazione: l'app desktop
+  lo sostituisce a ogni aggiornamento, e un'estensione installata li'
+  spariva. Niente privilegi di amministratore, niente git: l'estensione
+  arriva dall'archivio del tag della versione installata, cosi' core ed
+  estensione vengono dallo stesso commit. La cartella entra in coda a
+  `sys.path` (non puo' coprire un modulo del core) e i suoi `.pth` non si
+  eseguono. Installare chiede Windows Hello / Touch ID, come accendere.
 - **Gli appuntamenti sono spenti di default.** Prima ogni mail inviata
   passava dall'agente in cerca di un appuntamento, e i thread venivano
   seguiti per inoltrare le risposte su Telegram, per chiunque. Ora si

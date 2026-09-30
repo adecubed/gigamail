@@ -195,3 +195,102 @@ def test_estensione_accesa_ma_assente_ferma_la_bozza(mondo, monkeypatch):
     watcher_mod.Watcher().tick()
     assert _pending() == []
     assert mondo["prompt"] == []   # l'agente non viene nemmeno chiamato
+
+
+# ── installate nella cartella dati: sopravvivono agli aggiornamenti ──
+
+def _finta_estensione(cartella, nome="prova_dati"):
+    """Un'estensione installata come la lascerebbe pip --target."""
+    pkg = cartella / f"gm_{nome}"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        "from ade_mail_agent.core.extensions import Extension\n"
+        "class E(Extension):\n"
+        f"    name = '{nome}'\n"
+        "    def draft_constraint(self, subject, body):\n"
+        "        return 'DALLA CARTELLA DATI'\n", encoding="utf-8")
+    info = cartella / f"gm_{nome}-0.1.dist-info"
+    info.mkdir()
+    (info / "METADATA").write_text(
+        f"Metadata-Version: 2.1\nName: gm-{nome}\nVersion: 0.1\n", encoding="utf-8")
+    (info / "entry_points.txt").write_text(
+        f"[gigamail.extensions]\n{nome} = gm_{nome}:E\n", encoding="utf-8")
+
+
+@pytest.fixture()
+def radice(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path))
+    prima = list(sys.path)
+    yield tmp_path
+    sys.path[:] = prima
+    for m in [m for m in sys.modules if m.startswith("gm_")]:
+        del sys.modules[m]
+
+
+def test_la_cartella_estensioni_sta_nei_dati(radice):
+    assert extensions.site_dir() == radice / "extensions"
+
+
+def test_estensione_nella_cartella_dati_si_carica(radice, monkeypatch):
+    import sys
+    _finta_estensione(radice / "extensions")
+    monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "prova_dati")
+    [ext] = extensions.active()
+    assert ext.draft_constraint("", "") == "DALLA CARTELLA DATI"
+    assert "(cartella dati)" in extensions.available()["prova_dati"]
+    # in CODA: un file li' non puo' prendere il posto di un modulo del core
+    assert sys.path[-1] == str(radice / "extensions")
+
+
+def test_senza_cartella_sys_path_non_cambia(radice):
+    import sys
+    prima = list(sys.path)
+    extensions.available()
+    assert sys.path == prima
+
+
+def test_nome_noto_dal_tag_della_versione_installata(monkeypatch):
+    import importlib.metadata as md
+    monkeypatch.setattr(md, "version", lambda nome: "0.4.0")
+    spec = extensions.spec_for("real_estate")
+    assert spec == ("gigamail-real-estate @ https://github.com/adecubed/gigamail/"
+                    "archive/refs/tags/v0.4.0.zip#subdirectory=extras/real_estate")
+
+
+def test_nome_noto_da_un_branch():
+    assert "/refs/heads/main.zip#" in extensions.spec_for("real_estate", "main")
+    assert "/refs/tags/v1.0.zip#" in extensions.spec_for("real_estate", "tags/v1.0")
+
+
+def test_requisito_qualunque_passa_a_pip_cosi_com_e():
+    assert extensions.spec_for("pkg @ file:///x.zip") == "pkg @ file:///x.zip"
+
+
+def test_install_usa_pip_target_senza_dipendenze(radice, monkeypatch):
+    import subprocess
+    import sys
+    visti = []
+
+    class R:
+        returncode, stdout, stderr = 0, "ok", ""
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: visti.append(cmd) or R())
+    assert extensions.install("pkg") == (0, "ok")
+    cmd = visti[0]
+    assert cmd[:4] == [sys.executable, "-m", "pip", "install"]
+    assert "--no-deps" in cmd
+    assert cmd[cmd.index("--target") + 1] == str(radice / "extensions")
+    assert cmd[-1] == "pkg"
+
+
+def test_cli_install_chiede_la_verifica(radice, store, monkeypatch):
+    from ade_mail_agent import cli
+    chiamate = []
+    monkeypatch.setattr(extensions, "install", lambda spec: chiamate.append(spec) or (0, ""))
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    assert cli.main(["extensions", "install", "pkg"]) == 1
+    assert chiamate == []
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    assert cli.main(["extensions", "install", "pkg"]) == 0
+    assert chiamate == ["pkg"]

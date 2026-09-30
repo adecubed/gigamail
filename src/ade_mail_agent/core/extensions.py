@@ -15,18 +15,26 @@ Due tipi di estensione:
   - funzioni del pacchetto spente di default (BUILTIN): esistono nel
     codice ma non girano finche' qualcuno non le accende.
 
-Si accendono con `gigamail extensions enable NOME` (salvato nello store
-delle regole) o con GIGAMAIL_EXTENSIONS=nome1,nome2, che ha la precedenza.
+Si installano con `gigamail extensions install NOME` nella cartella dati
+dell'utente (app_root()/extensions), non nel Python dell'applicazione:
+l'app desktop sostituisce il suo Python a ogni aggiornamento, e
+un'estensione installata li' sparirebbe. Si accendono con
+`gigamail extensions enable NOME` (salvato nello store delle regole) o con
+GIGAMAIL_EXTENSIONS=nome1,nome2, che ha la precedenza.
 
 Fail-closed: un'estensione accesa che non si carica non viene saltata in
 silenzio. Il suo controllo mancherebbe senza che nessuno lo sappia, e la
 bozza partirebbe come se fosse stata verificata. `active()` solleva
 ExtensionError e il watcher lascia la mail all'umano.
 """
+import importlib
 import logging
 import os
+import subprocess
+import sys
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
 
 from ade_mail_agent.agent_bridge import AgentUnavailable
 
@@ -42,6 +50,12 @@ _KV_MIGRATED = "extensions_migrated"
 #                 per cercare un appuntamento, le risposte dei clienti sui
 #                 thread seguiti arrivano su Telegram.
 BUILTIN = {"appointments"}
+
+# Estensioni che vivono in questo repository, sotto extras/<nome>.
+# `install NOME` le prende dal tag della versione installata: estensione e
+# core vengono dallo stesso commit, quindi gli agganci combaciano.
+KNOWN = {"real_estate"}
+_REPO_ARCHIVE = "https://github.com/adecubed/gigamail/archive/refs/{ref}.zip"
 
 
 class ExtensionError(AgentUnavailable):
@@ -142,12 +156,70 @@ def available() -> Dict[str, str]:
     """Nome -> provenienza: le BUILTIN e gli entry point installati."""
     out = {n: "builtin" for n in sorted(BUILTIN)}
     for ep in _entry_points():
-        out[ep.name.lower()] = ep.value
+        dove = ""
+        try:
+            if str(ep.dist.locate_file("")).startswith(str(site_dir())):
+                dove = " (cartella dati)"
+        except Exception:
+            pass
+        out[ep.name.lower()] = ep.value + dove
     return out
+
+
+def site_dir() -> Path:
+    """Dove vivono le estensioni installate con `gigamail extensions
+    install`: nella cartella dati, che gli aggiornamenti non toccano."""
+    from ade_mail_agent.core.data_paths import app_root
+    return app_root() / "extensions"
+
+
+def _aggiungi_site_dir() -> None:
+    """La cartella delle estensioni in coda a sys.path. In CODA: un file
+    messo li' non puo' prendere il posto di un modulo del core. Niente
+    site.addsitedir: eseguirebbe i .pth che trova, cioe' codice arbitrario
+    a ogni avvio anche per chi non ha acceso nessuna estensione."""
+    d = str(site_dir())
+    if os.path.isdir(d) and d not in sys.path:
+        sys.path.append(d)
+        importlib.invalidate_caches()
+
+
+def spec_for(name: str, ref: Optional[str] = None) -> str:
+    """Nome breve -> requisito pip. Un nome noto (extras/<nome>) viene dal
+    tag della versione installata, o da `ref` (un branch: 'heads/main');
+    qualunque altra cosa passa a pip cosi' com'e'."""
+    nome = name.strip().lower()
+    if nome not in KNOWN:
+        return name.strip()
+    if not ref:
+        from importlib.metadata import version
+        ref = f"tags/v{version('gigamail')}"
+    elif "/" not in ref:
+        ref = f"heads/{ref}"
+    url = _REPO_ARCHIVE.format(ref=ref)
+    pacchetto = "gigamail-" + nome.replace("_", "-")
+    return f"{pacchetto} @ {url}#subdirectory=extras/{nome}"
+
+
+def install(spec: str) -> Tuple[int, str]:
+    """pip install --target nella cartella delle estensioni.
+
+    --no-deps: l'unica dipendenza di un'estensione e' gigamail stesso, e
+    reinstallarlo li' dentro metterebbe in giro una seconda copia del core
+    di un'altra versione. Senza privilegi di amministratore."""
+    d = site_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    cmd = [sys.executable, "-m", "pip", "install", "--no-deps", "--upgrade",
+           "--disable-pip-version-check", "--target", str(d), spec]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    importlib.invalidate_caches()
+    reset()
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
 def _entry_points():
     from importlib.metadata import entry_points
+    _aggiungi_site_dir()
     try:
         return list(entry_points(group=ENTRY_POINT_GROUP))
     except TypeError:  # Python < 3.10 non accetta group=

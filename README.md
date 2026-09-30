@@ -241,6 +241,8 @@ trade lives outside it and is off until you turn it on:
 ```bash
 gigamail extensions list
 gigamail extensions enable appointments   # asks for Windows Hello / Touch ID
+gigamail extensions install real_estate   # into the data folder: survives app updates
+gigamail extensions enable real_estate
 ```
 
 An enabled extension that fails to load stops automatic drafts and tells
@@ -482,6 +484,8 @@ vive fuori ed e' spento finche' non lo accendi:
 ```bash
 gigamail extensions list
 gigamail extensions enable appointments   # chiede Windows Hello / Touch ID
+gigamail extensions install real_estate   # nella cartella dati: resiste agli aggiornamenti
+gigamail extensions enable real_estate
 ```
 
 Un'estensione accesa che non si carica ferma le bozze automatiche e

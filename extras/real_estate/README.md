@@ -19,21 +19,27 @@ What it adds on top of the core:
 
 ## Install
 
-Next to an existing `gigamail` install, in the same Python:
-
 ```bash
-pip install "git+https://github.com/adecubed/gigamail#subdirectory=extras/real_estate"
-gigamail extensions enable real_estate     # asks for Windows Hello / Touch ID
+gigamail extensions install real_estate    # asks for Windows Hello / Touch ID
+gigamail extensions enable real_estate     # asks again: it changes what the watcher does
 gigamail extensions list
 ```
 
-For the Windows desktop app, use its embedded Python, from an
-administrator prompt:
-`"C:\Program Files\GigaMail\resources\python\python.exe" -m pip install ...`
-**Known limitation:** an app update replaces the embedded Python, so the
-extension has to be installed again after each update. Until that is
-fixed, `gigamail extensions list` shows it as enabled but NOT INSTALLED,
-and automatic drafts stop instead of going out unchecked.
+`install` puts the extension in the user's data folder
+(`%APPDATA%\ADE\extensions`, `~/.ade/extensions`), not in the Python that
+runs GigaMail. App updates replace that Python; the data folder survives
+them, so the extension is installed once. No administrator rights, no git.
+
+It is taken from the GitHub tag of the installed gigamail version, so
+extension and core come from the same commit. `--ref main` takes it from a
+branch instead.
+
+With the Windows desktop app the CLI is in the app's own Python:
+
+```bat
+"C:\Program Files\GigaMail\resources\python\python.exe" -m ade_mail_agent.cli extensions install real_estate
+"C:\Program Files\GigaMail\resources\python\python.exe" -m ade_mail_agent.cli extensions enable real_estate
+```
 
 An extension that is enabled but not installed is not skipped: automatic
 drafts stop and the human is told, so a draft never goes out believed to
