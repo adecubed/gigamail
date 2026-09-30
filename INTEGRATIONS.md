@@ -30,6 +30,7 @@ itself is checked two ways:
 | Date | Version | Provider | OS | Result |
 |------|---------|----------|----|--------|
 | 2026-09-30 | 0.4.0 | IMAP (GreenMail, test server) | Linux | 8/8 |
+| 2026-09-30 | 0.4.0 | IMAP + SMTP (setup A, production mailbox) | Windows | 8/8 |
 
 ## Setups in daily use
 
@@ -40,7 +41,7 @@ that path has produced. A path nobody runs is not listed here.
 ### A. Real-estate agency — since 2026-08
 
 - Agent: Claude Code. Watcher on, semi-auto reply rules.
-- Mail: <!-- TODO: Microsoft Graph / IMAP, which provider -->
+- Mail: IMAP + SMTP on the agency's own domain.
 - On: Telegram approvals and replies, Zoom links, the site contact form
   (`reply_to_body_address`), extensions `appointments` and `real_estate`.
 - Bugs found on this path: see CHANGELOG, most entries since 0.2.
