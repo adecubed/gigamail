@@ -1,4 +1,4 @@
-name: Release to PyPI
+name: Release
 
 # Pubblicazione via trusted publisher (OIDC): nessun token, nessun segreto
 # conservato nel repo. PyPI si fida di questo workflow, in questo repo,
@@ -6,14 +6,21 @@ name: Release to PyPI
 #
 # Come si rilascia:
 #   1. aggiorna version in pyproject.toml (console e __version__ la seguono
-#      da soli), aggiorna CHANGELOG
-#   2. tag vX.Y.Z (immutabile: un numero bruciato non si ricicla)
-#   3. crea la Release su GitHub da quel tag
-#   -> questo workflow costruisce, verifica e pubblica su PyPI, e allega alla
-#      Release l'installer Windows con latest.yml (il feed dell'auto-update
-#      di electron-updater, provider github)
+#      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z — data"
+#   2. git tag vX.Y.Z && git push origin vX.Y.Z (immutabile: un numero
+#      bruciato non si ricicla)
+#      -> questo workflow testa, costruisce l'installer Windows e crea una
+#         Release BOZZA con l'installer non firmato e latest.yml
+#   3. sul PC con il certificato: scripts/sign-release.ps1 -Tag vX.Y.Z
+#      firma l'installer, aggiorna sha512/size in latest.yml, lo ricarica e
+#      pubblica la Release
+#   -> la pubblicazione rilancia questo workflow, che pubblica su PyPI.
+#      Finche' la Release e' bozza nessuno la vede: ne' gli utenti, ne'
+#      l'auto-update di electron-updater, ne' PyPI.
 
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
   workflow_dispatch:   # per una prova manuale senza pubblicare
@@ -42,7 +49,7 @@ jobs:
           twine check dist/*
 
       - name: La versione costruita deve coincidere col tag
-        if: github.event_name == 'release'
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           BUILT=$(ls dist/*.tar.gz | sed -E 's/.*gigamail-(.*)\.tar\.gz/\1/')
@@ -71,13 +78,16 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
-  # ── Installer Windows allegato alla Release ────────────────────────────
+  # ── Installer Windows in una Release bozza ─────────────────────────────
   # Stessa catena della Desktop build (che ha gia' validato questo commit a
   # ogni push: install, avvio dell'app installata, uninstall). Qui si builda
-  # e si allega: GigaMail Setup X.Y.Z.exe, il .blockmap e latest.yml, che
-  # electron-updater legge dagli asset della Release piu' recente.
+  # e si allega a una Release BOZZA: GigaMail-Setup-X.Y.Z.exe e latest.yml,
+  # che electron-updater legge dagli asset della Release piu' recente. La
+  # firma si fa dopo, a mano, con scripts/sign-release.ps1: la chiave sta in
+  # SimplySign e ogni firma chiede il codice dal telefono.
   installer:
     needs: build
+    if: github.event_name != 'release'
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:
@@ -107,8 +117,8 @@ jobs:
         # In dry run (workflow_dispatch) non c'e' un tag: si usa la versione di
         # pyproject.toml, cioe' quella che il tag DOVRA' avere.
         run: |
-          $tag = if ("${{ github.event_name }}" -eq "release") {
-            "${{ github.event.release.tag_name }}".TrimStart("v")
+          $tag = if ("${{ github.ref_type }}" -eq "tag") {
+            "${{ github.ref_name }}".TrimStart("v")
           } else {
             (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
           }
@@ -116,23 +126,41 @@ jobs:
           if (-not (Test-Path $exe)) { Get-ChildItem console/dist; throw "installer per $tag non trovato (tag e pyproject divergono?)" }
           if (-not (Test-Path console/dist/latest.yml)) { throw "latest.yml non generato: manca publish.provider=github?" }
           Write-Host "OK: $exe + latest.yml"
-      - name: Allega alla Release
-        if: github.event_name == 'release'
+      - name: Release bozza con l'installer non firmato
+        if: github.ref_type == 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.event.release.tag_name }}"
+          $tag = "${{ github.ref_name }}"
           # latest.yml punta a "GigaMail-Setup-X.Y.Z.exe" (spazi -> trattini): gli
           # asset devono chiamarsi cosi', altrimenti electron-updater non li trova
-          # (GitHub da solo trasformerebbe gli spazi in punti).
-          Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail Setup *" } | ForEach-Object {
+          # (GitHub da solo trasformerebbe gli spazi in punti). Il .blockmap non si
+          # allega: la firma cambia l'exe e lo renderebbe falso; senza, l'update
+          # scarica l'installer intero.
+          Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail Setup *.exe" } | ForEach-Object {
             Rename-Item $_.FullName ($_.Name -replace ' ', '-')
           }
-          $files = Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail-Setup-*" -or $_.Name -eq "latest.yml" } | ForEach-Object { $_.FullName }
+          $files = Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail-Setup-*.exe" -or $_.Name -eq "latest.yml" } | ForEach-Object { $_.FullName }
           $files | ForEach-Object { Write-Host "  allego $_" }
-          gh release upload $tag @files --clobber
+          # Note della Release: la sezione "## vX.Y.Z" del CHANGELOG.
+          $lines = Get-Content CHANGELOG.md
+          $start = ($lines | Select-String -Pattern "^## $([regex]::Escape($tag))\b").LineNumber
+          if (-not $start) { throw "CHANGELOG.md non ha la sezione ## $tag" }
+          $rest = $lines[$start..($lines.Count - 1)]
+          $end = ($rest | Select-String -Pattern '^## ' | Select-Object -First 1).LineNumber
+          $notes = if ($end) { $rest[0..($end - 2)] } else { $rest }
+          $notes -join "`n" | Set-Content -Encoding utf8 notes.md
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            $draft = gh release view $tag --json isDraft -q .isDraft
+            if ($draft -ne "true") { throw "La Release $tag e' gia' pubblicata: non si sostituiscono asset pubblici." }
+            gh release upload $tag @files --clobber
+          } else {
+            gh release create $tag @files --draft --verify-tag --title $tag --notes-file notes.md
+          }
           gh release view $tag --json assets -q '.assets[].name'
+          Write-Host "Bozza pronta. Ora sul PC con il certificato: scripts/sign-release.ps1 -Tag $tag"
       - name: Dry run — artifact al posto degli asset
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

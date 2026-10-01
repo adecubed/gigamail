@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The Windows installer is code-signed.** From this release
+  `GigaMail-Setup-X.Y.Z.exe` carries an Authenticode signature (Certum
+  Open Source Code Signing, issued to the maintainer by name), so Windows
+  shows a named publisher instead of "Unknown publisher". SmartScreen
+  may still warn on the first downloads until the certificate builds a
+  reputation. The release flow changed to make this possible: a `vX.Y.Z`
+  tag builds the installer into a draft Release, `scripts/sign-release.ps1`
+  signs it on the maintainer's machine, rewrites `sha512` and `size` in
+  `latest.yml` and publishes; PyPI follows on publish. The `.blockmap` is
+  no longer attached, so auto-update downloads the full installer.
 - **Linux can approve, with a local PIN typed in a terminal.** Without
   Windows Hello or Touch ID nothing could approve a send or a deletion
   except Telegram, which made the weakest channel the only one. Now
