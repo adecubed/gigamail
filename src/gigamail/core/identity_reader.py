@@ -233,8 +233,8 @@ def find_relevant_files(file_paths: List[str], query: str, max_files: int = 5) -
         return []
 
     # Due famiglie di token:
-    # - CODICI: sigle tipo "A.2.1", "B08", "a-12" — peso alto, confronto con
-    #   separatori normalizzati (a.2.1 == a21 == a_2_1)
+    # - CODICI: sigle tipo "A.8.1", "B08", "a-12" — peso alto, confronto con
+    #   separatori normalizzati (a.8.1 == a81 == a_8_1)
     # - PAROLE: >= 4 char, per evitare che "al"/"la" matchino dentro
     #   "balcone" o simili
     query_lower = query.lower()
@@ -290,7 +290,7 @@ def find_relevant_files(file_paths: List[str], query: str, max_files: int = 5) -
 
 
 def _norm_code(s: str) -> str:
-    """Normalizza un codice rimuovendo i separatori: 'a.2.1' -> 'a21'."""
+    """Normalizza un codice rimuovendo i separatori: 'a.8.1' -> 'a81'."""
     import re as _re
     return _re.sub(r'[^a-z0-9]', '', s.lower())
 
@@ -305,7 +305,7 @@ def _score_file(filename: str, tokens) -> float:
 
     score = 0.0
     for code in tokens.get('codes', []):
-        # confronto con separatori normalizzati: 'a21' trova 'A.2.1.pdf',
+        # confronto con separatori normalizzati: 'a81' trova 'A.8.1.pdf',
         # 'a_2_1.pdf', 'a-2-1 no balcone.pdf'
         if code and code in name_norm:
             score += 5.0
@@ -399,7 +399,7 @@ def list_all_files(file_paths: List[str]) -> List[Dict]:
 
 
 # Estensioni vere, per non scambiare per estensione l'ultimo pezzo di
-# un nome puntato (i codici appartamento: A.1.4, B.2.1...).
+# un nome puntato (i codici appartamento: A.7.4, B.8.1...).
 _ESTENSIONI = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.xlsm', '.csv',
                '.txt', '.md', '.rtf', '.odt', '.ods', '.ppt', '.pptx',
                '.png', '.jpg', '.jpeg', '.gif', '.webp', '.dwg', '.zip'}
@@ -419,9 +419,9 @@ def find_files_by_names(file_paths: List[str], names: List[str]) -> List[Dict]:
         if not name_clean:
             continue
         # Rimuovi l'estensione solo se e' DAVVERO un'estensione.
-        # os.path.splitext('B.1.3') -> ('B.1', '.3'): con i codici
+        # os.path.splitext('B.7.3') -> ('B.7', '.3'): con i codici
         # degli appartamenti l'ultimo pezzo non e' un'estensione, e
-        # 'B.1' come sottostringa pesca B.1.1, B.1.2, B.1.3, B.1.4 —
+        # 'B.7' come sottostringa pesca B.7.1, B.7.2, B.7.3, B.7.4 —
         # cioe' la scheda di un altro appartamento, in silenzio.
         radice, ext = os.path.splitext(name_clean)
         name_no_ext = radice if ext in _ESTENSIONI else name_clean

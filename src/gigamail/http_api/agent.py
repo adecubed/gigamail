@@ -105,7 +105,7 @@ def _slots_context(text: str, max_slots: int = 3) -> str:
 
 def _suggest_attachments(aid: Optional[int], text: str, folder: str = "") -> list:
     """Propone allegati dai file di conoscenza dell'account in base al testo
-    dell'istruzione/oggetto (es. 'manda la planimetria A.2.1'). La UI mostra
+    dell'istruzione/oggetto (es. 'manda la planimetria A.8.1'). La UI mostra
     i suggerimenti con checkbox: decide sempre l'utente."""
     if not aid or not (text or "").strip():
         return []

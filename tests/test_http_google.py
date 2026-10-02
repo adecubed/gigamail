@@ -58,7 +58,7 @@ def test_login_senza_client_id_risponde_503(client):
 
 
 def test_interruttore_del_calendario(client):
-    accounts.add_microsoft_account("MS", "mario@fingroup.it", "{}")
+    accounts.add_microsoft_account("MS", "mario@agenzia.example", "{}")
     accounts.save_google_identity("mario@example.com", "Mario", {"refresh_token": "rt"})
 
     assert client.get("/calendar/provider").json()["provider"] == "microsoft"

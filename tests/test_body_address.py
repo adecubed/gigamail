@@ -84,16 +84,16 @@ def test_anteprima_mostra_copia_e_allegati(tmp_path, monkeypatch):
     from gigamail.core import attachments as att
     reg = tmp_path / "schede"
     reg.mkdir()
-    (reg / "B.1.3.pdf").write_bytes(b"%PDF planimetria")
+    (reg / "B.7.3.pdf").write_bytes(b"%PDF planimetria")
     monkeypatch.setattr(att, "identity_paths", lambda aid: [str(reg)])
-    risolti, mancanti = att.resolve(2, ["B.1.3"])
+    risolti, mancanti = att.resolve(2, ["B.7.3"])
     assert mancanti == []
 
-    rule = _regola(cc=["info@fingroupspa.com"], attachments=["B.1.3"])
+    rule = _regola(cc=["ufficio@agenzia.example"], attachments=["B.7.3"])
     p = watcher._preview_for(rule, _msg(""), "corpo", "semi",
                              "pietro@example.net", risolti)
-    assert p["cc"] == ["info@fingroupspa.com"]
-    assert [a["name"] for a in p["attachments"]] == ["B.1.3.pdf"]
+    assert p["cc"] == ["ufficio@agenzia.example"]
+    assert [a["name"] for a in p["attachments"]] == ["B.7.3.pdf"]
     assert p["attachments"][0]["size_kb"] is not None
 
 
@@ -167,19 +167,19 @@ def test_il_battito_si_aggiorna_anche_dentro_il_giro():
     assert "self.heartbeat()" in corpo[max(0, i - 200):i]
 
 
-MODULO = ("Nome e cognome: Alice Colombo\r\n"
+MODULO = ("Nome e cognome: Laura Neri\r\n"
           "Telefono:       3330000000\r\n"
-          "Email:          alice.colombo@example.com\r\n\r\n"
-          "Messaggio\r\nSiamo interessati agli appartamenti di via Treviglio.")
+          "Email:          laura.neri@example.com\r\n\r\n"
+          "Messaggio\r\nSiamo interessati agli appartamenti di via Roma.")
 
 
 def test_modulo_del_sito_indirizzo_in_chiaro():
-    """Il 25/09 la richiesta di Alice dal sito e' rimasta senza risposta:
+    """Il 25/09 la richiesta di Laura dal sito e' rimasta senza risposta:
     il modulo scrive "Email: ..." in chiaro, senza mailto."""
-    m = {"subject": "Messaggio inviato dal sito di 20128 Milano",
+    m = {"subject": "Messaggio inviato dal sito di Residenze Milano",
          "body_text": MODULO}
-    assert (watcher.body_reply_address(m, "postmaster@20128milano.it")
-            == "alice.colombo@example.com")
+    assert (watcher.body_reply_address(m, "postmaster@vendite.example")
+            == "laura.neri@example.com")
 
 
 def test_il_mailto_vince_sul_campo_in_chiaro():

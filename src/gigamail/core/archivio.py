@@ -576,9 +576,9 @@ class ArchiveStore:
 def _espressione_fts(query: str) -> str:
     """Ogni parola della ricerca come prefisso, tutte obbligatorie.
 
-    Il prefisso e' il punto: "mediocasa" deve trovare
-    info@mediocasaimmobiliare.eu, che l'indice spezza nei pezzi
-    "info", "mediocasaimmobiliare", "eu"."""
+    Il prefisso e' il punto: "casaesempio" deve trovare
+    info@casaesempioimmobiliare.example, che l'indice spezza nei pezzi
+    "info", "casaesempioimmobiliare", "example"."""
     parole = re.findall(r"\w+", str(query or ""), flags=re.UNICODE)
     return " AND ".join(f'"{p}"*' for p in parole if p)
 

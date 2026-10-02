@@ -126,7 +126,7 @@ const MailView = (() => {
   }
 
   // Un tag HTML vero: nome noto seguito da attributi o dalla chiusura. Un
-  // indirizzo tra parentesi angolari (<info@20128milano.it>) non lo e'.
+  // indirizzo tra parentesi angolari (<info@vendite.example>) non lo e'.
   const TAG_HTML = /<\/?(html|head|body|div|p|br|span|table|tr|td|font|img|a|b|i|u|strong|em|ul|ol|li|h[1-6]|blockquote|center|style)(\s[^<>]*)?\/?>/i;
 
   /** Il corpo va mostrato come HTML? Conta il tipo dichiarato dal server;

@@ -17,7 +17,7 @@ from gigamail.core import availability, google_calendar
 def _evento_google(**over):
     ev = {
         "id": "abc123",
-        "summary": "Sopralluogo Via Treviglio",
+        "summary": "Sopralluogo Via Roma",
         "status": "confirmed",
         "location": "Milano",
         "description": "Portare le planimetrie",
@@ -33,7 +33,7 @@ def _evento_google(**over):
 def test_forma_graph_completa():
     g = google_calendar._to_graph(_evento_google())
     assert g["id"] == "abc123"
-    assert g["subject"] == "Sopralluogo Via Treviglio"
+    assert g["subject"] == "Sopralluogo Via Roma"
     assert g["location"]["displayName"] == "Milano"
     assert g["body"]["content"] == "Portare le planimetrie"
     assert g["attendees"][0]["emailAddress"]["address"] == "cliente@example.com"

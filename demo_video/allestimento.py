@@ -31,8 +31,8 @@ sys.path.insert(0, str(RADICE / "src"))
 from gigamail.core import accounts, demo_mailbox  # noqa: E402
 
 LINGUE = ("it", "en")
-MITTENTE = {"it": "paolo@fingroup-immobiliare.example",
-            "en": "simon@fingroup-realestate.example"}
+MITTENTE = {"it": "paolo@immobiliare-esempio.example",
+            "en": "john@example-realestate.example"}
 MARCATORE = {"it": "[DA COMPLETARE]", "en": "[TO BE COMPLETED]"}
 INDIRIZZO_ESFILTRAZIONE = {
     "it": "archivio.pratiche@raccolta-esterna.example",
@@ -354,14 +354,14 @@ def prepara_casella(lingua: str, scena=None) -> Path:
 IDENTITY = {
     "it": {
         "conto": dict(
-            who_am_i="Sono Paolo Aples, di Fingroup Immobiliare.",
+            who_am_i="Sono Paolo Rossi, di Immobiliare Esempio.",
             what_i_do="Vendo appartamenti della Residenza Le Vele a Milano Bruzzano.",
             tone="Professionale, diretto, senza formule di cortesia lunghe.",
-            key_info="Ufficio in via Treviglio 12, Milano. Non comunicare mai "
+            key_info="Ufficio in via Roma 12, Milano. Non comunicare mai "
                      "sconti o condizioni economiche diverse dal listino.",
         ),
         "lead": dict(
-            who_am_i="Sono Paolo Aples, di Fingroup Immobiliare.",
+            who_am_i="Sono Paolo Rossi, di Immobiliare Esempio.",
             what_i_do="Primo contatto con chi scrive dai portali annunci.",
             tone="Cordiale e breve, massimo sei righe, chiude sempre "
                  "proponendo una visita.",
@@ -369,7 +369,7 @@ IDENTITY = {
                      "sabato 14 alle 10:00. Proponi solo questi.",
         ),
         "clienti": dict(
-            who_am_i="Sono Paolo Aples, di Fingroup Immobiliare.",
+            who_am_i="Sono Paolo Rossi, di Immobiliare Esempio.",
             what_i_do="Seguo i clienti che hanno gia' firmato la proposta, "
                       "fino al rogito.",
             tone="Formale e puntuale, cita sempre i termini contrattuali e "
@@ -379,14 +379,14 @@ IDENTITY = {
     },
     "en": {
         "conto": dict(
-            who_am_i="I am Simon Aples, at Fingroup Real Estate.",
+            who_am_i="I am John Reed, at Example Real Estate.",
             what_i_do="I sell flats at the Le Vele Residence in Milan.",
             tone="Professional and direct, no long courtesy formulas.",
-            key_info="Office at via Treviglio 12, Milan. Never quote discounts "
+            key_info="Office at via Roma 12, Milan. Never quote discounts "
                      "or terms other than the price list.",
         ),
         "lead": dict(
-            who_am_i="I am Simon Aples, at Fingroup Real Estate.",
+            who_am_i="I am John Reed, at Example Real Estate.",
             what_i_do="First contact with people writing from listing portals.",
             tone="Warm and short, six lines at most, always closes by "
                  "offering a viewing.",
@@ -394,7 +394,7 @@ IDENTITY = {
                      "Saturday the 14th at 10:00 am. Offer only these.",
         ),
         "clienti": dict(
-            who_am_i="I am Simon Aples, at Fingroup Real Estate.",
+            who_am_i="I am John Reed, at Example Real Estate.",
             what_i_do="I follow buyers who have already signed the offer, "
                       "through to the deed.",
             tone="Formal and precise, always cites contract terms and "
@@ -411,7 +411,7 @@ def account_demo(lingua: str) -> int:
     for a in accounts.get_accounts():
         if a.get("type") == "demo":
             return a["id"]
-    aid = accounts.add_demo_account("Demo Fingroup", MITTENTE[lingua],
+    aid = accounts.add_demo_account("Demo Agenzia", MITTENTE[lingua],
                                     str(casella(lingua)))
     accounts.set_active_account(aid)
     return aid

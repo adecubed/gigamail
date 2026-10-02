@@ -11,8 +11,8 @@ def test_stringa_con_piu_indirizzi_non_e_un_destinatario():
     malformato invece di due destinatari, con l'invio che tornava success
     e "accepted: 1". Meta' della gente non riceveva niente e nessuno lo
     vedeva."""
-    assert split_addresses("info@fingroupspa.com, ops@fingroupspa.com") == [
-        "info@fingroupspa.com", "ops@fingroupspa.com"]
+    assert split_addresses("ufficio@agenzia.example, ops@agenzia.example") == [
+        "ufficio@agenzia.example", "ops@agenzia.example"]
     assert split_addresses("a@x.it; b@y.it") == ["a@x.it", "b@y.it"]
     assert split_addresses("Nome Cognome <b@y.it>") == ["b@y.it"]
     assert split_addresses(["a@x.it", "b@y.it"]) == ["a@x.it", "b@y.it"]
@@ -23,7 +23,7 @@ def test_stringa_con_piu_indirizzi_non_e_un_destinatario():
 def test_anteprima_e_busta_non_possono_divergere():
     """L'anteprima che l'umano approva elenca ESATTAMENTE gli indirizzi
     che finiranno in busta: stesso split, una funzione sola."""
-    to = "info@fingroupspa.com, ops@fingroupspa.com"
+    to = "ufficio@agenzia.example, ops@agenzia.example"
     d = policy.describe_recipients(to, cc=["c@z.it"], bcc=None)
     assert [r["address"] for r in d["recipients"]] == (
         split_addresses(to) + split_addresses(["c@z.it"]))

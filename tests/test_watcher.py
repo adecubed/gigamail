@@ -452,12 +452,12 @@ def test_risposta_normale_inoltra_copia_e_allegati_approvati(fake_world, monkeyp
                                                          tmp_path):
     from gigamail.core import attachments
 
-    document = tmp_path / "A.1.4.pdf"
+    document = tmp_path / "A.7.4.pdf"
     document.write_bytes(b"%PDF planimetria")
     monkeypatch.setattr(attachments, "identity_paths", lambda aid: [str(document)])
     _rule(cc=["ufficio@example.com"], attachments=[document.name])
     fake_world["unread"] = [_msg()]
-    fake_world["draft"] = "Buongiorno, in allegato la planimetria A.1.4."
+    fake_world["draft"] = "Buongiorno, in allegato la planimetria A.7.4."
     w = watcher_mod.Watcher()
     w.tick()
     request = policy.store().list_pending()[0]

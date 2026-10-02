@@ -65,8 +65,8 @@ def test_observer_senza_esempi_non_restituisce_risposte_vecchie(tmp_path, monkey
         conn.execute("CREATE TABLE interactions (account_id INT, original_draft"
                      " TEXT, final_text TEXT, instruction TEXT, sent_at TEXT)")
         conn.execute("INSERT INTO patterns VALUES (1,'preferred_word','cordialmente',5)")
-        conn.execute("INSERT INTO interactions VALUES (1,'x','- B.1.3: trilocale di "
-                     "80,43 mq','', '2026-09-27')")
+        conn.execute("INSERT INTO interactions VALUES (1,'x','- B.7.3: trilocale di "
+                     "78,50 mq','', '2026-09-27')")
     monkeypatch.setattr(observer, "find_similar_template", lambda *a, **kw: None)
     con = observer.get_context_for_prompt(1, includi_esempi=True)
     senza = observer.get_context_for_prompt(1, includi_esempi=False)
