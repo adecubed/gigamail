@@ -130,7 +130,7 @@ def test_conferma_ripetuta_non_tocca_levento(monkeypatch, cal):
     """Il 16/09 un "grazie, a domani" ha riscritto l'evento: titolo con
     l'indirizzo mail al posto del nome e luogo svuotato."""
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00",'
-                         '"con":"Lorenzo Moretti"}')
+                         '"con":"Andrea Gialli"}')
     appointments.dalla_mail(2, "Appuntamento", "venerdi alle 17:00",
                             "max@example.com", adesso=NOW)
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00"}')
@@ -140,7 +140,7 @@ def test_conferma_ripetuta_non_tocca_levento(monkeypatch, cal):
     assert cal.aggiornati == []
     riga = appointments.store().get(
         2, appointments.thread_key("Appuntamento", "max@example.com"))
-    assert riga["con"] == "Lorenzo Moretti"
+    assert riga["con"] == "Andrea Gialli"
 
 
 def test_spostamento_non_riscrive_titolo_ne_svuota_luogo(monkeypatch, cal):
@@ -158,37 +158,37 @@ def test_spostamento_non_riscrive_titolo_ne_svuota_luogo(monkeypatch, cal):
 
 def test_lindirizzo_dellannuncio_non_diventa_il_luogo(monkeypatch, cal):
     """Il 24/09 l'appuntamento in ufficio e' finito in agenda in Via
-    Treviglio 28, l'immobile dell'annuncio nell'oggetto: un cantiere."""
-    oggetto = ("Re: Nuovo messaggio di MARCO Bassi sul tuo immobile, "
-               "Trilocale in Via Treviglio, 28, Precotto, Milano")
+    Roma 10, l'immobile dell'annuncio nell'oggetto: un cantiere."""
+    oggetto = ("Re: Nuovo messaggio di MARCO Rossi sul tuo immobile, "
+               "Trilocale in Via Roma, 10, Centro, Milano")
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-15T10:30",'
-                         '"luogo":"Via Treviglio, 28, Precotto, Milano"}')
+                         '"luogo":"Via Roma, 10, Centro, Milano"}')
     appointments.dalla_mail(2, oggetto, "martedi alle 10.30 va bene",
-                            "ns@example.com", adesso=NOW)
+                            "mr@example.com", adesso=NOW)
     assert cal.creati[0]["location"] == ""
 
 
 def test_il_luogo_detto_nel_messaggio_resta(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-15T10:30",'
-                         '"luogo":"Viale Tunisia 37, Milano"}')
-    appointments.dalla_mail(2, "Trilocale in Via Treviglio, 28",
-                            "la aspettiamo in Viale Tunisia 37 martedi alle 10.30",
-                            "ns@example.com", adesso=NOW)
-    assert cal.creati[0]["location"] == "Viale Tunisia 37, Milano"
+                         '"luogo":"Corso Italia 5, Milano"}')
+    appointments.dalla_mail(2, "Trilocale in Via Roma, 10",
+                            "la aspettiamo in Corso Italia 5 martedi alle 10.30",
+                            "mr@example.com", adesso=NOW)
+    assert cal.creati[0]["location"] == "Corso Italia 5, Milano"
 
 
 def test_il_titolo_usa_il_nome_del_mittente(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
-    appointments.sweep(2, [{"id": "n1", "subject": "Re: Via Treviglio",
+    appointments.sweep(2, [{"id": "n1", "subject": "Re: Via Roma",
                             "body_text": "va bene lunedi alle 17:00",
-                            "from": {"emailAddress": {"address": "rg@example.com",
-                                                      "name": "Roberto Sala"}}}],
+                            "from": {"emailAddress": {"address": "lb@example.com",
+                                                      "name": "Luca Bianchi"}}}],
                        adesso=NOW)
-    assert cal.creati[0]["subject"].startswith("Appuntamento Roberto Sala")
-    assert "rg@example.com" not in cal.creati[0]["subject"]
+    assert cal.creati[0]["subject"].startswith("Appuntamento Luca Bianchi")
+    assert "lb@example.com" not in cal.creati[0]["subject"]
 
 
 def test_disdetta_toglie_levento(monkeypatch, cal):
@@ -222,9 +222,9 @@ def test_disdetta_di_una_proposta_non_chiama_il_calendario(monkeypatch, cal):
 def test_due_clienti_stesso_oggetto_non_si_sovrascrivono(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-11T17:00",'
                          '"fine":"2026-09-11T18:00"}')
-    appointments.dalla_mail(2, "Via Treviglio 28", "venerdi alle 17:00?",
+    appointments.dalla_mail(2, "Via Roma 10", "venerdi alle 17:00?",
                             "uno@example.com", adesso=NOW)
-    appointments.dalla_mail(2, "Via Treviglio 28", "venerdi alle 17:00?",
+    appointments.dalla_mail(2, "Via Roma 10", "venerdi alle 17:00?",
                             "due@example.com", adesso=NOW)
     assert len(cal.creati) == 2
 
@@ -375,8 +375,8 @@ def test_sweep_scarica_il_testo_quando_la_lista_non_lo_porta(monkeypatch, cal):
     """IMAP non porta il corpo nella lista: la conferma di un cliente veniva
     giudicata dal solo oggetto e scartata senza traccia."""
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
     scaricati = []
 
@@ -384,7 +384,7 @@ def test_sweep_scarica_il_testo_quando_la_lista_non_lo_porta(monkeypatch, cal):
         scaricati.append(m["id"])
         return "va bene lunedi alle 17:00"
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com")],
+        2, [_risposta("Re: Via Roma", "lb@example.com")],
         adesso=NOW, corpo_di=_corpo_di)
     assert scaricati == ["10"]
     assert n == 1 and len(cal.creati) == 1
@@ -394,11 +394,11 @@ def test_sweep_avvisa_anche_se_il_calendario_non_cambia(monkeypatch, cal):
     """Il cliente sceglie un orario e aspetta la conferma: e' proprio il
     caso in cui un umano deve saperlo, anche se l'agenda resta com'e'."""
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T09:30"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 09:30?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 09:30?",
+                            "lb@example.com", adesso=NOW)
     avvisi = []
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "per me va bene lunedi alle 9:30, attendo conferma")],
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
@@ -408,14 +408,14 @@ def test_sweep_avvisa_anche_se_il_calendario_non_cambia(monkeypatch, cal):
 
 def test_sweep_non_rilegge_lo_stesso_messaggio(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T09:30"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 09:30?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 09:30?",
+                            "lb@example.com", adesso=NOW)
     chiamate, avvisi = [], []
     monkeypatch.setattr(
         appointments.agent_bridge, "run",
         lambda p, timeout=None: chiamate.append(p)
         or '{"stato":"proposto","inizio":"2026-09-14T09:30"}')
-    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "alle 9:30 ok")]
+    msg = [_risposta("Re: Via Roma", "lb@example.com", "alle 9:30 ok")]
     for _ in range(3):
         appointments.sweep(2, msg, adesso=NOW,
                            avvisa=lambda *a: avvisi.append(a))
@@ -428,11 +428,11 @@ def test_calendario_giu_un_avviso_poi_silenzio_poi_la_resa(monkeypatch, cal):
     Telegram ogni volta, per sempre. Ora: un avviso al primo guasto,
     tentativi in silenzio, e dopo _TENTATIVI_MAX la resa, detta una volta."""
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
     cal.fallisce = True
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
-    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    msg = [_risposta("Re: Via Roma", "lb@example.com", "va bene lunedi alle 17:00")]
     avvisi = []
     for _ in range(appointments._TENTATIVI_MAX + 3):
         appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
@@ -445,11 +445,11 @@ def test_calendario_giu_un_avviso_poi_silenzio_poi_la_resa(monkeypatch, cal):
 
 def test_calendario_che_torna_inserisce_al_giro_dopo(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
     cal.fallisce = True
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
-    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    msg = [_risposta("Re: Via Roma", "lb@example.com", "va bene lunedi alle 17:00")]
     appointments.sweep(2, msg, adesso=NOW)
     cal.fallisce = False
     assert appointments.sweep(2, msg, adesso=NOW) == 1
@@ -458,11 +458,11 @@ def test_calendario_che_torna_inserisce_al_giro_dopo(monkeypatch, cal):
 
 def test_evento_senza_id_non_si_ricrea_a_ogni_giro(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
     cal.senza_id = True
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-14T17:00"}')
-    msg = [_risposta("Re: Via Treviglio", "rg@example.com", "va bene lunedi alle 17:00")]
+    msg = [_risposta("Re: Via Roma", "lb@example.com", "va bene lunedi alle 17:00")]
     avvisi = []
     for _ in range(3):
         appointments.sweep(2, msg, adesso=NOW, avvisa=lambda *a: avvisi.append(a))
@@ -472,14 +472,14 @@ def test_evento_senza_id_non_si_ricrea_a_ogni_giro(monkeypatch, cal):
 
 def test_testo_illeggibile_si_arrende_e_avvisa(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
 
     def _rotto(m):
         raise RuntimeError("IMAP giu'")
 
     avvisi = []
-    msg = [_risposta("Re: Via Treviglio", "rg@example.com")]
+    msg = [_risposta("Re: Via Roma", "lb@example.com")]
     for _ in range(appointments._TENTATIVI_MAX + 2):
         appointments.sweep(2, msg, adesso=NOW, corpo_di=_rotto,
                            avvisa=lambda *a: avvisi.append(a))
@@ -670,11 +670,11 @@ def test_risposta_senza_orari_a_una_regola_arriva_comunque(monkeypatch, cal):
 
 def test_segui_non_declassa_una_proposta(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-14T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
-    appointments.segui(2, "Via Treviglio", "rg@example.com")
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
+    appointments.segui(2, "Via Roma", "lb@example.com")
     riga = appointments.store().get(
-        2, appointments.thread_key("Via Treviglio", "rg@example.com"))
+        2, appointments.thread_key("Via Roma", "lb@example.com"))
     assert riga["stato"] == "proposto"
 
 
@@ -692,20 +692,20 @@ def test_sweep_ignora_la_mail_a_cui_abbiamo_risposto(monkeypatch, cal):
 
 
 def test_thread_key_indipendente_da_nome_e_maiuscole():
-    assert (appointments.thread_key("Re: Via Treviglio",
+    assert (appointments.thread_key("Re: Via Roma",
                                     "Mario <M@Example.com>")
-            == appointments.thread_key("Via Treviglio", "m@example.com"))
+            == appointments.thread_key("Via Roma", "m@example.com"))
 
 
 def test_avviso_senza_il_nostro_messaggio_citato():
-    riga = {"thread_key": "rg@example.com|via treviglio"}
-    m = _risposta("Re: Via Treviglio", "rg@example.com", nome="Roberto")
+    riga = {"thread_key": "lb@example.com|via roma"}
+    m = _risposta("Re: Via Roma", "lb@example.com", nome="Luca")
     corpo = ("Per l'appuntamento va bene lunedi alle 9:30. Il giorno sab 12 "
              "set 2026 alle 16:36 info@x.it ha scritto: Gentile Sig. Rossi")
     testo = appointments.testo_avviso(
         riga, m, corpo, {"stato": "proposto", "inizio": "2026-09-14T09:30"},
         None)
-    assert testo.startswith("Roberto:")
+    assert testo.startswith("Luca:")
     assert "va bene lunedi alle 9:30" in testo
     assert "Gentile" not in testo
     assert "ha risposto" not in testo and "Oggetto" not in testo
@@ -772,24 +772,24 @@ def test_invio_fallito_non_mette_in_ascolto(monkeypatch):
 
 def _proposta_aperta(monkeypatch):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-15T17:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "martedi o giovedi alle 17:00?",
-                            "rg@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "martedi o giovedi alle 17:00?",
+                            "lb@example.com", adesso=NOW)
 
 
 def test_orario_scelto_e_libero_entra_in_calendario(monkeypatch, cal):
     _proposta_aperta(monkeypatch)
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
-                         '"scelta_unica":true,"accetta":true,"con":"Roberto Sala"}')
+                         '"scelta_unica":true,"accetta":true,"con":"Luca Bianchi"}')
     avvisi = []
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "Mi rendo disponibile giovedi 17 alle 17:00",
-                      nome="Roberto Sala")],
+                      nome="Luca Bianchi")],
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 1
     assert cal.creati[0]["start"] == "2026-09-17T17:00"
     testo = appointments.testo_avviso(*avvisi[0])
-    assert testo.startswith("Roberto Sala:")
+    assert testo.startswith("Luca Bianchi:")
     assert "inserito in calendario" in testo
 
 
@@ -804,7 +804,7 @@ def test_orario_scelto_ma_occupato_non_entra(monkeypatch, cal):
                          '"scelta_unica":true,"accetta":true}')
     avvisi = []
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "giovedi 17 alle 17:00")],
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
@@ -819,7 +819,7 @@ def test_orario_nuovo_chiesto_dal_cliente_non_entra(monkeypatch, cal):
                          '"scelta_unica":true,"accetta":false}')
     avvisi = []
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "Potrei martedi 15 alle ore 10.30: sarebbe possibile?")],
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
@@ -832,7 +832,7 @@ def test_senza_accetta_non_si_inserisce(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-17T17:00",'
                          '"scelta_unica":true}')
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "giovedi 17 alle 17:00")], adesso=NOW)
     assert n == 0 and cal.creati == []
 
@@ -842,7 +842,7 @@ def test_piu_orari_non_entrano_in_calendario(monkeypatch, cal):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-15T17:00",'
                          '"scelta_unica":false}')
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "martedi o giovedi alle 17:00")], adesso=NOW)
     assert n == 0 and cal.creati == []
 
@@ -855,7 +855,7 @@ def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
                          '"scelta_unica":true,"accetta":true}')
     avvisi = []
     n = appointments.sweep(
-        2, [_risposta("Re: Via Treviglio", "rg@example.com",
+        2, [_risposta("Re: Via Roma", "lb@example.com",
                       "giovedi 17 alle 17:00")],
         adesso=NOW, avvisa=lambda *a: avvisi.append(a))
     assert n == 0 and cal.creati == []
@@ -868,71 +868,71 @@ def test_calendario_illeggibile_non_inserisce(monkeypatch, cal):
 def nostri(monkeypatch):
     from gigamail.core import accounts
     monkeypatch.setattr(accounts, "get_accounts",
-                        lambda: [{"id": 2, "name": "20128", "email": "info@20128milano.it"},
-                                 {"id": 5, "name": "Paolo Conti", "email": "s@msn.com"}])
+                        lambda: [{"id": 2, "name": "Residenze", "email": "info@vendite.example"},
+                                 {"id": 5, "name": "Paolo Conti", "email": "paolo.conti@example.org"}])
     monkeypatch.setattr(accounts, "get_identity",
-                        lambda aid: {"who_am_i": "ufficio vendite 20128 milano"})
+                        lambda aid: {"who_am_i": "ufficio vendite residenze milano"})
 
 
 def test_riconosce_i_nomi_nostri(nostri):
     assert appointments._e_nostro("Ufficio Vendite")
     assert appointments._e_nostro("Paolo Conti")
     assert appointments._e_nostro("Segreteria")
-    assert not appointments._e_nostro("Giulia Galli")
+    assert not appointments._e_nostro("Anna Verdi")
     assert not appointments._e_nostro("")
 
 
 def test_la_nostra_conferma_non_da_il_titolo(monkeypatch, cal, nostri):
     """Il 22/09 la conferma firmata "Ufficio Vendite" ha intitolato
-    all'ufficio l'appuntamento di Giulia Galli."""
+    all'ufficio l'appuntamento di Anna Verdi."""
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
                          '"con":"Ufficio Vendite"}')
-    appointments.dalla_mail(2, "Re: Nuovo messaggio di Giulia",
+    appointments.dalla_mail(2, "Re: Nuovo messaggio di Anna",
                             "Le confermo mercoledi 30 alle 18:00. Ufficio Vendite",
-                            "giulia.galli@example.com", adesso=NOW)
+                            "anna.verdi@example.com", adesso=NOW)
     titolo = cal.creati[0]["subject"]
     assert "Ufficio Vendite" not in titolo
-    assert titolo.startswith("Appuntamento giulia.galli@example.com")
+    assert titolo.startswith("Appuntamento anna.verdi@example.com")
 
 
 def test_la_replica_del_cliente_porta_il_nome_nel_titolo(monkeypatch, cal, nostri):
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
                          '"con":"Ufficio Vendite"}')
-    appointments.dalla_mail(2, "Re: Nuovo messaggio di Giulia",
+    appointments.dalla_mail(2, "Re: Nuovo messaggio di Anna",
                             "Le confermo mercoledi 30 alle 18:00",
-                            "giulia.galli@example.com", adesso=NOW)
-    appointments.sweep(2, [_risposta("Re: Nuovo messaggio di Giulia",
-                                     "giulia.galli@example.com",
+                            "anna.verdi@example.com", adesso=NOW)
+    appointments.sweep(2, [_risposta("Re: Nuovo messaggio di Anna",
+                                     "anna.verdi@example.com",
                                      "Perfetto, a mercoledi 30/09 ore 18:00",
-                                     nome="Giulia Galli")], adesso=NOW)
+                                     nome="Anna Verdi")], adesso=NOW)
     assert len(cal.creati) == 1
     assert cal.aggiornati == [{"id": "ev1", "subject":
-                               "Appuntamento Giulia Galli — Nuovo messaggio di Giulia"}]
+                               "Appuntamento Anna Verdi — Nuovo messaggio di Anna"}]
     riga = appointments.store().get(2, appointments.thread_key(
-        "Nuovo messaggio di Giulia", "giulia.galli@example.com"))
-    assert riga["con"] == "Giulia Galli"
+        "Nuovo messaggio di Anna", "anna.verdi@example.com"))
+    assert riga["con"] == "Anna Verdi"
 
 
 def test_il_nome_del_mittente_vince_sulla_firma_citata(monkeypatch, cal, nostri):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-30T18:00"}')
-    appointments.dalla_mail(2, "Via Treviglio", "mercoledi 30 alle 18:00?",
-                            "ar@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "mercoledi 30 alle 18:00?",
+                            "av@example.com", adesso=NOW)
     _agente(monkeypatch, '{"stato":"confermato","inizio":"2026-09-30T18:00",'
                          '"con":"Ufficio Vendite"}')
-    appointments.sweep(2, [_risposta("Re: Via Treviglio", "ar@example.com",
+    appointments.sweep(2, [_risposta("Re: Via Roma", "av@example.com",
                                      "Perfetto, a mercoledi alle 18:00",
-                                     nome="Giulia Galli")], adesso=NOW)
-    assert cal.creati[0]["subject"].startswith("Appuntamento Giulia Galli")
+                                     nome="Anna Verdi")], adesso=NOW)
+    assert cal.creati[0]["subject"].startswith("Appuntamento Anna Verdi")
 
 
 def test_la_proposta_non_registra_il_nostro_nome(monkeypatch, cal, nostri):
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-21T17:00",'
                          '"con":"Ufficio Vendite"}')
-    appointments.dalla_mail(2, "Via Treviglio", "lunedi alle 17:00?",
-                            "mb@example.com", adesso=NOW)
+    appointments.dalla_mail(2, "Via Roma", "lunedi alle 17:00?",
+                            "pn@example.com", adesso=NOW)
     riga = appointments.store().get(2, appointments.thread_key(
-        "Via Treviglio", "mb@example.com"))
-    assert riga["con"] == "mb@example.com"
+        "Via Roma", "pn@example.com"))
+    assert riga["con"] == "pn@example.com"
 
 
 def test_il_prompt_chiede_la_persona_esterna():

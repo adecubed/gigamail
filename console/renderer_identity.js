@@ -117,7 +117,7 @@ async function openIdentityModal(accountId, accountName) {
       <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
         <div>
           <label class="field-label">${T('who_you_are','CHI SEI')}</label>
-          <input id="idWhoAmI" type="text" placeholder="${T('who_account_ph','Es: Ufficio Vendite Progetto 20128 Milano')}"
+          <input id="idWhoAmI" type="text" placeholder="${T('who_account_ph','Es: Ufficio Vendite Progetto Residenze Milano')}"
             value="${esc(identity.who_am_i||'')}"
             style="width:100%;margin-top:5px;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box;"/>
         </div>
@@ -135,7 +135,7 @@ async function openIdentityModal(accountId, accountName) {
         </div>
         <div>
           <label class="field-label">${T('key_info','INFORMAZIONI CHIAVE')} <span style="font-weight:400;color:#8A8280">${T('key_info_sub','(prezzi, orari, contatti...)')}</span></label>
-          <textarea id="idKeyInfo" rows="5" placeholder="Es: Bilocali 280-320k€, trilocali 370-420k€. Tel: 02.654235."
+          <textarea id="idKeyInfo" rows="5" placeholder="Es: Bilocali 250-300k€, trilocali 350-400k€. Tel: 02.123456."
             style="width:100%;margin-top:5px;resize:vertical;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit;">${esc(identity.key_info||'')}</textarea>
         </div>
         <div>
@@ -155,7 +155,7 @@ async function openIdentityModal(accountId, accountName) {
             <input id="idFilePickerInput" type="file" multiple accept=".txt,.md,.csv,.xlsx,.xls,.pdf,.docx" style="display:none" webkitdirectory="false"/>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="idFileInput" type="text" placeholder="C:\\Progetti\\20128\\listino.txt o cartella"
+            <input id="idFileInput" type="text" placeholder="C:\\Progetti\\Residenze\\listino.txt o cartella"
               style="flex:1;min-width:200px;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:8px 10px;font-size:12px;outline:none;font-family:var(--mono);"/>
             <button class="btn btn-secondary" id="btnPickFolder" title="Seleziona cartella">📁 ${T('folder_word','CARTELLA')}</button>
             <button class="btn btn-secondary" id="btnAddFilePath">+ FILE</button>

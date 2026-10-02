@@ -56,7 +56,7 @@ def zoom_finto(monkeypatch):
 
 def test_crea_riunione_con_token_e_fuso(zoom_finto):
     chiamate, _ = zoom_finto
-    r = zoom.crea_riunione("Video call con Lorenzo", "2026-09-16T16:00", 60)
+    r = zoom.crea_riunione("Video call con Giorgio", "2026-09-16T16:00", 60)
     zoom.crea_riunione("Seconda", "2026-09-17T16:00", 30)
     assert r == {"id": "123", "join_url": "https://zoom.us/j/123",
                  "password": "abc"}
@@ -132,7 +132,7 @@ def mondo(monkeypatch, tmp_path, zoom_finto):
     monkeypatch.setattr(
         video_call.policy, "notify_approval_requested",
         lambda rid, tool, preview, **kw: notifiche.append((rid, preview, kw)) or True)
-    monkeypatch.setattr(video_call, "_cc", lambda aid: ["info@fingroupspa.com"])
+    monkeypatch.setattr(video_call, "_cc", lambda aid: ["ufficio@agenzia.example"])
     monkeypatch.setattr(video_call, "_firma", lambda aid: "Ufficio Vendite")
     monkeypatch.setattr(video_call.telegram_channel, "channel", lambda: None)
     yield cal, notifiche, zoom_finto[0]
@@ -144,10 +144,10 @@ def _agente(monkeypatch, risposta):
                         lambda prompt, timeout=None: risposta)
 
 
-def _msg(mid, corpo, subject="Re: Bilocali Via Treviglio"):
+def _msg(mid, corpo, subject="Re: Bilocali Via Roma"):
     return {"id": mid, "subject": subject, "body_text": corpo,
-            "from": {"emailAddress": {"address": "lk@example.com",
-                                      "name": "Lorenzo K"}}}
+            "from": {"emailAddress": {"address": "gb@example.com",
+                                      "name": "Giorgio B"}}}
 
 
 def _conferma(monkeypatch, mid="zoom-1", inizio="2026-09-16T16:00"):
@@ -161,7 +161,7 @@ def _conferma(monkeypatch, mid="zoom-1", inizio="2026-09-16T16:00"):
 
 def test_video_call_confermata_crea_riunione_e_mail_in_approvazione(monkeypatch, mondo):
     cal, notifiche, _ = mondo
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     n, avvisi = _conferma(monkeypatch)
     assert n == 1 and len(cal.creati) == 1
     assert cal.aggiornati[-1]["location"] == "https://zoom.us/j/123"
@@ -169,11 +169,11 @@ def test_video_call_confermata_crea_riunione_e_mail_in_approvazione(monkeypatch,
     rid, preview, kw = notifiche[0]
     rec = policy.store().get(rid)
     assert rec["status"] == policy.PENDING, "il link non parte senza approvazione"
-    assert rec["args"]["to"] == "lk@example.com"
-    assert rec["args"]["cc"] == ["info@fingroupspa.com"]
+    assert rec["args"]["to"] == "gb@example.com"
+    assert rec["args"]["cc"] == ["ufficio@agenzia.example"]
     assert "https://zoom.us/j/123" in rec["args"]["body"]
     assert "Codice d'accesso: abc" in rec["args"]["body"]
-    assert rec["args"]["body"].startswith("Gentile Lorenzo K,")
+    assert rec["args"]["body"].startswith("Gentile Giorgio B,")
 
     riga = rules_mod.store().find_by_request(rid)
     assert riga["rule_id"] == video_call.RULE_ID
@@ -185,7 +185,7 @@ def test_video_call_confermata_crea_riunione_e_mail_in_approvazione(monkeypatch,
 
 def test_senza_video_nessuna_riunione(monkeypatch, mondo):
     cal, notifiche, chiamate = mondo
-    appointments.segui(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segui(2, "Bilocali Via Roma", "gb@example.com")
     n, _ = _conferma(monkeypatch)
     assert n == 1 and len(cal.creati) == 1
     assert notifiche == []
@@ -195,7 +195,7 @@ def test_senza_video_nessuna_riunione(monkeypatch, mondo):
 def test_zoom_non_collegato_lo_dice_e_non_chiede_nulla(monkeypatch, mondo):
     cal, notifiche, _ = mondo
     monkeypatch.setattr(zoom, "config", lambda: None)
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     n, avvisi = _conferma(monkeypatch)
     assert n == 1 and len(cal.creati) == 1
     assert notifiche == []
@@ -204,7 +204,7 @@ def test_zoom_non_collegato_lo_dice_e_non_chiede_nulla(monkeypatch, mondo):
 
 def test_nuovo_orario_sposta_la_riunione_senza_altra_mail(monkeypatch, mondo):
     cal, notifiche, chiamate = mondo
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     _conferma(monkeypatch)
     _, avvisi = _conferma(monkeypatch, mid="zoom-2", inizio="2026-09-17T16:00")
     assert [c for c in chiamate if c[0] == "PATCH" and c[1] == "/meetings/123"]
@@ -214,7 +214,7 @@ def test_nuovo_orario_sposta_la_riunione_senza_altra_mail(monkeypatch, mondo):
 
 def test_disdetta_cancella_la_riunione(monkeypatch, mondo):
     cal, _, chiamate = mondo
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     _conferma(monkeypatch)
     _agente(monkeypatch, '{"stato":"disdetto"}')
     appointments.sweep(2, [_msg("zoom-3", "mi spiace, devo annullare")],
@@ -225,12 +225,12 @@ def test_disdetta_cancella_la_riunione(monkeypatch, mondo):
 
 def test_un_aggiornamento_non_perde_il_segno_video(monkeypatch, tmp_path):
     appointments.set_store(appointments.AppointmentStore(tmp_path / "c.db"))
-    appointments.segna_video(2, "Bilocali", "lk@example.com")
+    appointments.segna_video(2, "Bilocali", "gb@example.com")
     _agente(monkeypatch, '{"stato":"proposto","inizio":"2026-09-16T16:00"}')
     appointments.dalla_mail(2, "Re: Bilocali", "domani alle 16:00?",
-                            "lk@example.com", adesso=NOW)
+                            "gb@example.com", adesso=NOW)
     riga = appointments.store().get(
-        2, appointments.thread_key("Bilocali", "lk@example.com"))
+        2, appointments.thread_key("Bilocali", "gb@example.com"))
     assert riga["stato"] == "proposto" and riga["video"] == 1
     appointments.set_store(None)
 
@@ -248,14 +248,14 @@ def test_invio_nuovo_verso_esterni_in_ascolto(monkeypatch, tmp_path, appointment
     monkeypatch.setattr(mail_router, "_account", lambda aid=None: {"id": 2})
     monkeypatch.setattr(appointments, "dalla_mail_async", lambda *a: False)
     monkeypatch.setattr(appointments, "_propri", lambda: (
-        {"owner@example.com"}, {"fingroupspa.com"}))
+        {"owner@example.com"}, {"agenzia.example"}))
     mail_router.send_message(
         account_id=2,
-        to="Lorenzo <LM@example.net>, info@fingroupspa.com, "
-           "owner@example.com, cliente@msn.com",
+        to="Franco <FB@example.net>, ufficio@agenzia.example, "
+           "owner@example.com, cliente@example.org",
         subject="Bilocali", body="ci faccia sapere quando fissare una video call")
     righe = appointments.store().aperti(2)
-    assert sorted(r["con"] for r in righe) == ["cliente@msn.com", "lm@example.net"]
+    assert sorted(r["con"] for r in righe) == ["cliente@example.org", "fb@example.net"]
     assert all(r["video"] == 1 for r in righe)
     appointments.set_store(None)
 

@@ -12,7 +12,7 @@ from gigamail import watcher as watcher_mod
 from gigamail.core import mail_router, telegram_channel
 from gigamail.core import rules as rules_mod
 
-CHAT = 1484306713
+CHAT = 123456789
 DMARC_PASS = {"authentication-results": ["mx; dmarc=pass header.from=fidato.it"]}
 
 
@@ -333,17 +333,17 @@ def test_su_telegram_si_vede_la_mail_intera():
     finisce ad approvare una mail di cui si e' letto solo l'oggetto."""
     from gigamail import policy
     preview = {
-        "from": "info@20128milano.it", "to": "sam@partner.example",
-        "cc": ["info@fingroupspa.com"], "subject": "Re: Appuntamento",
-        "attachments": [{"name": "B.1.3.pdf"}],
+        "from": "info@vendite.example", "to": "sam@partner.example",
+        "cc": ["ufficio@agenzia.example"], "subject": "Re: Appuntamento",
+        "attachments": [{"name": "B.7.3.pdf"}],
         "body": "Gentile Sig. Sam,\n\ndisponibilita' attuale: ...\n\nCordiali saluti",
     }
     t = policy.full_preview_text("send_mail", preview)
-    assert "Da: info@20128milano.it" in t
+    assert "Da: info@vendite.example" in t
     assert "A: sam@partner.example" in t
-    assert "Cc: info@fingroupspa.com" in t
+    assert "Cc: ufficio@agenzia.example" in t
     assert "Oggetto: Re: Appuntamento" in t
-    assert "B.1.3.pdf" in t
+    assert "B.7.3.pdf" in t
     assert "Gentile Sig. Sam," in t and "Cordiali saluti" in t
 
 

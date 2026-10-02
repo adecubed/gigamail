@@ -4,7 +4,7 @@
 """Che cosa ha chiesto il cliente, e che cosa gli stiamo rispondendo.
 
 Il 27 settembre 2026 un cliente ha scritto per un BILOCALE e si e' visto
-rispondere con tre trilocali da 379.000 euro in su, planimetrie comprese.
+rispondere con tre trilocali da 365.000 euro in su, planimetrie comprese.
 Non era un guasto degli allegati: gli allegati seguivano fedelmente il
 testo. Era il testo a rispondere alla domanda sbagliata.
 
@@ -30,8 +30,8 @@ TIPOLOGIE = ("monolocale", "bilocale", "trilocale", "quadrilocale",
 _TIPOLOGIA = re.compile("|".join(TIPOLOGIE), re.IGNORECASE)
 
 # Le righe con cui una bozza elenca le soluzioni proposte:
-#   "- B.1.3: trilocale di 80,43 mq con balcone..."
-#   "- A.3.2 quadrilocale di 103,26 mq"
+#   "- B.7.3: trilocale di 78,50 mq con balcone..."
+#   "- A.9.2 quadrilocale di 100,00 mq"
 _RIGA_ELENCO = re.compile(
     r"[-*•]?\s*[AB]\.[0-9]\.[0-9]\s*[:\-]?\s*(" + "|".join(TIPOLOGIE) + r")",
     re.IGNORECASE)
@@ -42,7 +42,7 @@ def chiesta(subject: str = "", body: str = "") -> Optional[str]:
 
     L'oggetto ha la precedenza: negli avvisi dei portali riporta il
     titolo dell'annuncio ("Nuovo messaggio di X sul tuo immobile,
-    Bilocale in Via Treviglio, 28"), cioe' l'immobile che la persona
+    Bilocale in Via Roma, 10"), cioe' l'immobile che la persona
     stava guardando davvero. Nel corpo la parola puo' comparire dentro
     una citazione del nostro messaggio precedente."""
     for testo in (subject, body):

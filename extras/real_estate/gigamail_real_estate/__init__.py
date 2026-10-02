@@ -11,7 +11,7 @@ che valgono solo per chi vende case:
     dell'annuncio, messa nel prompt come vincolo e verificata sulla bozza:
     se l'agente propone un'altra tipologia, la bozza si riscrive una volta
     e poi si ferma;
-  - i CODICI delle unita' (A.3.2, B.1.4) citati nel testo, che decidono
+  - i CODICI delle unita' (A.9.2, B.7.4) citati nel testo, che decidono
     quali schede e planimetrie si allegano.
 
 Si installa accanto a gigamail e si accende esplicitamente:
@@ -28,7 +28,7 @@ from . import tipologie
 
 __all__ = ["RealEstate", "tipologie"]
 
-# I codici delle unita' come compaiono nel testo: A.3.2, B.1.4.
+# I codici delle unita' come compaiono nel testo: A.9.2, B.7.4.
 # Sono l'unico pezzo di corpo che si puo' leggere con una regola fissa
 # senza rischiare: o il codice c'e' scritto, o non c'e'.
 _CODICE = re.compile(r"\b([AB]\.[0-9]\.[0-9])\b")

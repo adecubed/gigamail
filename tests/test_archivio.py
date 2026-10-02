@@ -13,11 +13,11 @@ import pytest
 from gigamail.core import archivio, archivio_sync, outlook_import
 
 
-def _mime(mid="<abc@mediocasa>", da="Mediocasa <info@mediocasaimmobiliare.eu>",
-          a="conti@fingroupspa.com", cc="luca.ferri@example.org",
-          oggetto="Utenze e Iban Mediocasa - immobile in Seveso",
+def _mime(mid="<abc@casaesempio>", da="Casaesempio <info@casaesempioimmobiliare.example>",
+          a="conti@agenzia.example", cc="paolo.verdi@example.org",
+          oggetto="Utenze e Iban Casaesempio - immobile in Monza",
           corpo="Allego le ultime due bollette della proprietà di gas e luce.",
-          allegato=("EE00105559_2026_2026.pdf", b"%PDF-1.4 bolletta luce"),
+          allegato=("EE00123456_2026_2026.pdf", b"%PDF-1.4 bolletta luce"),
           data="Wed, 28 Jan 2026 15:13:00 +0100") -> bytes:
     m = EmailMessage()
     if mid:
@@ -44,7 +44,7 @@ def st(tmp_path):
 
 def test_la_ricerca_trova_il_dominio_per_prefisso(st):
     st.salva(1, _mime())
-    trovate = st.cerca(1, "mediocasa")
+    trovate = st.cerca(1, "casaesempio")
     assert len(trovate) == 1
     assert trovate[0]["subject"].startswith("Utenze e Iban")
     assert trovate[0]["id"].startswith(archivio.PREFISSO_ID)
@@ -52,11 +52,11 @@ def test_la_ricerca_trova_il_dominio_per_prefisso(st):
 
 def test_la_ricerca_guarda_cc_testo_e_nomi_degli_allegati(st):
     st.salva(1, _mime())
-    assert st.cerca(1, "ferri")                 # in copia
+    assert st.cerca(1, "verdi")                 # in copia
     assert st.cerca(1, "bollette")                  # nel testo
-    assert st.cerca(1, "EE00105559")                # nel nome dell'allegato
+    assert st.cerca(1, "EE00123456")                # nel nome dell'allegato
     assert st.cerca(1, "proprieta")                 # senza accento
-    assert not st.cerca(2, "mediocasa")             # altro account
+    assert not st.cerca(2, "casaesempio")             # altro account
 
 
 def test_stessa_mail_due_volte_resta_una_riga(st):
@@ -85,10 +85,10 @@ def test_senza_message_id_la_chiave_e_il_contenuto(st):
 def test_lettura_e_allegato_dallarchivio(st):
     _id, _ = st.salva(1, _mime(), folder="INBOX", provider_id="10")
     m = archivio.leggi(1, f"{archivio.PREFISSO_ID}{_id}")
-    assert m["attachments"][0]["name"] == "EE00105559_2026_2026.pdf"
+    assert m["attachments"][0]["name"] == "EE00123456_2026_2026.pdf"
     assert "bollette" in m["body_text"]
-    assert m["ccRecipients"][0]["emailAddress"]["address"] == "luca.ferri@example.org"
-    dati, tipo = archivio.leggi_allegato(1, "10", "EE00105559_2026_2026.pdf", "INBOX")
+    assert m["ccRecipients"][0]["emailAddress"]["address"] == "paolo.verdi@example.org"
+    dati, tipo = archivio.leggi_allegato(1, "10", "EE00123456_2026_2026.pdf", "INBOX")
     assert dati == b"%PDF-1.4 bolletta luce" and tipo == "application/pdf"
 
 
@@ -110,7 +110,7 @@ def test_il_router_legge_dallarchivio_quando_il_server_non_ce_lha(st, monkeypatc
     monkeypatch.setattr(mail_router, "_get_message_provider", sparita)
     monkeypatch.setattr(mail_router, "_get_attachment_provider", sparita)
     assert mail_router.get_message(1, "10", "INBOX")["source"] == "archive"
-    dati, _t = mail_router.get_attachment(1, "10", "EE00105559_2026_2026.pdf", "INBOX")
+    dati, _t = mail_router.get_attachment(1, "10", "EE00123456_2026_2026.pdf", "INBOX")
     assert dati.startswith(b"%PDF")
 
 
@@ -133,7 +133,7 @@ def test_search_mail_restituisce_prima_larchivio(st, monkeypatch):
     st.salva(1, _mime())
     monkeypatch.setattr(srv.core_accounts, "get_active_account", lambda: {"id": 1})
     monkeypatch.setattr(mail_router, "search_messages", lambda **kw: [])
-    r = srv.search_mail(query="mediocasa")
+    r = srv.search_mail(query="casaesempio")
     assert list(r)[0] == "archive"
     assert r["archive"][0]["subject"].startswith("Utenze")
 
@@ -262,7 +262,7 @@ def test_sync_graph_primo_caricamento_e_incrementale(st, monkeypatch):
 # ── import da Outlook ───────────────────────────────────────────────
 
 class FintoAllegato:
-    Type, FileName = 1, "EE00105559_2026_2026.pdf"
+    Type, FileName = 1, "EE00123456_2026_2026.pdf"
 
     def SaveAsFile(self, percorso):
         with open(percorso, "wb") as fh:
@@ -288,17 +288,17 @@ class FintoAccessor:
 
 class FintoItem:
     Class = 43
-    Subject = "Utenze e Iban Mediocasa"
+    Subject = "Utenze e Iban Casaesempio"
     Body = "Allego le bollette."
     HTMLBody = "<p>Allego le bollette.</p>"
-    SenderName, SenderEmailAddress = "Mediocasa", "info@mediocasaimmobiliare.eu"
+    SenderName, SenderEmailAddress = "Casaesempio", "info@casaesempioimmobiliare.example"
     Recipients = []
     Attachments = FintiAllegati()
 
     def __init__(self, intestazioni=""):
         self.PropertyAccessor = FintoAccessor({
             outlook_import._PR_TRANSPORT_HEADERS: intestazioni,
-            outlook_import._PR_INTERNET_MESSAGE_ID: "<orig@mediocasa>",
+            outlook_import._PR_INTERNET_MESSAGE_ID: "<orig@casaesempio>",
         })
 
     class ReceivedTime:
@@ -308,30 +308,30 @@ class FintoItem:
 
 
 def test_da_outlook_a_mime_con_le_intestazioni_originali(st, tmp_path):
-    intest = ("Message-ID: <orig@mediocasa>\r\nFrom: Mediocasa <info@mediocasaimmobiliare.eu>\r\n"
-              "To: conti@fingroupspa.com\r\nCc: luca.ferri@example.org\r\n"
-              "Date: Wed, 28 Jan 2026 15:13:00 +0100\r\nSubject: Utenze e Iban Mediocasa\r\n"
+    intest = ("Message-ID: <orig@casaesempio>\r\nFrom: Casaesempio <info@casaesempioimmobiliare.example>\r\n"
+              "To: conti@agenzia.example\r\nCc: paolo.verdi@example.org\r\n"
+              "Date: Wed, 28 Jan 2026 15:13:00 +0100\r\nSubject: Utenze e Iban Casaesempio\r\n"
               "Received: from mx.example ([1.2.3.4])\r\n\r\n")
     raw, ts = outlook_import.eml_da_item(FintoItem(intest), str(tmp_path))
     campi = archivio.analizza(raw)
-    assert campi["message_key"] == "orig@mediocasa"
-    assert "luca.ferri@example.org" in campi["cc_addrs"]
-    assert "EE00105559_2026_2026.pdf" in campi["attachment_names"]
+    assert campi["message_key"] == "orig@casaesempio"
+    assert "paolo.verdi@example.org" in campi["cc_addrs"]
+    assert "EE00123456_2026_2026.pdf" in campi["attachment_names"]
     assert b"Received:" not in raw.split(b"\n\n")[0]
 
 
 def test_da_outlook_senza_intestazioni_usa_le_proprieta(st, tmp_path):
     raw, ts = outlook_import.eml_da_item(FintoItem(""), str(tmp_path))
     campi = archivio.analizza(raw)
-    assert campi["message_key"] == "orig@mediocasa"
-    assert campi["from_addr"] == "info@mediocasaimmobiliare.eu"
+    assert campi["message_key"] == "orig@casaesempio"
+    assert campi["from_addr"] == "info@casaesempioimmobiliare.example"
     assert ts == 1769609580.0
 
 
 def test_stessa_mail_da_outlook_e_dal_server_e_una_sola(st, tmp_path):
     raw, ts = outlook_import.eml_da_item(FintoItem(""), str(tmp_path))
     st.salva(1, raw, source="outlook", ripiego_data=ts)
-    st.salva(1, _mime(mid="<orig@mediocasa>"), source="imap")
+    st.salva(1, _mime(mid="<orig@casaesempio>"), source="imap")
     assert sum(st.conta(1).values()) == 1
 
 
@@ -405,9 +405,9 @@ def test_ricerca_imap_ascii_senza_charset():
     from gigamail.core import imap_client as ic
 
     conn = ConnRegistra()
-    ic._uid_search_safe(conn, "FROM", "mediocasa")
+    ic._uid_search_safe(conn, "FROM", "casaesempio")
     args, _ = conn.chiamate[0]
-    assert args == ("search", None, "FROM", '"mediocasa"')
+    assert args == ("search", None, "FROM", '"casaesempio"')
 
 
 def test_formato_data_da_outlook_valido():

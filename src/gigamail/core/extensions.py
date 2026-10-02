@@ -98,7 +98,7 @@ class Extension:
         return None
 
     def cited_codes(self, text: str) -> List[str]:
-        """I codici di documento nominati nel testo (A.3.2, SKU-12...),
+        """I codici di documento nominati nel testo (A.9.2, SKU-12...),
         in ordine: decidono quali file della knowledge si allegano."""
         return []
 

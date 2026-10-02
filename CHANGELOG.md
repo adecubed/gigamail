@@ -69,7 +69,7 @@
 
 - **The trade moves out of the core.** Whoever installs gigamail no
   longer carries along the agency it was born in. The flat types
-  (two-room flat, three-room flat...) and the unit codes (`A.3.2`) that
+  (two-room flat, three-room flat...) and the unit codes (`A.9.2`) that
   choose the attachments have become the `extras/real_estate` extension,
   a separate package that is installed with pip and switched on with
   `gigamail extensions enable real_estate`. The core offers the hooks
@@ -113,8 +113,8 @@
   Now `core/archivio.py` saves every message as it arrived, compressed
   MIME with the attachments, from every mailbox and every folder except
   drafts, with a full-text index on subject, sender, recipients, complete
-  text and attachment names. Words are searched by prefix, so "mediocasa"
-  finds info@mediocasaimmobiliare.eu, and without accents. The same mail
+  text and attachment names. Words are searched by prefix, so "casaesempio"
+  finds info@casaesempioimmobiliare.example, and without accents. The same mail
   seen from the server and from Outlook, or moved to another folder,
   remains a single row thanks to the Message-ID.
 - **Continuous sync.** On every pass the watcher brings into the archive
@@ -166,7 +166,7 @@
 
 - **The draft answers the question in THIS mail, not the one before.** On
   27 September a client wrote about a two-room flat and was offered three
-  three-room flats from 379,000 euros up, floor plans included. The
+  three-room flats from 365,000 euros up, floor plans included. The
   attachments were correct, they followed the text: it was the text that
   answered the wrong question. The cause lies in the prompt, which
   receives examples of the latest sent replies and a "suggested template"
@@ -223,8 +223,8 @@
   floor plans of three first-floor three-room flats; the next mail, the
   one that listed the flats actually requested, said "please find the
   floor plans attached" and went out without a single file. Now
-  `core/attachments.py` reads the flat codes from the text (`A.3.2`,
-  `B.1.4`) and those decide what is attached; the rule's list stays as a
+  `core/attachments.py` reads the flat codes from the text (`A.9.2`,
+  `B.7.4`) and those decide what is attached; the rule's list stays as a
   fallback for mails that name no flat. On top of that, a fail-closed
   barrier in all three send paths: if the text announces an attachment
   and not even one has been resolved, the watcher skips the draft and
@@ -272,7 +272,7 @@
   request already closed. Now approval, rejection, revocation and
   execution withdraw it.
 - **A plain-text mail is shown with its line breaks.** In the console, an
-  address in angle brackets in the quoted text (`<info@20128milano.it>`)
+  address in angle brackets in the quoted text (`<info@vendite.example>`)
   was enough to treat the whole mail as HTML: line breaks disappeared and
   reply, quote and legal notice became a single block. Now what counts is
   the type declared by the server and, if that is missing, a real HTML
@@ -983,8 +983,8 @@ success and did the wrong thing quietly.
   than sending a mail without the plan its body promises.
 
 - **Dotted names resolved to the wrong file.**
-  `os.path.splitext("B.1.3")` returns `("B.1", ".3")`, so a lookup for
-  apartment B.1.3 searched for "B.1" and matched B.1.1, B.1.2, B.1.4 as
+  `os.path.splitext("B.7.3")` returns `("B.7", ".3")`, so a lookup for
+  apartment B.7.3 searched for "B.7" and matched B.7.1, B.7.2, B.7.4 as
   well — first one wins. Silent: the mail went out carrying another
   apartment's floor plan. `read_knowledge_file` shares that function, so
   asking for one data sheet could return another. Fixed, and an

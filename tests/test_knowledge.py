@@ -58,27 +58,27 @@ def test_file_singolo_registrato(tmp_path):
 def planimetrie_dir(tmp_path):
     d = tmp_path / "schede"
     d.mkdir()
-    for n in ("A.2.1.pdf", "A.0.1.pdf", "A.0.2.pdf", "B.2.1 no balcone.pdf",
-              "B.3.1.pdf", "rimanenze commerciali.txt"):
+    for n in ("A.8.1.pdf", "A.6.1.pdf", "A.6.2.pdf", "B.8.1 no balcone.pdf",
+              "B.9.1.pdf", "rimanenze commerciali.txt"):
         (d / n).write_bytes(b"x")
     return d
 
 
 def test_find_relevant_codici_puntati(planimetrie_dir):
-    """Il caso reale: 'manda la planimetria A.2.1' deve trovare A.2.1.pdf,
-    non B.2.1 (che prima vinceva perche' 'al' matchava dentro 'balcone')."""
+    """Il caso reale: 'manda la planimetria A.8.1' deve trovare A.8.1.pdf,
+    non B.8.1 (che prima vinceva perche' 'al' matchava dentro 'balcone')."""
     hits = identity_reader.find_relevant_files([str(planimetrie_dir)],
-                                               "manda la planimetria A.2.1 al cliente")
+                                               "manda la planimetria A.8.1 al cliente")
     names = [h["name"] for h in hits]
-    assert names[0] == "A.2.1.pdf"
-    assert "B.2.1 no balcone.pdf" not in names
+    assert names[0] == "A.8.1.pdf"
+    assert "B.8.1 no balcone.pdf" not in names
 
 
 def test_find_relevant_codici_multipli(planimetrie_dir):
     hits = identity_reader.find_relevant_files([str(planimetrie_dir)],
-                                               "invia le schede A.0.1 e A.0.2")
+                                               "invia le schede A.6.1 e A.6.2")
     names = {h["name"] for h in hits}
-    assert {"A.0.1.pdf", "A.0.2.pdf"} <= names
+    assert {"A.6.1.pdf", "A.6.2.pdf"} <= names
 
 
 def test_find_relevant_parole_intere(planimetrie_dir):

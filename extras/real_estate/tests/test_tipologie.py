@@ -1,7 +1,7 @@
 """La risposta deve riguardare la tipologia che il cliente ha chiesto.
 
 27 settembre 2026: un cliente scrive per un BILOCALE e riceve tre
-trilocali da 379.000 euro in su, planimetrie comprese. Gli allegati erano
+trilocali da 365.000 euro in su, planimetrie comprese. Gli allegati erano
 coerenti col testo; era il testo a rispondere alla domanda sbagliata,
 ricopiato dalla risposta precedente che il prompt gli metteva davanti
 come "template suggerito".
@@ -16,25 +16,25 @@ from gigamail import watcher as watcher_mod
 from gigamail.core import attachments, mail_router
 from gigamail.core import rules as rules_mod
 
-OGGETTO_BILO = ("Nuovo messaggio di Marco Neri sul tuo immobile, Bilocale in "
-                "Via Treviglio, 28, Precotto, Milano")
-OGGETTO_TRILO = ("Nuovo messaggio di Chiara sul tuo immobile, Trilocale in "
-                 "Via Treviglio, 28, Precotto, Milano")
+OGGETTO_BILO = ("Nuovo messaggio di Mario Rossi sul tuo immobile, Bilocale in "
+                "Via Roma, 10, Centro, Milano")
+OGGETTO_TRILO = ("Nuovo messaggio di Elena sul tuo immobile, Trilocale in "
+                 "Via Roma, 10, Centro, Milano")
 
-# La risposta realmente partita a Marco Neri, accorciata.
-BOZZA_SBAGLIATA = """Gentile Sig. Neri,
+# La risposta realmente partita a Mario Rossi, accorciata.
+BOZZA_SBAGLIATA = """Gentile Sig. Rossi,
 
-la ringraziamo per il suo interesse per il bilocale in Via Treviglio 28.
+la ringraziamo per il suo interesse per il bilocale in Via Roma 10.
 
-- B.1.3: trilocale di 80,43 mq con balcone di 15,21 mq, prezzo 379.000
-- A.1.4: trilocale di 83,92 mq con balcone di 10,70 mq, prezzo 382.000
-- B.1.4: trilocale di 83,92 mq con balcone di 12,37 mq, prezzo 383.000
+- B.7.3: trilocale di 78,50 mq con balcone di 12,00 mq, prezzo 365.000
+- A.7.4: trilocale di 81,00 mq con balcone di 9,50 mq, prezzo 372.000
+- B.7.4: trilocale di 82,00 mq con balcone di 11,00 mq, prezzo 375.000
 
 In allegato trova le planimetrie delle soluzioni indicate."""
 
-BOZZA_GIUSTA = """Gentile Sig. Neri,
+BOZZA_GIUSTA = """Gentile Sig. Rossi,
 
-- B.2.1: bilocale di 55,00 mq con balcone di 8,00 mq, prezzo 288.000
+- B.8.1: bilocale di 52,00 mq con balcone di 6,50 mq, prezzo 270.000
 
 Resto a disposizione per un appuntamento in ufficio."""
 
@@ -47,8 +47,8 @@ def test_la_tipologia_si_legge_dall_oggetto():
 
 
 def test_quadrilocale_non_si_confonde_con_monolocale():
-    assert tipologie.chiesta("Quadrilocale in Via Treviglio", "") == "quadrilocale"
-    assert tipologie.chiesta("Monolocale in Via Treviglio", "") == "monolocale"
+    assert tipologie.chiesta("Quadrilocale in Via Roma", "") == "quadrilocale"
+    assert tipologie.chiesta("Monolocale in Via Roma", "") == "monolocale"
 
 
 def test_loggetto_vince_sul_corpo():

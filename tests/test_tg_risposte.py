@@ -9,7 +9,7 @@ from gigamail.core import mail_router, telegram_channel
 from gigamail.core import rules as rules_mod
 from gigamail.watcher import tg_risposte
 
-CHAT = 1484306713
+CHAT = 123456789
 
 
 class FakeTG:
@@ -41,8 +41,8 @@ class FakeTG:
     is_trusted = telegram_channel.Telegram.is_trusted
 
 
-MAIL = {"id": "3485", "subject": "Re: Via Treviglio 28, Milano - bilocali disponibili",
-        "from": {"emailAddress": {"address": "lk@example.com", "name": "Lorenzo K"}},
+MAIL = {"id": "3485", "subject": "Re: Via Roma 10, Milano - bilocali disponibili",
+        "from": {"emailAddress": {"address": "gb@example.com", "name": "Giorgio B"}},
         "body_text": "Possiamo spostare la chiamata di 15 minuti?"}
 
 
@@ -66,7 +66,7 @@ def world(monkeypatch):
     monkeypatch.setattr(agent_bridge, "run",
                         lambda prompt, **kw: w["prompt"].append(prompt) or w["bozza"])
     monkeypatch.setattr(telegram_channel, "channel", lambda: tg)
-    monkeypatch.setattr(tg_risposte, "_cc", lambda aid: ["info@fingroupspa.com"])
+    monkeypatch.setattr(tg_risposte, "_cc", lambda aid: ["ufficio@agenzia.example"])
     monkeypatch.setattr(policy, "notify_approval_requested",
                         lambda rid, tool, preview, **kw: tg.send(kw.get("message") or "",
                                                                  kw.get("buttons")) or True)
@@ -75,7 +75,7 @@ def world(monkeypatch):
 
 
 def _avviso(tg):
-    return tg_risposte.registra_avviso(tg, "Lorenzo K:\n«Possiamo spostare…»", 2, MAIL, "it")
+    return tg_risposte.registra_avviso(tg, "Giorgio B:\n«Possiamo spostare…»", 2, MAIL, "it")
 
 
 def _cb(data):
@@ -101,14 +101,14 @@ def test_rispondi_poi_istruzione_crea_la_bozza_in_approvazione(world):
     tg, w = world["tg"], watcher_mod.Watcher()
     chiave = _avviso(tg)
     w.handle_telegram_event(tg, _cb(f"w:{chiave}"))
-    assert "Cosa rispondo a Lorenzo K" in tg.sent[-1]["text"]
+    assert "Cosa rispondo a Giorgio B" in tg.sent[-1]["text"]
     w.handle_telegram_event(tg, _testo("ok va bene"))
 
     pend = policy.store().list_pending()
     assert len(pend) == 1
     args = pend[0]["args"]
-    assert args["to"] == "lk@example.com" and args["cc"] == ["info@fingroupspa.com"]
-    assert args["subject"].startswith("Re: Via Treviglio 28")
+    assert args["to"] == "gb@example.com" and args["cc"] == ["ufficio@agenzia.example"]
+    assert args["subject"].startswith("Re: Via Roma 10")
     assert args["body"] == world["bozza"]
     assert "ok va bene" in world["prompt"][-1]
     assert world["inviate"] == [], "niente parte senza approvazione"
@@ -132,8 +132,8 @@ def test_approvare_invia_con_destinatario_e_copia(world):
     w.handle_telegram_event(tg, _cb(f"a:{rid}"))
     w.tick()
     assert len(world["inviate"]) == 1
-    assert world["inviate"][0]["to"] == "lk@example.com"
-    assert world["inviate"][0]["cc"] == ["info@fingroupspa.com"]
+    assert world["inviate"][0]["to"] == "gb@example.com"
+    assert world["inviate"][0]["cc"] == ["ufficio@agenzia.example"]
 
 
 def test_agente_non_disponibile_lo_dice_e_non_crea_nulla(world, monkeypatch):

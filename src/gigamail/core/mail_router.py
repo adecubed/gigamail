@@ -254,7 +254,7 @@ def send_message(
                 # Prima valeva solo per le risposte, e il cliente che
                 # rispondeva a una mail nuova con listino e planimetrie non
                 # generava avvisi. I nostri indirizzi restano fuori: un
-                # inoltro a Fingroup non accende allarmi.
+                # inoltro a un collega non accende allarmi.
                 video = appointments.parla_di_video(body)
                 for indirizzo in appointments.destinatari_da_seguire(
                         str(to or '')):

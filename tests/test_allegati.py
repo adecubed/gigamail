@@ -34,19 +34,19 @@ class _Codici(extensions.Extension):
 def test_senza_estensioni_nessun_codice():
     """Il core non sa che forma abbia un codice: senza estensioni resta
     la lista fissa della regola."""
-    assert attachments.codici_citati("La scheda A.3.2 in allegato.") == []
+    assert attachments.codici_citati("La scheda A.9.2 in allegato.") == []
 
 
 def test_codici_dalle_estensioni_in_ordine_e_senza_ripetizioni(estensione):
     estensione(_Codici())
-    testo = "A.3.2 e B.0.1, poi di nuovo A.3.2."
-    assert attachments.codici_citati(testo) == ["A.3.2", "B.0.1"]
+    testo = "A.9.2 e B.6.1, poi di nuovo A.9.2."
+    assert attachments.codici_citati(testo) == ["A.9.2", "B.6.1"]
 
 
 def test_estensione_accesa_ma_assente_non_passa_in_silenzio(monkeypatch):
     monkeypatch.setenv("GIGAMAIL_EXTENSIONS", "inesistente")
     with pytest.raises(extensions.ExtensionError):
-        attachments.codici_citati("A.3.2")
+        attachments.codici_citati("A.9.2")
 
 
 # ── la mail promette un allegato? ────────────────────────────────────
@@ -105,11 +105,11 @@ def test_mail_senza_promessa_passa_liscia(monkeypatch):
 def test_promessa_con_file_risolti_passa(monkeypatch):
     monkeypatch.setattr(
         srv, "_resolve_attachments",
-        lambda aid, nomi: ([{"name": "A.3.2.pdf", "path": "x/A.3.2.pdf"}], []))
+        lambda aid, nomi: ([{"name": "A.9.2.pdf", "path": "x/A.9.2.pdf"}], []))
     monkeypatch.setattr(srv, "_attachments_preview", lambda r: [])
     monkeypatch.setattr(
         srv.core_accounts, "get_active_account", lambda: {"email": "io@x.it"})
     r = srv.send_mail(account_id=1, to="c@example.com", subject="Quadrilocali",
-                      body="In allegato trova la planimetria di A.3.2.",
-                      attachments=["A.3.2.pdf"])
+                      body="In allegato trova la planimetria di A.9.2.",
+                      attachments=["A.9.2.pdf"])
     assert r["status"] == "approval_required"
