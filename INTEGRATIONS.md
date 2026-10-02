@@ -213,6 +213,27 @@ It is harmless where it isn't needed, so the examples below always set it.
 
 Claude passes the full environment, so `ADE_ROOT` is optional here.
 
+### As a Claude Code plugin
+
+The repository is also a Claude Code plugin (`.claude-plugin/plugin.json`
+and `.claude-plugin/marketplace.json`, sharing `skills/gigamail/` and
+`.mcp.json` with the Codex plugin):
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
+It registers the `gigamail` server (shown as `plugin:gigamail:gigamail`)
+and adds the `gigamail` skill, which teaches the approval gate. The server
+itself still comes from `pip install "gigamail[all]"`; if
+`gigamail-server` is not on Claude's PATH, set `GIGAMAIL_SERVER` to its
+absolute path. Verified 2026-10-02 with Claude Code 2.1.197 on Windows,
+from a local checkout in an empty `CLAUDE_CONFIG_DIR`: `claude plugin
+validate` passes, the install lists one skill and one MCP server, and
+`claude mcp list` shows the server connected. Not yet verified: the
+install from GitHub, and a model-driven session through the skill.
+
 ## OpenClaw — verified (tool discovery)
 
 Tested 2026-08-16 on Windows: OpenClaw **2026.7.1-2**, Node 24.19. `openclaw

@@ -1,0 +1,19 @@
+{
+  "name": "gigamail",
+  "owner": {
+    "name": "Adecubed",
+    "url": "https://gigamail.ai"
+  },
+  "metadata": {
+    "description": "GigaMail: your real inbox and calendar for your agent, with a human on the send button."
+  },
+  "plugins": [
+    {
+      "name": "gigamail",
+      "source": "./",
+      "description": "Mail and calendar on your real mailbox (Microsoft 365 or IMAP) through the GigaMail MCP server, with out-of-band human approval on every send, delete and calendar write.",
+      "category": "communication",
+      "homepage": "https://gigamail.ai"
+    }
+  ]
+}

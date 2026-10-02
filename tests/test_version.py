@@ -61,5 +61,6 @@ def test_plugin_manifest_segue_pyproject():
 
     root = Path(__file__).resolve().parent.parent
     version = re.search(r'^version\s*=\s*"([^"]+)"', (root / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
-    plugin = json.loads((root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    assert plugin["version"] == version
+    for manifest in (".codex-plugin", ".claude-plugin"):
+        plugin = json.loads((root / manifest / "plugin.json").read_text(encoding="utf-8"))
+        assert plugin["version"] == version, manifest

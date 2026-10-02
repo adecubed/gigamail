@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **GigaMail is a Claude Code plugin.** `claude plugin marketplace add
+  adecubed/gigamail` and `claude plugin install gigamail@gigamail`
+  register the `gigamail` MCP server and add the `gigamail` skill, the
+  same one the Codex plugin ships, which teaches the agent the approval
+  gate. The skill no longer speaks to Codex only: its setup and
+  troubleshooting cover both clients. The server still comes from
+  `pip install "gigamail[all]"`.
 - **The Windows installer is code-signed.** From this release
   `GigaMail-Setup-X.Y.Z.exe` carries an Authenticode signature (Certum
   Open Source Code Signing, issued to the maintainer by name), so Windows

@@ -123,6 +123,15 @@ The commands are also available under their legacy names
 to its old name `ade_mail_agent` too (`python -m ade_mail_agent.server`),
 so existing setups keep working.
 
+Using **Claude Code**? The repository is also a Claude Code plugin: it
+registers the `gigamail` MCP server and adds a skill that teaches Claude the
+approval gate.
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
 Using **Codex**? The repository is a Codex plugin: it registers the
 `gigamail` MCP server and adds a skill that teaches Codex the approval gate.
 
@@ -404,6 +413,15 @@ I comandi restano disponibili anche con i vecchi nomi
 anche al vecchio nome `ade_mail_agent` (`python -m ade_mail_agent.server`),
 così le installazioni esistenti continuano a funzionare.
 
+Usi **Claude Code**? Il repository è anche un plugin Claude Code: registra
+il server MCP `gigamail` e aggiunge una skill che insegna a Claude il gate di
+approvazione.
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
 Usi **Codex**? Il repository è un plugin Codex: registra il server MCP
 `gigamail` e aggiunge una skill che insegna a Codex il gate di approvazione.
 
@@ -644,6 +662,14 @@ gigamail identity add-file C:\docs\pricelist.xlsx
 命令也保留旧名称（`ade-mail-agent`、`ade-mail-agent-server`），Python 包也
 响应旧名 `ade_mail_agent`（`python -m ade_mail_agent.server`），现有配置
 继续可用。
+
+使用 **Claude Code**？本仓库也是一个 Claude Code 插件：它注册 `gigamail`
+MCP 服务器，并附带一个教 Claude 如何面对审批关卡的 skill。
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
 
 使用 **Codex**？本仓库本身就是一个 Codex 插件：它注册 `gigamail` MCP
 服务器，并附带一个教 Codex 如何面对审批关卡的 skill。
