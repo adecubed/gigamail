@@ -47,8 +47,16 @@ A human reviews and sends — or edits the instruction and regenerates.*
 
 - **Hybrid search**: provider search (Graph/IMAP) + local SQLite index — fast
   and offline-friendly
+- **Its own archive**: every mail of every account saved locally,
+  attachments included, and still searchable after the server has dropped
+  it. Outlook's history on the PC is imported once (`gigamail archive`)
 - **Sender memory**: tone, topics and history per sender, so replies sound right
+- **Contact notes**: what happened with each person — how a meeting went,
+  what they are after — is written next to their name, and every draft to
+  them reads it
 - **Observer**: patterns learned from how the user edited past drafts
+- **Calendar-aware drafts**: a draft only proposes times that are free in
+  your calendar, inside your office hours
 - **Knowledge files**: attach your price lists, terms, product sheets to an
   account — the agent reads them to answer mail. Your agent doesn't need to
   know everything: the account carries its own knowledge
@@ -239,9 +247,24 @@ The `gigamail` package does mail: accounts, index, search, two-phase
 send, calendar, knowledge files, audit. What only makes sense for one
 trade lives outside it and is off until you turn it on:
 
-- **`appointments`** (built in, off by default): reads every sent mail
-  for an appointment, puts confirmed ones in the calendar, and forwards
-  client replies on followed threads to Telegram.
+- **`appointments`** (built in, off by default): mail and calendar,
+  connected, from the first reply to the follow-up.
+  - Reads every sent mail, and the replies on those threads, for an
+    appointment. A proposal stays out of the calendar; the time the
+    client accepts goes in.
+  - Client replies on followed threads reach you on Telegram with a
+    **Reply** button: write "ok, fine" and your agent drafts the answer,
+    which waits for your approval like any other.
+  - A confirmed video call gets a Zoom meeting and the mail with the
+    link, for approval.
+  - **After the meeting**: one hour after it starts, GigaMail asks how it
+    went — showed up, no-show, postponed, plus a couple of lines — on
+    Telegram or as a desktop notification (`gigamail debrief` lists the
+    unanswered ones). The answer goes into the contact's notes.
+  - **Follow-up a week later**: when the client showed up, seven days
+    later GigaMail drafts the follow-up from your notes, in the same
+    thread, for your approval. If you have already been in touch since
+    the meeting, it stays quiet.
 - **`real_estate`** ([extras/real_estate](extras/real_estate)): flat-type
   check on drafts and unit codes that pick the attachments, for agencies
   answering property-portal enquiries. This is where GigaMail grew up.
@@ -303,8 +326,16 @@ mai. L'umano rivede e invia — oppure corregge l'istruzione e rigenera.*
 
 - **Ricerca ibrida**: provider (Graph/IMAP) + indice SQLite locale — veloce e
   offline-friendly
+- **Un archivio suo**: ogni mail di ogni account salvata in locale,
+  allegati compresi, e cercabile anche quando il server non ce l'ha piu'.
+  Lo storico di Outlook sul PC si importa una volta (`gigamail archive`)
 - **Memoria dei mittenti**: tono, argomenti e storico per rispondere nel modo giusto
+- **Note sui contatti**: cosa e' successo con ogni persona — com'e' andato
+  un incontro, cosa cerca — resta scritto accanto al nome, e ogni bozza
+  per lei lo legge
 - **Observer**: pattern appresi dalle correzioni dell'utente alle bozze passate
+- **Bozze che conoscono l'agenda**: una bozza propone solo orari liberi nel
+  tuo calendario, dentro l'orario d'ufficio
 - **File di conoscenza**: collega listini, condizioni, schede prodotto a un
   account — l'agente li legge per rispondere alle mail. Il tuo agente non
   deve sapere tutto: le informazioni che gli servono viaggiano con l'account
@@ -483,9 +514,25 @@ Il pacchetto `gigamail` fa posta: account, indice, ricerca, invio a due
 fasi, calendario, documenti, audit. Cio' che serve a un solo mestiere
 vive fuori ed e' spento finche' non lo accendi:
 
-- **`appointments`** (incluso, spento di default): legge ogni mail
-  inviata in cerca di un appuntamento, porta in calendario quelli
-  confermati e inoltra su Telegram le risposte dei clienti.
+- **`appointments`** (incluso, spento di default): posta e calendario
+  collegati, dalla prima risposta al follow-up.
+  - Legge ogni mail inviata, e le risposte su quei thread, in cerca di un
+    appuntamento. Una proposta resta fuori dal calendario; ci entra
+    l'orario che il cliente accetta.
+  - Le risposte dei clienti sui thread seguiti arrivano su Telegram con
+    il bottone **Rispondi**: scrivi «ok, va bene» e il tuo agente prepara
+    la risposta, che aspetta la tua approvazione come tutte le altre.
+  - Una video call confermata riceve una riunione Zoom e la mail con il
+    link, da approvare.
+  - **Dopo l'incontro**: un'ora dopo l'inizio GigaMail chiede com'e'
+    andato — si e' presentato, non si e' presentato, rimandato, piu' due
+    righe — su Telegram o con una notifica sul PC (`gigamail debrief`
+    elenca quelle senza risposta). La risposta finisce nelle note del
+    contatto.
+  - **Follow-up dopo una settimana**: se il cliente si e' presentato,
+    sette giorni dopo GigaMail scrive il follow-up dalle tue note, nello
+    stesso thread, da approvare. Se nel frattempo vi siete gia' scritti,
+    non fa niente.
 - **`real_estate`** ([extras/real_estate](extras/real_estate)): controllo
   della tipologia sulle bozze e codici delle unita' che scelgono gli
   allegati, per le agenzie che rispondono ai portali. E' qui che GigaMail
@@ -539,8 +586,13 @@ titolare del copyright.
 ## 为什么
 
 - **混合搜索**：提供商搜索（Graph/IMAP）+ 本地 SQLite 索引，快速且支持离线
+- **自有归档**：每个账户的每封邮件（含附件）都保存在本地，即使服务器上已删除
+  也仍可搜索。电脑上 Outlook 的历史邮件只需导入一次（`gigamail archive`）
 - **发件人记忆**：按发件人记录语气、话题与往来历史，让回复更贴切
+- **联系人备注**：与每个人之间发生的事 —— 会面情况如何、对方在找什么 ——
+  都记在其名字旁边，之后写给此人的每一份草稿都会读取
 - **观察者**：从用户对过往草稿的修改中学习偏好
+- **了解日程的草稿**：草稿只会提议你日历中空闲、且在办公时间内的时段
 - **知识文件**：把价目表、条款、产品资料挂到账户上，代理读取它们来回信 ——
   你的代理不需要什么都懂：账户自带知识
 - **面向代理的权限**：读取自由；发送/删除需要**带外**给出的人工批准 ——
@@ -673,8 +725,19 @@ MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：�
 `gigamail` 包只做邮件：账户、索引、搜索、两阶段发送、日历、知识文件、审计。
 只对某一个行业有意义的功能放在核心之外，默认关闭，需要时才开启：
 
-- **`appointments`**（内置，默认关闭）：在每封已发送邮件中查找预约，把已确认的
-  写入日历，并把客户在跟进线程中的回复转发到 Telegram。
+- **`appointments`**（内置，默认关闭）：把邮件和日历连接起来，从第一次回复
+  一直到跟进。
+  - 在每封已发送的邮件及其线程中的回复里查找预约。提议的时间不进日历；
+    客户接受的时间才写入日历。
+  - 客户在跟进线程中的回复会带着 **回复** 按钮发到 Telegram：写一句
+    "好的，可以"，你的代理就会起草回复，并像其他草稿一样等待你的批准。
+  - 已确认的视频通话会自动创建 Zoom 会议，并生成附带链接的邮件，等待批准。
+  - **会面之后**：会面开始一小时后，GigaMail 会在 Telegram 或电脑桌面通知中
+    询问情况如何 —— 已到场、未到场、改期，外加几句备注（`gigamail debrief`
+    列出尚未回答的问题）。回答会写入该联系人的备注。
+  - **一周后的跟进**：如果客户到场了，七天后 GigaMail 会根据你的备注，在同一
+    线程中起草跟进邮件，等待你的批准。如果会面之后你们已经通过邮件联系过，
+    它就不会打扰。
 - **`real_estate`**（[extras/real_estate](extras/real_estate)）：为回复房产门户
   询盘的中介检查草稿中的户型，并按房源编号选择附件。GigaMail 就是在这里成长起来的。
 
