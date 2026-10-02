@@ -150,14 +150,17 @@ init_db()
 
 # ── EMBEDDING ENGINE ─────────────────────────────────────────────────────────
 #
-# Priorità:
-# 1. OpenAI text-embedding-3-small (1536 dim, $0.002/1M token — quasi gratis)
-# 2. Ollama nomic-embed-text (768 dim, zero costo, locale)
-# 3. Fallback: None (semantic search disabilitata, FTS5 usato)
+# GIGAMAIL_EMBEDDINGS picks the engine:
+# - unset / "ollama": Ollama nomic-embed-text (768 dim, local)
+# - "openai": OpenAI text-embedding-3-small (1536 dim), needs OPENAI_API_KEY.
+#   Mail text leaves the machine, so it is opt-in: an OPENAI_API_KEY that
+#   happens to be in the environment (MCP clients pass theirs to the
+#   server) must not be enough to send mail to OpenAI.
+# - "off": none
+# Without an engine semantic search is off and FTS5 is used.
 
 import os as _os  # noqa: E402 — sezione con setup a monte
 
-_OPENAI_API_KEY = _os.getenv("OPENAI_API_KEY", "")
 _OLLAMA_URL = _os.getenv("OLLAMA_URL", "http://localhost:11434")
 _EMBED_MODEL_OPENAI = "text-embedding-3-small"
 _EMBED_MODEL_OLLAMA = "nomic-embed-text"
@@ -168,18 +171,26 @@ _EMBED_DIM_OLLAMA = 768
 _embed_backend: Optional[str] = None  # 'openai' | 'ollama' | None
 
 
+def _embeddings_choice() -> str:
+    return _os.getenv("GIGAMAIL_EMBEDDINGS", "").strip().lower() or "ollama"
+
+
+def _openai_api_key() -> str:
+    return _os.getenv("OPENAI_API_KEY", "")
+
+
 def _detect_embed_backend() -> Optional[str]:
     """Rileva quale backend embeddings è disponibile."""
     global _embed_backend
     if _embed_backend is not None:
         return _embed_backend
-    # Test OpenAI
-    if _OPENAI_API_KEY:
+    choice = _embeddings_choice()
+    if choice == "openai" and _openai_api_key():
         try:
             import requests as _req
             r = _req.post(
                 "https://api.openai.com/v1/embeddings",
-                headers={"Authorization": f"Bearer {_OPENAI_API_KEY}",
+                headers={"Authorization": f"Bearer {_openai_api_key()}",
                          "Content-Type": "application/json"},
                 json={"model": _EMBED_MODEL_OPENAI, "input": "test"},
                 timeout=5,
@@ -190,20 +201,20 @@ def _detect_embed_backend() -> Optional[str]:
                 return _embed_backend
         except Exception:
             pass
-    # Test Ollama
-    try:
-        import requests as _req
-        r = _req.post(
-            f"{_OLLAMA_URL}/api/embeddings",
-            json={"model": _EMBED_MODEL_OLLAMA, "prompt": "test"},
-            timeout=5,
-        )
-        if r.status_code == 200:
-            _embed_backend = "ollama"
-            print(f"[MAIL MEMORY] Embedding backend: Ollama {_EMBED_MODEL_OLLAMA}")
-            return _embed_backend
-    except Exception:
-        pass
+    if choice == "ollama":
+        try:
+            import requests as _req
+            r = _req.post(
+                f"{_OLLAMA_URL}/api/embeddings",
+                json={"model": _EMBED_MODEL_OLLAMA, "prompt": "test"},
+                timeout=5,
+            )
+            if r.status_code == 200:
+                _embed_backend = "ollama"
+                print(f"[MAIL MEMORY] Embedding backend: Ollama {_EMBED_MODEL_OLLAMA}")
+                return _embed_backend
+        except Exception:
+            pass
     _embed_backend = None
     print("[MAIL MEMORY] Embedding backend: nessuno — uso solo FTS5")
     return None
@@ -246,7 +257,7 @@ def _get_embeddings_batch(texts: List[str]) -> List[Optional[Tuple[bytes, int, s
                 batch = valid_texts[batch_start:batch_start + BATCH]
                 r = _req.post(
                     "https://api.openai.com/v1/embeddings",
-                    headers={"Authorization": f"Bearer {_OPENAI_API_KEY}",
+                    headers={"Authorization": f"Bearer {_openai_api_key()}",
                              "Content-Type": "application/json"},
                     json={"model": _EMBED_MODEL_OPENAI, "input": batch},
                     timeout=60,

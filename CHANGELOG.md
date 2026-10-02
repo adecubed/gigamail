@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Mail text goes to OpenAI only if you ask for it.** The search memory
+  used OpenAI embeddings whenever `OPENAI_API_KEY` was in the server's
+  environment, and MCP clients such as Claude Code pass their whole
+  environment to the server: a key set for something else was enough to
+  send mail text to OpenAI. Now OpenAI needs `GIGAMAIL_EMBEDDINGS=openai`
+  as well. By default the memory uses a local Ollama if one is running,
+  otherwise plain text search; `GIGAMAIL_EMBEDDINGS=off` turns
+  embeddings off. If you relied on OpenAI embeddings, set the variable:
+  without it, threads indexed by OpenAI are skipped by semantic search
+  until they are indexed again.
 - **GigaMail is a Claude Code plugin.** `claude plugin marketplace add
   adecubed/gigamail` and `claude plugin install gigamail@gigamail`
   register the `gigamail` MCP server and add the `gigamail` skill, the

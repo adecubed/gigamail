@@ -58,10 +58,11 @@ Services the server talks to, all from your machine:
 
 - **Your mail and calendar provider**: Microsoft Graph, Google APIs, or
   the IMAP / SMTP / CalDAV servers you configure.
-- **OpenAI embeddings, only if `OPENAI_API_KEY` is set** in the server's
-  environment: mail text is sent to `api.openai.com` to build the search
-  memory. Claude Code passes its whole environment to the server, so unset
-  the variable (or use a local Ollama instead) if you do not want that.
+- **OpenAI embeddings, only if you choose them** with
+  `GIGAMAIL_EMBEDDINGS=openai` (and `OPENAI_API_KEY`): mail text is then
+  sent to `api.openai.com` to build the search memory. By default the
+  memory uses a local Ollama if one is running, or plain text search;
+  `GIGAMAIL_EMBEDDINGS=off` turns embeddings off.
 - **Telegram and Zoom, only if you turn them on**: approvals and
   notifications through your own Telegram bot; Zoom links for meetings.
 
