@@ -47,10 +47,23 @@ Start a new session afterwards: MCP tools load at startup.
 
 ## Data
 
-GigaMail runs on your machine. Mail, credentials, approvals and audit log
-stay in a local data directory (`%APPDATA%\ADE` on Windows, `~/.ade`
-elsewhere). Nothing is sent to GigaMail's authors. Mail text the tools
-return reaches the model you use, like any other tool output.
+GigaMail runs on your machine and reads and stores personal data: mail,
+contacts and the notes kept on them. Mail cache, credentials, approvals
+and audit log stay in a local data directory (`%APPDATA%\ADE` on Windows,
+`~/.ade` elsewhere). GigaMail's authors run no service: nothing is sent to
+them, and no telemetry. Mail text the tools return reaches the model you
+use, like any other tool output.
+
+Services the server talks to, all from your machine:
+
+- **Your mail and calendar provider**: Microsoft Graph, Google APIs, or
+  the IMAP / SMTP / CalDAV servers you configure.
+- **OpenAI embeddings, only if `OPENAI_API_KEY` is set** in the server's
+  environment: mail text is sent to `api.openai.com` to build the search
+  memory. Claude Code passes its whole environment to the server, so unset
+  the variable (or use a local Ollama instead) if you do not want that.
+- **Telegram and Zoom, only if you turn them on**: approvals and
+  notifications through your own Telegram bot; Zoom links for meetings.
 
 Source, docs and licence (AGPL-3.0-or-later):
 https://github.com/adecubed/gigamail
