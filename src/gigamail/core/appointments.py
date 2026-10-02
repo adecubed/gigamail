@@ -176,6 +176,22 @@ class AppointmentStore:
                 )
             """)
             _migrate_esiti(conn)
+            # Sent mails the agent could not read for the calendar. The
+            # MCP server runs inside the AI client, where the headless
+            # agent may not start at all: the watcher, which runs on its
+            # own, reads them again (retry_pending_reads).
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pending_reads (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account_id   INTEGER NOT NULL,
+                    subject      TEXT    NOT NULL,
+                    body         TEXT    NOT NULL,
+                    counterpart  TEXT    NOT NULL,
+                    sent_at      REAL    NOT NULL,
+                    attempts     INTEGER NOT NULL DEFAULT 1,
+                    last_error   TEXT    NOT NULL DEFAULT ''
+                )
+            """)
 
     def get(self, account_id: int, thread_key: str) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:
@@ -279,6 +295,41 @@ class AppointmentStore:
                 "UPDATE appuntamenti SET zoom_id=?, zoom_url=?"
                 " WHERE account_id=? AND thread_key=?",
                 (str(zoom_id), str(zoom_url), int(account_id), thread_key))
+
+    # -- sent mails to read again ----------------------------------------
+
+    def pending_read_add(self, account_id: int, subject: str, body: str,
+                         counterpart: str, error: str,
+                         sent_at: Optional[float] = None) -> int:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO pending_reads (account_id, subject, body,"
+                " counterpart, sent_at, last_error) VALUES (?,?,?,?,?,?)",
+                (int(account_id), str(subject or ""), str(body or ""),
+                 str(counterpart or ""),
+                 time.time() if sent_at is None else float(sent_at),
+                 str(error or "")[:300]))
+            return int(cur.lastrowid)
+
+    def pending_reads(self) -> List[Dict[str, Any]]:
+        with self._conn() as conn:
+            return [dict(r) for r in conn.execute(
+                "SELECT * FROM pending_reads ORDER BY id").fetchall()]
+
+    def pending_read_failed(self, read_id: int, error: str) -> int:
+        """Counts another failed attempt and returns the total."""
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE pending_reads SET attempts=attempts+1, last_error=?"
+                " WHERE id=?", (str(error or "")[:300], int(read_id)))
+            row = conn.execute("SELECT attempts FROM pending_reads WHERE id=?",
+                               (int(read_id),)).fetchone()
+        return int(row[0]) if row else _TENTATIVI_MAX
+
+    def pending_read_done(self, read_id: int) -> None:
+        with self._conn() as conn:
+            conn.execute("DELETE FROM pending_reads WHERE id=?",
+                         (int(read_id),))
 
     # -- outcomes and follow-ups ------------------------------------------
 
@@ -500,7 +551,10 @@ def leggi(testo: str, subject: str, mittente: str,
     Ritorna sempre un dizionario con almeno {'stato': ...}: 'nessuno'
     quando non c'e' nulla di utilizzabile, e non solleva mai. Chi chiama
     sta gia' inviando o ricevendo posta, e un calendario che non riesce a
-    leggere una data non e' un buon motivo per far fallire una mail."""
+    leggere una data non e' un buon motivo per far fallire una mail.
+
+    When the agent could not read the message, 'nessuno' comes with
+    'errore', the reason."""
     vuoto = {"stato": "nessuno"}
     adesso = adesso or datetime.now()
     # Una mail che impartisce ordini all'assistente non entra nemmeno nel
@@ -513,17 +567,23 @@ def leggi(testo: str, subject: str, mittente: str,
             return vuoto
     except Exception as e:
         logger.debug("injection_guard non disponibile: %s", e)
+    # A failed read still says "nessuno", so callers stay fail-closed, but
+    # it carries "errore": "nothing about an appointment" and "could not
+    # read it" are different facts. They used to look the same, and a
+    # confirmation sent from the MCP server, whose agent could not start,
+    # left no trace anywhere.
     try:
         out = agent_bridge.run(
             build_prompt(testo, subject, mittente, adesso),
             timeout=_TIMEOUT_SECONDI)
     except Exception as e:
-        logger.info("agente non disponibile per l'appuntamento: %s", e)
-        return vuoto
+        logger.warning("appointment not read, agent unavailable: %s", e)
+        return dict(vuoto, errore=f"agent unavailable: {e}"[:300])
     dato = _json_da(out)
     if dato is None:
-        logger.info("risposta dell'agente non interpretabile come JSON")
-        return vuoto
+        logger.warning("appointment not read, agent reply is not JSON")
+        return dict(vuoto, errore="agent reply is not JSON: "
+                    + str(out or "")[:120])
     stato = str(dato.get("stato") or "nessuno").strip().lower()
     if stato not in STATI:
         return vuoto
@@ -777,16 +837,189 @@ def applica(account_id: int, chiave: str, esito: Dict[str, Any],
 def dalla_mail(account_id: int, subject: str, body: str, controparte: str,
                adesso: Optional[datetime] = None) -> Optional[Dict[str, Any]]:
     """Un messaggio (inviato o ricevuto) -> calendario. None se non c'era
-    nulla da fare."""
+    nulla da fare; {'stato': 'errore', 'errore': ...} when the agent could
+    not read it, which also goes to the audit as read_failed."""
+    return _from_mail(account_id, subject, body, controparte, adesso)[1]
+
+
+def _from_mail(account_id: int, subject: str, body: str, controparte: str,
+               adesso: Optional[datetime] = None) -> tuple:
+    """dalla_mail, returning (what the agent read, what changed in the
+    calendar, the thread's row before the change)."""
     esito = leggi(body, subject, controparte, adesso)
-    if esito.get("stato") == "nessuno":
-        return None
     chiave = thread_key(subject, controparte)
+    if esito.get("errore"):
+        policy.audit("appointment", {"account_id": account_id,
+                                     "thread": chiave},
+                     "read_failed", detail=str(esito["errore"])[:200])
+        return esito, {"stato": "errore", "errore": esito["errore"]}, None
+    if esito.get("stato") == "nessuno":
+        return esito, None, None
+    prima = store().get(account_id, chiave)
     toccato = applica(account_id, chiave, esito, controparte=controparte,
                       oggetto=subject)
     _video_dopo_conferma(account_id, chiave, {}, _indirizzo(controparte),
                          subject, esito, toccato)
+    return esito, toccato, prima
+
+
+def _calendar_refused(esito: Dict[str, Any], toccato: Optional[Dict[str, Any]],
+                      prima: Optional[Dict[str, Any]]) -> bool:
+    """The mail fixed or cancelled an appointment and the calendar did not
+    follow. A cancellation with nothing in the calendar is not a refusal."""
+    if toccato is not None:
+        return False
+    if esito.get("stato") == "confermato":
+        return True
+    return (esito.get("stato") == "disdetto"
+            and bool((prima or {}).get("event_id")))
+
+
+# ── SENT MAILS THE CALENDAR MISSED ───────────────────────────────────
+
+def after_sent(account_id: int, subject: str, body: str, controparte: str,
+               adesso: Optional[datetime] = None) -> Optional[Dict[str, Any]]:
+    """A mail we sent -> calendar, and nothing lost on the way.
+
+    On 02/10 a confirmation sent through the MCP server never reached the
+    calendar and left no trace: the headless agent cannot start inside
+    the AI client that runs the server, and a failed read looked like a
+    mail without appointments. Now the failure goes to the audit, the
+    mail waits for the watcher to read it again, and when nobody is going
+    to retry, the human hears that the mail went out and the calendar
+    did not follow."""
+    esito, toccato, prima = _from_mail(account_id, subject, body,
+                                       controparte, adesso)
+    if esito.get("errore"):
+        queued = False
+        try:
+            store().pending_read_add(account_id, subject, body, controparte,
+                                     str(esito["errore"]))
+            queued = True
+        except Exception as e:
+            logger.warning("sent mail not queued for the watcher: %s", e)
+        if queued and _watcher_running():
+            policy.audit("appointment", {"account_id": account_id,
+                                         "thread": thread_key(subject,
+                                                              controparte)},
+                         "read_queued")
+        else:
+            _tell_human(*_read_failed_text(controparte, subject,
+                                           str(esito["errore"]),
+                                           will_retry=queued))
+        return toccato
+    if _calendar_refused(esito, toccato, prima):
+        _tell_human(*_calendar_refused_text(controparte, esito))
     return toccato
+
+
+def retry_pending_reads(adesso: Optional[datetime] = None) -> int:
+    """The sent mails the agent could not read, read again. Runs in the
+    watcher. Returns how many reached the calendar.
+
+    The prompt carries the time the mail was SENT: "domani" means the day
+    after the mail, not the day after the retry. After _TENTATIVI_MAX
+    failed reads the human is told and the mail is dropped."""
+    st = store()
+    fatti = 0
+    for r in st.pending_reads():
+        inviata = datetime.fromtimestamp(float(r["sent_at"]))
+        try:
+            esito, toccato, prima = _from_mail(
+                int(r["account_id"]), r["subject"], r["body"],
+                r["counterpart"], adesso or inviata)
+        except Exception as e:  # pragma: no cover - safety net
+            esito, toccato, prima = {"errore": str(e)}, None, None
+        if esito.get("errore"):
+            tentativi = st.pending_read_failed(r["id"], str(esito["errore"]))
+            if tentativi < _TENTATIVI_MAX:
+                continue
+            st.pending_read_done(r["id"])
+            policy.audit("appointment",
+                         {"account_id": r["account_id"],
+                          "thread": thread_key(r["subject"], r["counterpart"])},
+                         "read_gave_up", detail=str(esito["errore"])[:200])
+            _tell_human(*_read_failed_text(r["counterpart"], r["subject"],
+                                           str(esito["errore"]),
+                                           will_retry=False))
+            continue
+        st.pending_read_done(r["id"])
+        if _calendar_refused(esito, toccato, prima):
+            _tell_human(*_calendar_refused_text(r["counterpart"], esito))
+        elif toccato and not toccato.get("invariato"):
+            fatti += 1
+    return fatti
+
+
+def _watcher_running() -> bool:
+    try:
+        from gigamail.watcher import process_state
+        return bool(process_state.running_state().get("running"))
+    except Exception as e:
+        logger.debug("watcher state not read: %s", e)
+        return False
+
+
+def _read_failed_text(controparte: str, subject: str, errore: str,
+                      will_retry: bool) -> tuple:
+    chi = _indirizzo(controparte) or controparte
+    oggetto = _PREFISSI.sub("", str(subject or "")).strip()[:80]
+    it = (f"⚠️ Mail a {chi} inviata («{oggetto}»), ma non sono riuscito a "
+          f"leggerla per il calendario ({errore[:160]}).")
+    en = (f"⚠️ Mail to {chi} sent (“{oggetto}”), but I could not read it "
+          f"for the calendar ({errore[:160]}).")
+    if will_retry:
+        it += (" Riprovo quando parte il watcher: se fissa o disdice un "
+               "appuntamento e non lo vedi in calendario, aggiornalo a mano.")
+        en += (" I will retry when the watcher runs: if it fixes or cancels "
+               "an appointment and the calendar does not show it, update it "
+               "by hand.")
+    else:
+        it += (" Se fissa o disdice un appuntamento, aggiorna il calendario "
+               "a mano.")
+        en += (" If it fixes or cancels an appointment, update the calendar "
+               "by hand.")
+    return it, en
+
+
+def _calendar_refused_text(controparte: str,
+                           esito: Dict[str, Any]) -> tuple:
+    chi = _indirizzo(controparte) or controparte
+    if esito.get("stato") == "disdetto":
+        return (f"⚠️ Disdetta inviata a {chi}, ma l'appuntamento NON e' "
+                "stato tolto dal calendario. Toglilo a mano.",
+                f"⚠️ Cancellation sent to {chi}, but the appointment was "
+                "NOT removed from the calendar. Remove it by hand.")
+    quando = str(esito.get("inizio") or "")
+    try:
+        quando = availability.etichetta_slot(datetime.fromisoformat(quando))
+    except ValueError:
+        pass
+    return (f"⚠️ Conferma inviata a {chi} per {quando}, ma il calendario "
+            "NON e' stato aggiornato. Inseriscilo a mano.",
+            f"⚠️ Confirmation sent to {chi} for {quando}, but the calendar "
+            "was NOT updated. Add it by hand.")
+
+
+def _tell_human(it: str, en: str) -> None:
+    """Telegram if configured, and a desktop notification. Never raises:
+    the mail is already gone, a notice that fails changes nothing."""
+    testo = it if policy.user_lang() == "it" else en
+    sent = False
+    try:
+        from . import telegram_channel
+        tg = telegram_channel.channel()
+        if tg:
+            sent = bool(tg.send(testo))
+    except Exception as e:
+        logger.warning("calendar notice not sent on Telegram: %s", e)
+    try:
+        from . import desktop_notify
+        sent = desktop_notify.notify("GigaMail", testo) or sent
+    except Exception as e:
+        logger.debug("desktop notification not sent: %s", e)
+    policy.audit("appointment", {}, "human_notified" if sent
+                 else "human_not_notified", detail=testo[:200])
 
 
 def _video_dopo_conferma(account_id: int, chiave: str,
@@ -935,9 +1168,16 @@ def dalla_mail_async(account_id: int, subject: str, body: str,
 
     def _lavora():
         try:
-            dalla_mail(account_id, subject, body, controparte)
+            after_sent(account_id, subject, body, controparte)
         except Exception as e:  # pragma: no cover - rete di sicurezza
-            logger.warning("appuntamento non registrato: %s", e)
+            logger.warning("appointment not recorded: %s", e)
+            try:
+                policy.audit("appointment",
+                             {"account_id": account_id,
+                              "thread": thread_key(subject, controparte)},
+                             "read_failed", detail=str(e)[:200])
+            except Exception:
+                pass
 
     threading.Thread(target=_lavora, daemon=True,
                      name="gigamail-appointment").start()
@@ -1040,6 +1280,26 @@ def sweep(account_id: int, messaggi: list, adesso=None,
         esito: Dict[str, Any] = {"stato": "nessuno"}
         if not non_letto and forse(f"{subject}\n{corpo}"):
             esito = leggi(corpo, subject, mittente, adesso)
+        if esito.get("errore"):
+            # The agent could not read the reply. It used to count as a
+            # reply without appointments: marked seen, never read again,
+            # and the notice said nothing about the calendar. Now it is
+            # retried like a body that could not be downloaded; the human
+            # hears it on the first failure and when we give up, not on
+            # every tick in between.
+            policy.audit("appointment",
+                         {"account_id": account_id,
+                          "thread": riga["thread_key"], "message_id": mid},
+                         "read_failed", detail=str(esito["errore"])[:200])
+            tentativi = (st.fallita(account_id, mid) if mid
+                         else _TENTATIVI_MAX)
+            if tentativi < _TENTATIVI_MAX:
+                da_ritentare.add(chiave)
+                if tentativi > 1:
+                    continue
+                esito = dict(esito, non_letta=True)
+            else:
+                esito = dict(esito, non_letta=True, arreso=True)
         toccato = None
         if (esito.get("stato") == "proposto" and esito.get("scelta_unica")
                 and esito.get("accetta")):
@@ -1184,7 +1444,19 @@ def testo_avviso(riga: Dict[str, Any], m: Dict[str, Any], corpo: str,
             quando = str(esito["inizio"])
     nota = ""
     arreso = bool(esito.get("arreso"))
-    if stato == "confermato" and quando:
+    if esito.get("non_letta") and arreso:
+        nota = ("⚠️ Non sono riuscito a leggerla per il calendario: se "
+                "fissa, sposta o disdice un appuntamento, aggiorna il "
+                "calendario a mano." if it else
+                "⚠️ I could not read it for the calendar: if it fixes, "
+                "moves or cancels an appointment, update the calendar by "
+                "hand.")
+    elif esito.get("non_letta"):
+        nota = ("⚠️ Non sono riuscito a leggerla per il calendario. "
+                "Riprovo in automatico." if it else
+                "⚠️ I could not read it for the calendar. Retrying "
+                "automatically.")
+    elif stato == "confermato" and quando:
         if toccato and toccato.get("senza_id"):
             nota = (f"⚠️ {quando}: inserito in calendario, ma il calendario "
                     "non ha dato un riferimento: se cambia o salta, "

@@ -170,14 +170,21 @@ class Watcher:
 
         if not extensions.enabled("appointments"):
             return 0
+        # Sent mails the MCP server could not read for the calendar: the
+        # agent starts here, outside the AI client that runs the server.
+        try:
+            totale = appointments.retry_pending_reads()
+        except Exception as e:
+            _log(f"appointments, pending reads not retried: {e}",
+                 self.verbose)
+            totale = 0
         aperti = appointments.store().aperti()
         if not aperti:
-            return 0
+            return totale
         try:
             tg = telegram_channel.channel()
         except Exception:
             tg = None
-        totale = 0
         for account_id in sorted({int(r["account_id"]) for r in aperti}):
             try:
                 messaggi = mail_router.get_messages(

@@ -235,15 +235,17 @@ def test_agente_assente_non_tocca_il_calendario(monkeypatch, cal):
     def _esplode(prompt, timeout=None):
         raise RuntimeError("agente non trovato")
     monkeypatch.setattr(appointments.agent_bridge, "run", _esplode)
-    assert appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
-                                   adesso=NOW) is None
+    esito = appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
+                                    adesso=NOW)
+    assert esito["stato"] == "errore" and "agente non trovato" in esito["errore"]
     assert cal.creati == []
 
 
 def test_risposta_non_json_non_tocca_il_calendario(monkeypatch, cal):
     _agente(monkeypatch, "Certo! Direi che si tratta di un appuntamento.")
-    assert appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
-                                   adesso=NOW) is None
+    esito = appointments.dalla_mail(2, "x", "alle 17:00", "a@b.it",
+                                    adesso=NOW)
+    assert esito["stato"] == "errore"
     assert cal.creati == []
 
 

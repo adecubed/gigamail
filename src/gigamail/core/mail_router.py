@@ -5,6 +5,7 @@ Microsoft → usa auth.py (token cache MSAL)
 IMAP      → usa email + password cifrata in accounts.py
 Calendar  → Google Calendar via OAuth2 (calendar_client.py)
 """
+import logging
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Dict, List, Optional
@@ -263,9 +264,12 @@ def send_message(
                         appointments.segna_video(int(aid), subject, indirizzo)
                 appointments.dalla_mail_async(int(aid), subject, body,
                                               str(to or ''))
-    except Exception:
+    except Exception as e:
         # Nessun errore del calendario deve somigliare a un errore di invio.
-        pass
+        # It must still leave a trace: a bare `pass` here hides a lost
+        # appointment.
+        logging.getLogger("gigamail.mail_router").warning(
+            "appointment hook failed after sending: %s", e)
     return esito
 
 

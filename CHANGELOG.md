@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **A confirmation sent from the MCP server reaches the calendar, or you
+  hear that it did not.** With the `appointments` extension on, a mail
+  sent through `send_mail` or `reply_mail` is read by the headless agent
+  to update the calendar. The MCP server runs inside the AI client
+  (Claude Desktop, Claude Code), and from there `claude -p` can fail to
+  start ("Not logged in"); the failed read looked like a mail with no
+  appointment, so a confirmed appointment never reached the calendar and
+  left no trace in the audit log. Now the failure is written to the audit
+  log (`appointment` / `read_failed`, with the reason) and the mail is
+  queued: the watcher, which runs on its own, reads it again and updates
+  the calendar. If no watcher is running, or it still cannot read the
+  mail after five tries, you get a Telegram and desktop notice that the
+  mail was sent and the calendar was not updated. A confirmation or
+  cancellation the calendar refuses now gets the same notice.
+- **A client's reply the agent cannot read is read again.** The watcher
+  reads clients' replies to update the calendar. When the agent failed
+  on one, the reply counted as one without appointments: it was never
+  read again, and the Telegram notice with the client's text said
+  nothing about the calendar. Now the failure goes to the audit log
+  (`read_failed`) and the reply is retried on the next ticks, up to five
+  times. The first notice says the reply could not be read for the
+  calendar and will be retried; if every try fails, a second notice says
+  to update the calendar by hand.
 - **Mail text goes to OpenAI only if you ask for it.** The search memory
   used OpenAI embeddings whenever `OPENAI_API_KEY` was in the server's
   environment, and MCP clients such as Claude Code pass their whole
