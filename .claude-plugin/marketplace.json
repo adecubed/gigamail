@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "gigamail",
-      "source": "./",
+      "source": "./plugins/gigamail",
       "description": "Mail and calendar on your real mailbox (Microsoft 365 or IMAP) through the GigaMail MCP server, with out-of-band human approval on every send, delete and calendar write.",
       "category": "communication",
       "homepage": "https://gigamail.ai"

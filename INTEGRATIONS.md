@@ -215,9 +215,11 @@ Claude passes the full environment, so `ADE_ROOT` is optional here.
 
 ### As a Claude Code plugin
 
-The repository is also a Claude Code plugin (`.claude-plugin/plugin.json`
-and `.claude-plugin/marketplace.json`, sharing `skills/gigamail/` and
-`.mcp.json` with the Codex plugin):
+The repository is also a Claude Code marketplace
+(`.claude-plugin/marketplace.json`) whose plugin lives in
+`plugins/gigamail/`: manifest, a copy of the `skills/gigamail` skill and an
+`.mcp.json` that starts the same server. It is a folder of its own so the
+directory portal scans only the plugin, not the server's source:
 
 ```bash
 claude plugin marketplace add adecubed/gigamail
@@ -231,8 +233,10 @@ itself still comes from `pip install "gigamail[all]"`; if
 absolute path. Verified 2026-10-02 with Claude Code 2.1.197 on Windows,
 from a local checkout in an empty `CLAUDE_CONFIG_DIR`: `claude plugin
 validate` passes, the install lists one skill and one MCP server, and
-`claude mcp list` shows the server connected. Not yet verified: the
-install from GitHub, and a model-driven session through the skill.
+`claude mcp list` shows the server connected. Re-verified the same day
+from GitHub after the push (`claude plugin marketplace add
+adecubed/gigamail`, plugin 0.4.0 from `main`): same result. Not yet
+verified: a model-driven session through the skill.
 
 ## OpenClaw — verified (tool discovery)
 

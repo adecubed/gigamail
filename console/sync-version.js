@@ -39,7 +39,7 @@ if (fs.existsSync(lockPath)) {
 // Il manifest del plugin Codex/ChatGPT dichiara la stessa versione del
 // prodotto: alla 0.3.1 era rimasto a 0.2.4 perche' nessuno lo toccava.
 // The Claude Code manifest follows the same rule.
-for (const manifest of ['.codex-plugin', '.claude-plugin']) {
+for (const manifest of ['.codex-plugin', 'plugins/gigamail/.claude-plugin']) {
   const pluginPath = path.join(__dirname, '..', manifest, 'plugin.json');
   if (!fs.existsSync(pluginPath)) continue;
   const plugin = fs.readFileSync(pluginPath, 'utf-8');

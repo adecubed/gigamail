@@ -9,7 +9,16 @@
   "homepage": "https://gigamail.ai",
   "repository": "https://github.com/adecubed/gigamail",
   "license": "AGPL-3.0-or-later",
-  "keywords": ["email", "calendar", "mcp", "imap", "microsoft-365", "outlook", "human-in-the-loop", "approval"],
+  "keywords": [
+    "email",
+    "calendar",
+    "mcp",
+    "imap",
+    "microsoft-365",
+    "outlook",
+    "human-in-the-loop",
+    "approval"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
 }

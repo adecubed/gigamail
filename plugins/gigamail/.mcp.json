@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gigamail": {
+      "command": "${GIGAMAIL_SERVER:-gigamail-server}",
+      "args": []
+    }
+  }
+}
