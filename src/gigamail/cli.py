@@ -988,7 +988,7 @@ def _retry_di_regola(rid: str, nota: str) -> bool:
     richieste che una regola non ha prodotto."""
     try:
         from gigamail.core import rules as rules_mod
-        from gigamail.watcher import after_appointment
+        from gigamail.watcher import after_appointment, tg_risposte
         rs = rules_mod.store()
         row = rs.find_by_request(rid)
         if not row:
@@ -997,6 +997,10 @@ def _retry_di_regola(rid: str, nota: str) -> bool:
             # A follow-up has no rule to redo it: the watcher rewrites it
             # from the contact's notes, with this change.
             return after_appointment.queue_edit(rid, nota)
+        if row["rule_id"] == tg_risposte.RULE_ID:
+            # Same for a reply drafted from an instruction: the watcher
+            # redrafts it with the same instruction plus this change.
+            return tg_risposte.queue_desktop_edit(rid, nota)
         rs.request_retry(row["rule_id"], row["message_id"], nota)
         return True
     except Exception:
@@ -1123,6 +1127,38 @@ def cmd_open_url_outcome(key: str, code: str) -> int:
     return 0
 
 
+def cmd_open_url_reply(key: str) -> int:
+    """gigamail://reply — the Reply button of a client-reply alert on the
+    desktop. Asks what to answer and queues it: the watcher, where the
+    agent runs, drafts it and sends it for approval. Sends nothing."""
+    from gigamail.watcher import tg_risposte
+    ctx = tg_risposte.contesto(key)
+    if not ctx:
+        print(_tr("Questo avviso non si trova piu': non so a quale mail rispondere.",
+                  "This alert is no longer known: I don't know which mail to answer."))
+        _attendi_invio()
+        return 1
+    who = ctx.get("nome") or ctx.get("mittente") or "?"
+    print(_tr(f"Risposta a {who} — {ctx.get('subject') or ''}",
+              f"Reply to {who} — {ctx.get('subject') or ''}"))
+    try:
+        instruction = input(_tr("Cosa rispondo? (per esempio «ok, va bene»; "
+                                "INVIO a vuoto = niente): ",
+                                "What should I reply? (e.g. \"ok, fine\"; "
+                                "empty ENTER = nothing): ")).strip()
+    except (EOFError, KeyboardInterrupt):
+        instruction = ""
+    if instruction and tg_risposte.queue_desktop_reply(key, instruction):
+        print(_tr("Ok: il watcher scrive la bozza al prossimo giro e te la "
+                  "manda da approvare.",
+                  "Ok: the watcher drafts it on its next tick and sends it "
+                  "to you for approval."))
+    else:
+        print(_tr("Nessuna risposta preparata.", "No reply prepared."))
+    _attendi_invio()
+    return 0
+
+
 def cmd_open_url(args) -> int:
     """Handler dello schema gigamail:// (click su una toast). Traduce
     l'URL in un comando della CLI: approve → Hello. La finestra resta
@@ -1141,6 +1177,11 @@ def cmd_open_url(args) -> int:
         if outcome:
             return cmd_open_url_outcome(outcome.group(1).lower(),
                                         (outcome.group(2) or "").lower())
+        # Reply button on a client-reply alert: no approvals involved.
+        reply = _re.match(r"^gigamail://reply/([0-9a-f]{8})/?$",
+                          (args.url or "").strip(), _re.I)
+        if reply:
+            return cmd_open_url_reply(reply.group(1).lower())
         print(f"URL non riconosciuto: {args.url}")
         _attendi_invio()
         return 1

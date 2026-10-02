@@ -347,6 +347,20 @@ class RuleStore:
             conn.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?,?)",
                          (key, str(value)))
 
+    def kv_keys(self, prefix: str) -> List[str]:
+        """Keys starting with `prefix`, in key order."""
+        like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        with self._conn() as conn:
+            rows = conn.execute("SELECT key FROM kv WHERE key LIKE ? ESCAPE '\\'"
+                                " ORDER BY key", (like + "%",)).fetchall()
+        return [r["key"] for r in rows]
+
+    def kv_delete(self, key: str) -> bool:
+        """Remove a key; True when this call removed it, so two readers of a
+        queue never both take the same entry."""
+        with self._conn() as conn:
+            return conn.execute("DELETE FROM kv WHERE key=?", (key,)).rowcount > 0
+
     def pending_requests(self, rule_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Le mail per cui esiste una richiesta di approvazione creata dal
         watcher e non ancora conclusa (semi in attesa dell'umano)."""

@@ -7,9 +7,17 @@ direttamente al messaggio dell'avviso. Quello che si scrive ("ok, va
 bene") e' un'istruzione: la bozza la scrive l'agente, con identity, orari
 liberi e presidio anti-injection come le bozze delle regole, e la mail
 arriva in approvazione con i soliti bottoni. Niente parte senza un si'.
+
+The same alert also reaches the desktop, with a Reply button that queues
+the instruction for the watcher (process_desktop_queue). And when the
+client names one precise time that is free in the calendar, the
+confirmation is drafted straight away (draft_confirmation): it still waits
+for approval like every other draft.
 """
 import json
 import secrets
+import time
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from gigamail import agent_bridge, policy
@@ -27,6 +35,7 @@ _TTL_SECONDI = 4 * 3600
 _KV_CTX = "tg_ctx_"
 _KV_MSG = "tg_msg_"
 _KV_REQ = "tg_req_"
+_KV_DESKTOP = "desktop_reply_"
 
 
 def _it(lang: str) -> bool:
@@ -42,22 +51,69 @@ def bottone(chiave: str, lang: str) -> List[List[Dict[str, str]]]:
               "callback_data": f"w:{chiave}"}]]
 
 
+class DesktopChannel:
+    """Stands in for Telegram when it is not configured, and for work
+    queued from the desktop: messages become desktop notifications, and
+    there are no buttons (approval happens from the approval toast)."""
+
+    chat_id = "desktop"
+    approve_enabled = False
+
+    def send(self, text: str, buttons=None, html: bool = False) -> bool:
+        try:
+            from gigamail.core import desktop_notify
+            return bool(desktop_notify.notify("GigaMail", text))
+        except Exception:
+            return False
+
+    def send_message(self, text: str, buttons=None, html: bool = False) -> int:
+        self.send(text)
+        return 0
+
+    @staticmethod
+    def action_buttons(request_id: str, lang: str, can_approve: bool):
+        return None
+
+    def clear_buttons(self, message_id: int) -> bool:
+        return True
+
+
+def register_context(account_id: int, message: Dict[str, Any]) -> str:
+    """Remember which mail a reply belongs to; returns the key the Reply
+    buttons (Telegram and desktop) carry."""
+    key = secrets.token_hex(4)
+    f = message.get("from") or {}
+    ea = f.get("emailAddress") if isinstance(f, dict) else None
+    ea = ea if isinstance(ea, dict) else {}
+    ctx = {"account_id": int(account_id),
+           "message_id": str(message.get("id") or ""),
+           "folder": "INBOX",
+           "mittente": str(ea.get("address") or ""),
+           "nome": str(ea.get("name") or "").strip().strip('"').strip(),
+           "subject": str(message.get("subject") or "")}
+    rules_mod.store().kv_set(_KV_CTX + key, json.dumps(ctx, ensure_ascii=False))
+    return key
+
+
+def notify_desktop(text: str, key: str) -> None:
+    """The client-reply alert as a desktop notification. Its Reply button
+    opens a window that asks what to answer and queues it for the
+    watcher."""
+    try:
+        from gigamail.core import desktop_notify
+        label = "Rispondi" if _it(policy.user_lang()) else "Reply"
+        desktop_notify.notify("GigaMail", text,
+                              actions=[(label, f"gigamail://reply/{key}")])
+    except Exception as e:
+        _log(f"client-reply alert not shown on the desktop: {e}", False)
+
+
 def registra_avviso(tg, testo: str, account_id: int,
                     messaggio: Dict[str, Any], lang: str) -> str:
     """Manda l'avviso con il bottone Rispondi e ricorda a quale mail si
     riferisce, sia per il bottone sia per chi risponde al messaggio."""
-    chiave = secrets.token_hex(4)
-    f = messaggio.get("from") or {}
-    ea = f.get("emailAddress") if isinstance(f, dict) else None
-    ea = ea if isinstance(ea, dict) else {}
-    ctx = {"account_id": int(account_id),
-           "message_id": str(messaggio.get("id") or ""),
-           "folder": "INBOX",
-           "mittente": str(ea.get("address") or ""),
-           "nome": str(ea.get("name") or "").strip().strip('"').strip(),
-           "subject": str(messaggio.get("subject") or "")}
+    chiave = register_context(account_id, messaggio)
     rs = rules_mod.store()
-    rs.kv_set(_KV_CTX + chiave, json.dumps(ctx, ensure_ascii=False))
     pulsanti = bottone(chiave, lang)
     if hasattr(tg, "send_message"):
         mid = tg.send_message(testo, buttons=pulsanti)
@@ -115,7 +171,8 @@ def _cc(account_id: int) -> List[str]:
 
 def rispondi(w, tg, chiave: str, istruzione: str,
              previous_body: Optional[str] = None,
-             feedback: Optional[str] = None) -> Optional[str]:
+             feedback: Optional[str] = None,
+             announce: bool = True) -> Optional[str]:
     """Bozza dall'istruzione, poi richiesta di approvazione. Ritorna la
     request_id, o None se non e' stato possibile prepararla (e lo dice)."""
     ctx = contesto(chiave)
@@ -143,7 +200,8 @@ def rispondi(w, tg, chiave: str, istruzione: str,
               "reply_style": ("ISTRUZIONE DELL'UTENTE, da seguire alla lettera "
                               f"nel contenuto: {istruzione}"),
               "doc_paths": _doc_paths(aid)}
-    _say(tg, "⏳ Scrivo la risposta…", "⏳ Writing the reply…")
+    if announce:
+        _say(tg, "⏳ Scrivo la risposta…", "⏳ Writing the reply…")
     try:
         corpo = drafting.draft_reply(regola, aid, messaggio, feedback=feedback,
                                      previous_body=previous_body)
@@ -206,3 +264,95 @@ def rifai(w, tg, rid: str, feedback: str) -> bool:
     rispondi(w, tg, dato["chiave"], dato["istruzione"],
              previous_body=precedente, feedback=feedback)
     return True
+
+
+# ── confirmation drafted at once ─────────────────────────────────────
+
+def _when(start: str) -> str:
+    from gigamail.core import availability
+    try:
+        return availability.etichetta_slot(datetime.fromisoformat(start))
+    except Exception:
+        return str(start or "")
+
+
+def _confirmable(outcome: Dict[str, Any], touched: Optional[Dict[str, Any]]) -> bool:
+    """One precise time, free in the calendar: either the client accepted
+    a time we offered (already in the calendar) or asked for a new one
+    that is free."""
+    state = outcome.get("stato")
+    if state == "confermato":
+        return bool(touched) and not touched.get("invariato") and not outcome.get("arreso")
+    if state != "proposto" or not outcome.get("scelta_unica"):
+        return False
+    if outcome.get("occupato") or outcome.get("agenda_illeggibile"):
+        return False
+    from gigamail.core import appointments
+    return appointments.libero(outcome["inizio"], outcome["fine"]) is True
+
+
+def draft_confirmation(w, tg, account_id: int, row: Dict[str, Any],
+                       message: Dict[str, Any], outcome: Dict[str, Any],
+                       touched: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """The client named one free time: draft the confirmation now and send
+    it for approval, instead of waiting for the user to ask for it.
+    Returns the request id, or None when nothing was drafted."""
+    if not _confirmable(outcome, touched):
+        return None
+    mid = str(message.get("id") or "")
+    if mid and rules_mod.store().get_handled(RULE_ID, mid):
+        return None                      # already drafted for this mail
+    where = "by video call" if row.get("video") else "at our office"
+    instruction = (f"Confirm the appointment for {_when(outcome['inizio'])} "
+                   f"{where}: that time is free in the calendar. Thank them "
+                   "and say we look forward to meeting them. Do not propose "
+                   "other times.")
+    key = register_context(account_id, message)
+    return rispondi(w, tg or DesktopChannel(), key, instruction, announce=False)
+
+
+# ── replies and edits queued from the desktop ────────────────────────
+
+def _queue(entry: Dict[str, Any]) -> None:
+    name = f"{_KV_DESKTOP}{time.time():017.6f}_{secrets.token_hex(2)}"
+    rules_mod.store().kv_set(name, json.dumps(entry, ensure_ascii=False))
+
+
+def queue_desktop_reply(key: str, instruction: str) -> bool:
+    """Reply button on the desktop alert: the watcher drafts it on its
+    next tick. False when the alert is unknown or the text is empty."""
+    if not contesto(key) or not (instruction or "").strip():
+        return False
+    _queue({"key": key, "instruction": instruction.strip()})
+    return True
+
+
+def queue_desktop_edit(request_id: str, feedback: str) -> bool:
+    """Edit from the desktop on a reply drafted here: the request is
+    already revoked; the watcher redrafts it with the note. False when the
+    request was not drafted here."""
+    if not rules_mod.store().kv_get(_KV_REQ + str(request_id), ""):
+        return False
+    _queue({"request_id": request_id, "feedback": feedback})
+    return True
+
+
+def process_desktop_queue(w, tg) -> int:
+    """Draft what the desktop queued. Returns how many entries it took."""
+    rs = rules_mod.store()
+    done = 0
+    for name in rs.kv_keys(_KV_DESKTOP):
+        raw = rs.kv_get(name, "")
+        if not rs.kv_delete(name):
+            continue                     # another reader took it
+        try:
+            entry = json.loads(raw)
+        except Exception:
+            continue
+        channel = tg or DesktopChannel()
+        if entry.get("request_id"):
+            rifai(w, channel, entry["request_id"], entry.get("feedback") or "")
+        else:
+            rispondi(w, channel, entry.get("key") or "", entry.get("instruction") or "")
+        done += 1
+    return done

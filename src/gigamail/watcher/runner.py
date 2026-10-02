@@ -90,6 +90,8 @@ class Watcher:
         self.heartbeat()
         stats["after"] = self.after_appointment()
         self.heartbeat()
+        stats["processed"] += self.desktop_replies()
+        self.heartbeat()
         for rule in rules_mod.store().active():
             for message in self._poll_folder(rule):
                 if not self._matches(rule, message):
@@ -212,12 +214,25 @@ class Watcher:
                               "thread": riga["thread_key"],
                               "message_id": str(m.get("id") or ""),
                               "stato": esito.get("stato")},
-                             "reply_notified" if tg else "reply_seen")
+                             "reply_notified")
                 if tg:
                     # Con il bottone Rispondi: da Telegram si risponde al
                     # cliente senza tornare al PC.
-                    tg_risposte.registra_avviso(tg, testo, _aid, m,
-                                                policy.user_lang())
+                    key = tg_risposte.registra_avviso(tg, testo, _aid, m,
+                                                      policy.user_lang())
+                else:
+                    key = tg_risposte.register_context(_aid, m)
+                # On the desktop too, with its own Reply button.
+                tg_risposte.notify_desktop(testo, key)
+                # One free time named by the client: the confirmation is
+                # drafted now and waits for approval.
+                self.heartbeat()
+                try:
+                    tg_risposte.draft_confirmation(self, tg, _aid, riga, m,
+                                                   esito, toccato)
+                except Exception as e:
+                    _log(f"confirmation not drafted: {e}", True)
+                self.heartbeat()
 
             try:
                 totale += appointments.sweep(account_id, messaggi,
@@ -227,6 +242,21 @@ class Watcher:
                 _log(f"appuntamenti, sweep fallito ({account_id}): {e}",
                      self.verbose)
         return totale
+
+    # -- phase C3: replies asked for from the desktop ---------------------
+
+    def desktop_replies(self) -> int:
+        """Replies and edits queued from desktop notifications: drafted
+        here, where the agent runs. A failure does not stop the tick."""
+        try:
+            tg = telegram_channel.channel()
+        except Exception:
+            tg = None
+        try:
+            return tg_risposte.process_desktop_queue(self, tg)
+        except Exception as e:
+            _log(f"desktop replies not processed: {e}", self.verbose)
+            return 0
 
     # -- phase C2: how the appointment went, and the follow-up -------------
 

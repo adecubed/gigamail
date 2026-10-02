@@ -261,9 +261,11 @@ trade lives outside it and is off until you turn it on:
   - Reads every sent mail, and the replies on those threads, for an
     appointment. A proposal stays out of the calendar; the time the
     client accepts goes in.
-  - Client replies on followed threads reach you on Telegram with a
-    **Reply** button: write "ok, fine" and your agent drafts the answer,
-    which waits for your approval like any other.
+  - Client replies on followed threads reach you on Telegram and as a
+    desktop notification, each with a **Reply** button: write "ok, fine"
+    and your agent drafts the answer, which waits for your approval like
+    any other. When the client names one precise time that is free in
+    your calendar, the confirmation is drafted straight away.
   - A confirmed video call gets a Zoom meeting and the mail with the
     link, for approval.
   - **After the meeting**: one hour after it starts, GigaMail asks how it
@@ -537,9 +539,11 @@ vive fuori ed e' spento finche' non lo accendi:
   - Legge ogni mail inviata, e le risposte su quei thread, in cerca di un
     appuntamento. Una proposta resta fuori dal calendario; ci entra
     l'orario che il cliente accetta.
-  - Le risposte dei clienti sui thread seguiti arrivano su Telegram con
-    il bottone **Rispondi**: scrivi «ok, va bene» e il tuo agente prepara
-    la risposta, che aspetta la tua approvazione come tutte le altre.
+  - Le risposte dei clienti sui thread seguiti arrivano su Telegram e
+    come notifica sul PC, entrambe con il bottone **Rispondi**: scrivi
+    «ok, va bene» e il tuo agente prepara la risposta, che aspetta la tua
+    approvazione come tutte le altre. Quando il cliente indica un orario
+    preciso e libero in agenda, la conferma si prepara da sola.
   - Una video call confermata riceve una riunione Zoom e la mail con il
     link, da approvare.
   - **Dopo l'incontro**: un'ora dopo l'inizio GigaMail chiede com'e'
@@ -755,8 +759,10 @@ MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：�
   一直到跟进。
   - 在每封已发送的邮件及其线程中的回复里查找预约。提议的时间不进日历；
     客户接受的时间才写入日历。
-  - 客户在跟进线程中的回复会带着 **回复** 按钮发到 Telegram：写一句
-    "好的，可以"，你的代理就会起草回复，并像其他草稿一样等待你的批准。
+  - 客户在跟进线程中的回复会发到 Telegram，并同时以电脑桌面通知的形式出现，
+    两者都带 **回复** 按钮：写一句"好的，可以"，你的代理就会起草回复，并像
+    其他草稿一样等待你的批准。如果客户提出一个日历中空闲的具体时间，确认邮件
+    会自动起草。
   - 已确认的视频通话会自动创建 Zoom 会议，并生成附带链接的邮件，等待批准。
   - **会面之后**：会面开始一小时后，GigaMail 会在 Telegram 或电脑桌面通知中
     询问情况如何 —— 已到场、未到场、改期，外加几句备注（`gigamail debrief`

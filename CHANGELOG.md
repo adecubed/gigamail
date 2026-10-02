@@ -25,6 +25,17 @@
   times. The first notice says the reply could not be read for the
   calendar and will be retried; if every try fails, a second notice says
   to update the calendar by hand.
+- **Client replies reach the desktop too.** The "the client replied"
+  alert went to Telegram only. It now also arrives as a desktop
+  notification with a Reply button: the window that opens asks what to
+  answer, and the watcher drafts it for approval. Edit from the desktop
+  on such a draft rewrites it (it used to fail).
+- **One free time named by the client gets its confirmation drafted.**
+  When a client on a followed thread names one precise time and it is
+  free in the calendar — a time we offered or a new one — the
+  confirmation is drafted at once and waits for approval, instead of
+  waiting for you to ask for it. Several times, a busy slot or an
+  unreadable calendar still go to you.
 - **Mail text goes to OpenAI only if you ask for it.** The search memory
   used OpenAI embeddings whenever `OPENAI_API_KEY` was in the server's
   environment, and MCP clients such as Claude Code pass their whole

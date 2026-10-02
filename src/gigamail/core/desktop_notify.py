@@ -323,6 +323,10 @@ def _toast_tag(actions: Optional[List[Tuple[str, str]]]) -> str:
         m = re.search(r"outcome/([0-9a-f]{8})", url)
         if m:
             return f"outcome_{m.group(1)}"
+        # A client-reply alert: one toast per reply.
+        m = re.search(r"reply/([0-9a-f]{8})", url)
+        if m:
+            return f"reply_{m.group(1)}"
     return ""
 
 
