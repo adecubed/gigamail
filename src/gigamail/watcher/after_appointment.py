@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from gigamail import agent_bridge, policy
+from gigamail.core import accounts as core_accounts
 from gigamail.core import (
     appointments,
     archivio,
@@ -29,7 +30,6 @@ from gigamail.core import (
     mail_memory,
     telegram_channel,
 )
-from gigamail.core import accounts as core_accounts
 from gigamail.core import rules as rules_mod
 
 from . import drafting, tg_risposte
@@ -211,7 +211,7 @@ def _send_question(tg, row: Dict[str, Any]) -> None:
     if tg:
         icons = ("✅ ", "❌ ", "📅 ")
         buttons = [[{"text": i + label, "callback_data": f"d:{key}:{c}"}
-                    for i, label, c in zip(icons, labels, ("s", "n", "p"))]]
+                    for i, label, c in zip(icons, labels, ("s", "n", "p"), strict=True)]]
         try:
             if hasattr(tg, "send_message"):
                 mid = tg.send_message("📋 " + text, buttons=buttons)
@@ -228,7 +228,7 @@ def _send_question(tg, row: Dict[str, Any]) -> None:
         # opens the question window, it decides nothing by itself.
         base = f"gigamail://outcome/{key}"
         actions = [("Rispondi" if _it() else "Answer", base)]
-        actions += [(label, f"{base}/{c}") for label, c in zip(labels, ("s", "n", "p"))]
+        actions += [(label, f"{base}/{c}") for label, c in zip(labels, ("s", "n", "p"), strict=True)]
         desktop_notify.notify("GigaMail", text, actions=actions)
     except Exception as e:
         logger.debug("desktop notification not sent: %s", e)

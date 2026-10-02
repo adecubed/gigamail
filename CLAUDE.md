@@ -37,6 +37,9 @@ names, addresses, numbers and non-`example.com` email addresses.
 
 - Every behaviour change comes with tests; run the whole suite
   (`.venv\Scripts\python.exe -m pytest -q`) and report the real result.
+- Run the lint CI runs, before handing over:
+  `.venv\Scripts\python.exe -m ruff check src tests extras`. Tests green
+  with lint red is still a red CI.
 - A user-visible change gets an entry under `## Unreleased` in
   `CHANGELOG.md`.
 - Trade-specific behaviour (real estate, ...) belongs in `extras/`, not in
