@@ -195,7 +195,8 @@ def test_placeholder_message_porta_il_testo_completo(monkeypatch, tmp_path):
     policy.notify_approval_requested("req_m", "reply_mail", {"subject": "s"},
                                      message=testo)
     assert _wait_for(out)
-    assert out.read_text(encoding="utf-8") == testo
+    # The message as written, plus the line naming the mail's subject.
+    assert out.read_text(encoding="utf-8") == testo + "\n📧 «s»"
 
 
 def test_comando_da_notify_json_se_manca_env(monkeypatch, tmp_path):

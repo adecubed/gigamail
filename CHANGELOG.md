@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Approval notifications name the mail.** On Telegram and in the
+  desktop toast, every approval now carries a line with the subject of
+  the mail it is about (the one being replied to, or the new mail's own
+  subject), unless the text already quotes it. A reply drafted from an
+  instruction used to say only "Reply to Anna. Approve?", and the toast
+  for a reply asked by the agent showed a raw `replying_to={...}`
+  summary; it now shows the subject and the recipient.
 - **A confirmation sent from the MCP server reaches the calendar, or you
   hear that it did not.** With the `appointments` extension on, a mail
   sent through `send_mail` or `reply_mail` is read by the headless agent

@@ -556,7 +556,8 @@ def full_preview_text(tool: str, preview: Dict[str, Any],
                      + ", ".join(nomi))
     rispondendo = preview.get("replying_to")
     if rispondendo:
-        righe.append(f"In risposta a: {rispondendo}")
+        righe.append(("In risposta a: " if it else "Replying to: ")
+                     + _replying_to_text(rispondendo))
     testa = chr(10).join(righe)
     corpo = str(preview.get("body") or "")
     if not testa and not corpo:
@@ -567,6 +568,50 @@ def full_preview_text(tool: str, preview: Dict[str, Any],
     if corpo:
         return testa + chr(10) + chr(10) + corpo
     return testa
+
+
+def _one_line(text: Any) -> str:
+    return " ".join(str(text or "").split())
+
+
+def _address_of(value: Any) -> str:
+    """'a@b.it' from a plain address or a Graph {'emailAddress': {...}}."""
+    if isinstance(value, dict):
+        inner = value.get("emailAddress") if isinstance(value.get("emailAddress"), dict) else value
+        return str(inner.get("address") or inner.get("name") or "")
+    return str(value or "")
+
+
+def _replying_to_text(replying_to: Any) -> str:
+    """'sender — «subject»' instead of the raw dict of a reply preview."""
+    if not isinstance(replying_to, dict):
+        return _one_line(replying_to)
+    sender = _address_of(replying_to.get("from"))
+    subject = _one_line(replying_to.get("subject"))
+    if subject:
+        return f"{sender} — «{subject}»" if sender else f"«{subject}»"
+    return sender
+
+
+def subject_of(preview: Dict[str, Any]) -> str:
+    """The subject of the mail a request is about: its own subject, or
+    the subject of the mail it replies to."""
+    replying_to = preview.get("replying_to")
+    if isinstance(replying_to, dict) and replying_to.get("subject"):
+        return _one_line(replying_to["subject"])
+    return _one_line(preview.get("subject"))
+
+
+def with_subject(text: str, preview: Dict[str, Any]) -> str:
+    """The notification text with a line naming the subject, right under
+    the first line, unless the text already quotes it. Approving a reply
+    from a phone, "Reply to Anna. Approve?" did not say which mail."""
+    subject = subject_of(preview)
+    if not subject or subject in _one_line(text):
+        return text
+    first, _, rest = str(text).partition("\n")
+    line = f"📧 «{subject}»"
+    return f"{first}\n{line}\n{rest}" if rest else f"{first}\n{line}"
 
 
 def telegram_buttons(request_id: str):
@@ -598,8 +643,18 @@ def notify_approval_requested(request_id: str, tool: str, preview: Dict[str, Any
     preview. Ritorna True se almeno un canale e' partito. Mai eccezioni
     verso il chiamante, mai bloccante."""
     summary = _summarize_preview(preview)
+    subject = subject_of(preview)
     if message:
-        text = message
+        text = message = with_subject(message, preview)
+    elif subject:
+        # A readable toast for mail requests: the subject and who it goes
+        # to, not the raw "replying_to={...}" summary cut at 160 characters.
+        head = (f"GigaMail: {tool} in attesa di approvazione"
+                if user_lang() == "it" else f"GigaMail: {tool} awaiting approval")
+        to = _address_of(preview.get("to")) or _address_of(
+            (preview.get("replying_to") or {}).get("from")
+            if isinstance(preview.get("replying_to"), dict) else "")
+        text = f"{head}\n📧 «{subject}»" + (f"\n→ {to}" if to else "")
     elif user_lang() == "it":
         text = f"GigaMail: {tool} in attesa di approvazione — {summary}"
     else:
