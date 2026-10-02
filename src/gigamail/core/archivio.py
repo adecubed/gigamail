@@ -541,6 +541,23 @@ class ArchiveStore:
     def raw(self, riga: Dict[str, Any]) -> bytes:
         return gzip.decompress(Path(riga["raw_path"]).read_bytes())
 
+    def with_address(self, account_id: int, address: str,
+                     since_ts: float = 0.0, top: int = 50) -> List[Dict[str, Any]]:
+        """Mail exchanged with an address, in and out, newest first."""
+        addr = (address or "").strip().lower()
+        if "@" not in addr:
+            return []
+        like = f"%{addr}%"
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM messages WHERE account_id=? AND date_ts>=?"
+                " AND (lower(from_addr)=? OR lower(to_addrs) LIKE ?"
+                "      OR lower(cc_addrs) LIKE ?)"
+                " ORDER BY date_ts DESC LIMIT ?",
+                (int(account_id), float(since_ts), addr, like, like,
+                 int(top))).fetchall()
+        return [dict(r) for r in rows]
+
     def conta(self, account_id: Optional[int] = None) -> Dict[str, int]:
         q = "SELECT source, COUNT(*) n FROM messages"
         args: tuple = ()

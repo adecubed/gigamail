@@ -521,6 +521,52 @@ def update_sender_profile(email: str, tone: str = "", topics: List[str] = None, 
             )
             conn.commit()
 
+_NOTES_MAX = 4000
+
+
+def add_note(email: str, text: str, name: str = "") -> str:
+    """Append a line to a contact's notes and return the whole notes.
+
+    Notes accumulate, they are never replaced: how each appointment went
+    stays next to the name, and whoever replies to that person months
+    later finds it (sender_history, draft prompts). Past _NOTES_MAX
+    characters the oldest lines drop off."""
+    email = (email or "").strip().lower()
+    text = str(text or "").strip()
+    if "@" not in email or not text:
+        return client_notes(email)
+    now = _now_iso()
+    with _LOCK:
+        with _get_conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO senders (email, name, domain,"
+                " first_seen, last_seen) VALUES (?,?,?,?,?)",
+                (email, name or "", _extract_domain(email), now, now))
+            row = conn.execute("SELECT notes FROM senders WHERE email=?",
+                               (email,)).fetchone()
+            notes = f"{(row['notes'] if row else '') or ''}\n{text}".strip()
+            if len(notes) > _NOTES_MAX:
+                notes = notes[-_NOTES_MAX:].split("\n", 1)[-1]
+            conn.execute("UPDATE senders SET notes=?, updated_at=? WHERE email=?",
+                         (notes, now, email))
+            conn.commit()
+    return notes
+
+
+def client_notes(email: str) -> str:
+    """The user's notes on a contact, empty when there are none."""
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return ""
+    try:
+        with _get_conn() as conn:
+            row = conn.execute("SELECT notes FROM senders WHERE email=?",
+                               (email,)).fetchone()
+    except sqlite3.Error:
+        return ""
+    return str((row["notes"] if row else "") or "").strip()
+
+
 def get_sender_profile(email: str) -> Optional[Dict]:
     """Restituisce il profilo completo di un mittente."""
     email = email.strip().lower()

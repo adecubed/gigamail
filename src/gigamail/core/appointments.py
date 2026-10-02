@@ -154,6 +154,28 @@ class AppointmentStore:
                     PRIMARY KEY (account_id, message_id)
                 )
             """)
+            # How each appointment went, and the follow-up that comes after
+            # it (watcher/after_appointment.py). The start time is part of
+            # the key: a second meeting with the same person is a new row.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS outcomes (
+                    account_id          INTEGER NOT NULL,
+                    thread_key          TEXT    NOT NULL,
+                    start               TEXT    NOT NULL,
+                    person              TEXT    NOT NULL DEFAULT '',
+                    video               INTEGER NOT NULL DEFAULT 0,
+                    key                 TEXT    NOT NULL UNIQUE,
+                    asked_at            REAL    NOT NULL,
+                    outcome             TEXT    NOT NULL DEFAULT '',
+                    notes               TEXT    NOT NULL DEFAULT '',
+                    answered_at         REAL,
+                    followup_due        REAL,
+                    followup_state      TEXT    NOT NULL DEFAULT '',
+                    followup_request_id TEXT    NOT NULL DEFAULT '',
+                    PRIMARY KEY (account_id, thread_key, start)
+                )
+            """)
+            _migrate_esiti(conn)
 
     def get(self, account_id: int, thread_key: str) -> Optional[Dict[str, Any]]:
         with self._conn() as conn:
@@ -257,6 +279,90 @@ class AppointmentStore:
                 "UPDATE appuntamenti SET zoom_id=?, zoom_url=?"
                 " WHERE account_id=? AND thread_key=?",
                 (str(zoom_id), str(zoom_url), int(account_id), thread_key))
+
+    # -- outcomes and follow-ups ------------------------------------------
+
+    _OUTCOME_FIELDS = ("outcome", "notes", "answered_at", "followup_due",
+                       "followup_state", "followup_request_id")
+
+    def outcome_get(self, account_id: int, thread_key: str,
+                    start: str) -> Optional[Dict[str, Any]]:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM outcomes WHERE account_id=? AND thread_key=?"
+                " AND start=?", (int(account_id), thread_key, start)).fetchone()
+        return dict(row) if row else None
+
+    def outcome_by_key(self, key: str) -> Optional[Dict[str, Any]]:
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM outcomes WHERE key=?",
+                               (str(key),)).fetchone()
+        return dict(row) if row else None
+
+    def outcome_new(self, account_id: int, thread_key: str, start: str,
+                    person: str, video: bool, key: str,
+                    outcome: str = "") -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO outcomes (account_id, thread_key,"
+                " start, person, video, key, asked_at, outcome)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (int(account_id), thread_key, start, person or "",
+                 1 if video else 0, key, time.time(), outcome))
+
+    def outcome_update(self, key: str, **fields: Any) -> None:
+        fields = {k: v for k, v in fields.items() if k in self._OUTCOME_FIELDS}
+        if not fields:
+            return
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE outcomes SET " + ", ".join(f"{k}=?" for k in fields)
+                + " WHERE key=?", (*fields.values(), str(key)))
+
+    def outcomes_unanswered(self) -> List[Dict[str, Any]]:
+        with self._conn() as conn:
+            return [dict(r) for r in conn.execute(
+                "SELECT * FROM outcomes WHERE outcome='' ORDER BY start").fetchall()]
+
+    def followups(self, state: str,
+                  due_by: Optional[float] = None) -> List[Dict[str, Any]]:
+        """Outcomes whose follow-up is in that state; with `due_by`, only
+        the ones already due at that time."""
+        q = "SELECT * FROM outcomes WHERE followup_state=?"
+        args: tuple = (state,)
+        if due_by is not None:
+            q += " AND followup_due IS NOT NULL AND followup_due<=?"
+            args += (float(due_by),)
+        with self._conn() as conn:
+            return [dict(r) for r in conn.execute(q, args).fetchall()]
+
+
+# The first version of the outcomes table (one day, never released) had
+# Italian names. Rows saved on that day move here once.
+_ESITI_VALUES = {"presentato": "showed_up", "non_presentato": "no_show",
+                 "rimandato": "postponed", "tolto": "removed",
+                 "da_fare": "due", "in_approvazione": "awaiting_approval",
+                 "inviato": "sent", "rifiutato": "rejected",
+                 "scaduto": "expired", "saltato": "skipped"}
+
+
+def _migrate_esiti(conn) -> None:
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table'"
+                        " AND name='esiti'").fetchone():
+        return
+    for r in conn.execute("SELECT * FROM esiti").fetchall():
+        conn.execute(
+            "INSERT OR IGNORE INTO outcomes (account_id, thread_key, start,"
+            " person, video, key, asked_at, outcome, notes, answered_at,"
+            " followup_due, followup_state, followup_request_id)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (r["account_id"], r["thread_key"], r["inizio"], r["con"],
+             r["video"], r["chiave"], r["chiesto_il"],
+             _ESITI_VALUES.get(r["esito"], r["esito"]), r["note"],
+             r["risposto_il"], r["followup_dal"],
+             _ESITI_VALUES.get(r["followup_stato"], r["followup_stato"]),
+             r["followup_rid"]))
+    conn.execute("DROP TABLE esiti")
 
 
 _store: Optional[AppointmentStore] = None

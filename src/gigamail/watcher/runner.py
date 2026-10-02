@@ -11,6 +11,7 @@ from gigamail.core import rules as rules_mod
 from gigamail.core import telegram_channel
 
 from . import (
+    after_appointment,
     archive,
     execution,
     ingestion,
@@ -73,7 +74,7 @@ class Watcher:
 
     def tick(self) -> Dict[str, int]:
         stats = {"executed": 0, "processed": 0, "appointments": 0,
-                 "archived": 0, "salvate": 0}
+                 "after": 0, "archived": 0, "salvate": 0}
         # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
         # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
         # soglia oltre la quale running_state() dichiara morto il watcher:
@@ -86,6 +87,8 @@ class Watcher:
         stats["processed"] += self.process_retries()
         self.heartbeat()
         stats["appointments"] = self.sweep_appointments()
+        self.heartbeat()
+        stats["after"] = self.after_appointment()
         self.heartbeat()
         for rule in rules_mod.store().active():
             for message in self._poll_folder(rule):
@@ -218,6 +221,18 @@ class Watcher:
                      self.verbose)
         return totale
 
+    # -- phase C2: how the appointment went, and the follow-up -------------
+
+    def after_appointment(self) -> int:
+        """An hour after an appointment, ask how it went and write it in
+        the contact's notes; seven days later, prepare the follow-up. A
+        failure here does not stop the rest of the tick."""
+        try:
+            return after_appointment.tick(self)
+        except Exception as e:
+            _log(f"after appointment: tick failed: {e}", self.verbose)
+            return 0
+
     # -- Telegram: tap e comandi dall'umano --------------------------------
 
     def _tg_say(self, tg, it: str, en: str) -> None:
@@ -280,7 +295,8 @@ class Watcher:
             try:
                 stats = self.tick()
                 if (stats["processed"] or stats["executed"]
-                        or stats["appointments"] or stats["archived"]
+                        or stats["appointments"] or stats["after"]
+                        or stats["archived"]
                         or stats["salvate"]):
                     _log(f"tick: {stats}", True)
             except KeyboardInterrupt:

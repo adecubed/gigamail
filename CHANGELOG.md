@@ -24,6 +24,28 @@
 - **The approval channels are ranked in the docs.** Hello / Touch ID
   first, the Linux PIN second, Telegram last, stated as a convenience
   rather than the normal path. Telegram itself is unchanged.
+- **After an appointment GigaMail asks how it went, and remembers.** One
+  hour after a confirmed appointment starts it asks: showed up, didn't
+  show up, postponed. The question arrives on Telegram and as a desktop
+  notification whose buttons answer it (the window that opens takes your
+  notes); `gigamail debrief` lists the ones still unanswered. Telegram is
+  not required. The answer, and the couple of lines you add, go into
+  that client's notes (the sender profile `sender_history` returns),
+  dated, one line per meeting. Draft replies to that client read those
+  notes from then on.
+- **Automatic follow-up seven days after the meeting.** When the client
+  showed up, a week later at 10:00 on a weekday GigaMail drafts a
+  follow-up from your notes, in the same conversation, and sends it for
+  approval like every other draft (Approve / Reject / Edit, on Telegram
+  or from the desktop notification: Edit rewrites it with your note).
+  It is skipped when you have already written to each other since the
+  meeting, or when a new appointment is in progress. Delay and wait time:
+  `GIGAMAIL_FOLLOWUP_DAYS` (7), `GIGAMAIL_DEBRIEF_DELAY_MINUTES` (60).
+- **A conversation's own appointment no longer blocks its slot.** The
+  client picked 17:00, GigaMail put it in the calendar, and the draft
+  written a minute later found 17:00 "busy" and turned the client down.
+  The thread's confirmed event is now left out of the free-slot search,
+  and the prompt says the appointment is already set.
 - **The IMAP server certificate is verified.** Until now the IMAP client
   connected with certificate checks switched off: on a hostile network
   (a public Wi-Fi) whoever sat in the middle could receive the account

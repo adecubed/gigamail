@@ -319,6 +319,10 @@ def _toast_tag(actions: Optional[List[Tuple[str, str]]]) -> str:
         m = re.search(r"(req_[0-9A-Za-z]+)", url)
         if m:
             return m.group(1)[:64]
+        # The "how did the appointment go" question: one toast per meeting.
+        m = re.search(r"outcome/([0-9a-f]{8})", url)
+        if m:
+            return f"outcome_{m.group(1)}"
     return ""
 
 

@@ -7,7 +7,7 @@ l'agente (vedi approvals / mail_router).
 """
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from gigamail import agent_bridge, policy
 from gigamail.core import accounts as core_accounts
@@ -84,7 +84,62 @@ def regole_agenda() -> Dict[str, Any]:
     return regole
 
 
-def _slot_liberi_text() -> str:
+def _thread_appointment(account_id: int, subject: str,
+                        sender: str) -> Optional[Dict[str, Any]]:
+    """The appointment already confirmed in this conversation, if any.
+
+    Only with the extension on: opening the store creates
+    .appointments.db, and that file alone switches the extension on for
+    someone who never asked for it (extensions._migra_una_volta)."""
+    try:
+        if not extensions.enabled("appointments"):
+            return None
+        from gigamail.core import appointments
+        row = appointments.store().get(
+            account_id, appointments.thread_key(subject, sender))
+    except Exception as e:
+        logger.debug("thread appointment not read: %s", e)
+        return None
+    if not row or row.get("stato") != "confermato" or not row.get("event_id"):
+        return None
+    return row
+
+
+def _appointment_text(row: Optional[Dict[str, Any]]) -> str:
+    """The prompt constraint when the appointment is already set.
+
+    A client picked 17:00, GigaMail put it in the calendar, and the draft
+    written a minute later found 17:00 "busy" and turned the client down.
+    Busy with that very client."""
+    if not row:
+        return ""
+    try:
+        when = availability.etichetta_slot(datetime.fromisoformat(row["inizio"]))
+    except Exception:
+        when = str(row.get("inizio") or "")
+    return ("APPOINTMENT ALREADY SET WITH THIS PERSON: " + when
+            + ", confirmed and already in the calendar. If the mail is "
+            "about this time, CONFIRM IT: do not say it is busy and do not "
+            "offer alternatives unless the person asks for them.\n\n")
+
+
+def _client_notes_text(sender: str) -> str:
+    """The user's notes on this contact: how a meeting went, what they
+    are interested in. after_appointment writes them when the user
+    answers the "how did it go" question."""
+    try:
+        from gigamail.core import mail_memory
+        notes = mail_memory.client_notes(sender)
+    except Exception as e:
+        logger.debug("client notes not read: %s", e)
+        return ""
+    if not notes:
+        return ""
+    return ("THE USER'S NOTES ON THIS CONTACT (reliable, take them into "
+            f"account):\n{notes[-2000:]}\n\n")
+
+
+def _slot_liberi_text(exclude: Sequence[str] = ()) -> str:
     """Gli orari realmente proponibili, gia' pronti per il testo.
 
     Senza questa sezione l'agente scrive la bozza senza avere idea
@@ -97,6 +152,10 @@ def _slot_liberi_text() -> str:
     interlocutoria che un appuntamento sopra un altro."""
     try:
         eventi = calendar_router.get_events(days_ahead=_SLOT_GIORNI + 1)
+        # This conversation's own event is not a commitment that rules it
+        # out: it is the appointment being confirmed.
+        if exclude:
+            eventi = [e for e in eventi or [] if str(e.get("id") or "") not in exclude]
         slot = availability.find_free_slots(
             eventi, days_ahead=_SLOT_GIORNI,
             skip_weekends=not _SLOT_SABATO, **regole_agenda())
@@ -155,6 +214,8 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
     except Exception as e:
         logger.debug("observer non disponibile per %s: %s", account_id, e)
     docs = _rule_docs_text(rule)
+    appointment = _thread_appointment(account_id, subject, sender)
+    exclude = [appointment["event_id"]] if appointment else []
     identity_lines = "\n".join(
         f"{k}: {ident.get(k)}" for k in ("who_am_i", "what_i_do", "tone", "key_info")
         if ident.get(k))
@@ -183,8 +244,10 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
         "dell'utente. Se non ce ne sono, non proporre orari.\n"
         "- Non usare tool: tutto cio' che serve e' in questo prompt.\n\n"
         f"IDENTITA' DELL'UTENTE:\n{identity_lines or '(non impostata)'}\n\n"
-        + _vincoli_estensioni(subject, _message_body_text(message)) +
-        f"{_slot_liberi_text()}\n\n"
+        + _vincoli_estensioni(subject, _message_body_text(message))
+        + _client_notes_text(sender)
+        + _appointment_text(appointment) +
+        f"{_slot_liberi_text(exclude)}\n\n"
         f"STILE RICHIESTO DALLA REGOLA:\n{rule.get('reply_style') or '(nessuna indicazione)'}\n\n"
         + (f"STILE DALLE CORREZIONI PASSATE (tono e forma, NON "
             f"contenuto):\n{obs}\n\n" if obs else "")

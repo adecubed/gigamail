@@ -988,10 +988,15 @@ def _retry_di_regola(rid: str, nota: str) -> bool:
     richieste che una regola non ha prodotto."""
     try:
         from gigamail.core import rules as rules_mod
+        from gigamail.watcher import after_appointment
         rs = rules_mod.store()
         row = rs.find_by_request(rid)
         if not row:
             return False
+        if row["rule_id"] == after_appointment.RULE_ID:
+            # A follow-up has no rule to redo it: the watcher rewrites it
+            # from the contact's notes, with this change.
+            return after_appointment.queue_edit(rid, nota)
         rs.request_retry(row["rule_id"], row["message_id"], nota)
         return True
     except Exception:
@@ -1045,6 +1050,79 @@ def _console_utf8() -> None:
             pass
 
 
+def _tr(it: str, en: str) -> str:
+    from gigamail import policy
+    return it if policy.user_lang() == "it" else en
+
+
+def _ask_outcome(row: dict, code: str = "") -> None:
+    """A "how did the appointment go" question in the terminal: the
+    outcome (unless a notification button already gave it) and the
+    meeting notes, which go into the contact's notes."""
+    from gigamail.watcher import after_appointment as after
+    print(after.question(row))
+    if row.get("outcome"):
+        print(after.outcome_message({"row": row, "already": row["outcome"]}))
+    else:
+        if not code:
+            choice = input(_tr(
+                "[s] si e' presentato  [n] non si e' presentato  "
+                "[r] rimandato  [INVIO] dopo: ",
+                "[s] showed up  [n] didn't show up  [p] postponed  "
+                "[ENTER] later: ")).strip().lower()
+            # "r" is "rimandato", "p" is "postponed".
+            code = {"s": "s", "n": "n", "r": "p", "p": "p"}.get(choice[:1], "")
+        if not code:
+            print(_tr("Nessuna risposta: te lo richiedo con  gigamail debrief",
+                      "No answer: I'll ask again with  gigamail debrief"))
+            return
+        result = after.record_outcome(row["key"], code)
+        print(after.outcome_message(result))
+        if result.get("outcome") != "showed_up":
+            return
+    notes = input(_tr("Due righe su com'e' andata (cosa gli interessa, cosa "
+                      "avete visto), INVIO per niente: ",
+                      "A couple of lines on how it went (what they're "
+                      "interested in, what you looked at), ENTER for none: ")
+                  ).strip()
+    if notes:
+        print(after.notes_message(after.add_notes(row["key"], notes)))
+
+
+def cmd_debrief(_args) -> int:
+    """Past appointments GigaMail doesn't know the outcome of yet."""
+    from gigamail.watcher import after_appointment as after
+    _console_utf8()
+    rows = after.unanswered()
+    if not rows:
+        print(_tr("Nessun appuntamento in attesa di risposta.",
+                  "No appointment awaiting an answer."))
+        return 0
+    for row in rows:
+        print()
+        _ask_outcome(row)
+    return 0
+
+
+def cmd_open_url_outcome(key: str, code: str) -> int:
+    """gigamail://outcome — the buttons of the "how did the appointment
+    go" notification. Approves nothing: it records the user's answer about
+    their own appointment, hence no Hello."""
+    from gigamail.core import appointments
+    row = appointments.store().outcome_by_key(key)
+    if not row:
+        print(_tr("Questa domanda non si trova piu'.",
+                  "This question is no longer known."))
+        _attendi_invio()
+        return 1
+    try:
+        _ask_outcome(row, code)
+    except (EOFError, KeyboardInterrupt):
+        pass
+    _attendi_invio()
+    return 0
+
+
 def cmd_open_url(args) -> int:
     """Handler dello schema gigamail:// (click su una toast). Traduce
     l'URL in un comando della CLI: approve → Hello. La finestra resta
@@ -1057,6 +1135,12 @@ def cmd_open_url(args) -> int:
     m = _re.match(r"^gigamail://(approve|reject|show|edit)/(req_[0-9A-Za-z]+)/?$",
                   (args.url or "").strip(), _re.I)
     if not m:
+        # The "how did the appointment go" question: no approvals involved.
+        outcome = _re.match(r"^gigamail://outcome/([0-9a-f]{8})(?:/([snp]))?/?$",
+                            (args.url or "").strip(), _re.I)
+        if outcome:
+            return cmd_open_url_outcome(outcome.group(1).lower(),
+                                        (outcome.group(2) or "").lower())
         print(f"URL non riconosciuto: {args.url}")
         _attendi_invio()
         return 1
@@ -1574,6 +1658,11 @@ def main(argv=None) -> int:
     p_url = sub.add_parser("open-url", help=argparse.SUPPRESS)
     p_url.add_argument("url")
     p_url.set_defaults(fn=cmd_open_url)
+
+    p_deb = sub.add_parser(
+        "debrief",
+        help="com'e' andato un appuntamento: risposte e note sul cliente")
+    p_deb.set_defaults(fn=cmd_debrief)
 
     p_watch = sub.add_parser(
         "watch", help="processo che applica le regole alla posta in arrivo")

@@ -87,12 +87,19 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
                      "telegram_unauthorized")
         return
     rs = rules_mod.store()
-    from . import tg_risposte
+    from . import after_appointment, tg_risposte
     if ev["kind"] == "callback":
         scrivi = re.match(r"^w:([0-9a-f]{8})$", ev.get("data", ""))
         if scrivi:
             tg.answer_callback(ev.get("callback_id", ""))
+            rs.kv_set(after_appointment.AWAIT, "")
             tg_risposte.chiedi_istruzione(tg, scrivi.group(1))
+            return
+        outcome = re.match(r"^d:([0-9a-f]{8}):([snpvr])$", ev.get("data", ""))
+        if outcome:
+            tg.answer_callback(ev.get("callback_id", ""))
+            after_appointment.on_button(tg, outcome.group(1), outcome.group(2),
+                                        message_id=ev.get("message_id", 0))
             return
         m = re.match(r"^([arm]):(req_[0-9a-f]+)$", ev.get("data", ""))
         tg.answer_callback(ev.get("callback_id", ""))
@@ -112,6 +119,13 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
         rs.kv_set(tg_risposte.AWAIT, "")
         tg_risposte.rispondi(w, tg, risposta_a, text)
         return
+    # Meeting notes too: replying to the "how did it go" question always
+    # counts, even days later.
+    outcome_key = after_appointment.key_from_event(ev)
+    if outcome_key:
+        rs.kv_set(after_appointment.AWAIT, "")
+        after_appointment.on_text(tg, outcome_key, text)
+        return
     waiting = rs.kv_get("tg_await_feedback")
     if waiting:
         rs.kv_set("tg_await_feedback", "")
@@ -121,6 +135,11 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
     if in_attesa_istruzione:
         rs.kv_set(tg_risposte.AWAIT, "")
         tg_risposte.rispondi(w, tg, in_attesa_istruzione, text)
+        return
+    awaiting_notes = rs.kv_get(after_appointment.AWAIT, "")
+    if awaiting_notes:
+        rs.kv_set(after_appointment.AWAIT, "")
+        after_appointment.on_text(tg, awaiting_notes, text)
         return
     m = re.match(r"^/?(approva|approve|si|sì|ok|yes)\s+(req_[0-9a-f]+)\s*$",
                  text, re.I)
@@ -257,6 +276,10 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
         return
     if act == "m":
         rs.kv_set("tg_await_feedback", rid)
+        # The last thing asked wins: the changes must not end up in meeting
+        # notes left pending.
+        from . import after_appointment
+        rs.kv_set(after_appointment.AWAIT, "")
         if not da_regola:
             say(tg,
                 f"✏️ Scrivi qui cosa vuoi cambiare in {rid}: "
@@ -348,9 +371,12 @@ def retry(w, tg, rid: str, feedback: str, rs) -> None:
     if not rec:
         say(tg, f"{rid}: richiesta sconosciuta.", f"{rid}: unknown request.")
         return
-    from . import tg_risposte
+    from . import after_appointment, tg_risposte
     if row and row["rule_id"] == tg_risposte.RULE_ID and feedback:
         if tg_risposte.rifai(w, tg, rid, feedback):
+            return
+    if row and row["rule_id"] == after_appointment.RULE_ID and feedback:
+        if after_appointment.redo(w, tg, rid, feedback):
             return
     if not row or not rs.get(row["rule_id"]):
         # Richiesta di un tool, o di una riga senza regola (il link di una
