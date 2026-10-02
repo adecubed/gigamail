@@ -45,7 +45,7 @@ def mondo(monkeypatch, tmp_path):
     monkeypatch.setattr(video_call.zoom, "sposta_riunione",
                         lambda *a, **k: pytest.fail("Zoom non doveva essere chiamato"))
     monkeypatch.setattr(video_call, "link_fisso", lambda: LINK)
-    monkeypatch.setattr(video_call, "_cc", lambda aid: ["info@fingroupspa.com"])
+    monkeypatch.setattr(video_call, "_cc", lambda aid: ["ufficio@agenzia.example"])
     monkeypatch.setattr(video_call, "_firma", lambda aid: "Paolo Conti")
     monkeypatch.setattr(video_call.telegram_channel, "channel", lambda: None)
     notifiche = []
@@ -62,8 +62,8 @@ def _agente(monkeypatch, risposta):
 
 
 def _msg(mid, corpo):
-    return {"id": mid, "subject": "Re: Bilocali Via Treviglio", "body_text": corpo,
-            "from": {"emailAddress": {"address": "lk@example.com", "name": "Lorenzo K"}}}
+    return {"id": mid, "subject": "Re: Bilocali Via Roma", "body_text": corpo,
+            "from": {"emailAddress": {"address": "gb@example.com", "name": "Giorgio B"}}}
 
 
 def _conferma(monkeypatch, mid, inizio):
@@ -76,7 +76,7 @@ def _conferma(monkeypatch, mid, inizio):
 
 def test_senza_app_il_link_personale_finisce_nella_mail(monkeypatch, mondo):
     cal, notifiche = mondo
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     avvisi = _conferma(monkeypatch, "link-1", "2026-09-17T16:00")
 
     assert cal.aggiornati[-1]["location"] == LINK
@@ -84,7 +84,7 @@ def test_senza_app_il_link_personale_finisce_nella_mail(monkeypatch, mondo):
     assert rec["status"] == policy.PENDING, "il link non parte senza approvazione"
     assert LINK in rec["args"]["body"]
     riga = appointments.store().get(
-        2, appointments.thread_key("Bilocali Via Treviglio", "lk@example.com"))
+        2, appointments.thread_key("Bilocali Via Roma", "gb@example.com"))
     assert riga["zoom_id"] == video_call._FISSO and riga["zoom_url"] == LINK
     testo = appointments.testo_avviso(*avvisi[0])
     assert "personale" in testo and LINK in testo
@@ -92,7 +92,7 @@ def test_senza_app_il_link_personale_finisce_nella_mail(monkeypatch, mondo):
 
 def test_un_nuovo_orario_non_manda_una_seconda_mail(monkeypatch, mondo):
     _cal, notifiche = mondo
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     _conferma(monkeypatch, "link-2", "2026-09-17T16:00")
     avvisi = _conferma(monkeypatch, "link-3", "2026-09-18T16:00")
     assert len(notifiche) == 1, "il link e' lo stesso: niente seconda mail"
@@ -101,7 +101,7 @@ def test_un_nuovo_orario_non_manda_una_seconda_mail(monkeypatch, mondo):
 
 def test_senza_link_e_senza_app_lo_dice(monkeypatch, mondo):
     monkeypatch.setattr(video_call, "link_fisso", lambda: "")
-    appointments.segna_video(2, "Bilocali Via Treviglio", "lk@example.com")
+    appointments.segna_video(2, "Bilocali Via Roma", "gb@example.com")
     avvisi = _conferma(monkeypatch, "link-4", "2026-09-17T16:00")
     assert "console" in appointments.testo_avviso(*avvisi[0])
 

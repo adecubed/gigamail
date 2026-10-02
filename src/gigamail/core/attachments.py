@@ -44,7 +44,7 @@ def codici_citati(testo: str) -> List[str]:
 
     Serve a far seguire gli allegati al CONTENUTO della mail: una lista
     fissa nella regola spedirebbe sempre gli stessi file, qualunque cosa
-    chieda il cliente. Il core non sa che forma abbia un codice (A.3.2 per
+    chieda il cliente. Il core non sa che forma abbia un codice (A.9.2 per
     un'agenzia, SKU-12 per un negozio): lo dice l'estensione. Senza
     estensioni non si legge niente e resta la lista della regola."""
     from gigamail.core import extensions
@@ -78,7 +78,7 @@ def resolve(account_id: Optional[int],
     qualunque, e l'approvazione umana non basterebbe: l'umano approva un
     nome, non sceglie il file.
 
-    Pretende una corrispondenza UNIVOCA. 'A.1.4' deve dare A.1.4.pdf, mai
+    Pretende una corrispondenza UNIVOCA. 'A.7.4' deve dare A.7.4.pdf, mai
     il primo di una rosa di simili: allegare la planimetria sbagliata non
     produce nessun errore — la mail parte, sembra giusta, e dentro c'e'
     un altro appartamento.

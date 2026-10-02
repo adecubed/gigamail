@@ -70,7 +70,7 @@ def test_logout_cancella_l_identita():
 # -- scelta del provider ------------------------------------------------------
 
 def _account_microsoft():
-    accounts.add_microsoft_account("MS", "mario@fingroup.it", "{}")
+    accounts.add_microsoft_account("MS", "mario@agenzia.example", "{}")
 
 
 def test_senza_google_il_calendario_resta_microsoft():

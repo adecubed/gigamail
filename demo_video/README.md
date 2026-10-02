@@ -62,7 +62,7 @@ sono scritti in italiano; per girare in inglese si usa il registratore.
 Poi si lancia la console sulla radice della demo:
 
 ```bash
-$env:GIGAMAIL_ROOT = "C:\Users\simon\Desktop\gigamail\demo_video\.stato"; npm --prefix console start
+$env:GIGAMAIL_ROOT = "C:\Users\<utente>\Desktop\gigamail\demo_video\.stato"; npm --prefix console start
 ```
 
 Fra un ciak e l'altro, per rimettere la scena al via:

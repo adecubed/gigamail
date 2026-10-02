@@ -142,7 +142,7 @@ _TEL_RE = re.compile(
     r'(?:\(?(?:\+39|0039)\)?[\s./-]?)?'
     r'(?:3\d{2}[\s./-]?\d{3}[\s./-]?\d{3,4}'      # cellulare: 3xx xxx xxxx
     r'|0\d{1,3}[\s./-]?\d{3,4}[\s./-]?\d{3,5}'    # fisso: 0xx xxx xxxx
-    r'|0\d{1,3}[\s./-]?\d{5,8})'                  # fisso compatto: 02.654235
+    r'|0\d{1,3}[\s./-]?\d{5,8})'                  # fisso compatto: 02.123456
     r'(?![\w])'
 )
 

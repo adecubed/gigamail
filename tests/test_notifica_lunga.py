@@ -35,7 +35,7 @@ def _regola():
 
 
 def _msg():
-    return {"id": "1", "subject": "Bilocale in Via Treviglio",
+    return {"id": "1", "subject": "Bilocale in Via Roma",
             "from": {"emailAddress": {"address": "cliente@x.it"}}}
 
 

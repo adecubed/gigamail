@@ -562,7 +562,7 @@ def _luogo(proposto: Any, subject: str) -> str:
     """Il luogo letto, se non e' l'indirizzo dell'oggetto.
 
     L'oggetto delle mail dei portali e' l'annuncio ("Trilocale in Via
-    Treviglio, 28"): e' l'immobile di cui si parla, non dove ci si vede. Il
+    Roma, 10"): e' l'immobile di cui si parla, non dove ci si vede. Il
     24/09 l'agente l'ha preso come luogo e l'appuntamento in ufficio e'
     finito in agenda all'indirizzo del cantiere. Meglio un luogo vuoto,
     che si riempie a mano, che uno sbagliato."""
@@ -605,7 +605,7 @@ def _nomi_propri() -> List[str]:
 
 def _e_nostro(nome: str, propri: Optional[List[str]] = None) -> bool:
     """Il nome e' il nostro? Confronto a parole intere, in tutti e due i
-    sensi: "Ufficio Vendite" sta dentro "ufficio vendite 20128 milano"."""
+    sensi: "Ufficio Vendite" sta dentro "ufficio vendite residenze milano"."""
     n = _norma(nome)
     if not n:
         return False
@@ -838,8 +838,8 @@ def segui(account_id: int, subject: str, controparte: str) -> None:
 _VIDEO = re.compile(r"\bzoom\b|video\s*-?\s*call|videocall|video\s*chiamat"
                     r"|videochiamat", re.IGNORECASE)
 
-# Provider di posta pubblici: un nostro account su msn.com non fa di ogni
-# cliente msn.com un collega. Per questi conta l'indirizzo esatto.
+# Provider di posta pubblici: un nostro account su gmail.com non fa di ogni
+# cliente gmail.com un collega. Per questi conta l'indirizzo esatto.
 _PUBBLICI = {"gmail.com", "googlemail.com", "msn.com", "hotmail.com",
              "hotmail.it", "outlook.com", "outlook.it", "live.com", "live.it",
              "yahoo.com", "yahoo.it", "icloud.com", "me.com", "libero.it",
@@ -872,7 +872,7 @@ def _propri() -> tuple:
 def destinatari_da_seguire(to: str) -> List[str]:
     """Gli indirizzi esterni fra i destinatari, senza doppioni.
 
-    Un inoltro a Fingroup o una copia a noi stessi non e' una conversazione
+    Un inoltro a un collega o una copia a noi stessi non e' una conversazione
     con un cliente: la sua risposta non deve accendere avvisi."""
     indirizzi, domini = _propri()
     fuori: List[str] = []
