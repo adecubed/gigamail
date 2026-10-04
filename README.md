@@ -36,6 +36,10 @@ before the agent ever sees them.
 
 
 
+[![GigaMail in one minute](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+
+*One minute: the console drafts a reply, takes the figure from your own files, stops where the documents stop, and nothing leaves without your approval — from the console or from your agent.*
+
 [![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
 
@@ -329,6 +333,10 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
+[![GigaMail in un minuto](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+
+*Un minuto: la console scrive la bozza, prende la cifra dai tuoi file, si ferma dove i documenti si fermano, e niente parte senza la tua approvazione — dalla console o dal tuo agente.*
+
 [![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
 *Due minuti e un quarto su una casella dimostrativa, in quattro scene: la
@@ -603,6 +611,10 @@ titolare del copyright.
 **关于你的数据**：GigaMail 把邮件索引、凭据、记忆和配置全部保存在**你自己
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
+
+[![GigaMail 一分钟](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+
+*一分钟：控制台起草回复，数字取自你自己的文件，文档没有的地方就停下，未经你批准什么都不会发出 —— 无论是从控制台还是从你的代理。*
 
 [![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
 
