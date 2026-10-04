@@ -36,19 +36,9 @@ before the agent ever sees them.
 
 
 
-[![GigaMail in one minute](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+[![GigaMail in one minute](docs/demo/gigamail-launch.gif)](https://gigamail.ai/demo/gigamail-launch.mp4)
 
 *One minute: the console drafts a reply, takes the figure from your own files, stops where the documents stop, and nothing leaves without your approval — from the console or from your agent.*
-
-[![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
-
-
-
-*Two minutes and a quarter on a demo mailbox, in four scenes: the same
-question answered differently in two folders, a price taken from the
-seller's own file, a marker left where the documents say nothing, and a
-mail carrying instructions for the assistant that never reaches the model.
-A human reviews and sends — or edits the instruction and regenerates.*
 
 ## Why
 
@@ -333,17 +323,9 @@ nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
 telefoni — validati in modo deterministico, senza AI) prima che l'agente
 li veda.
 
-[![GigaMail in un minuto](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+[![GigaMail in un minuto](docs/demo/gigamail-launch.gif)](https://gigamail.ai/demo/gigamail-launch.mp4)
 
 *Un minuto: la console scrive la bozza, prende la cifra dai tuoi file, si ferma dove i documenti si fermano, e niente parte senza la tua approvazione — dalla console o dal tuo agente.*
-
-[![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
-
-*Due minuti e un quarto su una casella dimostrativa, in quattro scene: la
-stessa domanda con due risposte diverse in due cartelle, un prezzo preso
-dai file dell'utente, un marcatore dove i documenti non dicono niente, e
-una mail con dentro istruzioni per l'assistente che al modello non arriva
-mai. L'umano rivede e invia — oppure corregge l'istruzione e rigenera.*
 
 ## Perché
 
@@ -612,15 +594,9 @@ titolare del copyright.
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
 然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
 
-[![GigaMail 一分钟](docs/demo/gigamail-launch.gif)](https://github.com/adecubed/gigamail/blob/main/docs/demo/gigamail-launch.mp4)
+[![GigaMail 一分钟](docs/demo/gigamail-launch.gif)](https://gigamail.ai/demo/gigamail-launch.mp4)
 
 *一分钟：控制台起草回复，数字取自你自己的文件，文档没有的地方就停下，未经你批准什么都不会发出 —— 无论是从控制台还是从你的代理。*
-
-[![The GigaMail console answering a real request](docs/demo/gigamail-console.gif)](https://gigamail.ai/demo/gigamail-console-0.3.1.mp4)
-
-*演示邮箱上的两分一刻钟，共四个场景：同一个问题在两个文件夹里得到不同的回复、
-价格取自用户自己的文件、文档里没有的信息留下标记，以及一封夹带助手指令的邮件
-从未送到模型面前。人工审阅后发送 —— 或者修改指令后重新生成。*
 
 ## 为什么
 
