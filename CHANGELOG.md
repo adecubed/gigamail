@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## v0.4.1 — 2026-10-06
+
+- **The console replaces an outdated backend by itself.** The backend
+  stays running when the window closes, so the next start is instant;
+  after an update the new console kept talking to the old backend, and
+  features added on both sides stayed invisible until the process was
+  killed by hand. `/health` now says which process answers and whether
+  its code changed on disk since it started; a console that finds a
+  backend older than itself, of another version or with changed code
+  stops it and starts a new one before opening the window.
+- **Console: view several accounts as one.** Drag an account tile onto
+  another and they become one tile: counters added up, and one mail list
+  with the mail of both, mixed by date, each mail tagged with its account.
+  Opening, replying, deleting or moving a mail uses the account it belongs
+  to, so a reply leaves from the right address. "Split" on the tile brings
+  the accounts back. It works with three or more accounts and across
+  providers. It is a view: credentials, identity, rules and archive stay
+  per account, and the agent, the rules and the watcher keep seeing
+  separate accounts. In this first version the standard folders (inbox,
+  sent, drafts, spam, trash) are merged; search and personal folders
+  follow the account of the mail last opened.
 - **Approval notifications name the mail.** On Telegram and in the
   desktop toast, every approval now carries a line with the subject of
   the mail it is about (the one being replied to, or the new mail's own

@@ -12,6 +12,7 @@ let selectedMailFolder = null;  // cartella della mail attualmente aperta
 let selectedEventId = null;
 let priorityMode = false;
 let activeAccountId = null;
+let activeGroup = null;   // merged view: {id, account_ids, accounts}; see renderer_groups.js
 let currentDraft = '';
 let currentInstruction = '';
 let currentFolder = 'inbox';

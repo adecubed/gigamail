@@ -31,7 +31,13 @@ async function loadAccounts() {
     if (!select) return;
     select.innerHTML = AccountsView.optionsHtml(accounts);
     const active = AccountsView.activeOf(accounts);
-    activeAccountId = active?.id ?? null;
+    // A group whose accounts are gone is no longer a group.
+    const ids = new Set((Array.isArray(accounts) ? accounts : []).map(a => Number(a.id)));
+    if (activeGroup && !activeGroup.account_ids.every(id => ids.has(Number(id)))) leaveGroup();
+    // In a merged view the active account is the one of the mail last
+    // opened: keep it, the backend's may lag behind.
+    if (activeGroup && ids.has(Number(activeAccountId))) select.value = String(activeAccountId);
+    else activeAccountId = active?.id ?? null;
     mailFolderCache = [];
     renderCustomFolders();
     if (activeAccountId) {
@@ -140,6 +146,7 @@ function bindAccountEvents() {
     const id = parseInt(e.target.value, 10);
     if (!id) return;
     try {
+      leaveGroup();   // one account picked: back to the single view
       await api.switchAccount(id);
       activeAccountId = id;
       customFolderCountsRequestId += 1;

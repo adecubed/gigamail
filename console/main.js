@@ -1,11 +1,12 @@
 const { app, BrowserWindow, session, shell, Notification, ipcMain, Menu, dialog } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
+const { restartReason, pidFromNetstat, pidFromLsof } = require('./backend_reuse');
 
 let mainWindow;
 // Finestre di composizione come figlie della principale: Windows le tiene
@@ -277,29 +278,81 @@ function startPythonServer() {
     serverProcess.unref(); // non tenere vivo Electron per via del figlio
   };
 
-  const req = http.get(`${API}/health`, { headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
-    let body = '';
-    res.on('data', (d) => { body += d; });
-    res.on('end', () => {
-      let ours = false;
-      try {
-        ours = res.statusCode === 200 && JSON.parse(body).service === 'gigamail-console';
-      } catch (_) { /* non JSON: non e' il nostro */ }
-      if (ours) {
-        console.log(`[GIGAMAIL] Backend console gia' attivo su porta ${API_PORT}`);
-      } else {
-        console.error(`[GIGAMAIL] Sulla porta ${API_PORT} risponde qualcosa che NON e' `
-          + `GigaMail (HTTP ${res.statusCode}). Chiudi quel programma (es. una `
-          + `vecchia "ADE Mail") e riavvia: non mi aggancio a un backend sconosciuto.`);
-        // Proviamo comunque a partire: se la porta e' davvero occupata il bind
-        // fallisce e lo vedrai nei log, invece di una UI che parla con un altro.
-        startBackend();
-      }
+  // Resolves once it is decided which backend the window will talk to: the
+  // one found (current), or a new one being started. The caller waits for
+  // /health only after this, or it would see the old backend answer and
+  // open the window on a process about to be replaced.
+  return new Promise((resolve) => {
+    const start = () => { startBackend(); resolve(); };
+    const req = http.get(`${API}/health`, { headers: { 'X-ADE-Token': API_TOKEN } }, (res) => {
+      let body = '';
+      res.on('data', (d) => { body += d; });
+      res.on('end', async () => {
+        let health = null;
+        try { health = JSON.parse(body); } catch (_) { /* non JSON: non e' il nostro */ }
+        const ours = res.statusCode === 200 && health && health.service === 'gigamail-console';
+        if (!ours) {
+          console.error(`[GIGAMAIL] Sulla porta ${API_PORT} risponde qualcosa che NON e' `
+            + `GigaMail (HTTP ${res.statusCode}). Chiudi quel programma (es. una `
+            + `vecchia "ADE Mail") e riavvia: non mi aggancio a un backend sconosciuto.`);
+          // Proviamo comunque a partire: se la porta e' davvero occupata il bind
+          // fallisce e lo vedrai nei log, invece di una UI che parla con un altro.
+          start();
+          return;
+        }
+        const why = restartReason(health, app.getVersion());
+        if (!why) {
+          console.log(`[GIGAMAIL] Backend console gia' attivo su porta ${API_PORT}`);
+          resolve();
+          return;
+        }
+        // An outdated backend left running by a previous start (an update,
+        // new code): replace it, once. If it cannot be stopped the console
+        // keeps the one that answers rather than not opening at all.
+        console.log(`[GIGAMAIL] Backend on port ${API_PORT} is outdated (${why}): replacing it`);
+        if (await stopBackend(health.pid)) start();
+        else {
+          console.error('[GIGAMAIL] Outdated backend not stopped: using it as it is');
+          resolve();
+        }
+      });
     });
+    req.on('error', start);
+    req.setTimeout(1000, () => req.destroy(new Error('timeout')));
+    req.end();
   });
-  req.on('error', startBackend);
-  req.setTimeout(1000, () => req.destroy(new Error('timeout')));
-  req.end();
+}
+
+/** PID of the process listening on the backend port; 0 if not found. */
+function backendPid() {
+  try {
+    if (process.platform === 'win32') {
+      return pidFromNetstat(execFileSync('netstat', ['-ano', '-p', 'TCP'],
+        { encoding: 'utf-8', windowsHide: true }), API_PORT);
+    }
+    return pidFromLsof(execFileSync('lsof', ['-nP', `-iTCP:${API_PORT}`, '-sTCP:LISTEN', '-t'],
+      { encoding: 'utf-8' }));
+  } catch (_) { return 0; }
+}
+
+/** Stop the backend that answered /health as ours, and wait for the port
+ *  to go quiet. `pid` comes from /health; older backends do not send it and
+ *  are found by port. Resolves false if it is still answering. */
+async function stopBackend(pid) {
+  const target = parseInt(pid, 10) || backendPid();
+  if (!target) return false;
+  try { process.kill(target); } catch (_) { /* already gone, or not ours to kill */ }
+  for (let i = 0; i < 25; i++) {
+    const alive = await new Promise((resolve) => {
+      const req = http.get(`${API}/health`, { timeout: 400, headers: { 'X-ADE-Token': API_TOKEN } },
+        (res) => { res.resume(); resolve(true); });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+    if (!alive) return true;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return false;
 }
 
 // ── WINDOW ────────────────────────────────────────────────────────────────────
@@ -352,7 +405,7 @@ function waitForBackend(maxMs = 20000) {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  startPythonServer();
+  const backendChosen = startPythonServer();
 
   // Whitelist esplicita: solo il microfono serve alle pagine (dettatura in
   // voice_mail.js). Le notifiche desktop partono dal main process e non
@@ -392,6 +445,7 @@ app.whenReady().then(async () => {
     });
   });
 
+  await backendChosen;
   const backendReady = await waitForBackend();
   if (!backendReady) console.error('[GIGAMAIL] Backend non raggiungibile entro 20s — apro comunque la finestra');
   createWindow();

@@ -23,7 +23,7 @@ const MailView = (() => {
   }
 
   /** HTML di una voce della lista. Tutto cio' che viene dal messaggio e' escapato. */
-  function listItemHtml(m, accountId) {
+  function listItemHtml(m, accountId, accountLabel) {
     const date    = fmtDate(m.receivedDateTime || m.sentDateTime || m.createdDateTime);
     const preview = m.bodyPreview || m.body_text || '';
     const unread  = (m.isRead === false) ? 'unread' : '';
@@ -37,7 +37,7 @@ const MailView = (() => {
           <button class="mail-delete-btn" data-id="${esc(m.id)}" data-folder="${f}" title="${T('delete','Elimina')}">✕</button>
         </div>
         <div class="mail-meta">
-          <span class="mail-sender">${esc(senderLabel(m))}${esc(folder)}</span>
+          <span class="mail-sender">${esc(senderLabel(m))}${esc(folder)}${accountLabel ? esc(' · ' + accountLabel) : ''}</span>
           <span class="mail-date">${esc(date)}</span>
         </div>
         <div class="mail-preview">${esc(preview)}</div>
@@ -159,35 +159,40 @@ function renderMailList(mails) {
     return;
   }
 
-  list.innerHTML = mails.map(m => MailView.listItemHtml(m, activeAccountId)).join('');
+  // In a merged view each mail carries its own account and says which.
+  list.innerHTML = mails.map(m => MailView.listItemHtml(
+    m, m._accountId || activeAccountId, activeGroup ? m._accountLabel : '')).join('');
 
   currentMailList = mails;
   list.querySelectorAll('.mail-item').forEach((item, idx) => {
-    item.addEventListener('click', () => { if (item.dataset.id) { currentMailIndex = idx; openMail(item.dataset.id, item.dataset.folder || null); } });
-    item.addEventListener('dblclick', () => { if (item.dataset.id) openMailWindow(item.dataset.id, item.dataset.folder || null); });
+    item.addEventListener('click', () => { if (item.dataset.id) { currentMailIndex = idx; useAccountOfItem(item.dataset.accountId); openMail(item.dataset.id, item.dataset.folder || null); } });
+    item.addEventListener('dblclick', () => { if (item.dataset.id) { useAccountOfItem(item.dataset.accountId); openMailWindow(item.dataset.id, item.dataset.folder || null); } });
   });
   list.querySelectorAll('.mail-delete-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      deleteMail(btn.dataset.id, btn.dataset.folder);
+      deleteMail(btn.dataset.id, btn.dataset.folder, btn.closest('.mail-item')?.dataset.accountId);
     });
   });
 }
 
-async function deleteMail(id, folder) {
+async function deleteMail(id, folder, accountId) {
   if (!id) return;
+  // The mail's own account: in a merged view it may not be the active one.
+  const account = parseInt(accountId, 10) || activeAccountId;
   try {
     const params = new URLSearchParams();
-    if (activeAccountId) params.append('account_id', activeAccountId);
+    if (account) params.append('account_id', account);
     if (folder) params.append('folder', folder);
     const res = await fetch(`${window.GIGAMAIL_API}/mail/${encodeURIComponent(id)}?${params}`, {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error(await res.text());
     showToast('Mail eliminata', 'success');
-    document.querySelector(`.mail-item[data-id="${id}"]`)?.remove();
-    if (selectedMailId === id) resetMailDetail();
-    currentMailList = currentMailList.filter(m => m.id !== id);
+    const ofAccount = activeGroup ? `[data-account-id="${account}"]` : '';
+    document.querySelector(`.mail-item[data-id="${CSS.escape(String(id))}"]${ofAccount}`)?.remove();
+    if (selectedMailId === id && Number(account) === Number(activeAccountId)) resetMailDetail();
+    currentMailList = currentMailList.filter(m => !(m.id === id && (m._accountId || account) === account));
   } catch (e) {
     showToast('Errore eliminazione: ' + e.message, 'error');
   }
@@ -280,8 +285,12 @@ async function openMail(id, overrideFolder = null) {
   window._activeAccountId   = activeAccountId;
   updateVoiceContext(id, 0);
   document.querySelectorAll('.mail-item').forEach(el => {
-    el.classList.toggle('selected', el.dataset.id === id);
-    if (el.dataset.id === id) el.classList.remove('unread');
+    // Two accounts can hold a mail with the same id: in a merged view the
+    // account has to match too.
+    const same = el.dataset.id === id &&
+      (!activeGroup || String(el.dataset.accountId) === String(activeAccountId));
+    el.classList.toggle('selected', same);
+    if (same) el.classList.remove('unread');
   });
 
   const detail = byId('mailDetail');

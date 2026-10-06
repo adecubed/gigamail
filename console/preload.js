@@ -108,6 +108,14 @@ contextBridge.exposeInMainWorld('ademail', {
   switchAccount:    (id) => apiJson(`${API}/accounts/active/${id}`, { method: 'POST' }),
   deleteAccount:    (id) => apiJson(`${API}/accounts/${id}`, { method: 'DELETE' }),
   getProviders:     () => apiJson(`${API}/accounts/providers`),
+  // Account groups: several accounts shown as one (a view, not a merge).
+  getAccountGroups:  () => apiJson(`${API}/accounts/groups`),
+  mergeAccounts:     (sourceId, targetId) => apiJson(`${API}/accounts/groups/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_id: sourceId, target_id: targetId }),
+  }),
+  splitAccountGroup: (groupId) => apiJson(`${API}/accounts/groups/${groupId}`, { method: 'DELETE' }),
 
   addImapAccount: (name, email, password, provider, imapHost, imapPort, smtpHost, smtpPort) =>
     apiJson(`${API}/accounts/imap`, {

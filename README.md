@@ -54,6 +54,10 @@ before the agent ever sees them.
 - **Observer**: patterns learned from how the user edited past drafts
 - **Calendar-aware drafts**: a draft only proposes times that are free in
   your calendar, inside your office hours
+- **Accounts viewed together** (console): drag one account tile onto
+  another to read both mailboxes as one list; every mail keeps its
+  account, so replies leave from the right address, and "Split" undoes
+  it. The agent keeps seeing separate accounts
 - **Knowledge files**: attach your price lists, terms, product sheets to an
   account — the agent reads them to answer mail. Your agent doesn't need to
   know everything: the account carries its own knowledge
@@ -341,6 +345,10 @@ li veda.
 - **Observer**: pattern appresi dalle correzioni dell'utente alle bozze passate
 - **Bozze che conoscono l'agenda**: una bozza propone solo orari liberi nel
   tuo calendario, dentro l'orario d'ufficio
+- **Account visti insieme** (console): trascina la tessera di un account
+  su un'altra per leggere le due caselle in un'unica lista; ogni mail
+  resta del suo account, quindi le risposte partono dall'indirizzo giusto,
+  e «Separa» torna indietro. L'agente continua a vedere account separati
 - **File di conoscenza**: collega listini, condizioni, schede prodotto a un
   account — l'agente li legge per rispondere alle mail. Il tuo agente non
   deve sapere tutto: le informazioni che gli servono viaggiano con l'account
@@ -608,6 +616,9 @@ titolare del copyright.
   都记在其名字旁边，之后写给此人的每一份草稿都会读取
 - **观察者**：从用户对过往草稿的修改中学习偏好
 - **了解日程的草稿**：草稿只会提议你日历中空闲、且在办公时间内的时段
+- **合并查看账户**（控制台）：把一个账户卡片拖到另一个上，即可在同一个列表中
+  阅读两个邮箱；每封邮件仍属于自己的账户，回复会从正确的地址发出，点击"拆分"
+  即可恢复。代理看到的仍是各自独立的账户
 - **知识文件**：把价目表、条款、产品资料挂到账户上，代理读取它们来回信 ——
   你的代理不需要什么都懂：账户自带知识
 - **面向代理的权限**：读取自由；发送/删除需要**带外**给出的人工批准 ——

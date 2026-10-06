@@ -4,11 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from gigamail.core import accounts as core_accounts
-from gigamail.core import auth as core_auth
 from gigamail.core import (
+    account_groups,
     identity_reader,
 )
+from gigamail.core import accounts as core_accounts
+from gigamail.core import auth as core_auth
 
 router = APIRouter()
 
@@ -40,6 +41,33 @@ def set_active(account_id: int):
 @router.delete("/accounts/{account_id}")
 def delete_account(account_id: int):
     core_accounts.delete_account(account_id)
+    return {"success": True}
+
+
+# ── ACCOUNT GROUPS (several accounts shown as one in the console) ────
+
+class MergeRequest(BaseModel):
+    source_id: int      # the account dragged
+    target_id: int      # the account it was dropped on
+
+
+@router.get("/accounts/groups")
+def list_groups():
+    return account_groups.get_groups()
+
+
+@router.post("/accounts/groups/merge")
+def merge_accounts(req: MergeRequest):
+    try:
+        return account_groups.merge(req.source_id, req.target_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.delete("/accounts/groups/{group_id}")
+def split_group(group_id: int):
+    if not account_groups.split(group_id):
+        raise HTTPException(status_code=404, detail="unknown group")
     return {"success": True}
 
 

@@ -15,6 +15,7 @@ Sicurezza:
 - porta: ADE_CONSOLE_PORT (default 8002 per compatibilita con la UI)
 """
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,10 +45,33 @@ async def _require_token(request: Request, call_next):
     return await call_next(request)
 
 
+def code_stamp() -> str:
+    """Fingerprint of the package's sources on disk: how many .py files and
+    the newest modification time. It changes when an update, or an edit,
+    replaces the code this process loaded."""
+    import gigamail
+    newest, count = 0, 0
+    for path in Path(gigamail.__file__).parent.rglob("*.py"):
+        try:
+            modified = path.stat().st_mtime_ns
+        except OSError:
+            continue
+        count += 1
+        newest = max(newest, modified)
+    return f"{count}-{newest}"
+
+
+# What this process loaded. The console leaves the backend running when
+# its window closes; without this, a backend started before an update
+# kept serving the old code to the new console.
+_LOADED_STAMP = code_stamp()
+
+
 @app.get("/health")
 def health():
     from gigamail import __version__
-    return {"status": "ok", "service": "gigamail-console", "version": __version__}
+    return {"status": "ok", "service": "gigamail-console", "version": __version__,
+            "pid": os.getpid(), "stale": code_stamp() != _LOADED_STAMP}
 
 
 # Un router per dominio: stessi path di prima, nessun prefisso.
