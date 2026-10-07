@@ -135,8 +135,10 @@ if (-not ($names -contains $zipName)) {
   if ($LASTEXITCODE -ne 0) { Fail "download di $zipName non riuscito." "download of $zipName failed." }
   $unpacked = Join-Path $work "win-unpacked"
   New-Item -ItemType Directory $unpacked | Out-Null
-  tar -xf (Join-Path $work $zipName) -C $unpacked
-  if ($LASTEXITCODE -ne 0) { Fail "estrazione di $zipName non riuscita." "extracting $zipName failed." }
+  # Expand-Archive, not tar: from a Git Bash shell `tar` is GNU tar, which
+  # does not understand C:\ paths.
+  try { Expand-Archive -Path (Join-Path $work $zipName) -DestinationPath $unpacked -Force }
+  catch { Fail "estrazione di $zipName non riuscita: $_" "extracting $zipName failed: $_" }
   $appExe = Join-Path $unpacked "GigaMail.exe"
   if (-not (Test-Path $appExe)) { Fail "$zipName non contiene GigaMail.exe." "$zipName has no GigaMail.exe." }
 
