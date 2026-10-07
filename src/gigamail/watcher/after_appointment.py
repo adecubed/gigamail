@@ -481,8 +481,11 @@ def queue_edit(request_id: str, note: str) -> bool:
     rs.kv_set(_KV_EDIT + key, json.dumps(
         {"feedback": note, "previous": (rec.get("args") or {}).get("body") or ""},
         ensure_ascii=False))
-    appointments.store().outcome_update(key, followup_state="due",
-                                        followup_due=time.time())
+    # Due "now" as the tick measures it: time.time() keeps digits below the
+    # microsecond that datetime.now() drops, so a tick in the same clock
+    # step would see the edit as not yet due and leave it a minute.
+    appointments.store().outcome_update(
+        key, followup_state="due", followup_due=datetime.now().timestamp())
     return True
 
 

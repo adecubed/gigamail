@@ -370,6 +370,28 @@ def test_edit_from_the_desktop_rewrites_the_follow_up(world):
     assert "piu' breve" in world["prompts"][-1]
 
 
+def test_an_edit_is_due_on_a_tick_in_the_same_clock_step(world, monkeypatch):
+    """The clock stands still between the edit and the tick, as it does
+    for milliseconds on Windows: time.time() still carries digits below
+    the microsecond that datetime.now() drops."""
+    key = _showed_up(world)
+    after.tick(None, now=datetime(2026, 9, 29, 10, 1))
+    old = _outcome(key)["followup_request_id"]
+    frozen = datetime(2026, 10, 1, 9, 30, 0, 123456)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen
+
+    monkeypatch.setattr(after, "datetime", FrozenDatetime)
+    monkeypatch.setattr(after.time, "time", lambda: frozen.timestamp() + 4e-7)
+    assert policy.store().revoke(old, by="cli:test edit: shorter")
+    assert cli._retry_di_regola(old, "piu' breve")
+    assert after.tick(None, now=frozen) == 1
+    assert _outcome(key)["followup_request_id"] != old
+
+
 # ── the notes also serve ordinary drafts ─────────────────────────────
 
 def test_the_reply_draft_reads_the_contact_notes(world):

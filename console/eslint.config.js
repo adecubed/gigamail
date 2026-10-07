@@ -34,7 +34,7 @@ const BROWSER_GLOBALS = {
 module.exports = [
   { ignores: ['node_modules/**', 'dist/**', 'python-embedded/**'] },
   {
-    files: ['main.js', 'preload*.js', 'calendar_notifier.js', 'backend_reuse.js', 'sync-version.js', 'tests/**/*.js'],
+    files: ['main.js', 'preload*.js', 'calendar_notifier.js', 'backend_reuse.js', 'sync-version.js', 'sign.js', 'tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

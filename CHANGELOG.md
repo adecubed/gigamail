@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.0 — 2026-10-07
+
 - **A signature per account.** Each account can have a plain-text
   signature, set in the console (account identity, "Signature" field) or
   with `gigamail identity signature --set "..."`. It goes at the bottom of
@@ -13,6 +15,17 @@
   that leaves is exactly that text; changing the signature later does not
   touch requests already waiting. It is never added twice, and no agent
   tool can change it. Empty by default: nothing changes until you set one.
+- **The installed app is signed too, not only the installer.** Releases
+  now carry a code signing certificate on `GigaMail.exe` and on the
+  uninstaller as well as on the installer, so Windows names the publisher
+  for the app itself and not just for the setup. CI still builds and tests
+  the app; `scripts/sign-release.ps1` takes those same files, signs them on
+  the maintainer's PC and packs the installer there. Builds made anywhere
+  else stay unsigned, as before.
+- **An edited follow-up is rewritten on the next tick.** Asking from the
+  desktop to change a follow-up after an appointment could leave it
+  waiting one extra watcher cycle: on Windows the watcher's clock could
+  read the edit as due a microsecond in the future.
 
 ## v0.4.1 — 2026-10-06
 

@@ -4,7 +4,7 @@
 # nome `ade_mail_agent` resta come alias (src/ade_mail_agent): import,
 # `python -m ade_mail_agent.cli` e le registrazioni gia' fatte funzionano.
 name = "gigamail"
-version = "0.4.1"
+version = "0.5.0"
 description = "GigaMail — mail for your AI agent: MCP server giving agents safe, permission-controlled access to email (Microsoft Graph + IMAP), calendar and knowledge files."
 readme = "README.md"
 requires-python = ">=3.10"

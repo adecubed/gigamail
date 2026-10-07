@@ -12,8 +12,10 @@ name: Release
 #      -> questo workflow testa, costruisce l'installer Windows e crea una
 #         Release BOZZA con l'installer non firmato e latest.yml
 #   3. sul PC con il certificato: scripts/sign-release.ps1 -Tag vX.Y.Z
-#      firma l'installer, aggiorna sha512/size in latest.yml, lo ricarica e
-#      pubblica la Release
+#      takes the app built here (GigaMail-unpacked-X.Y.Z.zip), signs
+#      GigaMail.exe, packs the installer again so that the uninstaller and
+#      the installer are signed too, replaces exe and latest.yml on the draft
+#      and publishes the Release
 #   -> la pubblicazione rilancia questo workflow, che pubblica su PyPI.
 #      Finche' la Release e' bozza nessuno la vede: ne' gli utenti, ne'
 #      l'auto-update di electron-updater, ne' PyPI.
@@ -141,7 +143,14 @@ jobs:
           Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail Setup *.exe" } | ForEach-Object {
             Rename-Item $_.FullName ($_.Name -replace ' ', '-')
           }
-          $files = Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail-Setup-*.exe" -or $_.Name -eq "latest.yml" } | ForEach-Object { $_.FullName }
+          # The app as built and tested here, for sign-release.ps1: signing
+          # needs the maintainer's phone, so the signed installer is packed on
+          # that PC, from exactly these files. The script removes the zip
+          # from the draft before publishing.
+          $ver = "$tag".TrimStart("v")
+          7z a -tzip -mx=5 "console/dist/GigaMail-unpacked-$ver.zip" ./console/dist/win-unpacked/*
+          if ($LASTEXITCODE -ne 0) { throw "zip of win-unpacked failed" }
+          $files = Get-ChildItem console/dist -File | Where-Object { $_.Name -like "GigaMail-Setup-*.exe" -or $_.Name -eq "latest.yml" -or $_.Name -like "GigaMail-unpacked-*.zip" } | ForEach-Object { $_.FullName }
           $files | ForEach-Object { Write-Host "  allego $_" }
           # Note della Release: la sezione "## vX.Y.Z" del CHANGELOG.
           $lines = Get-Content CHANGELOG.md
