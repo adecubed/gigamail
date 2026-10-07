@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **One confirmation per appointment.** When a client accepted a time
+  for a video call, three paths each drafted a reply to that same mail
+  within minutes: the confirmation the watcher drafts at once (and it
+  said "at our office"), the mail with the Zoom link, and a reply asked
+  from Telegram. Three different texts meant three approval requests, and
+  two of them went out. Now the mail with the link is the confirmation
+  for a video call; the confirmation drafted at once says "by video call"
+  when the thread is one and Zoom is not connected; a reply asked from
+  Telegram or the desktop while another reply to that mail is waiting
+  tells you which request to approve or edit instead of drafting a second
+  one; the agent's `reply_mail` gets that pending request back instead of
+  a new one; and a rule skips a mail another path has already answered
+  (reason `already-answered`). A rejected or expired draft frees the
+  mail again.
+
 ## v0.5.0 — 2026-10-07
 
 - **A signature per account.** Each account can have a plain-text

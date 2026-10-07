@@ -22,6 +22,7 @@ from gigamail.core import (
     injection_guard,
     mail_guard,
     mail_router,
+    reply_guard,
     signature,
     telegram_channel,
 )
@@ -93,6 +94,14 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
             {"action": "rule autopaused", "reason": reason},
             message=pause_msg)
         return "paused"
+
+    # One reply per mail: the appointment paths (confirmation drafted at
+    # once, video-call link) or a reply asked from Telegram may already
+    # have answered this mail. The rule steps aside instead of adding a
+    # third text for the human to approve.
+    other = reply_guard.existing_reply(message_id, exclude_rule=rule_id)
+    if other:
+        return _skip("already-answered:" + (other["rule_id"] or "agent"))
 
     # tetto giornaliero e cooldown per mittente (5) — non per i retry
     # chiesti dall'umano

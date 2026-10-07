@@ -321,6 +321,17 @@ class RuleStore:
                 (request_id,)).fetchone()
         return dict(row) if row else None
 
+    def replies_to(self, message_id: str) -> List[Dict[str, Any]]:
+        """Every handled row for one mail, whatever drafted the reply: a
+        rule, a reply asked from Telegram, the video-call link. One mail
+        deserves one reply, and each path checks here before drafting
+        (core.reply_guard)."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM handled WHERE message_id=? ORDER BY ts",
+                (str(message_id),)).fetchall()
+        return [dict(r) for r in rows]
+
     def request_retry(self, rule_id: str, message_id: str, feedback: str) -> None:
         """L'umano ha rifiutato la bozza e chiesto una modifica: la mail
         torna in coda con il feedback, e il watcher la rifa' al prossimo

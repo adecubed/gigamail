@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from gigamail import agent_bridge, policy
-from gigamail.core import accounts, mail_router, signature
+from gigamail.core import accounts, mail_router, reply_guard, signature
 from gigamail.core import rules as rules_mod
 
 from . import drafting
@@ -196,6 +196,18 @@ def rispondi(w, tg, chiave: str, istruzione: str,
         _say(tg, "La mail non si trova piu' nella posta in arrivo: rispondi dal PC.",
              "The mail is no longer in the inbox: reply from the PC.")
         return None
+    # One reply per mail: a confirmation drafted by the watcher or the
+    # link mail from the video-call path may already be waiting. A second
+    # draft for the same mail is how two confirmations got sent.
+    other = reply_guard.existing_reply(ctx["message_id"])
+    if other and other["state"] == reply_guard.PENDING:
+        rid = other["request_id"]
+        _say(tg, "Una risposta a questa mail e' gia' in attesa di approvazione "
+                 f"({rid}): approvala o modificala, invece di prepararne "
+                 "un'altra.",
+             f"A reply to this mail is already waiting for approval ({rid}): "
+             "approve or edit that one instead of drafting another.")
+        return None
     regola = {"rule_id": RULE_ID,
               "reply_style": ("ISTRUZIONE DELL'UTENTE, da seguire alla lettera "
                               f"nel contenuto: {istruzione}"),
@@ -303,7 +315,19 @@ def draft_confirmation(w, tg, account_id: int, row: Dict[str, Any],
     mid = str(message.get("id") or "")
     if mid and rules_mod.store().get_handled(RULE_ID, mid):
         return None                      # already drafted for this mail
-    where = "by video call" if row.get("video") else "at our office"
+    video = outcome.get("video") or {}
+    if video.get("stato") == "creata":
+        # The video-call path has drafted the mail with the link: that
+        # mail IS the confirmation. Two confirmations for one appointment
+        # went out when both were approved.
+        return None
+    other = reply_guard.existing_reply(mid)
+    if other:
+        _log(f"confirmation not drafted for {mid}: a reply is already "
+             f"{other['state']} ({other['request_id'] or other['rule_id']})",
+             True)
+        return None
+    where = "by video call" if (row.get("video") or video) else "at our office"
     instruction = (f"Confirm the appointment for {_when(outcome['inizio'])} "
                    f"{where}: that time is free in the calendar. Thank them "
                    "and say we look forward to meeting them. Do not propose "

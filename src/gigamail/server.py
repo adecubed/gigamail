@@ -36,6 +36,7 @@ from gigamail.core import (
     mail_memory,
     mail_router,
     observer,
+    reply_guard,
     signature,
     zoom,
 )
@@ -661,6 +662,35 @@ def send_mail(
     )
 
 
+def _reply_already_pending(message_id: str) -> Optional[dict]:
+    """A reply to this mail drafted by the watcher (a rule, the
+    confirmation drafted at once, the video-call link) and still waiting
+    for the human: the agent gets THAT request back instead of a second
+    one. Two different texts for one mail slip past the payload dedup,
+    and both got approved and sent."""
+    other = reply_guard.existing_reply(message_id)
+    if not other or other["state"] != reply_guard.PENDING:
+        return None
+    rid = other["request_id"]
+    rec = policy.store().get(rid) or {}
+    audit("reply_mail", {"request_id": rid, "message_id": message_id},
+          "approval_request_deduplicated", detail="reply already pending")
+    return {
+        "status": "approval_required",
+        "request_id": rid,
+        "preview": rec.get("preview") or {},
+        "deduplicated": True,
+        "instructions": (
+            "A reply to this message is ALREADY waiting for human approval "
+            f"(request {rid}), drafted by GigaMail's watcher. No new request "
+            "was created. Show the user that preview and ask them to approve "
+            "it from the GigaMail console, Telegram or `gigamail approvals "
+            f"approve {rid}`. If they want a different reply, they must reject "
+            "that request first; then call reply_mail again."
+        ),
+    }
+
+
 @mcp.tool(annotations=DANGEROUS, description=_two_phase(
     """Reply to an existing message in its thread.""",
     """
@@ -698,6 +728,9 @@ def reply_mail(
     if not request_id and not allegati and _promette_allegati(body):
         return _errore_promessa()
     if not request_id:
+        gia = _reply_already_pending(message_id)
+        if gia:
+            return gia
         body = signature.apply(account_id, body)
     args = {"message_id": message_id, "body": body, "account_id": account_id,
             "attachments": allegati, "cc": cc, "folder": folder}
