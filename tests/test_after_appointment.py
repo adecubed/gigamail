@@ -279,6 +279,16 @@ def test_an_approved_follow_up_is_sent_and_noted(world):
     assert "follow-up inviato" in mail_memory.client_notes(CONTACT)
 
 
+def test_the_follow_up_carries_the_account_signature(world, account_signature):
+    account_signature(2, "Sales office")
+    key = _showed_up(world)
+    after.tick(None, now=datetime(2026, 9, 29, 10, 1))
+    rec = policy.store().get(_outcome(key)["followup_request_id"])
+    assert rec["args"]["body"] == world["draft"] + "\n\nSales office\n"
+    assert rec["preview"]["body"] == rec["args"]["body"]
+    assert "Sales office" in world["tg"].sent[-1]["text"]
+
+
 def test_edit_from_telegram_rewrites_the_follow_up(world):
     key = _showed_up(world)
     after.tick(None, now=datetime(2026, 9, 29, 10, 1))

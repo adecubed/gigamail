@@ -22,6 +22,7 @@ from gigamail.core import (
     injection_guard,
     mail_guard,
     mail_router,
+    signature,
     telegram_channel,
 )
 from gigamail.core import rules as rules_mod
@@ -240,6 +241,7 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                 message=testo.replace("{sender}", sender))
             return "skipped"
 
+    body = signature.apply(account_id, body)
     args = {"message_id": message_id, "body": body, "account_id": account_id,
             "folder": folder}
     to_address = None

@@ -28,6 +28,7 @@ from gigamail.core import (
     extensions,
     injection_guard,
     mail_memory,
+    signature,
     telegram_channel,
 )
 from gigamail.core import rules as rules_mod
@@ -544,6 +545,7 @@ def _prepare(w, tg, row: Dict[str, Any], feedback: Optional[str] = None,
         return False
     body = body[:drafting._DRAFT_CHARS_MAX]
     aid = int(row["account_id"])
+    body = signature.apply(aid, body)
     mid = str(message.get("id") or "")
     address = _address(row["thread_key"])
     cc = tg_risposte._cc(aid)

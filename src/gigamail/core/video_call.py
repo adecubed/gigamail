@@ -25,6 +25,7 @@ from . import (
     appointments,
     availability,
     calendar_router,
+    signature,
     telegram_channel,
     zoom,
 )
@@ -88,8 +89,7 @@ def _cc(account_id: int) -> List[str]:
 
 
 def _firma(account_id: int) -> str:
-    return str(accounts.get_setting(f"firma_account_{int(account_id)}", "")
-               or "").strip()
+    return signature.get(account_id)
 
 
 def testo_mail(nome: str, quando: str, url: str, password: str,

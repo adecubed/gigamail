@@ -36,6 +36,7 @@ from gigamail.core import (
     mail_memory,
     mail_router,
     observer,
+    signature,
     zoom,
 )
 from gigamail.policy import audit
@@ -603,7 +604,10 @@ def send_mail(
                     "alias may be expanded by the provider to more "
                     "recipients than previewed (flagged as may_expand).")],
     subject: Annotated[str, Field(description="Subject line.")],
-    body: Annotated[str, Field(description="Plain-text body, sent as-is.")],
+    body: Annotated[str, Field(
+        description="Plain-text body. The account signature, if the user set "
+                    "one, is appended and shown in the preview: do not "
+                    "write it yourself.")],
     cc: Annotated[Optional[list[str]], Field(description="CC addresses.")] = None,
     bcc: Annotated[Optional[list[str]], Field(description="BCC addresses.")] = None,
     attachments: Annotated[Optional[list[str]], Field(
@@ -628,6 +632,8 @@ def send_mail(
                            "Niente e' stato inviato."}
     if not request_id and not allegati and _promette_allegati(body):
         return _errore_promessa()
+    if not request_id:
+        body = signature.apply(account_id, body)
     args = {
         "to": to, "subject": subject, "body": body,
         "cc": cc, "bcc": bcc, "account_id": account_id,
@@ -668,7 +674,9 @@ def reply_mail(
     body: Annotated[str, Field(
         description="Plain-text body of the reply. Only the body: "
                     "recipient, subject ('Re: ...') and threading are set "
-                    "by GigaMail from the original message.")],
+                    "by GigaMail from the original message; the account "
+                    "signature, if any, is appended and shown in the "
+                    "preview.")],
     attachments: Annotated[Optional[list[str]], Field(
         description="File names to attach, as shown by "
                     "list_knowledge_files. Same rule as send_mail: "
@@ -689,6 +697,8 @@ def reply_mail(
                          + ". Niente e' stato inviato."}
     if not request_id and not allegati and _promette_allegati(body):
         return _errore_promessa()
+    if not request_id:
+        body = signature.apply(account_id, body)
     args = {"message_id": message_id, "body": body, "account_id": account_id,
             "attachments": allegati, "cc": cc, "folder": folder}
 

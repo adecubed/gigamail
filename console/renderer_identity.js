@@ -100,6 +100,8 @@ async function openIdentityModal(accountId, accountName) {
 
   let identity = { who_am_i: '', what_i_do: '', tone: '', key_info: '', file_paths: [] };
   try { identity = await api.getIdentity(accountId); } catch(e) {}
+  let signature = '';
+  try { signature = (await api.getSignature(accountId)).signature || ''; } catch(e) {}
 
   const overlay = document.createElement('div');
   overlay.id = 'identityModal';
@@ -137,6 +139,11 @@ async function openIdentityModal(accountId, accountName) {
           <label class="field-label">${T('key_info','INFORMAZIONI CHIAVE')} <span style="font-weight:400;color:#8A8280">${T('key_info_sub','(prezzi, orari, contatti...)')}</span></label>
           <textarea id="idKeyInfo" rows="5" placeholder="Es: Bilocali 250-300k€, trilocali 350-400k€. Tel: 02.123456."
             style="width:100%;margin-top:5px;resize:vertical;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit;">${esc(identity.key_info||'')}</textarea>
+        </div>
+        <div>
+          <label class="field-label">${T('signature','FIRMA')} <span style="font-weight:400;color:#8A8280">${T('signature_sub','(in fondo a ogni mail inviata da questo account)')}</span></label>
+          <textarea id="idSignature" rows="3" maxlength="1000" placeholder="${T('signature_ph','Es: Mario Rossi · Via Roma 10, Milano')}"
+            style="width:100%;margin-top:5px;resize:vertical;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box;font-family:inherit;">${esc(signature)}</textarea>
         </div>
         <div>
           <label class="field-label">${T('extract_url','ESTRAI DA URL')} <span style="font-weight:400;color:#8A8280">${T('extract_url_sub','(sito, LinkedIn, pagina prodotto...)')}</span></label>
@@ -393,6 +400,7 @@ async function openIdentityModal(accountId, accountName) {
         key_info:  document.getElementById('idKeyInfo')?.value?.trim() || '',
         file_paths: filePaths,
       });
+      await api.setSignature(accountId, document.getElementById('idSignature')?.value || '');
       showToast('Identità salvata!');
       close();
     } catch(err) {

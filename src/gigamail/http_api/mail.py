@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from gigamail.core import (
     mail_memory,
     mail_router,
+    signature,
 )
 
 from .addresses import _remember_message_addresses, _save_address
@@ -228,6 +229,7 @@ def send_mail(req: SendRequest, account_id: Optional[int] = None):
     args["account_id"] = req.account_id or account_id or _active_id()
     if args["account_id"] is None:
         raise HTTPException(400, "Nessun account attivo")
+    args["body"] = signature.apply(args["account_id"], args["body"])
     result = _human_action(
         "send_mail", args,
         f"Inviare dall'account {args['account_id']} a {req.to} "

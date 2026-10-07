@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from gigamail.core import (
     account_groups,
     identity_reader,
+    signature,
 )
 from gigamail.core import accounts as core_accounts
 from gigamail.core import auth as core_auth
@@ -179,6 +180,25 @@ def set_identity(account_id: int, req: IdentityRequest):
         account_id, who_am_i=req.who_am_i, what_i_do=req.what_i_do,
         tone=req.tone, key_info=req.key_info, file_paths=req.file_paths or [],
     )
+
+
+class SignatureRequest(BaseModel):
+    signature: str = ""
+
+
+@router.get("/accounts/{account_id}/signature")
+def get_signature(account_id: int):
+    return {"signature": signature.get(account_id)}
+
+
+@router.post("/accounts/{account_id}/signature")
+def set_signature(account_id: int, req: SignatureRequest):
+    if not core_accounts.get_account_by_id(account_id):
+        raise HTTPException(404, "Account not found")
+    try:
+        return {"signature": signature.save(account_id, req.signature)}
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @router.get("/accounts/{account_id}/identity/files")

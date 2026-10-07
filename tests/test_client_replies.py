@@ -106,6 +106,15 @@ def test_the_reply_button_queues_the_instruction_for_the_watcher(world, monkeypa
     assert tg_risposte.process_desktop_queue(None, None) == 0   # taken once
 
 
+def test_a_reply_asked_from_telegram_carries_the_account_signature(world, account_signature):
+    account_signature(2, "Sales office")
+    key = tg_risposte.register_context(2, MAIL)
+    rid = tg_risposte.rispondi(None, world["tg"], key, "ok, va bene")
+    rec = policy.store().get(rid)
+    assert rec["args"]["body"] == world["draft"] + "\n\nSales office\n"
+    assert rec["preview"]["body"] == rec["args"]["body"]
+
+
 def test_an_unknown_alert_queues_nothing():
     assert not tg_risposte.queue_desktop_reply("deadbeef", "ok")
 

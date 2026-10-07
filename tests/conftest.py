@@ -74,3 +74,19 @@ def estensione(monkeypatch):
 def tmp_ade_root():
     """Percorso della finta %APPDATA%/ADE usata dai test."""
     return _TMP / "ADE"
+
+
+@pytest.fixture()
+def account_signature(monkeypatch):
+    """Per-account signatures kept in memory: account_signature(aid, text)."""
+    from gigamail.core import signature
+    settings = {}
+    monkeypatch.setattr(signature.accounts, "get_setting",
+                        lambda key, default="": settings.get(key, default))
+    monkeypatch.setattr(signature.accounts, "set_setting",
+                        lambda key, value: settings.__setitem__(key, str(value)))
+
+    def put(account_id, text):
+        return signature.save(account_id, text)
+    put.settings = settings
+    return put

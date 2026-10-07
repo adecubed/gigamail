@@ -183,6 +183,39 @@ def cmd_identity_set(args) -> int:
     return 0
 
 
+def cmd_identity_signature(args) -> int:
+    from gigamail import policy
+    from gigamail.core import signature
+    it = policy.user_lang() == "it"
+    aid = _resolve_account_id(args.account_id)
+    if not aid:
+        print("Nessun account." if it else "No account.")
+        return 1
+    changing = args.clear or args.text is not None
+    if changing:
+        # A shell argument cannot hold a new line: "\n" written as two
+        # characters stands for one.
+        text = "" if args.clear else args.text.replace("\\n", "\n")
+        try:
+            signature.save(aid, text)
+        except ValueError as e:
+            print(e)
+            return 1
+    value = signature.get(aid)
+    if not value:
+        print(f"Account {aid}: nessuna firma." if it
+              else f"Account {aid}: no signature.")
+        return 0
+    if changing:
+        print(f"Firma dell'account {aid} salvata:" if it
+              else f"Signature of account {aid} saved:")
+    else:
+        print(f"Firma dell'account {aid}:" if it
+              else f"Signature of account {aid}:")
+    print(value)
+    return 0
+
+
 def cmd_identity_add_file(args) -> int:
     import os
 
@@ -1561,6 +1594,14 @@ def main(argv=None) -> int:
     p_set = id_sub.add_parser("set")
     p_set.add_argument("account_id", type=int, nargs="?", default=None)
     p_set.set_defaults(fn=cmd_identity_set)
+    p_sig = id_sub.add_parser(
+        "signature", help="signature appended to every mail of the account")
+    p_sig.add_argument("--account-id", type=int, default=None, dest="account_id")
+    sig_grp = p_sig.add_mutually_exclusive_group()
+    sig_grp.add_argument("--set", dest="text", default=None,
+                         help="new signature text (write \\n for a new line)")
+    sig_grp.add_argument("--clear", action="store_true", help="remove the signature")
+    p_sig.set_defaults(fn=cmd_identity_signature)
     p_addf = id_sub.add_parser("add-file")
     p_addf.add_argument("path")
     p_addf.add_argument("--account-id", type=int, default=None, dest="account_id")

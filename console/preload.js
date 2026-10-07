@@ -381,6 +381,16 @@ contextBridge.exposeInMainWorld('ademail', {
       body: JSON.stringify(data),
     }),
 
+  getSignature: (accountId) =>
+    apiJson(`${API}/accounts/${accountId}/signature`),
+
+  setSignature: (accountId, signature) =>
+    apiJson(`${API}/accounts/${accountId}/signature`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signature }),
+    }),
+
   readLocalFile: (path) =>
     apiJson(`${API}/files/local?path=${encodeURIComponent(path)}`),
 

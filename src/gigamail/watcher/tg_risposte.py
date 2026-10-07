@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from gigamail import agent_bridge, policy
-from gigamail.core import accounts, mail_router
+from gigamail.core import accounts, mail_router, signature
 from gigamail.core import rules as rules_mod
 
 from . import drafting
@@ -220,6 +220,7 @@ def rispondi(w, tg, chiave: str, istruzione: str,
     if not oggetto.lower().startswith("re:"):
         oggetto = f"Re: {oggetto}"
     cc = _cc(aid)
+    corpo = signature.apply(aid, corpo)
     args = {"to": ctx["mittente"], "subject": oggetto, "body": corpo,
             "account_id": aid, "cc": cc, "message_id": ctx["message_id"]}
     nostro = accounts.get_account_by_id(aid) or {}

@@ -93,6 +93,16 @@ def test_semi_crea_pending_e_non_invia(fake_world):
     assert "to" not in pending[0]["args"]
 
 
+def test_semi_draft_carries_the_account_signature(fake_world, account_signature):
+    account_signature(1, "Sales office")
+    _rule(mode="semi")
+    fake_world["unread"] = [_msg()]
+    watcher_mod.Watcher().tick()
+    pending = policy.store().list_pending()[0]
+    assert pending["args"]["body"] == fake_world["draft"] + "\n\nSales office\n"
+    assert pending["preview"]["body"] == pending["args"]["body"]
+
+
 def test_semi_approvata_viene_eseguita_al_giro_dopo(fake_world):
     _rule(mode="semi")
     fake_world["unread"] = [_msg()]

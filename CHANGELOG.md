@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **A signature per account.** Each account can have a plain-text
+  signature, set in the console (account identity, "Signature" field) or
+  with `gigamail identity signature --set "..."`. It goes at the bottom of
+  every mail the account sends: mail and replies written by the agent
+  through MCP, drafts from the watcher's rules, replies asked from
+  Telegram, follow-ups after an appointment, video-call links and mail
+  composed in the console. It is added when the approval request is
+  built, so the preview you approve already ends with it and the mail
+  that leaves is exactly that text; changing the signature later does not
+  touch requests already waiting. It is never added twice, and no agent
+  tool can change it. Empty by default: nothing changes until you set one.
+
 ## v0.4.1 — 2026-10-06
 
 - **The console replaces an outdated backend by itself.** The backend
