@@ -35,7 +35,8 @@ test('Python in development: the repo venv next to console/', () => {
     path.join('D', '.venv', 'bin', 'python'));
 });
 
-test('auto-update only where the app is signed (Windows)', () => {
+test('auto-update where the app is signed: Windows and macOS, not Linux', () => {
   assert.equal(autoUpdateSupported('win32'), true);
-  assert.equal(autoUpdateSupported('darwin'), false);
+  assert.equal(autoUpdateSupported('darwin'), true);
+  assert.equal(autoUpdateSupported('linux'), false);
 });

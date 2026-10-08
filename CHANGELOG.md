@@ -8,12 +8,11 @@
   Python (python-build-standalone), from the code of that exact commit.
   The build is verified like the Windows one: unit tests, the end-to-end
   console tests, the packed backend imports, the packed app starts from a
-  fresh profile with its own backend. With the Apple Developer ID and
-  App Store Connect key in the repository secrets, CI signs the app with
-  the hardened runtime and notarizes it, so it opens like any other Mac
-  app; until then the build is signed ad hoc: it runs, but the first
-  launch of the downloaded copy needs right-click > Open (Gatekeeper), and
-  it does not update itself yet. The Windows app is unchanged. On macOS the console keeps its
+  fresh profile with its own backend. CI signs the app with the Apple
+  Developer ID (hardened runtime) and notarizes it, and checks that
+  Gatekeeper accepts the result: it opens like any other Mac app and
+  updates itself from the Release, like the Windows one. The Windows app
+  is unchanged. On macOS the console keeps its
   session token and data in `~/.ade`, where the backend already looked:
   before, the main process used `~/ADE` and the two never met. The website
   links the Apple Silicon dmg under the Windows button.
