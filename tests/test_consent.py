@@ -213,3 +213,83 @@ def test_console_reject_senza_consenso(client, monkeypatch):
     r = client.post(f"/approvals/{rid}/reject", headers=H)
     assert r.status_code == 200
     assert policy.store().get(rid)["status"] == policy.REJECTED
+
+
+# --------------------------------------------- why Windows Hello is absent
+
+class _FakeWinrt:
+    """winrt.windows.security.credentials.ui, enough for _win_available:
+    check_availability_async returns an awaitable with the enum value."""
+
+    def __init__(self, availability):
+        import types as _types
+        self.module = _types.SimpleNamespace()
+
+        async def _check():
+            return availability
+        self.module.UserConsentVerifier = _types.SimpleNamespace(
+            check_availability_async=lambda: _check())
+        self.module.UserConsentVerifierAvailability = _types.SimpleNamespace(
+            AVAILABLE=0)
+
+
+@pytest.fixture()
+def finestra(monkeypatch):
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    monkeypatch.setattr(consent, "_WIN", True)
+    monkeypatch.setattr(consent, "_MAC", False)
+    monkeypatch.setattr(consent, "_motivo_indisponibile", "")
+
+
+def _installa(monkeypatch, availability):
+    import sys
+    monkeypatch.setitem(sys.modules, "winrt.windows.security.credentials.ui",
+                        _FakeWinrt(availability).module)
+
+
+def test_hello_non_configurato_lo_dice(finestra, monkeypatch):
+    """On the PC where the prompt never showed, 'no backend' said nothing:
+    the availability enum names the cause and what to do about it."""
+    _installa(monkeypatch, 2)
+    assert consent.backend_name() is None
+    assert "NotConfiguredForUser" in consent.unavailable_reason()
+    with pytest.raises(consent.ConsentUnavailable) as e:
+        consent.require_human("x")
+    assert "NotConfiguredForUser" in str(e.value)
+    assert "approvals check" in str(e.value)
+    stato = consent.check()
+    assert stato["backend"] is None and "NotConfiguredForUser" in stato["reason"]
+
+
+def test_hello_disponibile_azzera_il_motivo(finestra, monkeypatch):
+    _installa(monkeypatch, 0)
+    assert consent.backend_name() == "windows-hello"
+    assert consent.unavailable_reason() == ""
+
+
+def test_pacchetto_winrt_assente_lo_dice(finestra, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "winrt.windows.security.credentials.ui", None)
+    assert consent.backend_name() is None
+    assert "winrt-Windows.Security.Credentials.UI" in consent.unavailable_reason()
+    assert sys.executable in consent.unavailable_reason()
+
+
+def test_approvals_check_riporta_la_diagnosi(monkeypatch, capsys):
+    from gigamail import cli
+    monkeypatch.setattr(consent, "check", lambda: {
+        "backend": None, "reason": "Windows Hello non e' configurato (NotConfiguredForUser)",
+        "python": "C:/py/python.exe", "platform": "win32"})
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 2
+    out = capsys.readouterr().out
+    assert "NESSUNO" in out and "NotConfiguredForUser" in out
+
+    monkeypatch.setattr(consent, "check", lambda: {
+        "backend": "windows-hello", "reason": "", "python": "x", "platform": "win32"})
+    monkeypatch.setattr(consent, "require_human", lambda reason: False)
+    monkeypatch.setattr(consent, "last_reason", lambda: "annullata")
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 1
+    assert "annullata" in capsys.readouterr().out
+    monkeypatch.setattr(consent, "require_human", lambda reason: True)
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 0
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=True)) == 0

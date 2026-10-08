@@ -276,8 +276,9 @@
                      : T('agente non trovato: installa Claude Code o Codex CLI, o configura agent.json',
                          'agent not found: install Claude Code or Codex CLI, or configure agent.json'));
       set('consentStatus', st.consent_backend ? 'ok' : 'err',
-        st.consent_backend || T('nessun backend: approvazioni solo da console? NO — fail-closed',
-                                'no backend: approvals fail closed'));
+        st.consent_backend || (
+          T('nessun backend, approvazioni bloccate', 'no backend, approvals fail closed')
+          + (st.consent_reason ? `: ${st.consent_reason}` : '')));
       const d = st.desktop || {};
       set('desktopStatus', d.buttons ? 'ok' : (d.enabled ? 'warn' : 'err'),
         !d.enabled ? T('disattivate (GIGAMAIL_NOTIFY_DESKTOP=0)', 'disabled (GIGAMAIL_NOTIFY_DESKTOP=0)')

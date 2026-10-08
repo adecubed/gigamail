@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **No Windows Hello for a click in the console.** Deleting a mail or a
+  folder, moving a mail, marking spam or not spam, and editing the
+  calendar from the console no longer open the Windows Hello / Touch ID
+  prompt: a prompt per click, for a person sorting their own inbox, made
+  the console unusable. Deleting asks "are you sure?" in the console
+  itself. The prompt stays where it protects something: sending mail
+  from the console and every approval the agent asks for. See
+  SECURITY.md for the trade-off.
+- **Why Windows Hello is missing, said out loud.** On a PC where the
+  prompt never appeared, the console and the CLI only said "no backend".
+  Now the cause is named: the WinRT package missing from that Python,
+  Hello not set up for that Windows user, disabled by policy, or busy.
+  It shows in the console's AI card, in the refusal message, and in the
+  new `gigamail approvals check`, which also opens one test prompt and
+  reports its outcome. A refused verification now says why in the
+  console too (cancelled, not configured, attempts exhausted).
+
 - **One confirmation per appointment.** When a client accepted a time
   for a video call, three paths each drafted a reply to that same mail
   within minutes: the confirmation the watcher drafts at once (and it

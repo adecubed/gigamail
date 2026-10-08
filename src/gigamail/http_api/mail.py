@@ -14,7 +14,7 @@ from gigamail.core import (
 )
 
 from .addresses import _remember_message_addresses, _save_address
-from .common import _active_id, _human_action
+from .common import _active_id, _human_action, _user_action
 
 router = APIRouter()
 _MIME = mimetypes.MimeTypes()
@@ -159,7 +159,7 @@ def create_folder(req: FolderRequest):
 @router.delete("/mail/folders/{folder_id}")
 def delete_folder(folder_id: str, account_id: Optional[int] = None):
     args = {"account_id": account_id or _active_id(), "folder_id": folder_id}
-    return _human_action("delete_folder", args, f"Eliminare la cartella {folder_id}?",
+    return _user_action("delete_folder", args,
                          lambda a: {"success": mail_router.delete_folder(**a)})
 
 
@@ -289,7 +289,7 @@ def read_message(message_id: str, folder: str = "", account_id: Optional[int] = 
 def delete_message(message_id: str, folder: str = "", account_id: Optional[int] = None):
     args = {"account_id": account_id or _active_id(), "message_id": message_id,
             "folder": folder or "INBOX"}
-    return _human_action("delete_message", args, f"Eliminare il messaggio {message_id} in {folder or 'Inbox'}?",
+    return _user_action("delete_message", args,
                          lambda a: {"success": mail_router.delete_message(**a)})
 
 
@@ -325,7 +325,7 @@ def move_message(message_id: str, folder_id: Optional[str] = None,
         raise HTTPException(400, "La mail e' gia' in questa cartella")
     args = {"account_id": account_id or _active_id(), "message_id": message_id,
             "folder_id": destinazione, "source_folder": source_folder or None}
-    return _human_action("move_message", args, f"Spostare il messaggio {message_id} in {destinazione}?",
+    return _user_action("move_message", args,
                          lambda a: {"success": mail_router.move_to_folder(**a)})
 
 
@@ -333,7 +333,7 @@ def move_message(message_id: str, folder_id: Optional[str] = None,
 def mark_spam(message_id: str, folder: str = "inbox", account_id: Optional[int] = None):
     args = {"account_id": account_id or _active_id(), "message_id": message_id,
             "folder_id": "spam", "source_folder": folder}
-    return _human_action("move_message", args, f"Spostare il messaggio {message_id} nello spam?",
+    return _user_action("move_message", args,
                          lambda a: {"success": mail_router.move_to_folder(**a)})
 
 
@@ -341,5 +341,5 @@ def mark_spam(message_id: str, folder: str = "inbox", account_id: Optional[int] 
 def not_spam(message_id: str, account_id: Optional[int] = None):
     args = {"account_id": account_id or _active_id(), "message_id": message_id,
             "folder_id": "inbox", "source_folder": "spam"}
-    return _human_action("move_message", args, f"Riportare il messaggio {message_id} nella posta in arrivo?",
+    return _user_action("move_message", args,
                          lambda a: {"success": mail_router.move_to_folder(**a)})

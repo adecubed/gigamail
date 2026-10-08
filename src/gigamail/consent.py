@@ -81,7 +81,33 @@ def _run_winrt(op):
     return box.get("r")
 
 
+# What UserConsentVerifier.check_availability_async answers, and what to
+# do about it. Before, every answer but "available" collapsed into "no
+# backend": on a PC where the console never showed the prompt, nothing
+# said whether the WinRT package was missing, Hello was not set up for
+# that Windows account, or group policy had switched it off.
+_DISPONIBILITA_WIN = {
+    0: "",
+    1: "nessun dispositivo Hello su questo PC (DeviceNotPresent)",
+    2: "Windows Hello non e' configurato per questo utente Windows "
+       "(NotConfiguredForUser): Impostazioni > Account > Opzioni di "
+       "accesso, imposta un PIN",
+    3: "Windows Hello e' disabilitato da criteri di gruppo "
+       "(DisabledByPolicy)",
+    4: "Windows Hello e' occupato da un'altra verifica (DeviceBusy)",
+}
+
+_motivo_indisponibile = ""
+
+
+def unavailable_reason() -> str:
+    """Why the last backend check found nothing to ask the human with.
+    Empty when a backend is available or no check has run yet."""
+    return _motivo_indisponibile
+
+
 def _win_available() -> bool:
+    global _motivo_indisponibile
     try:
         from winrt.windows.security.credentials.ui import (  # type: ignore
             UserConsentVerifier,
@@ -89,13 +115,22 @@ def _win_available() -> bool:
         from winrt.windows.security.credentials.ui import (
             UserConsentVerifierAvailability as A,
         )
-    except ImportError:
+    except ImportError as e:
+        _motivo_indisponibile = (
+            "il pacchetto Python winrt-Windows.Security.Credentials.UI non "
+            f"e' importabile in questo Python ({sys.executable}): {e}")
         return False
     try:
         r = _run_winrt(UserConsentVerifier.check_availability_async())
-        return int(r) == int(A.AVAILABLE)
-    except Exception:
+    except Exception as e:
+        _motivo_indisponibile = f"check_availability_async fallita: {e}"
         return False
+    if int(r) == int(A.AVAILABLE):
+        _motivo_indisponibile = ""
+        return True
+    _motivo_indisponibile = _DISPONIBILITA_WIN.get(
+        int(r), f"disponibilita' {int(r)} non riconosciuta")
+    return False
 
 
 # Perche' Windows ha detto di no. Tutti restano un NO — la sicurezza
@@ -319,6 +354,15 @@ def require_human(reason: str) -> bool:
         )
     raise ConsentUnavailable(
         "Nessun modo di chiedere conferma all'utente su questa macchina "
-        "(serve Windows Hello o macOS LocalAuthentication). Approva dalla "
-        "console GigaMail."
+        "(serve Windows Hello o macOS LocalAuthentication)"
+        + (f": {_motivo_indisponibile}" if _motivo_indisponibile else "")
+        + ". Verifica con `gigamail approvals check`."
     )
+
+
+def check() -> dict:
+    """What a human would be asked with here, and why not: for
+    `gigamail approvals check` and the console's status card."""
+    name = backend_name()
+    return {"backend": name, "reason": "" if name else unavailable_reason(),
+            "python": sys.executable, "platform": sys.platform}

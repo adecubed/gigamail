@@ -1,4 +1,11 @@
-"""A valid console token alone must never authorize a dangerous write."""
+"""A valid console token alone must never send mail; a click in the
+console is enough to tidy the mailbox and the calendar.
+
+Windows Hello used to be asked for every Delete, Spam or Move click: a
+prompt per click, for a person sorting their own inbox. The prompt is
+for what leaves the machine and for what the agent asks: sending from
+the console still needs it, and so do the agent's approval requests.
+"""
 import importlib
 
 import pytest
@@ -22,8 +29,9 @@ def client(monkeypatch):
     importlib.reload(http_api)
 
 
-ACTIONS = [
-    ("POST", "/mail/send", {"account_id": 1, "to": "client@example.test", "body": "hello"}, mail.mail_router, "send_message"),
+SEND = ("POST", "/mail/send", {"account_id": 1, "to": "client@example.test", "body": "hello"}, mail.mail_router, "send_message")
+
+CLICKS = [
     ("DELETE", "/mail/42?account_id=1", None, mail.mail_router, "delete_message"),
     ("DELETE", "/mail/folders/Leads?account_id=1", None, mail.mail_router, "delete_folder"),
     ("POST", "/mail/42/move?account_id=1", {"folder_id": "Archive"}, mail.mail_router, "move_to_folder"),
@@ -35,9 +43,9 @@ ACTIONS = [
 ]
 
 
-@pytest.mark.parametrize("method,url,body,provider,name", ACTIONS)
 @pytest.mark.parametrize("decision,expected", [(False, 403), ("unavailable", 503)])
-def test_token_cannot_bypass_human(client, monkeypatch, method, url, body, provider, name, decision, expected):
+def test_token_cannot_send_without_the_human(client, monkeypatch, decision, expected):
+    method, url, body, provider, name = SEND
     calls = []
     monkeypatch.setattr(provider, name, lambda *a, **kw: calls.append(kw) or True)
 
@@ -49,6 +57,48 @@ def test_token_cannot_bypass_human(client, monkeypatch, method, url, body, provi
     monkeypatch.setattr(consent, "require_human", verify)
     response = client.request(method, url, json=body)
     assert response.status_code == expected
+    assert calls == []
+
+
+def test_a_refused_send_says_why(client, monkeypatch):
+    monkeypatch.setattr(mail.mail_router, "send_message", lambda **kw: pytest.fail("must not send"))
+    monkeypatch.setattr(consent, "require_human", lambda reason: False)
+    monkeypatch.setattr(consent, "last_reason", lambda: "annullata")
+    response = client.post("/mail/send", json={"account_id": 1, "to": "client@example.test"})
+    assert response.status_code == 403
+    assert "annullata" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("method,url,body,provider,name", CLICKS)
+def test_a_click_tidies_without_the_os_prompt(client, monkeypatch, method, url, body, provider, name):
+    calls = []
+    outcomes = []
+    monkeypatch.setattr(provider, name, lambda *a, **kw: calls.append(kw) or True)
+
+    def no_prompt(reason):
+        raise AssertionError("Windows Hello must not be asked for a click")
+    monkeypatch.setattr(consent, "require_human", no_prompt)
+    monkeypatch.setattr(policy, "audit",
+                        lambda tool, args, outcome, **kw: outcomes.append((tool, outcome, kw.get("detail"))))
+    response = client.request(method, url, json=body)
+    assert response.status_code == 200, response.text
+    assert len(calls) == 1
+    assert outcomes[-1][1] == "executed"
+    assert outcomes[-1][2].endswith("(click)")
+
+
+def test_a_click_without_an_active_account_is_refused(client, monkeypatch):
+    monkeypatch.setattr(mail, "_active_id", lambda: None)
+    monkeypatch.setattr(mail.mail_router, "delete_message", lambda **kw: pytest.fail("no account"))
+    assert client.delete("/mail/42").status_code == 400
+
+
+def test_a_click_in_dry_run_writes_nothing(client, monkeypatch):
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    calls = []
+    monkeypatch.setattr(mail.mail_router, "delete_message", lambda **kw: calls.append(kw) or True)
+    response = client.delete("/mail/42?account_id=1")
+    assert response.status_code == 200 and response.json()["dryrun"] is True
     assert calls == []
 
 

@@ -11,7 +11,7 @@ from gigamail.core import (
     calendar_router,
 )
 
-from .common import _human_action
+from .common import _user_action
 
 router = APIRouter()
 
@@ -57,25 +57,23 @@ class EventRequest(BaseModel):
 @router.post("/calendar")
 def create_event(req: EventRequest):
     execute = calendar_router.bind_action("create_event")
-    return _human_action("create_event", req.model_dump(),
-                         f"Creare l'appuntamento {req.subject!r} del {req.start}?",
-                         lambda a: execute(**a))
+    return _user_action("create_event", req.model_dump(),
+                        lambda a: execute(**a))
 
 
 @router.patch("/calendar/{event_id}")
 def update_event(event_id: str, req: dict):
     execute = calendar_router.bind_action("update_event")
     args = {"event_id": event_id, "changes": req or {}}
-    return _human_action("update_event", args, f"Modificare l'appuntamento {event_id}?",
-                         lambda a: execute(event_id=a["event_id"], **a["changes"]))
+    return _user_action("update_event", args,
+                        lambda a: execute(event_id=a["event_id"], **a["changes"]))
 
 
 @router.delete("/calendar/{event_id}")
 def delete_event(event_id: str):
     execute = calendar_router.bind_action("delete_event")
-    return _human_action("delete_event", {"event_id": event_id},
-                         f"Eliminare l'appuntamento {event_id}?",
-                         lambda a: {"success": execute(event_id=a["event_id"])})
+    return _user_action("delete_event", {"event_id": event_id},
+                        lambda a: {"success": execute(event_id=a["event_id"])})
 
 
 @router.get("/calendar/primary")

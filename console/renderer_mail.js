@@ -178,6 +178,9 @@ function renderMailList(mails) {
 
 async function deleteMail(id, folder, accountId) {
   if (!id) return;
+  // The backend no longer asks Windows Hello for a click: this is the
+  // only "are you sure?" a deletion gets.
+  if (!confirm(T('confirm_delete', 'Eliminare questa mail?'))) return;
   // The mail's own account: in a merged view it may not be the active one.
   const account = parseInt(accountId, 10) || activeAccountId;
   try {
@@ -537,7 +540,7 @@ async function openMail(id, overrideFolder = null) {
 
     // ELIMINA
     byId('btnDelete')?.addEventListener('click', async () => {
-      if (!confirm('Eliminare questa mail?')) return;
+      if (!confirm(T('confirm_delete', 'Eliminare questa mail?'))) return;
       try {
         await api.deleteMail(id, activeAccountId);
         document.querySelector(`[data-id="${id}"]`)?.remove();

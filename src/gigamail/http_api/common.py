@@ -45,7 +45,29 @@ def _human_action(tool: str, args: dict, reason: str, execute: Callable):
     except consent.ConsentUnavailable as e:
         raise HTTPException(503, str(e)) from e
     if not approved:
-        raise HTTPException(403, "Verifica utente non superata o annullata")
+        motivo = consent.last_reason()
+        raise HTTPException(403, "Verifica utente non superata"
+                            + (f": {motivo}" if motivo else " o annullata"))
+    return _run_action(tool, payload, execute)
+
+
+def _user_action(tool: str, args: dict, execute: Callable):
+    """Tidying the mailbox or the calendar from the console: no OS prompt.
+
+    Windows Hello was asked for every click on Delete, Spam or Move. That
+    prompt exists to keep an agent from approving its own mail; a person
+    sorting their inbox is not that agent, and a prompt per click made the
+    console unusable. What leaves the machine (sending) and what the agent
+    asks for still go through `_human_action`. The console asks "are you
+    sure?" itself for deletions, and every action is audited as a click.
+    """
+    payload = deepcopy(args)
+    if "account_id" in payload and payload["account_id"] is None:
+        raise HTTPException(400, "Nessun account attivo")
+    return _run_action(tool, payload, execute, how="click")
+
+
+def _run_action(tool: str, payload: dict, execute: Callable, how: str = "verified"):
     if policy.dry_run_active():
         policy.audit(tool, payload, "dryrun_executed", detail=_who())
         return {"success": True, "dryrun": True}
@@ -55,6 +77,7 @@ def _human_action(tool: str, args: dict, reason: str, execute: Callable):
         _audit_result(tool, payload, "error", detail=str(e))
         raise
     ok = result.get("success", True) if isinstance(result, dict) else bool(result)
-    _audit_result(tool, payload, "executed" if ok else "failed", detail=_who(),
+    _audit_result(tool, payload, "executed" if ok else "failed",
+                  detail=f"{_who()} ({how})",
                   provider_result=result.get("provider_result") if isinstance(result, dict) else None)
     return result

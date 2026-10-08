@@ -21,6 +21,7 @@ def notify_status():
     return {
         "agent": agent_bridge.status(),
         "consent_backend": consent.backend_name(),
+        "consent_reason": consent.unavailable_reason(),
         "desktop": {
             "enabled": desktop_notify.enabled(),
             "buttons": desktop_notify.actions_supported(),

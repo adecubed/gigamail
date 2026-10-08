@@ -113,13 +113,18 @@ OpenClaw and Hermes all hold a shell — so "out of band from MCP" was not
 - The CLI flag `--yes` is gone. It was the shortcut an agent would use.
 - The console's session token alone no longer approves anything. The token
   lives in a file a process can read; the OS prompt is what it cannot pass.
-- Direct console writes also require a fresh OS verification: sending mail,
-  deleting messages or folders, moving messages (including spam actions),
-  and creating, updating or deleting calendar events. The payload and
-  destination are captured before the prompt. Cancelled verification sends
-  nothing and keeps the compose window open. MCP approvals also persist the
-  mailbox or calendar destination; legacy requests without that binding
-  must be recreated before execution.
+- Sending mail from the console also requires a fresh OS verification:
+  the payload and destination are captured before the prompt, and a
+  cancelled verification sends nothing and keeps the compose window open.
+  Tidying from the console (deleting messages or folders, moving messages,
+  spam and not-spam, creating, updating or deleting calendar events) does
+  **not** open the OS prompt since v0.5.1: a prompt per click made the
+  console unusable, and those actions stay inside the user's own mailbox
+  and calendar, with the provider's trash as the undo. They are audited as
+  clicks. The trade-off: a process holding the console token can tidy the
+  mailbox; it still cannot send, and cannot approve anything. MCP approvals
+  also persist the mailbox or calendar destination; legacy requests without
+  that binding must be recreated before execution.
 - **No backend, no approval.** On a machine without Windows Hello or
   LocalAuthentication, approval needs the local PIN typed in an
   interactive terminal. With no PIN set, or no terminal (a script, an

@@ -372,6 +372,37 @@ def cmd_approvals_approve(args) -> int:
     return 1
 
 
+def cmd_approvals_check(args) -> int:
+    """Which human check this machine can make, and a real prompt to
+    prove it. For the PC where the Hello window never appears: the
+    outcome names the cause (package missing, Hello not set up, policy,
+    prompt cancelled) instead of a generic refusal."""
+    from gigamail import consent
+    stato = consent.check()
+    print(f"Python: {stato['python']}")
+    if stato["backend"]:
+        print(f"Backend di conferma: {stato['backend']}")
+    else:
+        print("Backend di conferma: NESSUNO")
+        if stato["reason"]:
+            print(f"Motivo: {stato['reason']}")
+        return 2
+    if getattr(args, "no_prompt", False):
+        return 0
+    print("Apro una verifica di prova: rispondi al prompt del sistema...")
+    try:
+        ok = consent.require_human("GigaMail: prova di verifica (approvals check)")
+    except consent.ConsentUnavailable as e:
+        print(f"Impossibile aprire il prompt: {e}")
+        return 2
+    if ok:
+        print("Verifica superata: il prompt funziona da questo processo.")
+        return 0
+    motivo = consent.last_reason()
+    print("Verifica NON superata" + (f": {motivo}" if motivo else "") + ".")
+    return 1
+
+
 def cmd_approvals_revoke(args) -> int:
     """Ritira un'approvazione non ancora eseguita.
 
@@ -1633,6 +1664,12 @@ def main(argv=None) -> int:
         help="approva una richiesta (richiede Windows Hello / Touch ID)")
     p_ok.add_argument("request_id")
     p_ok.set_defaults(fn=cmd_approvals_approve)
+    p_achk = appr_sub.add_parser(
+        "check", help="quale verifica umana c'e' su questo PC (Hello / Touch "
+                      "ID / PIN) e una prova del prompt")
+    p_achk.add_argument("--no-prompt", action="store_true",
+                        help="solo la diagnosi, senza aprire il prompt")
+    p_achk.set_defaults(fn=cmd_approvals_check)
     p_no = appr_sub.add_parser("reject")
     p_no.add_argument("request_id")
     p_no.set_defaults(fn=cmd_approvals_reject)
