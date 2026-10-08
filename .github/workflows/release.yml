@@ -6,7 +6,7 @@ name: Release
 #
 # Come si rilascia:
 #   1. aggiorna version in pyproject.toml (console e __version__ la seguono
-#      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z — data"
+#      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z â€” data"
 #   2. git tag vX.Y.Z && git push origin vX.Y.Z (immutabile: un numero
 #      bruciato non si ricicla)
 #      -> questo workflow testa, costruisce l'installer Windows e crea una
@@ -19,6 +19,25 @@ name: Release
 #   -> la pubblicazione rilancia questo workflow, che pubblica su PyPI.
 #      Finche' la Release e' bozza nessuno la vede: ne' gli utenti, ne'
 #      l'auto-update di electron-updater, ne' PyPI.
+#
+# macOS (job installer-mac): the dmg per architecture is built, signed and
+# notarized HERE, from five repository secrets. Set them once, no Mac needed:
+#   MAC_CERT_P12_BASE64  the "Developer ID Application" certificate with its
+#                        private key, as a .p12, base64 encoded. From Windows:
+#                          openssl req -new -newkey rsa:2048 -nodes -keyout mac.key -out mac.csr -subj "/CN=GigaMail/emailAddress=you@example.com"
+#                        upload mac.csr at developer.apple.com > Certificates
+#                        (type "Developer ID Application"), download the .cer, then
+#                          openssl x509 -in developerID_application.cer -inform DER -out mac.crt
+#                          openssl pkcs12 -export -inkey mac.key -in mac.crt -out mac.p12
+#                          base64 -w0 mac.p12
+#   MAC_CERT_PASSWORD    the password given to pkcs12 -export
+#   APPLE_API_KEY_P8     an App Store Connect API key (Users and Access > Keys,
+#                        role Developer): the content of the AuthKey_XXXX.p8 file
+#   APPLE_API_KEY_ID     its Key ID
+#   APPLE_API_ISSUER     the Issuer ID shown on the same page
+# Without the secrets the build is ad-hoc signed (runs, Gatekeeper warns, no
+# self-update). Switch autoUpdateSupported in console/app_paths.js to macOS
+# after the first notarized Release has been verified on a Mac.
 
 on:
   push:
@@ -80,7 +99,7 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
-  # ── Installer Windows in una Release bozza ─────────────────────────────
+  # â”€â”€ Installer Windows in una Release bozza â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   # Stessa catena della Desktop build (che ha gia' validato questo commit a
   # ogni push: install, avvio dell'app installata, uninstall). Qui si builda
   # e si allega a una Release BOZZA: GigaMail-Setup-X.Y.Z.exe e latest.yml,
@@ -170,7 +189,7 @@ jobs:
           }
           gh release view $tag --json assets -q '.assets[].name'
           Write-Host "Bozza pronta. Ora sul PC con il certificato: scripts/sign-release.ps1 -Tag $tag"
-      - name: Dry run — artifact al posto degli asset
+      - name: Dry run â€” artifact al posto degli asset
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -180,3 +199,154 @@ jobs:
             console/dist/*.blockmap
             console/dist/latest.yml
           if-no-files-found: error
+
+  # â”€â”€ macOS app, one dmg per architecture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # With the Apple secrets (MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD,
+  # APPLE_API_KEY_P8, APPLE_API_KEY_ID, APPLE_API_ISSUER) the app is signed
+  # with the Developer ID and notarized here, in CI: Apple's key never
+  # leaves GitHub's secrets, unlike the Windows certificate that lives in
+  # SimplySign. Without them the build is ad-hoc signed: it runs, Gatekeeper
+  # asks for right-click > Open on first launch, and it does not self-update.
+  # Attached to the same draft as the Windows installer, plus a copy under
+  # a fixed name for the website's button. sign-release.ps1 leaves them
+  # alone and publishes the Release with everything on it.
+  installer-mac:
+    needs: [build, installer]
+    if: github.event_name != 'release'
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    runs-on: macos-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write   # gh release upload
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      HAVE_APPLE_SECRETS: ${{ secrets.MAC_CERT_P12_BASE64 != '' && secrets.APPLE_API_KEY_P8 != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - name: Console dependencies
+        working-directory: console
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+      - name: Developer ID certificate (only when the secrets exist)
+        if: env.HAVE_APPLE_SECRETS == 'true'
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        # A throwaway keychain with the certificate, so that both
+        # prepare-python.sh (codesign on the Python) and electron-builder
+        # find the identity. The .p8 of the App Store Connect API key goes
+        # to a file: electron-builder wants its path in APPLE_API_KEY.
+        run: |
+          kc="$RUNNER_TEMP/gigamail-sign.keychain-db"
+          pw="$(openssl rand -hex 16)"
+          security create-keychain -p "$pw" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$kc" > /dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          identity=$(security find-identity -v -p codesigning "$kc" | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+          test -n "$identity" || { echo "no Developer ID Application identity in the certificate"; exit 1; }
+          echo "CSC_NAME=$identity" >> "$GITHUB_ENV"
+          echo "CSC_KEYCHAIN=$kc" >> "$GITHUB_ENV"
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=true" >> "$GITHUB_ENV"
+          printf '%s' "${{ secrets.APPLE_API_KEY_P8 }}" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY_ID=${{ secrets.APPLE_API_KEY_ID }}" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=${{ secrets.APPLE_API_ISSUER }}" >> "$GITHUB_ENV"
+          echo "signing as: $identity"
+      - name: Portable Python for ${{ matrix.arch }}
+        run: bash console/prepare-python.sh ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
+      - name: Build the dmg
+        working-directory: console
+        run: npm run dist:mac -- --${{ matrix.arch }} --config.mac.notarize=${{ env.HAVE_APPLE_SECRETS }}
+      - name: The dmg version must match the tag
+        run: |
+          tag="${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+          ver="${tag#v}"
+          if [ -z "$ver" ]; then ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -1); fi
+          dmg="console/dist/GigaMail-$ver-${{ matrix.arch }}.dmg"
+          test -f "$dmg" || { ls console/dist; echo "dmg for $ver not found (tag and pyproject diverge?)"; exit 1; }
+          echo "OK: $dmg"
+      - name: Attach to the draft Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.ref_name }}"
+          ver="${tag#v}"
+          dmg="console/dist/GigaMail-$ver-${{ matrix.arch }}.dmg"
+          cp "$dmg" "console/dist/GigaMail-${{ matrix.arch }}.dmg"
+          draft=$(gh release view "$tag" --json isDraft -q .isDraft)
+          if [ "$draft" != "true" ]; then echo "Release $tag is already published: public assets are not replaced"; exit 1; fi
+          files=("$dmg" "console/dist/GigaMail-${{ matrix.arch }}.dmg")
+          # The zip and latest-mac.yml are what electron-updater reads on
+          # macOS; they are only useful once the app is signed for real.
+          if [ "$HAVE_APPLE_SECRETS" = "true" ]; then
+            files+=("console/dist/GigaMail-$ver-${{ matrix.arch }}.zip")
+            [ -f console/dist/latest-mac.yml ] && files+=("console/dist/latest-mac.yml")
+          fi
+          gh release upload "$tag" "${files[@]}" --clobber
+      - name: Updater manifest of this architecture
+        if: env.HAVE_APPLE_SECRETS == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: latest-mac-${{ matrix.arch }}
+          path: console/dist/latest-mac.yml
+          if-no-files-found: error
+      - name: Dry run â€” artifact instead of assets
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dry-run-mac-${{ matrix.arch }}
+          path: console/dist/GigaMail-*-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  # â”€â”€ one latest-mac.yml for both architectures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # electron-builder writes a manifest per build, each naming its own zip;
+  # electron-updater picks the file for the running architecture from the
+  # "files" list, so the Release needs the two lists merged into one.
+  updater-manifest-mac:
+    needs: installer-mac
+    if: github.ref_type == 'tag' && github.event_name != 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      HAVE_APPLE_SECRETS: ${{ secrets.MAC_CERT_P12_BASE64 != '' && secrets.APPLE_API_KEY_P8 != '' }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: env.HAVE_APPLE_SECRETS == 'true'
+        with:
+          pattern: latest-mac-*
+      - name: Merge and attach
+        if: env.HAVE_APPLE_SECRETS == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pip install --quiet pyyaml
+          python - <<'EOF'
+          import glob, yaml
+          merged = None
+          for f in sorted(glob.glob("latest-mac-*/latest-mac.yml")):
+              d = yaml.safe_load(open(f))
+              if merged is None:
+                  merged = d
+              else:
+                  merged["files"].extend(x for x in d["files"] if x not in merged["files"])
+          assert merged and len(merged["files"]) >= 2, merged
+          yaml.safe_dump(merged, open("latest-mac.yml", "w"), sort_keys=False)
+          print(open("latest-mac.yml").read())
+          EOF
+          gh release upload "${{ github.ref_name }}" latest-mac.yml --clobber

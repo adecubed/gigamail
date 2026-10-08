@@ -7,6 +7,7 @@ const http = require('http');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const { restartReason, pidFromNetstat, pidFromLsof } = require('./backend_reuse');
+const appPaths = require('./app_paths');
 
 let mainWindow;
 // Finestre di composizione come figlie della principale: Windows le tiene
@@ -19,13 +20,14 @@ let lastUnreadCounts = {};
 
 // Token di sessione per il backend console: generato qui, passato al processo
 // Python via env, allegato a OGNI richiesta verso il backend (sia dal main
-// che dalle finestre, via onBeforeSendHeaders). Persistito in %APPDATA%/ADE
-// così un backend già attivo da un avvio precedente resta raggiungibile.
+// che dalle finestre, via onBeforeSendHeaders). Persistito nella cartella
+// dati (%APPDATA%/ADE su Windows, ~/.ade su macOS: app_paths.js) così un
+// backend già attivo da un avvio precedente resta raggiungibile.
 const API_PORT = parseInt(process.env.ADE_CONSOLE_PORT || '8002', 10);
 const API = `http://127.0.0.1:${API_PORT}`;
 
 function loadOrCreateToken() {
-  const dir = path.join(process.env.APPDATA || require('os').homedir(), 'ADE');
+  const dir = appPaths.dataRoot();
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const tokenPath = path.join(dir, '.console_token');
   try {
@@ -99,10 +101,7 @@ app.on('web-contents-created', (_e, contents) => {
 });
 
 // ── FOLLOWUP DB ───────────────────────────────────────────────────────────────
-const FOLLOWUP_DB_PATH = path.join(
-  process.env.APPDATA || require('os').homedir(),
-  'ADE', 'mail', 'followups.db'
-);
+const FOLLOWUP_DB_PATH = path.join(appPaths.dataRoot(), 'mail', 'followups.db');
 
 function getFollowupDb() {
   const dir = path.dirname(FOLLOWUP_DB_PATH);
@@ -244,10 +243,11 @@ function getResourcesPath() {
 function startPythonServer() {
   const resourcesPath = getResourcesPath();
   // Packaged: python embedded in resources. Dev: venv del repo gigamail
-  // (console/ sta accanto a src/ e .venv/).
-  const pythonPath = app.isPackaged
-    ? path.join(resourcesPath, 'python', 'python.exe')
-    : path.join(__dirname, '..', '.venv', 'Scripts', 'python.exe');
+  // (console/ sta accanto a src/ e .venv/). Il percorso cambia per
+  // piattaforma: app_paths.js.
+  const pythonPath = appPaths.pythonPath({
+    packaged: app.isPackaged, resourcesPath, devRoot: path.join(__dirname, '..'),
+  });
   const srcDir = app.isPackaged
     ? path.join(resourcesPath, 'gigamail', 'src')
     : path.join(__dirname, '..', 'src');
@@ -375,7 +375,9 @@ function createWindow() {
 
   hardenWindow(mainWindow);
 
-  if (app.isPackaged) {
+  // Not on macOS yet: electron-updater wants a signed app there and the
+  // Mac build is ad-hoc signed (app_paths.autoUpdateSupported).
+  if (app.isPackaged && appPaths.autoUpdateSupported()) {
     setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 3000);
   }
 }

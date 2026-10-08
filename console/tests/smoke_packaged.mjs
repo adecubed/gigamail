@@ -72,7 +72,16 @@ class Cdp {
 }
 
 function killPort(port) {
-  if (process.platform !== 'win32') return;
+  if (process.platform !== 'win32') {
+    // macOS / Linux: the pids listening on the port, from lsof
+    try {
+      const out = spawnSync('lsof', ['-nP', '-iTCP:' + port, '-sTCP:LISTEN', '-t'], { encoding: 'utf-8' }).stdout || '';
+      for (const pid of out.split('\n').map((l) => l.trim()).filter((l) => /^\d+$/.test(l))) {
+        try { process.kill(Number(pid)); console.log(`  – backend sulla porta ${port} fermato (pid ${pid})`); } catch (_) { /* gone */ }
+      }
+    } catch (_) { /* lsof assente */ }
+    return;
+  }
   try {
     const out = spawnSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf-8' }).stdout || '';
     const pids = new Set(out.split('\n').filter((l) => l.includes(`:${port} `) && l.includes('LISTENING')).map((l) => l.trim().split(/\s+/).pop()));

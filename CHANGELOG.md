@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **A macOS app.** Each release now also builds `GigaMail-<version>-arm64.dmg`
+  (Apple Silicon) and `-x64.dmg` (Intel) on GitHub's macOS runners, with
+  the same bundle as Windows: the console, the backend and a portable
+  Python (python-build-standalone), from the code of that exact commit.
+  The build is verified like the Windows one: unit tests, the end-to-end
+  console tests, the packed backend imports, the packed app starts from a
+  fresh profile with its own backend. With the Apple Developer ID and
+  App Store Connect key in the repository secrets, CI signs the app with
+  the hardened runtime and notarizes it, so it opens like any other Mac
+  app; until then the build is signed ad hoc: it runs, but the first
+  launch of the downloaded copy needs right-click > Open (Gatekeeper), and
+  it does not update itself yet. The Windows app is unchanged. On macOS the console keeps its
+  session token and data in `~/.ade`, where the backend already looked:
+  before, the main process used `~/ADE` and the two never met. The website
+  links the Apple Silicon dmg under the Windows button.
+- **The website's Download button downloads the installer at once.** It
+  used to open the GitHub Release page, and only became a direct link
+  when the GitHub API answered (it does not, after a few dozen visits
+  from the same network). Both buttons now point at
+  `releases/latest/download/GigaMail-Setup.exe`, a fixed-name copy of
+  the signed installer that `scripts/sign-release.ps1` uploads with every
+  release; the note under the button no longer calls the installer
+  unsigned.
 - **No Windows Hello for a click in the console.** Deleting a mail or a
   folder, moving a mail, marking spam or not spam, and editing the
   calendar from the console no longer open the Windows Hello / Touch ID

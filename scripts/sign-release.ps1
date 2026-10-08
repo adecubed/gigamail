@@ -187,7 +187,13 @@ if (-not ($names -contains $zipName)) {
   Write-Host (Say "Firmati: GigaMail.exe, disinstallatore, installer." "Signed: GigaMail.exe, uninstaller, installer.")
 
   # ── 4. Upload ───────────────────────────────────────────────────────────
-  gh release upload $Tag --repo $Repo $exe $yml --clobber
+  # Also a copy under a fixed name: the website's Download button points at
+  # releases/latest/download/GigaMail-Setup.exe, which GitHub serves
+  # straight away, without the Release page in between. electron-updater
+  # keeps reading the versioned name from latest.yml.
+  $fixed = Join-Path $work "GigaMail-Setup.exe"
+  Copy-Item $exe $fixed -Force
+  gh release upload $Tag --repo $Repo $exe $yml $fixed --clobber
   if ($LASTEXITCODE -ne 0) { Fail "upload non riuscito: la Release resta in bozza." "upload failed: the Release stays a draft." }
 }
 

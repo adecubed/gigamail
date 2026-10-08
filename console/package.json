@@ -19,7 +19,9 @@
     "test:e2e": "node tests/e2e.mjs",
     "test:packaged": "node tests/smoke_packaged.mjs",
     "predist": "node sync-version.js",
-    "dist": "electron-builder --win --publish never"
+    "dist": "electron-builder --win --publish never",
+    "predist:mac": "node sync-version.js",
+    "dist:mac": "electron-builder --mac --publish never"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -50,7 +52,9 @@
       "**/*",
       "!dist/**",
       "!python-embedded/**",
-      "!sign.js"
+      "!sign.js",
+      "!afterpack.js",
+      "!mac/**"
     ],
     "extraResources": [
       {
@@ -99,6 +103,35 @@
       "createStartMenuShortcut": true,
       "shortcutName": "GigaMail",
       "deleteAppDataOnUninstall": false
+    },
+    "afterPack": "./afterpack.js",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../docs/brand/gigamail-logo-1024.png",
+      "category": "public.app-category.productivity",
+      "artifactName": "GigaMail-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "mac/entitlements.plist",
+      "entitlementsInherit": "mac/entitlements.plist"
+    },
+    "dmg": {
+      "artifactName": "GigaMail-${version}-${arch}.${ext}"
     }
   }
 }

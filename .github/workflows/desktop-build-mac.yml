@@ -1,0 +1,150 @@
+name: Desktop build (macOS)
+
+# Builds the macOS app (Apple Silicon) and proves it runs: the bundle has
+# the portable Python and the repo's code, the app starts from a fresh
+# profile with its embedded backend, the backend imports. Same checks as
+# the Windows "Desktop build", on the platform nobody at the keyboard has:
+# this job IS the Mac.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build-mac.yml"
+  pull_request:
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build-mac.yml"
+  workflow_dispatch:
+
+jobs:
+  app:
+    runs-on: macos-latest   # Apple Silicon runner
+    timeout-minutes: 40
+    env:
+      # Without the Apple secrets, electron-builder must not look for an
+      # identity in the keychain: afterpack.js ad-hoc signs the bundle. With
+      # them (see "Developer ID certificate" below), the app is signed with
+      # the Developer ID and notarized, like a release.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      HAVE_APPLE_SECRETS: ${{ secrets.MAC_CERT_P12_BASE64 != '' && secrets.APPLE_API_KEY_P8 != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: Console dependencies (Electron ABI, not Node)
+        working-directory: console
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+          node node_modules/electron/install.js
+
+      - name: Unit tests of the console
+        working-directory: console
+        run: npm test
+
+      - name: Developer ID certificate (only when the secrets exist)
+        if: env.HAVE_APPLE_SECRETS == 'true'
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        # A throwaway keychain with the certificate, so that both
+        # prepare-python.sh (codesign on the Python) and electron-builder
+        # find the identity. The .p8 of the App Store Connect API key goes
+        # to a file: electron-builder wants its path in APPLE_API_KEY.
+        run: |
+          kc="$RUNNER_TEMP/gigamail-sign.keychain-db"
+          pw="$(openssl rand -hex 16)"
+          security create-keychain -p "$pw" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$kc" > /dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          identity=$(security find-identity -v -p codesigning "$kc" | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+          test -n "$identity" || { echo "no Developer ID Application identity in the certificate"; exit 1; }
+          echo "CSC_NAME=$identity" >> "$GITHUB_ENV"
+          echo "CSC_KEYCHAIN=$kc" >> "$GITHUB_ENV"
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=true" >> "$GITHUB_ENV"
+          printf '%s' "${{ secrets.APPLE_API_KEY_P8 }}" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY_ID=${{ secrets.APPLE_API_KEY_ID }}" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=${{ secrets.APPLE_API_ISSUER }}" >> "$GITHUB_ENV"
+          echo "signing as: $identity"
+
+      - name: Portable Python
+        run: bash console/prepare-python.sh
+
+      # E2E in the real Electron, BEFORE packing: in development main.js
+      # starts the backend from ../.venv/bin/python.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: venv for the development backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[all]" --quiet
+      - name: E2E console (XSS, renderer isolation, first start)
+        working-directory: console
+        env:
+          E2E_FRESH_APPDATA: ${{ runner.temp }}/gigamail-e2e
+          ADE_CONSOLE_PORT: "8012"
+        run: npm run test:e2e
+      - name: Electron log of the E2E (only on failure)
+        if: failure()
+        run: tail -n 80 console/e2e-electron.log
+
+      - name: Build the app and the dmg
+        working-directory: console
+        # notarize only with the credentials: electron-builder refuses to
+        # notarize without them, and the ad-hoc build cannot be notarized.
+        run: npm run dist:mac -- --arm64 --config.mac.notarize=${{ env.HAVE_APPLE_SECRETS }}
+
+      - name: The dmg follows pyproject.toml and the bundle is complete
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -1)
+          dmg="console/dist/GigaMail-$ver-arm64.dmg"
+          app="console/dist/mac-arm64/GigaMail.app"
+          ls -la console/dist
+          test -f "$dmg" || { echo "expected dmg not found: $dmg"; exit 1; }
+          for p in "Contents/MacOS/GigaMail" "Contents/Resources/python/bin/python3" "Contents/Resources/gigamail/src/gigamail"; do
+            test -e "$app/$p" || { echo "missing $p in $app"; find "$app" -maxdepth 3 | head -50; exit 1; }
+          done
+          codesign --verify --deep --strict "$app" && echo "signature OK"
+          codesign -dv "$app" 2>&1 | grep -E "^(Authority|Signature)" || true
+          if [ "$HAVE_APPLE_SECRETS" = "true" ]; then
+            spctl --assess --type execute -vv "$app" && echo "Gatekeeper accepts the notarized app"
+          fi
+          echo "OK: $dmg"
+
+      - name: The packed backend imports
+        run: |
+          app="console/dist/mac-arm64/GigaMail.app"
+          PYTHONPATH="$app/Contents/Resources/gigamail/src" "$app/Contents/Resources/python/bin/python3" -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
+
+      - name: The packed app starts (fresh profile, embedded backend, onboarding)
+        working-directory: console
+        env:
+          ADE_CONSOLE_PORT: "8022"
+        run: |
+          export GIGAMAIL_EXE="$PWD/dist/mac-arm64/GigaMail.app/Contents/MacOS/GigaMail"
+          export GIGAMAIL_EXPECTED_VERSION=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
+          npm run test:packaged
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gigamail-macos-arm64
+          path: |
+            console/dist/GigaMail-*-arm64.dmg
+            console/dist/GigaMail-*-arm64.zip
+          if-no-files-found: error
