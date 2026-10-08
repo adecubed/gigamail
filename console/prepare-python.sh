@@ -62,14 +62,18 @@ echo "[2/3] installing gigamail[all] from $REPO ..."
 # workflow) the same files are signed with it, hardened runtime and
 # timestamp included: notarization rejects any binary in the bundle that
 # is not signed by the same Developer ID.
+# macOS ships bash 3.2: with `set -u`, expanding an empty array is an
+# error there, so the options are a plain string, split on purpose.
 SIGN_ID="${CSC_NAME:--}"
-SIGN_OPTS=()
-if [ "$SIGN_ID" != "-" ]; then SIGN_OPTS=(--timestamp --options runtime); fi
+SIGN_OPTS=""
+if [ "$SIGN_ID" != "-" ]; then SIGN_OPTS="--timestamp --options runtime"; fi
 echo "[3/3] signing native modules with identity '$SIGN_ID' ..."
+# shellcheck disable=SC2086
 find "$OUT" \( -name "*.so" -o -name "*.dylib" \) -type f -print0 \
-  | xargs -0 -n 50 codesign --force --sign "$SIGN_ID" "${SIGN_OPTS[@]}" 2>/dev/null || true
+  | xargs -0 -n 50 codesign --force --sign "$SIGN_ID" $SIGN_OPTS 2>/dev/null || true
 for exe in "$OUT"/bin/python3.12 "$OUT"/bin/python3 "$OUT"/bin/python; do
-  [ -f "$exe" ] && [ ! -L "$exe" ] && codesign --force --sign "$SIGN_ID" "${SIGN_OPTS[@]}" "$exe" 2>/dev/null || true
+  # shellcheck disable=SC2086
+  [ -f "$exe" ] && [ ! -L "$exe" ] && codesign --force --sign "$SIGN_ID" $SIGN_OPTS "$exe" 2>/dev/null || true
 done
 
 "$PY" -c "import gigamail, fastapi, uvicorn, mcp; import importlib.metadata as m; print('  gigamail', m.version('gigamail'), '| mcp', m.version('mcp'), '| import OK')"

@@ -102,7 +102,7 @@ jobs:
         run: npm run test:e2e
       - name: Electron log of the E2E (only on failure)
         if: failure()
-        run: tail -n 80 console/e2e-electron.log
+        run: '[ -f console/e2e-electron.log ] && tail -n 80 console/e2e-electron.log || echo "no e2e log: the failure came before the E2E"'
 
       - name: Build the app and the dmg
         working-directory: console
