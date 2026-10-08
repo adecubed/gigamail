@@ -35,9 +35,9 @@ name: Release
 #                        role Developer): the content of the AuthKey_XXXX.p8 file
 #   APPLE_API_KEY_ID     its Key ID
 #   APPLE_API_ISSUER     the Issuer ID shown on the same page
-# Without the secrets the build is ad-hoc signed (runs, Gatekeeper warns, no
-# self-update). Switch autoUpdateSupported in console/app_paths.js to macOS
-# after the first notarized Release has been verified on a Mac.
+# Without the secrets the build is ad-hoc signed (runs, Gatekeeper warns, and
+# the app's update check fails on macOS: console/app_paths.js assumes the
+# Release carries a notarized app with its zip and latest-mac.yml).
 
 on:
   push:

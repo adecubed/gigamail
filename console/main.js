@@ -375,8 +375,8 @@ function createWindow() {
 
   hardenWindow(mainWindow);
 
-  // Not on macOS yet: electron-updater wants a signed app there and the
-  // Mac build is ad-hoc signed (app_paths.autoUpdateSupported).
+  // Only where the app is signed (app_paths.autoUpdateSupported):
+  // electron-updater refuses an unsigned app on macOS.
   if (app.isPackaged && appPaths.autoUpdateSupported()) {
     setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 3000);
   }

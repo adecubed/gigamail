@@ -33,10 +33,11 @@ function pythonPath({ packaged, resourcesPath, devRoot, platform = process.platf
 }
 
 /** electron-updater needs a signed app on macOS and refuses an unsigned
- *  one with an error at every start. Until the Mac build is signed with an
- *  Apple Developer ID, updates are checked on Windows only. */
+ *  one with an error at every start. Releases are signed with the Apple
+ *  Developer ID and notarized in CI (release.yml, job installer-mac), so
+ *  macOS checks for updates like Windows does; Linux has no package yet. */
 function autoUpdateSupported(platform = process.platform) {
-  return platform === 'win32';
+  return platform === 'win32' || platform === 'darwin';
 }
 
 module.exports = { dataRoot, pythonPath, autoUpdateSupported };
