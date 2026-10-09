@@ -95,7 +95,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "allowElevation": true,
-      "perMachine": true,
+      "perMachine": false,
       "installerIcon": "../docs/brand/gigamail.ico",
       "uninstallerIcon": "../docs/brand/gigamail.ico",
       "installerHeaderIcon": "../docs/brand/gigamail.ico",
@@ -110,15 +110,13 @@
         {
           "target": "dmg",
           "arch": [
-            "arm64",
-            "x64"
+            "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "arm64",
-            "x64"
+            "arm64"
           ]
         }
       ],

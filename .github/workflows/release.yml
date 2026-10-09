@@ -6,7 +6,7 @@ name: Release
 #
 # Come si rilascia:
 #   1. aggiorna version in pyproject.toml (console e __version__ la seguono
-#      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z â€” data"
+#      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z — data"
 #   2. git tag vX.Y.Z && git push origin vX.Y.Z (immutabile: un numero
 #      bruciato non si ricicla)
 #      -> questo workflow testa, costruisce l'installer Windows e crea una
@@ -99,7 +99,7 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
-  # â”€â”€ Installer Windows in una Release bozza â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ── Installer Windows in una Release bozza ─────────────────────────────
   # Stessa catena della Desktop build (che ha gia' validato questo commit a
   # ogni push: install, avvio dell'app installata, uninstall). Qui si builda
   # e si allega a una Release BOZZA: GigaMail-Setup-X.Y.Z.exe e latest.yml,
@@ -189,7 +189,7 @@ jobs:
           }
           gh release view $tag --json assets -q '.assets[].name'
           Write-Host "Bozza pronta. Ora sul PC con il certificato: scripts/sign-release.ps1 -Tag $tag"
-      - name: Dry run â€” artifact al posto degli asset
+      - name: Dry run — artifact al posto degli asset
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -200,7 +200,10 @@ jobs:
             console/dist/latest.yml
           if-no-files-found: error
 
-  # â”€â”€ macOS app, one dmg per architecture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # ── macOS app, Apple Silicon ──────────────────────────────────────────
+  # Intel is not built: cryptography 50 dropped its macOS x86_64 wheels and
+  # building it needs a Rust toolchain for a platform Apple itself is
+  # retiring. The matrix stays, with one entry, should that change.
   # With the Apple secrets (MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD,
   # APPLE_API_KEY_P8, APPLE_API_KEY_ID, APPLE_API_ISSUER) the app is signed
   # with the Developer ID and notarized here, in CI: Apple's key never
@@ -214,8 +217,9 @@ jobs:
     needs: [build, installer]
     if: github.event_name != 'release'
     strategy:
+      fail-fast: false
       matrix:
-        arch: [arm64, x64]
+        arch: [arm64]
     runs-on: macos-latest
     timeout-minutes: 40
     permissions:
@@ -299,56 +303,10 @@ jobs:
             [ -f console/dist/latest-mac.yml ] && files+=("console/dist/latest-mac.yml")
           fi
           gh release upload "$tag" "${files[@]}" --clobber
-      - name: Updater manifest of this architecture
-        if: env.HAVE_APPLE_SECRETS == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: latest-mac-${{ matrix.arch }}
-          path: console/dist/latest-mac.yml
-          if-no-files-found: error
-      - name: Dry run â€” artifact instead of assets
+      - name: Dry run — artifact instead of assets
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-dry-run-mac-${{ matrix.arch }}
           path: console/dist/GigaMail-*-${{ matrix.arch }}.dmg
           if-no-files-found: error
-
-  # â”€â”€ one latest-mac.yml for both architectures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  # electron-builder writes a manifest per build, each naming its own zip;
-  # electron-updater picks the file for the running architecture from the
-  # "files" list, so the Release needs the two lists merged into one.
-  updater-manifest-mac:
-    needs: installer-mac
-    if: github.ref_type == 'tag' && github.event_name != 'release'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    env:
-      HAVE_APPLE_SECRETS: ${{ secrets.MAC_CERT_P12_BASE64 != '' && secrets.APPLE_API_KEY_P8 != '' }}
-    steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        if: env.HAVE_APPLE_SECRETS == 'true'
-        with:
-          pattern: latest-mac-*
-      - name: Merge and attach
-        if: env.HAVE_APPLE_SECRETS == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pip install --quiet pyyaml
-          python - <<'EOF'
-          import glob, yaml
-          merged = None
-          for f in sorted(glob.glob("latest-mac-*/latest-mac.yml")):
-              d = yaml.safe_load(open(f))
-              if merged is None:
-                  merged = d
-              else:
-                  merged["files"].extend(x for x in d["files"] if x not in merged["files"])
-          assert merged and len(merged["files"]) >= 2, merged
-          yaml.safe_dump(merged, open("latest-mac.yml", "w"), sort_keys=False)
-          print(open("latest-mac.yml").read())
-          EOF
-          gh release upload "${{ github.ref_name }}" latest-mac.yml --clobber

@@ -80,10 +80,9 @@ GigaMail ships through two channels:
 - **Desktop app, Windows and macOS** — the human console packaged with
   its own Python: one installer, no prerequisites, and the app updates
   itself from the [latest release](https://github.com/adecubed/gigamail/releases/latest).
-  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), code-signed. macOS:
-  [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) for Apple Silicon or
-  [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg) for Intel, signed with an Apple Developer ID
-  and notarized. The SHA-256 digests are next to the files on the release
+  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), code-signed. macOS
+  (Apple Silicon): [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), signed with an Apple
+  Developer ID and notarized. The SHA-256 digests are next to the files on the release
   page. To build it yourself: Node 22+, `console/prepare-python.ps1`
   (Windows) or `console/prepare-python.sh` (macOS), then `npm run dist` or
   `npm run dist:mac`.
@@ -374,10 +373,9 @@ GigaMail si installa da due canali:
 - **App desktop, Windows e macOS** — la console umana con il suo Python
   incluso: un solo installer, nessun prerequisito, e l'app si aggiorna da
   sola dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest).
-  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), firmato. macOS:
-  [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) per Apple Silicon o
-  [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg) per Intel, firmati con Apple Developer ID e
-  notarizzati. I digest SHA-256 sono accanto ai file nella pagina della
+  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), firmato. macOS
+  (Apple Silicon): [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), firmato con Apple
+  Developer ID e notarizzato. I digest SHA-256 sono accanto ai file nella pagina della
   release. Per buildarla in casa: Node 22+, `console/prepare-python.ps1`
   (Windows) o `console/prepare-python.sh` (macOS), poi `npm run dist` o
   `npm run dist:mac`.
@@ -641,9 +639,8 @@ GigaMail 通过两个渠道发布：
   控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
 - **桌面应用，Windows 与 macOS** — 面向人的控制台，内置 Python，一个安装包、
   无需任何前置依赖，应用会自动从[最新版本](https://github.com/adecubed/gigamail/releases/latest)更新。
-  Windows：[`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe)，已代码签名。macOS：
-  Apple Silicon 用 [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg)，Intel 用
-  [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg)，均以 Apple Developer ID 签名并经公证。
+  Windows：[`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe)，已代码签名。macOS
+  （Apple Silicon）：[`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg)，以 Apple Developer ID 签名并经公证。
   SHA-256 摘要见发布页文件旁。自行构建：Node 22+，`console/prepare-python.ps1`
   （Windows）或 `console/prepare-python.sh`（macOS），然后 `npm run dist` 或
   `npm run dist:mac`。

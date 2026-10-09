@@ -52,7 +52,10 @@ fi
 # pyproject.toml. hatchling by hand and --no-build-isolation, as on Windows.
 echo "[2/3] installing gigamail[all] from $REPO ..."
 "$PY" -m pip install --quiet --upgrade pip hatchling
-"$PY" -m pip install --quiet --no-build-isolation "$REPO[all]"
+# Not --quiet: when a dependency has no wheel for this platform, the
+# log must name it (Intel macOS lost cryptography 50 this way).
+"$PY" -m pip install --no-build-isolation "$REPO[all]" 2>&1 | grep -vE "^\s*(Requirement already|Collecting|Downloading|Using cached|Installing collected|Successfully)" || true
+"$PY" -c "import gigamail" || { echo "pip install failed: see the lines above"; exit 1; }
 
 # Apple Silicon refuses native code without a signature, even an ad-hoc
 # one. Wheels from PyPI are usually signed by their build tools, but not
