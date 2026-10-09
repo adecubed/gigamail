@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms of Service — GigaMail</title>
+<meta name="description" content="The terms under which GigaMail, its website and any mailbox we provide to testers are offered. Open-source software under the AGPL-3.0, run on your own machine.">
+<meta name="theme-color" content="#070b18">
+<link rel="icon" href="brand/gigamail.ico">
+<style>
+  :root {
+    --bg: #070b18; --text: #e8eefb; --muted: #9fb0cc;
+    --line: rgba(143,168,214,.22); --line-2: rgba(143,168,214,.4);
+    --blue: #4fc3ff; --pink: #ff5fcf; --amber: #ffb454;
+    --grad: linear-gradient(135deg, #4fc3ff, #ff5fcf);
+    --display: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); }
+  .mono { font-family: var(--display); }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: .9rem clamp(1rem, 3vw, 2rem); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--text); text-decoration: none; letter-spacing: -.02em; }
+  .brand img { width: 30px; height: 30px; }
+  .brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pill { font-family: var(--display); font-size: .82rem; padding: .45rem .9rem; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); text-decoration: none; }
+
+  main { max-width: 46rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 2rem) 6rem; }
+  h1 { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -.03em; margin: 0 0 .4rem; }
+  .updated { color: var(--muted); font-family: var(--display); font-size: .85rem; margin: 0 0 2.5rem; }
+  h2 { font-family: var(--display); font-size: 1.15rem; letter-spacing: -.02em; margin: 2.6rem 0 .7rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+  p, li { color: #cfdcf2; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .45rem 0; }
+  strong { color: var(--text); }
+  .lede { font-size: 1.08rem; color: var(--text); }
+  .callout { border: 1px solid var(--line-2); border-left: 3px solid var(--amber); border-radius: 10px; padding: 1rem 1.2rem; background: rgba(255,180,84,.06); margin: 1.4rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 2rem clamp(1rem, 4vw, 2rem); color: var(--muted); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/"><img src="brand/gigamail.ico" alt=""><span>GigaMail</span></a>
+  <a class="pill" href="/">Back to site</a>
+</header>
+
+<main>
+  <h1>Terms of Service</h1>
+  <p class="updated mono">Last updated: 9 October 2026</p>
+
+  <p class="lede">GigaMail is open-source software that you download and
+  run on your own computer. These terms cover the software, this website
+  and the few things we do provide as a service, such as a mailbox for
+  testers. They are short because there is little between us: no account,
+  no subscription, no server of ours holding your data.</p>
+
+  <h2>Who we are</h2>
+  <p>GigaMail is published by Adecubed, Milan, Italy. You can reach us at
+  <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>. The
+  source code is at
+  <a href="https://github.com/adecubed/gigamail">github.com/adecubed/gigamail</a>.</p>
+
+  <h2>The software</h2>
+  <p>GigaMail is licensed under the
+  <a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU Affero General Public License, version 3 or later</a>.
+  The license, not these terms, governs what you may do with the code:
+  use it, study it, change it and redistribute it under the same license.
+  Commercial licenses for other uses are available on request.</p>
+  <p>The software is provided <strong>as is</strong>, without warranty of
+  any kind, as the license states. We work to keep it reliable and we
+  publish every change in the repository, but we do not promise that it is
+  free of defects or fit for a particular purpose. You remain responsible
+  for the mail you send with it, including what an AI agent sends on your
+  behalf after your approval.</p>
+
+  <h2>Your AI agent</h2>
+  <div class="callout">
+    <p style="margin:0">The AI agent you connect to GigaMail, such as
+    Claude Code or Codex CLI, is a separate program under its provider's own
+    terms. GigaMail gives that agent access to your mailbox and stops every
+    action that changes something until you approve it. What the agent
+    reads, and what its provider does with it, is between you and that
+    provider. See our <a href="privacy.html">Privacy Policy</a>.</p>
+  </div>
+
+  <h2>Your accounts and your conduct</h2>
+  <p>The mail accounts you connect are yours. You are responsible for
+  having the right to use them and for complying with their providers'
+  terms. You agree not to use GigaMail to send unsolicited bulk mail,
+  to impersonate others, or to break any law that applies to you. The
+  software's built-in limits on automatic sending exist to protect your
+  recipients and your reputation, and must not be removed to do any of
+  the above.</p>
+
+  <h2>Mailboxes we provide</h2>
+  <p>From time to time we offer a mailbox on a domain we own, such as
+  <span class="mono">gigamail.pro</span> or
+  <span class="mono">gigamail.ai</span>, for example to people who test
+  GigaMail and report what they find. Such a mailbox:</p>
+  <ul>
+    <li>is provided free of charge for the period stated in the offer,
+    after which it may be closed or offered on other terms;</li>
+    <li>is hosted by a third-party email provider under that provider's
+    terms, not on servers of ours;</li>
+    <li>may be suspended without notice if it is used for spam, abuse or
+    anything unlawful;</li>
+    <li>comes with no guarantee of availability or of message delivery, and
+    is not a place to keep anything you cannot afford to lose.</li>
+  </ul>
+  <p>We do not read the mail in these mailboxes. We can see what any
+  mail administrator can see: that the mailbox exists, its size and its
+  traffic volume.</p>
+
+  <h2>This website</h2>
+  <p>The site at gigamail.ai is informational. The interactive part is a
+  simulation with no real email. Links to GitHub, PyPI and Apple or
+  Microsoft services lead to those companies' terms.</p>
+
+  <h2>Liability</h2>
+  <p>To the extent permitted by law, Adecubed is not liable for any loss
+  arising from the use of the software, this website or a mailbox we
+  provide, including lost mail, lost data or mail sent in error. Where
+  liability cannot be excluded, it is limited to the amount you paid us,
+  which for the open-source software and the tester mailboxes is nothing.</p>
+
+  <h2>Changes</h2>
+  <p>Changes to these terms are published on this page with a new date at
+  the top. The history of the file is public in the repository, so you can
+  see exactly what changed and when.</p>
+
+  <h2>Governing law</h2>
+  <p>These terms are governed by Italian law. Nothing in them limits the
+  rights you have as a consumer under the law of your country of
+  residence.</p>
+</main>
+
+<footer>
+  GigaMail — Adecubed — AGPL-3.0 —
+  <a href="/">gigamail.ai</a> — <a href="privacy.html">Privacy Policy</a>
+</footer>
+
+</body>
+</html>

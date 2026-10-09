@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Terms of Service on the website**, next to the Privacy Policy, both
+  linked from the footer: the software under the AGPL-3.0, the agent you
+  choose, your conduct, and the mailboxes we provide to testers.
+
 ## v0.5.1 — 2026-10-09
 
 - **The Windows installer no longer asks for an administrator.** It
