@@ -87,7 +87,10 @@ jobs:
         run: |
           $ver = (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
           Start-Process -Wait -FilePath "console/dist/GigaMail Setup $ver.exe" -ArgumentList "/S"
-          $dir = Join-Path $env:ProgramFiles "GigaMail"
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
           foreach ($p in @("GigaMail.exe", "resources\python\python.exe", "resources\gigamail\src\gigamail")) {
             if (-not (Test-Path (Join-Path $dir $p))) {
@@ -104,7 +107,10 @@ jobs:
         # Python di resources/ e il token generato dal main. Porta non
         # standard per non incrociare il backend dell'e2e precedente.
         run: |
-          $dir = Join-Path $env:ProgramFiles "GigaMail"
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
           $env:GIGAMAIL_EXE = Join-Path $dir "GigaMail.exe"
           $env:ADE_CONSOLE_PORT = "8022"
@@ -117,7 +123,10 @@ jobs:
         # Stesso layout che usa main.js da packaged: codice del repo in
         # resources\gigamail\src, dipendenze nel site-packages embedded.
         run: |
-          $dir = Join-Path $env:ProgramFiles "GigaMail"
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
           $env:PYTHONPATH = Join-Path $dir "resources\gigamail\src"
           & (Join-Path $dir "resources\python\python.exe") -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
@@ -126,7 +135,10 @@ jobs:
       - name: Disinstallazione silenziosa
         shell: pwsh
         run: |
-          $dir = Join-Path $env:ProgramFiles "GigaMail"
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
           if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
           $unins = Get-ChildItem $dir -Filter "Uninstall*.exe" | Select-Object -First 1
           if (-not $unins) { throw "uninstaller non trovato in $dir" }

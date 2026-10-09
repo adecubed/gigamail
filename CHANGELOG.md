@@ -4,9 +4,17 @@
 
 ## v0.5.1 — 2026-10-09
 
+- **The Windows installer no longer asks for an administrator.** It
+  installs for the current user, in the user's profile, so a standard
+  account in an office can install and update it; an administrator can
+  still choose "all users" in the installer. Until the new signing
+  certificate earns SmartScreen's trust, the first launch may say
+  "unrecognized app": More info, then Run anyway. The website says so under
+  the Download button.
 - **A macOS app.** Each release now also builds `GigaMail-<version>-arm64.dmg`
-  (Apple Silicon) and `-x64.dmg` (Intel) on GitHub's macOS runners, with
-  the same bundle as Windows: the console, the backend and a portable
+  (Apple Silicon; Intel is not built, because `cryptography` 50 no longer
+  ships wheels for it) on GitHub's macOS runners, with the same bundle as
+  Windows: the console, the backend and a portable
   Python (python-build-standalone), from the code of that exact commit.
   The build is verified like the Windows one: unit tests, the end-to-end
   console tests, the packed backend imports, the packed app starts from a
