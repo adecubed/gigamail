@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.1 — 2026-10-09
+
 - **A macOS app.** Each release now also builds `GigaMail-<version>-arm64.dmg`
   (Apple Silicon) and `-x64.dmg` (Intel) on GitHub's macOS runners, with
   the same bundle as Windows: the console, the backend and a portable
