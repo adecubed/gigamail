@@ -15,7 +15,7 @@ option) any later version. See the LICENSE file for details.
 
 **English** · [Italiano](#lang-it) · [中文](#lang-zh)
 
-[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![Download](https://img.shields.io/badge/Download-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Download](https://img.shields.io/badge/Download-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 **MCP server that gives your agent — Claude, Codex, OpenClaw, Hermes, or any
@@ -74,18 +74,24 @@ before the agent ever sees them.
 
 GigaMail ships through two channels:
 
+- **Desktop app, Windows and macOS** — download it from
+  [gigamail.ai](https://gigamail.ai) or from the
+  [latest release](https://github.com/adecubed/gigamail/releases/latest). The human console with its own Python: one
+  installer, no prerequisites, no administrator password, and it updates
+  itself.
+  - **Windows 10/11**: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), code-signed. The
+    certificate is new, so on first launch Windows may still say
+    "unrecognized app": click **More info**, then **Run anyway**.
+  - **macOS (Apple Silicon)**: [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), signed with
+    an Apple Developer ID and notarized by Apple.
+
+  The SHA-256 digests are next to the files on the release page.
+  To build it yourself: Node 22+, `console/prepare-python.ps1`
+  (Windows) or `console/prepare-python.sh` (macOS), then `npm run dist` or
+  `npm run dist:mac`.
 - **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
   and the console's local HTTP backend. No graphical app — the right
   channel when your agent is the interface.
-- **Desktop app, Windows and macOS** — the human console packaged with
-  its own Python: one installer, no prerequisites, and the app updates
-  itself from the [latest release](https://github.com/adecubed/gigamail/releases/latest).
-  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), code-signed. macOS
-  (Apple Silicon): [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), signed with an Apple
-  Developer ID and notarized. The SHA-256 digests are next to the files on the release
-  page. To build it yourself: Node 22+, `console/prepare-python.ps1`
-  (Windows) or `console/prepare-python.sh` (macOS), then `npm run dist` or
-  `npm run dist:mac`.
 
 Everything below covers the pip channel.
 
@@ -307,7 +313,7 @@ closed-source use are available from the copyright holder.
 
 [English](#gigamail--mail-for-your-ai-agent) · **Italiano** · [中文](#lang-zh)
 
-[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![Scarica](https://img.shields.io/badge/Scarica-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Scarica](https://img.shields.io/badge/Scarica-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 
@@ -367,18 +373,24 @@ li veda.
 
 GigaMail si installa da due canali:
 
+- **App desktop, Windows e macOS** — si scarica da
+  [gigamail.ai](https://gigamail.ai) o dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest). La
+  console umana con il suo Python incluso: un solo installer, nessun
+  prerequisito, nessuna password di amministratore, e si aggiorna da sola.
+  - **Windows 10/11**: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), firmato. Il
+    certificato è nuovo: al primo avvio Windows può ancora dire "app non
+    riconosciuta"; clicca **Ulteriori informazioni**, poi **Esegui
+    comunque**.
+  - **macOS (Apple Silicon)**: [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), firmato con
+    Apple Developer ID e notarizzato da Apple.
+
+  I digest SHA-256 sono accanto ai file nella pagina della release. Per
+  buildarla in casa: Node 22+, `console/prepare-python.ps1` (Windows) o
+  `console/prepare-python.sh` (macOS), poi `npm run dist` o
+  `npm run dist:mac`.
 - **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
   e il backend HTTP locale della console. Nessuna app grafica — è il
   canale giusto quando l'interfaccia è il tuo agente.
-- **App desktop, Windows e macOS** — la console umana con il suo Python
-  incluso: un solo installer, nessun prerequisito, e l'app si aggiorna da
-  sola dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest).
-  Windows: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), firmato. macOS
-  (Apple Silicon): [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg), firmato con Apple
-  Developer ID e notarizzato. I digest SHA-256 sono accanto ai file nella pagina della
-  release. Per buildarla in casa: Node 22+, `console/prepare-python.ps1`
-  (Windows) o `console/prepare-python.sh` (macOS), poi `npm run dist` o
-  `npm run dist:mac`.
 
 Tutto quello che segue riguarda il canale pip.
 
@@ -592,7 +604,7 @@ titolare del copyright.
 
 [English](#gigamail--mail-for-your-ai-agent) · [Italiano](#lang-it) · **中文**
 
-[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![下载](https://img.shields.io/badge/下载-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![下载](https://img.shields.io/badge/下载-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 **一个 MCP 服务器，让你的代理 —— Claude、Codex、OpenClaw、Hermes 或任何
@@ -635,15 +647,19 @@ titolare del copyright.
 
 GigaMail 通过两个渠道发布：
 
-- **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
-  控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
-- **桌面应用，Windows 与 macOS** — 面向人的控制台，内置 Python，一个安装包、
-  无需任何前置依赖，应用会自动从[最新版本](https://github.com/adecubed/gigamail/releases/latest)更新。
-  Windows：[`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe)，已代码签名。macOS
-  （Apple Silicon）：[`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg)，以 Apple Developer ID 签名并经公证。
+- **桌面应用，Windows 与 macOS** — 可从 [gigamail.ai](https://gigamail.ai)
+  或[最新版本](https://github.com/adecubed/gigamail/releases/latest)下载。面向人的控制台，内置 Python：一个安装包、无需前置依赖、
+  无需管理员密码，并会自动更新。
+  - **Windows 10/11**：[`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe)，已代码签名。证书较新，
+    首次启动时 Windows 可能仍提示"无法识别的应用"：点击 **更多信息**，再点 **仍要运行**。
+  - **macOS（Apple Silicon）**：[`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg)，以 Apple
+    Developer ID 签名并经 Apple 公证。
+
   SHA-256 摘要见发布页文件旁。自行构建：Node 22+，`console/prepare-python.ps1`
   （Windows）或 `console/prepare-python.sh`（macOS），然后 `npm run dist` 或
   `npm run dist:mac`。
+- **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
+  控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
 
 下文内容均针对 pip 渠道。
 
