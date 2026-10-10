@@ -9,7 +9,12 @@ option) any later version. See the LICENSE file for details.
 -->
 <!-- mcp-name: io.github.adecubed/gigamail -->
 
-<p align="center"><img src="docs/brand/gigamail-banner.webp" alt="GigaMail" width="720"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/gigamail-banner-dark.webp">
+    <img src="docs/brand/gigamail-banner-light.gif" alt="GigaMail" width="720">
+  </picture>
+</p>
 
 # GigaMail — Mail for your AI agent
 
