@@ -9,13 +9,15 @@ import imaplib
 import os
 import re
 import smtplib
+import socket
 import ssl
 import threading
 import time
+from contextlib import contextmanager
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from .addresses import split_addresses
 
@@ -292,6 +294,49 @@ def _close_conn_safely(conn: Optional[imaplib.IMAP4_SSL]) -> None:
             conn.shutdown()
         except Exception:
             pass
+
+
+def _shutdown_socket(conn: Optional[imaplib.IMAP4]) -> None:
+    """Shut the connection's socket down without closing it, so a read
+    blocked in another thread fails at once. The plain-socket shutdown is
+    called on purpose: SSLSocket.shutdown also drops the TLS object that
+    the blocked thread is still using."""
+    sock = getattr(conn, "sock", None)
+    if sock is None:
+        return
+    try:
+        socket.socket.shutdown(sock, socket.SHUT_RDWR)
+    except (OSError, ValueError):
+        pass
+
+
+@contextmanager
+def abort_after(conn: imaplib.IMAP4,
+                seconds: Optional[float]) -> Iterator[threading.Event]:
+    """Shut `conn`'s socket down if the block is still running after
+    `seconds` (None: never). Yields an Event that is set when it happened.
+
+    The socket timeout set by _connect bounds each recv, not a command: a
+    server that keeps sending a few bytes now and then holds a FETCH open
+    for as long as it likes, and the caller with it. Shutting the socket
+    down from a timer thread makes the blocked read fail, so the caller
+    gets an exception instead of waiting forever."""
+    fired = threading.Event()
+    if seconds is None:
+        yield fired
+        return
+
+    def _cut() -> None:
+        fired.set()
+        _shutdown_socket(conn)
+
+    timer = threading.Timer(max(0.0, float(seconds)), _cut)
+    timer.daemon = True
+    timer.start()
+    try:
+        yield fired
+    finally:
+        timer.cancel()
 
 
 def _is_connection_alive(conn: Optional[imaplib.IMAP4_SSL]) -> bool:

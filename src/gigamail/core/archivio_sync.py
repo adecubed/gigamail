@@ -30,6 +30,14 @@ logger = logging.getLogger("gigamail.archivio")
 
 LIMITE_GIRO = 200          # messaggi per account a ogni giro del watcher
 _LOTTO_IMAP = 20           # messaggi per singolo FETCH
+# Seconds one account may spend archiving in a watcher tick. Past it the
+# sync stops before the next folder, batch or message, and the rest waits
+# for the next tick: a slow server delays its own archive, not the watcher.
+ACCOUNT_BUDGET = 60
+# How long past the budget a single IMAP command may stay blocked before
+# its socket is shut down. Each recv has its own timeout, but a server that
+# keeps sending a few bytes resets it and can hold a FETCH open forever.
+HARD_STOP_GRACE = 30
 _ESCLUSE = ("draft", "bozze", "template", "modelli")
 
 
@@ -40,6 +48,10 @@ def _esclusa(nome: str) -> bool:
 
 def _nessuno() -> None:
     return None
+
+
+def _expired(deadline: Optional[float]) -> bool:
+    return deadline is not None and time.monotonic() >= deadline
 
 
 # ── IMAP ─────────────────────────────────────────────────────────────
@@ -91,9 +103,14 @@ def _scarica_lotto(conn, uids: List[int]):
 
 def sincronizza_imap(account_id: int, conn, *, limite: int = LIMITE_GIRO,
                      battito: Callable[[], None] = _nessuno,
-                     st: Optional[archivio.ArchiveStore] = None) -> Dict[str, int]:
+                     st: Optional[archivio.ArchiveStore] = None,
+                     deadline: Optional[float] = None) -> Dict[str, int]:
     """Archivia i messaggi nuovi di tutte le cartelle. `conn` e' una
-    connessione IMAP gia' autenticata."""
+    connessione IMAP gia' autenticata.
+
+    `deadline` (a time.monotonic() value) stops the sync between commands:
+    the result then carries timed_out=1 and each folder's cursor stays on
+    its last batch saved."""
     st = st or archivio.store()
     from . import imap_client as ic
     cartelle = ic._list_folders(conn)
@@ -101,6 +118,9 @@ def sincronizza_imap(account_id: int, conn, *, limite: int = LIMITE_GIRO,
     for cartella in cartelle:
         if _esclusa(cartella):
             continue
+        if _expired(deadline):
+            esito["timed_out"] = 1
+            break
         typ, _dati = conn.select(f'"{cartella}"', readonly=True)
         if typ != "OK":
             continue
@@ -116,7 +136,12 @@ def sincronizza_imap(account_id: int, conn, *, limite: int = LIMITE_GIRO,
         da_fare = nuovi[:spazio]
         esito["restano"] += len(nuovi) - len(da_fare)
         cursore = ultimo
+        fatti = 0
         for i in range(0, len(da_fare), _LOTTO_IMAP):
+            if _expired(deadline):
+                esito["timed_out"] = 1
+                esito["restano"] += len(da_fare) - i
+                break
             lotto = da_fare[i:i + _LOTTO_IMAP]
             for uid, raw, ts in _scarica_lotto(conn, lotto):
                 # Una mail che non si salva non ferma le altre: prima una
@@ -134,12 +159,15 @@ def sincronizza_imap(account_id: int, conn, *, limite: int = LIMITE_GIRO,
             # Il cursore avanza a ogni lotto: un giro interrotto a meta'
             # riprende da qui, non da capo.
             cursore = max(lotto)
+            fatti += len(lotto)
             st.aggiorna_stato(account_id, cartella, uidvalidity=validita,
                               cursor=str(cursore), complete=False)
             battito()
         st.aggiorna_stato(account_id, cartella, uidvalidity=validita,
                           cursor=str(cursore),
-                          complete=len(da_fare) == len(nuovi))
+                          complete=fatti == len(nuovi))
+        if esito.get("timed_out"):
+            break
     return esito
 
 
@@ -164,15 +192,28 @@ def _cartelle_graph(get) -> List[Dict[str, str]]:
 def sincronizza_graph(account_id: int, *, get, get_raw,
                       limite: int = LIMITE_GIRO,
                       battito: Callable[[], None] = _nessuno,
-                      st: Optional[archivio.ArchiveStore] = None) -> Dict[str, int]:
+                      st: Optional[archivio.ArchiveStore] = None,
+                      deadline: Optional[float] = None) -> Dict[str, int]:
     """`get(url) -> dict` e `get_raw(url) -> bytes` parlano con Graph gia'
-    autenticati: passati da fuori, cosi' i test non toccano la rete."""
+    autenticati: passati da fuori, cosi' i test non toccano la rete.
+
+    `limite` caps the downloads: ids already in the archive are skipped
+    for free and do not count, or a few complete folders would spend it
+    before the folders listed last were ever reached.
+
+    `deadline` (a time.monotonic() value) stops the sync before the next
+    page or message download; the folder resumes from that page next time
+    and skips the messages already saved by their provider id."""
     from .mail import GRAPH_URL
     st = st or archivio.store()
     esito = {"nuovi": 0, "gia_presenti": 0, "cartelle": 0, "restano": 0}
+    scaricati = 0
     for f in _cartelle_graph(get):
         if _esclusa(f["nome"]):
             continue
+        if _expired(deadline):
+            esito["timed_out"] = 1
+            break
         esito["cartelle"] += 1
         stato = st.stato(account_id, f["id"]) or {}
         completa = bool(stato.get("complete"))
@@ -180,10 +221,16 @@ def sincronizza_graph(account_id: int, *, get, get_raw,
                f"{GRAPH_URL}/me/mailFolders/{f['id']}/messages"
                "?$select=id,receivedDateTime&$orderby=receivedDateTime desc&$top=50")
         while url:
-            if esito["nuovi"] + esito["gia_presenti"] >= limite:
+            if scaricati >= limite:
                 esito["restano"] += 1
-                if not completa:
-                    st.aggiorna_stato(account_id, f["id"], cursor=url, complete=False)
+                # A complete folder too: from the newest page the next tick
+                # would stop at the first page already archived, and the
+                # older messages left behind here would never come.
+                st.aggiorna_stato(account_id, f["id"], cursor=url,
+                                  complete=False)
+                break
+            if _expired(deadline):
+                esito["timed_out"] = 1
                 break
             pagina = get(url)
             valori = pagina.get("value", [])
@@ -192,6 +239,10 @@ def sincronizza_graph(account_id: int, *, get, get_raw,
                 if st.ha_provider_id(account_id, m["id"]):
                     esito["gia_presenti"] += 1
                     continue
+                if _expired(deadline):
+                    esito["timed_out"] = 1
+                    break
+                scaricati += 1
                 try:
                     raw = get_raw(f"{GRAPH_URL}/me/messages/{m['id']}/$value")
                     _id, nuovo = st.salva(account_id, raw, folder=f["nome"],
@@ -204,21 +255,35 @@ def sincronizza_graph(account_id: int, *, get, get_raw,
                 esito["nuovi" if nuovo else "gia_presenti"] += 1
                 nuovi_pagina += int(nuovo)
             battito()
+            if esito.get("timed_out"):
+                break
             url = pagina.get("@odata.nextLink")
             if completa and valori and nuovi_pagina == 0:
                 # Una pagina intera gia' archiviata: il resto e' vecchio.
                 break
         else:
             st.aggiorna_stato(account_id, f["id"], cursor="", complete=True)
+        if esito.get("timed_out"):
+            esito["restano"] += 1
+            st.aggiorna_stato(account_id, f["id"], cursor=url,
+                              complete=False)
+            break
     return esito
 
 
 # ── INGRESSO ─────────────────────────────────────────────────────────
 
 def sincronizza(account_id: int, *, limite: int = LIMITE_GIRO,
-                battito: Callable[[], None] = _nessuno) -> Dict[str, int]:
-    """Un account, qualunque sia il provider."""
+                battito: Callable[[], None] = _nessuno,
+                budget: Optional[float] = None) -> Dict[str, int]:
+    """Un account, qualunque sia il provider.
+
+    `budget` caps the seconds spent, connection included (None: no cap,
+    for the command line). Past it the sync stops between commands and
+    returns timed_out=1; an IMAP command still blocked HARD_STOP_GRACE
+    seconds later has its socket shut down and raises TimeoutError."""
     from . import mail_router
+    deadline = None if budget is None else time.monotonic() + budget
     a = mail_router._account(account_id)
     if not a:
         raise ValueError(f"account {account_id} non trovato")
@@ -241,18 +306,30 @@ def sincronizza(account_id: int, *, limite: int = LIMITE_GIRO,
             return r.content
 
         return sincronizza_graph(account_id, get=get, get_raw=get_raw,
-                                 limite=limite, battito=battito)
+                                 limite=limite, battito=battito,
+                                 deadline=deadline)
     from . import imap_client as ic
     host, port, user, pwd = mail_router._imap_credentials(a)
     chiave, conn = ic._acquire_connection(host, port, user, pwd)
     rotta = False
-    try:
-        return sincronizza_imap(account_id, conn, limite=limite, battito=battito)
-    except Exception:
-        rotta = True
-        raise
-    finally:
-        ic._release_connection(chiave, conn, mark_bad=rotta)
+    hard_stop = (None if deadline is None
+                 else deadline - time.monotonic() + HARD_STOP_GRACE)
+    # The logout in _release_connection stays under the watchdog too: a
+    # server that trickles a FETCH can trickle its LOGOUT answer as well.
+    with ic.abort_after(conn, hard_stop) as cut:
+        try:
+            return sincronizza_imap(account_id, conn, limite=limite,
+                                    battito=battito, deadline=deadline)
+        except Exception as e:
+            rotta = True
+            if cut.is_set():
+                raise TimeoutError(
+                    f"IMAP server still busy on one command "
+                    f"{HARD_STOP_GRACE}s after the {budget:.0f}s archive "
+                    f"budget: connection dropped, retried next tick") from e
+            raise
+        finally:
+            ic._release_connection(chiave, conn, mark_bad=rotta)
 
 
 def sincronizza_tutto(*, limite: int = LIMITE_GIRO,

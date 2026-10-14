@@ -129,11 +129,19 @@ class Watcher:
             if a.get("type") == "demo":
                 continue
             try:
+                # A time budget per account: a server that never finishes
+                # a FETCH used to freeze the whole watcher, with only its
+                # IMAP socket open, until the task was restarted.
                 esito = archivio_sync.sincronizza(
                     aid, limite=archivio_sync.LIMITE_GIRO,
-                    battito=self.heartbeat)
+                    battito=self.heartbeat,
+                    budget=archivio_sync.ACCOUNT_BUDGET)
                 nuovi += int(esito.get("nuovi", 0))
-                if esito.get("restano"):
+                if esito.get("timed_out"):
+                    _log(f"archive {aid}: {esito['nuovi']} saved, out of "
+                         f"time after {archivio_sync.ACCOUNT_BUDGET}s, the "
+                         "rest waits for the next tick", self.verbose)
+                elif esito.get("restano"):
                     _log(f"archivio {aid}: {esito['nuovi']} salvate, "
                          f"ne restano {esito['restano']} per i prossimi giri",
                          self.verbose)

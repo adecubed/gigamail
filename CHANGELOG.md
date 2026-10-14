@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **A slow mail server no longer freezes the watcher.** The archive step of
+  a tick had no time limit: an IMAP server that kept a FETCH open, sending
+  a few bytes now and then, held the watcher for as long as it liked. The
+  heartbeat went stale, the console reported no watcher running, and
+  nothing else happened until the task was restarted. Each account now
+  gets 60 seconds of archiving per tick: past that the sync stops between
+  messages and the rest waits for the next tick, and an IMAP command still
+  blocked 30 seconds later has its connection dropped. The other accounts
+  and the next tick go on as usual.
+- **The archive of a Microsoft account reaches every folder again.** The
+  limit of 200 messages per tick also counted the mails already in the
+  archive, which cost no download: with a few complete folders it was
+  spent before the folders listed last were reached, and those were
+  skipped on every tick. Only downloads count now. And when the limit or
+  the time budget stopped a folder that was already complete, the next
+  tick started again from the newest mail and stopped at the first page
+  already archived, so the older new mails left behind were never saved:
+  the folder now resumes from where it stopped.
+
 ## v0.5.2 — 2026-10-14
 
 - **The Mac app for Intel is back.** v0.5.1 shipped only the Apple Silicon
