@@ -153,9 +153,11 @@ def test_approved_requests_nobody_sent_are_resumed(client, monkeypatch):
                         lambda a: sent.append(a["to"]) or {"success": True})
     old = _request(to="left@example.com")
     policy.store().approve(old, by="console:older-backend")
-    expired = _request(to="late@example.com", ttl=0.01)
-    policy.store().approve(expired, by="console:older-backend")
-    time.sleep(0.05)
+    expired = _request(to="late@example.com")
+    assert policy.store().approve(expired, by="console:older-backend")
+    with policy.store()._conn() as conn:   # approved, then its window closed
+        conn.execute("UPDATE approvals SET expires_at=? WHERE request_id=?",
+                     (time.time() - 1, expired))
     still_pending = _request(to="pending@example.com")
     audit = []
     monkeypatch.setattr(policy, "audit", lambda tool, args, outcome, *a, **k: audit.append((args.get("request_id"), outcome)))
