@@ -289,18 +289,30 @@ class SmartDraftRequest(BaseModel):
 def smart_draft(message_id: str, req: SmartDraftRequest,
                 account_id: Optional[int] = None, folder: str = ""):
     aid = account_id or _active_id()
-    # What the agent reads is the visible text only; the check below also
-    # reads what was hidden from the person (core/html_text.py).
-    body, hidden = html_text.mail_texts({"body_text": req.body_text})
-    if not body:
-        try:
-            msg = mail_router.get_message(aid, message_id=message_id, folder=folder) or {}
-            body, hidden = html_text.mail_texts(msg)
-            if not body:
-                body, hidden = html_text.mail_texts({"body_text": msg.get("bodyPreview") or ""})
-            req.subject = req.subject or msg.get("subject") or ""
-        except Exception:
-            pass
+    # The draft is written from the backend's own copy of the mail, read
+    # as a person sees it (core/html_text.read_mail). The text the console
+    # sends (req.body_text) is a cache of what it showed and was never
+    # checked for hidden text: with it the same mail was blocked without
+    # the cache and drafted with it. It is no longer used for the prompt.
+    try:
+        msg = mail_router.get_message(aid, message_id=message_id, folder=folder) or {}
+    except Exception:
+        msg = {}
+    if not msg:
+        raise HTTPException(404, "The mail could not be read from the server or the archive, "
+                                 "so it could not be checked: no draft.")
+    mail = html_text.read_mail(msg)
+    req.subject = req.subject or html_text.strip_invisible(msg.get("subject") or "")[0]
+    if not mail.checked:
+        return {
+            "blocked": True,
+            "draft": "",
+            "engine": "injection_guard",
+            "reasons": ["unchecked_markup"],
+            "passage": "",
+            "suggested_attachments": [],
+        }
+    body, hidden = mail.visible, mail.hidden
     # Il presidio gira PRIMA di qualunque generazione: se la mail impartisce
     # ordini all'assistente non si scrive nessuna bozza e non si propone
     # nessun allegato. Difendersi dentro l'istruzione non basta — l'attacco

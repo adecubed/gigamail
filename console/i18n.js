@@ -248,6 +248,7 @@
       guard_mass_deletion: "ordine di cancellazione di massa",
       guard_self_approval: "tentata auto-approvazione",
       guard_hide_from_user: "richiesta di agire di nascosto dall'utente",
+      guard_unchecked_markup: "corpo non verificabile (possibile testo nascosto)",
       suggested_attachments: "ALLEGATI SUGGERITI", add_selected: "AGGIUNGI SELEZIONATI",
       // added by the console localization sweep
       id_remove: "RIMUOVI",
@@ -570,6 +571,7 @@
       guard_mass_deletion: "order to delete in bulk",
       guard_self_approval: "attempted self-approval",
       guard_hide_from_user: "request to act behind the user's back",
+      guard_unchecked_markup: "body that could not be checked (possible hidden text)",
       hide: "Hide", fullscreen: "Fullscreen", close: "Close",
       cancel: "Cancel", save: "Save", create: "Create", optional: "(optional)",
       loading: "Loading…", refresh: "Refresh",

@@ -13,20 +13,22 @@ background, a block pushed off screen, characters of zero width, Unicode
 "tag" characters that spell out words no font draws. A person approves
 what the console shows; an agent fed the stripped tags reads all of it,
 and an instruction hidden there is addressed to the agent alone. This
-module returns the visible text and, apart, what was hidden, so callers
-can tell the agent that something was left out.
+module returns the visible text and, apart, what was hidden.
 
-Declared limit: it reads inline styles, `hidden`, <font color>, bgcolor
-and simple class or id rules in <style> blocks (outside @media). Rules
-with descendant selectors, external style sheets and colours close to the
-background but not near enough are not seen. It narrows the gap between
-what the person sees and what the agent reads; it does not close it.
+It reads in two passes: every <style> block first, wherever it sits in
+the document, then the body. Rules apply by compound selector (tag, #id
+and every .class must match) with !important and the inline style
+cascading over them. What it cannot evaluate it does not guess at: a
+hiding rule with a selector it does not support, an external style sheet
+or a parser error marks the result as not checked, and a caller handing
+text to an agent withholds it (`checked` is False). Over-hiding is the
+safe side: text wrongly taken for hidden is only left out of what the
+agent reads, and the person still sees the mail in the console.
 """
-import html
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 _SPACES = re.compile(r"[ \t\r\f\v\u00a0]+")
 _BLANK_LINES = re.compile(r"\n\s*\n+")
@@ -59,6 +61,8 @@ _DEFAULT_BG = (255, 255, 255)
 _DEFAULT_FG = (0, 0, 0)
 # Text this close to its background (Euclidean RGB distance) is not read.
 _SAME_COLOUR = 24
+_IMPORTANT = re.compile(r"!\s*important\s*$", re.IGNORECASE)
+_SIMPLE_SELECTOR = re.compile(r"^(\*|[a-z][\w-]*)?((?:[.#][\w-]+)*)$", re.IGNORECASE)
 
 
 @dataclass
@@ -67,6 +71,11 @@ class VisibleText:
     hidden_text: str
     invisible_chars: int
     hidden_markup_chars: int = 0
+    # False when the markup could not be fully evaluated: a parser error,
+    # a hiding rule with a selector this reader does not support, an
+    # external style sheet. Text for an agent must then be withheld.
+    checked: bool = True
+    reason: str = ""
 
     @property
     def hidden_chars(self) -> int:
@@ -91,7 +100,11 @@ def strip_invisible(text: str) -> Tuple[str, int]:
     return cleaned, count
 
 
+# ── CSS values ─────────────────────────────────────────────────────
+
 def _colour(value: str) -> Optional[Tuple[int, ...]]:
+    """An RGB tuple, () for transparent, None when unreadable. Never raises:
+    a malformed colour in a hostile mail must not stop the reading."""
     v = (value or "").strip().lower()
     if not v:
         return None
@@ -105,10 +118,15 @@ def _colour(value: str) -> Optional[Tuple[int, ...]]:
         if len(h) == 3:
             h = "".join(c * 2 for c in h)
         return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-    m = re.fullmatch(r"rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)", v)
+    m = re.fullmatch(r"rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([^)]*?)\s*)?\)", v)
     if m:
-        if m.group(4) is not None and float(m.group(4)) < 0.1:
-            return ()
+        alpha = m.group(4)
+        if alpha is not None:
+            try:
+                if float(alpha.rstrip("%")) / (100 if alpha.endswith("%") else 1) < 0.1:
+                    return ()
+            except ValueError:
+                return None
         return tuple(min(255, int(m.group(i))) for i in (1, 2, 3))
     return None
 
@@ -128,12 +146,15 @@ def _close(a: Tuple[int, ...], b: Tuple[int, ...]) -> bool:
     return sum((x - y) ** 2 for x, y in zip(a, b, strict=False)) ** 0.5 <= _SAME_COLOUR
 
 
-def _style(value: str) -> Dict[str, str]:
+def _declarations(value: str) -> Dict[str, Tuple[str, bool]]:
+    """{property: (value, important)} from a style attribute or rule body."""
     out = {}
     for decl in (value or "").split(";"):
-        if ":" in decl:
-            k, v = decl.split(":", 1)
-            out[k.strip().lower()] = v.replace("!important", "").strip().lower()
+        if ":" not in decl:
+            continue
+        k, v = decl.split(":", 1)
+        important = bool(_IMPORTANT.search(v))
+        out[k.strip().lower()] = (_IMPORTANT.sub("", v).strip().lower(), important)
     return out
 
 
@@ -184,16 +205,28 @@ def _hides(props: Dict[str, str]) -> bool:
     return False
 
 
-def _rules(css: str) -> Tuple[Set[str], Set[str]]:
-    """Classes and ids hidden by simple rules of a <style> block. Rules
-    inside @media apply only to some screens and are left out."""
-    css = re.sub(r"/\*.*?\*/", "", css or "", flags=re.S)
-    # drop @media / @supports blocks, nested braces included
-    out, depth, i = [], 0, 0
+# ── style sheets ───────────────────────────────────────────────────
+
+@dataclass
+class _Rule:
+    tag: str
+    ids: frozenset
+    classes: frozenset
+    decls: Dict[str, Tuple[str, bool]]
+
+    def matches(self, tag: str, el_id: str, classes: set) -> bool:
+        return ((not self.tag or self.tag == "*" or self.tag == tag)
+                and self.ids <= ({el_id} if el_id else set())
+                and self.classes <= classes)
+
+
+def _without_at_blocks(css: str) -> str:
+    """The sheet without @media / @supports / ... blocks (nested braces
+    included): their rules apply to some screens only."""
+    out, i = [], 0
     while i < len(css):
-        if depth == 0 and css.startswith("@", i):
-            j = css.find("{", i)
-            k = css.find(";", i)
+        if css.startswith("@", i):
+            j, k = css.find("{", i), css.find(";", i)
             if j == -1 or (k != -1 and k < j):
                 i = (k + 1) if k != -1 else len(css)
                 continue
@@ -204,29 +237,103 @@ def _rules(css: str) -> Tuple[Set[str], Set[str]]:
             continue
         out.append(css[i])
         i += 1
-    classes, ids = set(), set()
-    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", "".join(out)):
-        if not _hides(_style(body)):
+    return "".join(out)
+
+
+def _parse_sheet(css: str) -> Tuple[List[_Rule], str]:
+    """(rules with simple selectors, why it cannot be checked or '')."""
+    css = re.sub(r"/\*.*?\*/", "", css or "", flags=re.S)
+    if re.search(r"@import\b", css, re.IGNORECASE):
+        return [], "external style sheet (@import)"
+    rules, unsupported = [], ""
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", _without_at_blocks(css)):
+        decls = _declarations(body)
+        if not decls:
             continue
         for sel in selectors.split(","):
             sel = sel.strip()
-            if not sel or re.search(r"[\s>+~:\[]", sel):
-                continue   # only simple selectors: tag.class, .class, #id
-            classes.update(re.findall(r"\.([\w-]+)", sel))
-            ids.update(re.findall(r"#([\w-]+)", sel))
-    return classes, ids
+            if not sel:
+                continue
+            m = _SIMPLE_SELECTOR.match(sel)
+            if not m:
+                # Descendant, attribute or pseudo selectors are not
+                # evaluated. Harmless unless the rule hides something.
+                if _hides({k: v for k, (v, _imp) in decls.items()}):
+                    unsupported = f"hiding rule with an unsupported selector: {sel[:60]}"
+                continue
+            rest = m.group(2) or ""
+            rules.append(_Rule(
+                tag=(m.group(1) or "").lower(),
+                ids=frozenset(re.findall(r"#([\w-]+)", rest)),
+                classes=frozenset(re.findall(r"\.([\w-]+)", rest)),
+                decls=decls))
+    return rules, unsupported
+
+
+def _cascade(rules: List[_Rule], tag: str, el_id: str, classes: set,
+             inline: Dict[str, Tuple[str, bool]]) -> Dict[str, str]:
+    """The declarations that win on an element: matching rules in document
+    order, !important over normal, the inline style over normal rules and
+    an !important inline style over everything. Specificity between rules
+    is not weighed: the later one wins."""
+    won: Dict[str, Tuple[str, bool, bool]] = {}   # prop -> (value, important, inline)
+
+    def put(prop, value, important, is_inline):
+        old = won.get(prop)
+        if old is None or important or not old[1]:
+            if old is not None and old[1] and not important:
+                return
+            won[prop] = (value, important, is_inline)
+
+    for r in rules:
+        if r.matches(tag, el_id, classes):
+            for prop, (value, important) in r.decls.items():
+                put(prop, value, important, False)
+    for prop, (value, important) in inline.items():
+        old = won.get(prop)
+        if old is not None and old[1] and not important:
+            continue
+        won[prop] = (value, important, True)
+    return {k: v[0] for k, v in won.items()}
+
+
+# ── the document ───────────────────────────────────────────────────
+
+class _Sheets(HTMLParser):
+    """First pass: every <style> block and whether an external sheet is
+    linked, wherever they sit in the document."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.css: List[str] = []
+        self.external = False
+        self._in_style = 0
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if tag == "style":
+            self._in_style += 1
+        elif tag == "link":
+            a = {k.lower(): (v or "").lower() for k, v in attrs}
+            if "stylesheet" in a.get("rel", ""):
+                self.external = True
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "style" and self._in_style:
+            self._in_style -= 1
+
+    def handle_data(self, data):
+        if self._in_style:
+            self.css.append(data)
 
 
 class _Extractor(HTMLParser):
-    def __init__(self):
+    def __init__(self, rules: List[_Rule]):
         super().__init__(convert_charrefs=True)
+        self.rules = rules
         # each open element: (tag, hidden, foreground, background)
         self.stack: List[Tuple[str, bool, Tuple[int, ...], Tuple[int, ...]]] = []
         self.skip_depth = 0
-        self.style_text: List[str] = []
-        self.in_style = False
-        self.hidden_classes: Set[str] = set()
-        self.hidden_ids: Set[str] = set()
         self.visible: List[str] = []
         self.hidden: List[str] = []
 
@@ -242,22 +349,19 @@ class _Extractor(HTMLParser):
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
         if tag in _SKIPPED:
-            if tag == "style" and not self.skip_depth:
-                self.in_style = True
             self.skip_depth += 1
             return
         if self.skip_depth:
             return
         hidden, fg, bg = self._state()
         a = {k.lower(): (v or "") for k, v in attrs}
-        props = _style(a.get("style", ""))
-        classes = set(a.get("class", "").split())
+        props = _cascade(self.rules, tag, a.get("id", ""), set(a.get("class", "").split()),
+                         _declarations(a.get("style", "")))
         if ("hidden" in a or _hides(props)
-                or classes & self.hidden_classes or a.get("id", "") in self.hidden_ids
                 or (tag == "input" and a.get("type", "").lower() == "hidden")):
             hidden = True
-        new_bg = _first_colour(props.get("background-color", "")) \
-            or _first_colour(props.get("background", "")) or _colour(a.get("bgcolor", ""))
+        new_bg = (_first_colour(props.get("background-color", ""))
+                  or _first_colour(props.get("background", "")) or _colour(a.get("bgcolor", "")))
         if new_bg:
             bg = new_bg
         new_fg = _colour(props.get("color", "")) or (_colour(a.get("color", "")) if tag == "font" else None)
@@ -274,40 +378,28 @@ class _Extractor(HTMLParser):
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
         tag = tag.lower()
-        if tag not in _VOID and tag not in _SKIPPED:
+        if tag in _SKIPPED:
+            if self.skip_depth:
+                self.skip_depth -= 1
+        elif tag not in _VOID:
             self.handle_endtag(tag)
-        elif tag in _SKIPPED and self.skip_depth:
-            self.skip_depth -= 1
-            self.in_style = False
 
     def handle_endtag(self, tag):
         tag = tag.lower()
         if tag in _SKIPPED:
             if self.skip_depth:
                 self.skip_depth -= 1
-                if tag == "style" and self.in_style and not self.skip_depth:
-                    self.in_style = False
-                    classes, ids = _rules("".join(self.style_text))
-                    self.hidden_classes |= classes
-                    self.hidden_ids |= ids
-                    self.style_text = []
             return
         if self.skip_depth:
             return
-        hidden = self._state()[0]
         for i in range(len(self.stack) - 1, -1, -1):
             if self.stack[i][0] == tag:
                 hidden = self.stack[i][1]
                 del self.stack[i:]
-                break
-        else:
-            return
-        self._out("\n" if tag in _BREAK_AFTER else " ", hidden)
+                self._out("\n" if tag in _BREAK_AFTER else " ", hidden)
+                return
 
     def handle_data(self, data):
-        if self.in_style:
-            self.style_text.append(data)
-            return
         if self.skip_depth:
             return
         hidden, fg, bg = self._state()
@@ -322,52 +414,91 @@ def _tidy(text: str, keep_lines: bool) -> str:
     return re.sub(r"\s+", " ", text.replace("\u00a0", " ")).strip()
 
 
+def _all_text(markup: str) -> str:
+    """Every piece of text, tags dropped, for the hidden part of a result
+    that could not be checked: nothing of it is given out as visible."""
+    raw = re.sub(r"<!--.*?-->", " ", str(markup or ""), flags=re.S)
+    raw = re.sub(r"<(style|script)\b[^>]*>.*?</\1\s*>", " ", raw, flags=re.I | re.S)
+    return re.sub(r"<[^>]+>", " ", raw)
+
+
 def visible_text(markup: str, keep_lines: bool = False) -> VisibleText:
     """What a reader of this HTML sees, and apart what is hidden."""
-    parser = _Extractor()
+    markup = str(markup or "")
     try:
-        parser.feed(str(markup or ""))
+        # Styles first, wherever they are: comments are dropped, because
+        # most clients do not apply a <style> inside one.
+        sheets = _Sheets()
+        sheets.feed(re.sub(r"<!--.*?-->", " ", markup, flags=re.S))
+        sheets.close()
+        rules, reason = _parse_sheet("\n".join(sheets.css))
+        if sheets.external:
+            reason = reason or "external style sheet (<link rel=stylesheet>)"
+        parser = _Extractor(rules)
+        parser.feed(markup)
         parser.close()
         visible, hidden = "".join(parser.visible), "".join(parser.hidden)
-    except Exception:
-        # A parser failure must not hand out the raw markup: fall back to
-        # dropping every tag, comment and skipped block.
-        raw = re.sub(r"<!--.*?-->", " ", str(markup or ""), flags=re.S)
-        raw = re.sub(r"<(head|style|script|title|xml)\b[^>]*>.*?</\1\s*>", " ", raw,
-                     flags=re.I | re.S)
-        visible, hidden = html.unescape(re.sub(r"<[^>]+>", " ", raw)), ""
+    except Exception as e:
+        # Fail closed: nothing is handed out as visible, and the result
+        # says it could not be checked.
+        everything, _n = strip_invisible(_all_text(markup))
+        return VisibleText(text="", hidden_text=_tidy(everything, False), invisible_chars=0,
+                           hidden_markup_chars=len(re.sub(r"\s+", "", everything)),
+                           checked=False, reason=f"parser error: {type(e).__name__}")
     smuggled = smuggled_ascii(visible) + " " + smuggled_ascii(hidden)
     visible, invisible = strip_invisible(visible)
     hidden, invisible_in_hidden = strip_invisible(hidden)
-    markup_chars = len(re.sub(r"\s+", "", hidden)) + invisible_in_hidden
     return VisibleText(text=_tidy(visible, keep_lines),
                        hidden_text=_tidy(hidden + " " + smuggled, keep_lines=False),
                        invisible_chars=invisible,
-                       hidden_markup_chars=markup_chars)
+                       hidden_markup_chars=len(re.sub(r"\s+", "", hidden)) + invisible_in_hidden,
+                       checked=not reason, reason=reason)
 
 
 def html_to_text(markup: str, keep_lines: bool = False) -> str:
-    """The readable text of `markup`: no comments, styles, scripts, tags
-    or hidden text, entities decoded. With keep_lines the paragraph breaks
-    stay as newlines; otherwise everything collapses to one line."""
+    """The readable text of `markup` for a person (previews, alerts, search):
+    no comments, styles, scripts, tags or hidden text, entities decoded.
+    With keep_lines the paragraph breaks stay as newlines; otherwise
+    everything collapses to one line. Text for an agent goes through
+    read_mail(), which also withholds what could not be checked."""
     return visible_text(markup, keep_lines=keep_lines).text
 
 
-def mail_texts(message) -> Tuple[str, str]:
-    """(visible, hidden) text of a message dict as the providers return it.
+@dataclass
+class MailText:
+    """A message as an agent may read it."""
+    visible: str      # what may be handed to a model
+    hidden: str       # what was hidden from the reader: for the injection check only
+    hidden_chars: int
+    checked: bool     # False: the body could not be evaluated, give the agent nothing
+    reason: str = ""
+
+
+def read_mail(message) -> MailText:
+    """The visible and hidden text of a message dict as providers return it.
 
     An HTML body (Graph hands HTML, IMAP may) is read as a person sees it;
     a plain body loses its invisible characters, and the ASCII they may
-    spell goes with the hidden part. The visible part is what a model may
-    read; the hidden part is for the injection check only."""
+    spell goes with the hidden part. When the HTML could not be checked,
+    `visible` is empty and `checked` is False: the caller withholds the
+    body, it does not fall back to a cruder reading."""
     if not isinstance(message, dict):
-        return "", ""
+        return MailText("", "", 0, True)
     body = message.get("body")
     if isinstance(body, dict) and str(body.get("contentType") or "").lower() == "html":
         vt = visible_text(str(body.get("content") or ""), keep_lines=True)
-        return vt.text, vt.hidden_text
+        if not vt.checked:
+            return MailText("", vt.hidden_text, vt.hidden_chars, False, vt.reason)
+        return MailText(vt.text, vt.hidden_text, vt.hidden_chars, True)
     raw = message.get("body_text")
     if not raw:
         raw = body.get("content") if isinstance(body, dict) else body
     raw = str(raw or "")
-    return strip_invisible(raw)[0], smuggled_ascii(raw)
+    text, invisible = strip_invisible(raw)
+    return MailText(text, smuggled_ascii(raw), invisible, True)
+
+
+def mail_texts(message) -> Tuple[str, str]:
+    """(visible, hidden) text of a message: read_mail() without the verdict."""
+    m = read_mail(message)
+    return m.visible, m.hidden

@@ -9,13 +9,21 @@
   `read_message` returned the HTML itself, and the text made from it kept
   everything but tags. Now:
   - `read_message` returns the visible text only (`contentType: "text"`),
-    and `hidden_text` when something was left out;
-  - subjects and previews of `list_messages`, `list_unread` and
-    `search_mail` lose their invisible characters;
-  - drafts (watcher and console) are written from the visible text, while
-    the injection check also reads the hidden part;
-  - every text made from HTML (previews, archive search, alerts) skips
-    hidden text.
+    with body, `body_text` and `bodyPreview` from one reading, and
+    `hidden_text` when something was left out; style blocks are read
+    first wherever they sit, rules match by compound selector with
+    `!important` and inline styles cascading;
+  - a body that cannot be checked (parser error, a hiding rule it cannot
+    evaluate, an external style sheet) is withheld with `withheld`, never
+    read some cruder way;
+  - provider previews in `list_messages`, `list_unread` and `search_mail`
+    are withheld, archive previews are rebuilt from the checked text, and
+    local-index rows (also in `sender_history`) carry no mail text;
+  - drafts (watcher and console) are written from the backend's own checked
+    copy, the console's cached text is no longer used, and the injection
+    check also reads the hidden part; an unchecked body gets no draft;
+  - every text made from HTML for a person (previews, archive search,
+    alerts) skips hidden text.
   See SECURITY.md for what it does not catch.
 - **Executable attachments never reach an agent and are never opened.**
   GigaMail also runs inside harnesses whose agent holds a shell, and a

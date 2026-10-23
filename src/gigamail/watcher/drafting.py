@@ -204,23 +204,24 @@ def _slot_liberi_text(exclude: Sequence[str] = ()) -> str:
             "un'alternativa se nessuno le va bene.")
 
 
-def _message_texts(message: Dict[str, Any]):
-    """(visible, hidden) text of a mail (core/html_text.mail_texts). Graph
-    hands the HTML, and the prompt used to receive it raw, comments and
-    hidden blocks included."""
-    return html_text.mail_texts(message)
-
-
 def _message_body_text(message: Dict[str, Any]) -> str:
-    """What the drafting agent reads: only the visible text."""
-    return _message_texts(message)[0][:_MAIL_CHARS_MAX]
+    """What the drafting agent reads: only the visible text, and nothing
+    when the HTML could not be checked (core/html_text.read_mail). Graph
+    hands the HTML, and the prompt used to receive it raw."""
+    return html_text.read_mail(message).visible[:_MAIL_CHARS_MAX]
 
 
 def guard_text(message: Dict[str, Any]) -> str:
     """What the injection check reads: the visible text AND what was hidden
     from the reader, so an order hidden in the HTML still stops the draft."""
-    visible, hidden = _message_texts(message)
-    return f"{visible[:_MAIL_CHARS_MAX]}\n{hidden[:_MAIL_CHARS_MAX]}"
+    m = html_text.read_mail(message)
+    return f"{m.visible[:_MAIL_CHARS_MAX]}\n{m.hidden[:_MAIL_CHARS_MAX]}"
+
+
+def body_checked(message: Dict[str, Any]) -> bool:
+    """False when the mail's HTML could not be checked for hidden text: no
+    draft is written from it."""
+    return html_text.read_mail(message).checked
 
 
 def _vincoli_estensioni(subject: str, body: str) -> str:
@@ -325,6 +326,8 @@ def draft_reply(rule: Dict[str, Any], account_id: int,
 
     Il presidio gira qui e non solo in smart_draft: questo percorso e' il
     piu' esposto dei due, perche' la regola puo' anche spedire da sola."""
+    if not body_checked(message):
+        raise MailConOrdini(["unchecked_markup"])
     verdetto = injection_guard.check(guard_text(message),
                                      str(message.get("subject") or ""))
     if verdetto.blocked:

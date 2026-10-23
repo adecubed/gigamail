@@ -364,32 +364,43 @@ agent handed the HTML, or a text made by dropping its tags, reads all of
 it, and an instruction hidden there is addressed to the agent alone.
 
 - **`read_message` hands the visible text, never the HTML.** The body is
-  read the way a person sees it (`core/html_text.py`): inline styles,
-  `hidden`, `<font color>`, `bgcolor` and simple class or id rules of
-  `<style>` blocks decide what is hidden; zero-width, bidi-control and tag
-  characters are dropped. When anything was left out, the result carries
-  `hidden_text`, saying how much and that the agent should not go looking
-  for it.
-- **Subjects and previews** of `list_messages`, `list_unread` and
-  `search_mail` lose their invisible characters.
-- **Drafts are written from the visible text**, in the watcher and in the
-  console, while the injection check reads the visible text *and* what was
-  hidden, so an order hidden in the HTML still stops the draft.
-- **Every text made from HTML** (previews, the archive's search text, the
-  IMAP body text, alerts) goes through the same reader.
+  read the way a person sees it (`core/html_text.py`), in two passes:
+  every `<style>` block first, wherever it sits, then the body. Rules apply
+  by compound selector (tag, `#id` and every `.class`), with `!important`
+  (any case) and the inline style cascading over them; inline styles,
+  `hidden`, `<font color>` and `bgcolor` count too. Zero-width,
+  bidi-control and tag characters are dropped. Body, `body_text` and
+  `bodyPreview` all come from that one reading; when anything was left out
+  the result carries `hidden_text`.
+- **What cannot be evaluated is withheld, not guessed.** A parser error, a
+  hiding rule with a selector the reader does not support (descendant,
+  attribute, pseudo-class) or an external style sheet mark the body as not
+  checked: the agent gets no body, and `withheld` says to read it in the
+  console. There is no fallback that strips tags and hands out the rest.
+- **Previews.** Provider previews (`bodyPreview` from Graph or IMAP lists)
+  are withheld: they are text made from the HTML, where hidden text cannot
+  be told apart. Archive search previews are made from the checked text of
+  the archived mail, and local-index rows (also in `sender_history`) carry
+  no mail text.
+- **Drafts are written from the backend's own checked copy**, in the
+  watcher and in the console (the text the console sends along is no longer
+  used), while the injection check reads the visible text *and* what was
+  hidden. A body that could not be checked gets no draft.
+- **Every text made from HTML for a person** (console previews, the
+  archive's search text, alerts) goes through the same reader.
 
 What this does not stop, stated plainly:
 
-- **Tricks the reader does not know.** Rules with descendant selectors,
-  external style sheets, text a shade off the background but not close
-  enough, text under an image. It narrows the gap between what the person
-  sees and what the agent reads; it does not close it.
-- **Previews from Microsoft.** Graph's `bodyPreview` is text Microsoft made
-  from the HTML; what was hidden in it cannot be told apart there.
-  `read_message` can.
-- **Text stored before this change.** The archive's search text and the
-  older local index of mail saved earlier may still hold hidden text in
-  search previews; reading the mail gives the visible text.
+- **Tricks the reader does not know.** Specificity between rules is not
+  weighed (the later rule wins), text a shade off the background but not
+  close enough, text under an image, text the size of a pixel or two. It
+  narrows the gap between what the person sees and what the agent reads;
+  it does not close it.
+- **Search by stored text.** The archive's full-text index of mail saved
+  earlier still holds hidden words, so a search can match on them; the
+  preview the agent gets is rebuilt from the checked text.
+- **The user's own replies** in the local index (`reply_body`) are still
+  returned; a reply that quoted a hostile mail carries its visible text.
 - **Visible text.** An instruction a person can read is still in the
   body. The text stays untrusted data, and the gates on sending stay where
   they are.

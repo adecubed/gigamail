@@ -62,6 +62,12 @@ MOTIVI = {
         "it": "richiesta di agire di nascosto dall'utente",
         "en": "request to act behind the user's back",
     },
+    # Not found in the text: the mail's HTML could not be checked for
+    # hidden text (core/html_text.py), so nothing of it goes to a model.
+    "unchecked_markup": {
+        "it": "corpo non verificabile (possibile testo nascosto)",
+        "en": "body that could not be checked (possible hidden text)",
+    },
 }
 
 
