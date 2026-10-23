@@ -511,7 +511,10 @@ def _notify_command() -> Optional[List[str]]:
     {request_id}, {tool}, {summary}, {message} ({message} = testo completo
     leggibile, es. per Telegram via curl:
       ["curl","-s","https://api.telegram.org/bot<TOKEN>/sendMessage",
-       "-d","chat_id=<ID>","--data-urlencode","text={message}"]).
+       "-d","chat_id=<ID>","-d",'link_preview_options={"is_disabled":true}',
+       "--data-urlencode","text={message}"]
+    — keep link_preview_options: Telegram fetches the first link of a
+    message to preview it, and a draft's link could carry data out).
     Sorgenti, in ordine: env GIGAMAIL_APPROVAL_NOTIFY_CMD, poi il file
     notify.json accanto ad agent.json ({"command": [...]}) — cosi' la
     configurazione sopravvive al riavvio senza env vars.
