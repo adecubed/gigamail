@@ -385,7 +385,16 @@ it, and an instruction hidden there is addressed to the agent alone.
 - **Drafts are written from the backend's own checked copy**, in the
   watcher and in the console (the text the console sends along is no longer
   used), while the injection check reads the visible text *and* what was
-  hidden. A body that could not be checked gets no draft.
+  hidden. A body that could not be checked is drafted only where a person
+  reads the draft before it goes out: the console's reply button and
+  watcher rules in `semi` mode write it from the best-effort text, with a
+  warning in the reply window, the approval preview and the notification.
+  Rules in `auto` mode send without a person, so they treat it like an
+  agent with a shell: no draft, and a notification says why. The agent bar
+  and external harnesses go through MCP and get no body.
+- **Links.** `read_message` lists the links a person sees (`links`: text
+  and url, `http`, `https` and `mailto` only); links in hidden text are not
+  listed, and an unchecked body lists none.
 - **Every text made from HTML for a person** (console previews, the
   archive's search text, alerts) goes through the same reader.
 

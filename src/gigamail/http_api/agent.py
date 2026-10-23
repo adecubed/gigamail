@@ -303,7 +303,15 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
                                  "so it could not be checked: no draft.")
     mail = html_text.read_mail(msg)
     req.subject = req.subject or html_text.strip_invisible(msg.get("subject") or "")[0]
-    if not mail.checked:
+    # A person clicked here and reads the draft before sending it: a mail
+    # whose HTML could not be checked is drafted from the best reading,
+    # with a warning on screen. Only when nothing could be read is it refused.
+    warning = ""
+    if mail.checked:
+        body = mail.visible
+    elif mail.unverified:
+        body, warning = mail.unverified, "unchecked_markup"
+    else:
         return {
             "blocked": True,
             "draft": "",
@@ -312,7 +320,7 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
             "passage": "",
             "suggested_attachments": [],
         }
-    body, hidden = mail.visible, mail.hidden
+    hidden = mail.hidden
     # Il presidio gira PRIMA di qualunque generazione: se la mail impartisce
     # ordini all'assistente non si scrive nessuna bozza e non si propone
     # nessun allegato. Difendersi dentro l'istruzione non basta — l'attacco
@@ -355,6 +363,8 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
     )
     out = _run_agent(prompt)
     out["blocked"] = False
+    if warning:
+        out["warning"] = warning
     out["suggested_attachments"] = _suggest_attachments(
         aid, f"{out.get('draft', '')} {req.instruction} {req.subject} {body[:1000]}",
         folder,

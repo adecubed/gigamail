@@ -61,6 +61,7 @@ _DEFAULT_BG = (255, 255, 255)
 _DEFAULT_FG = (0, 0, 0)
 # Text this close to its background (Euclidean RGB distance) is not read.
 _SAME_COLOUR = 24
+_MAX_LINKS = 50
 _IMPORTANT = re.compile(r"!\s*important\s*$", re.IGNORECASE)
 _SIMPLE_SELECTOR = re.compile(r"^(\*|[a-z][\w-]*)?((?:[.#][\w-]+)*)$", re.IGNORECASE)
 
@@ -76,6 +77,8 @@ class VisibleText:
     # external style sheet. Text for an agent must then be withheld.
     checked: bool = True
     reason: str = ""
+    # Links a person sees: (text, url), http(s) and mailto only.
+    links: Tuple[Tuple[str, str], ...] = ()
 
     @property
     def hidden_chars(self) -> int:
@@ -336,6 +339,9 @@ class _Extractor(HTMLParser):
         self.skip_depth = 0
         self.visible: List[str] = []
         self.hidden: List[str] = []
+        # the open <a> whose text is being collected: [href, parts, has_image]
+        self.anchor: Optional[list] = None
+        self.links: List[Tuple[str, str]] = []
 
     def _state(self):
         if self.stack:
@@ -369,6 +375,12 @@ class _Extractor(HTMLParser):
             fg = new_fg
         # The colour test runs on the text itself (handle_data): a dark
         # cell is not hidden, only text the colour of its background is.
+        if tag == "a" and not hidden:
+            href = strip_invisible(a.get("href", ""))[0].strip()
+            if re.match(r"^(https?:|mailto:)", href, re.IGNORECASE):
+                self.anchor = [href, [], False]
+        elif tag == "img" and not hidden and self.anchor is not None:
+            self.anchor[2] = True
         if tag == "br":
             self._out("\n", hidden)
         elif tag not in _VOID:
@@ -392,6 +404,12 @@ class _Extractor(HTMLParser):
             return
         if self.skip_depth:
             return
+        if tag == "a" and self.anchor is not None:
+            href, parts, has_image = self.anchor
+            text = re.sub(r"\s+", " ", strip_invisible("".join(parts))[0]).strip()
+            if text or has_image:
+                self.links.append((text, href))
+            self.anchor = None
         for i in range(len(self.stack) - 1, -1, -1):
             if self.stack[i][0] == tag:
                 hidden = self.stack[i][1]
@@ -403,7 +421,10 @@ class _Extractor(HTMLParser):
         if self.skip_depth:
             return
         hidden, fg, bg = self._state()
-        self._out(data, hidden or (data.strip() != "" and _close(fg, bg)))
+        hidden = hidden or (data.strip() != "" and _close(fg, bg))
+        if self.anchor is not None and not hidden:
+            self.anchor[1].append(data)
+        self._out(data, hidden)
 
 
 def _tidy(text: str, keep_lines: bool) -> str:
@@ -438,6 +459,11 @@ def visible_text(markup: str, keep_lines: bool = False) -> VisibleText:
         parser.feed(markup)
         parser.close()
         visible, hidden = "".join(parser.visible), "".join(parser.hidden)
+        links, seen = [], set()
+        for text, url in parser.links:
+            if url not in seen and len(links) < _MAX_LINKS:
+                seen.add(url)
+                links.append((text, url))
     except Exception as e:
         # Fail closed: nothing is handed out as visible, and the result
         # says it could not be checked.
@@ -452,7 +478,7 @@ def visible_text(markup: str, keep_lines: bool = False) -> VisibleText:
                        hidden_text=_tidy(hidden + " " + smuggled, keep_lines=False),
                        invisible_chars=invisible,
                        hidden_markup_chars=len(re.sub(r"\s+", "", hidden)) + invisible_in_hidden,
-                       checked=not reason, reason=reason)
+                       checked=not reason, reason=reason, links=tuple(links))
 
 
 def html_to_text(markup: str, keep_lines: bool = False) -> str:
@@ -472,6 +498,10 @@ class MailText:
     hidden_chars: int
     checked: bool     # False: the body could not be evaluated, give the agent nothing
     reason: str = ""
+    # When not checked: the best reading available, for a draft a person
+    # reviews before it leaves (never for an agent that acts on its own).
+    unverified: str = ""
+    links: Tuple[Tuple[str, str], ...] = ()
 
 
 def read_mail(message) -> MailText:
@@ -488,8 +518,9 @@ def read_mail(message) -> MailText:
     if isinstance(body, dict) and str(body.get("contentType") or "").lower() == "html":
         vt = visible_text(str(body.get("content") or ""), keep_lines=True)
         if not vt.checked:
-            return MailText("", vt.hidden_text, vt.hidden_chars, False, vt.reason)
-        return MailText(vt.text, vt.hidden_text, vt.hidden_chars, True)
+            return MailText("", vt.hidden_text, vt.hidden_chars, False, vt.reason,
+                            unverified=vt.text)
+        return MailText(vt.text, vt.hidden_text, vt.hidden_chars, True, links=vt.links)
     raw = message.get("body_text")
     if not raw:
         raw = body.get("content") if isinstance(body, dict) else body

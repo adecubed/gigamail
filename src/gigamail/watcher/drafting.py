@@ -319,17 +319,31 @@ class MailConOrdini(Exception):
 def draft_reply(rule: Dict[str, Any], account_id: int,
                 message: Dict[str, Any],
                 feedback: Optional[str] = None,
-                previous_body: Optional[str] = None) -> str:
+                previous_body: Optional[str] = None,
+                allow_unchecked: bool = False) -> str:
     """Corpo della risposta, scritto dall'agente dell'utente. Solleva
     agent_bridge.AgentUnavailable se l'agente non c'e' o non risponde,
     MailConOrdini se la mail impartisce ordini all'assistente.
 
     Il presidio gira qui e non solo in smart_draft: questo percorso e' il
-    piu' esposto dei due, perche' la regola puo' anche spedire da sola."""
-    if not body_checked(message):
-        raise MailConOrdini(["unchecked_markup"])
-    verdetto = injection_guard.check(guard_text(message),
-                                     str(message.get("subject") or ""))
+    piu' esposto dei due, perche' la regola puo' anche spedire da sola.
+
+    A mail whose HTML could not be checked for hidden text gets no draft,
+    unless allow_unchecked: a semi rule, where a person reads the draft and
+    a warning before anything leaves. Then the draft is written from the
+    best reading available, and the check still reads the hidden part."""
+    mail = html_text.read_mail(message)
+    if not mail.checked:
+        if not (allow_unchecked and mail.unverified):
+            raise MailConOrdini(["unchecked_markup"])
+        hidden = mail.hidden
+        message = dict(message)
+        message.pop("body_text", None)
+        message["body"] = {"contentType": "text", "content": mail.unverified}
+        guard = f"{guard_text(message)}\n{hidden[:_MAIL_CHARS_MAX]}"
+    else:
+        guard = guard_text(message)
+    verdetto = injection_guard.check(guard, str(message.get("subject") or ""))
     if verdetto.blocked:
         raise MailConOrdini(verdetto.reasons, verdetto.passage)
     # Timeout piu' largo del default (180 s): misurato dal vivo, claude -p

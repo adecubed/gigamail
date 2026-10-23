@@ -67,7 +67,7 @@ an approved request that has not run yet can be revoked.
 | `GET /mail/folder/{id}` | `list_messages(folder=<id>)` | READ | |
 | `GET /mail/unread` | `list_unread` | READ | |
 | `GET /mail/unread_count` | — (field of `list_unread`) | — | |
-| `GET /mail/{id}` | `read_message` | READ | Full body + attachment list. **Without** `_reply_suggestion` (it was an LLM). The agent gets the visible text only, never the HTML; hidden text is left out and flagged (`hidden_text`) |
+| `GET /mail/{id}` | `read_message` | READ | Full body + attachment list. **Without** `_reply_suggestion` (it was an LLM). The agent gets the visible text only, never the HTML; hidden text is left out and flagged (`hidden_text`); visible links in `links` |
 | `GET /mail/folders` | `list_folders` | READ | |
 | `GET /mail/search/{q}` | `search_mail` | READ | Merges provider search and the local index (hybrid) |
 | `GET /mail/memory/search` | — (merged into `search_mail`) | — | |
@@ -230,7 +230,7 @@ una richiesta approvata e non ancora eseguita si può revocare.
 | `GET /mail/folder/{id}` | `list_messages(folder=<id>)` | READ | |
 | `GET /mail/unread` | `list_unread` | READ | |
 | `GET /mail/unread_count` | — (campo di `list_unread`) | — | |
-| `GET /mail/{id}` | `read_message` | READ | Corpo completo + elenco allegati. **Senza** `_reply_suggestion` (era LLM). All'agente arriva solo il testo visibile, mai l'HTML; il testo nascosto e' escluso e segnalato (`hidden_text`) |
+| `GET /mail/{id}` | `read_message` | READ | Corpo completo + elenco allegati. **Senza** `_reply_suggestion` (era LLM). All'agente arriva solo il testo visibile, mai l'HTML; il testo nascosto e' escluso e segnalato (`hidden_text`); i link visibili in `links` |
 | `GET /mail/folders` | `list_folders` | READ | |
 | `GET /mail/search/{q}` | `search_mail` | READ | Unifica ricerca provider + indice locale (ibrida) |
 | `GET /mail/memory/search` | — (confluisce in `search_mail`) | — | |

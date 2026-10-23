@@ -176,9 +176,9 @@ reply, and asks you before sending.
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
   their text
-- **Safe writes (3, audited)** — mark read, move message, create folder
-- **Dangerous (9, human approval out of band)** — send, reply, delete
-  message, delete folder, create/delete calendar event, create a Zoom
+- **Safe writes (2, audited)** — mark read, create folder
+- **Dangerous (10, human approval out of band)** — move message, send,
+  reply, delete message, delete folder, create/delete calendar event, create a Zoom
   meeting, upload a file to Drive, move a Drive file to the trash
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
@@ -462,9 +462,9 @@ risposta e ti chiede conferma prima di inviare.
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi, file di Drive e il
   loro testo
-- **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
-- **Pericolose (9, approvazione umana fuori banda)** — invio, risposta,
-  cancellazione messaggio, cancellazione cartella, creazione/cancellazione
+- **Scritture sicure (2, con audit)** — segna letto, crea cartella
+- **Pericolose (10, approvazione umana fuori banda)** — spostamento,
+  invio, risposta, cancellazione messaggio, cancellazione cartella, creazione/cancellazione
   evento, creazione di una riunione Zoom, caricamento di un file su Drive,
   cestinamento di un file di Drive
 
@@ -722,8 +722,8 @@ codex plugin add gigamail@gigamail
 
 - **读取（17）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
   附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本
-- **安全写入（3，有审计）** —— 标记已读、移动邮件、新建文件夹
-- **危险操作（9，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
+- **安全写入（2，有审计）** —— 标记已读、新建文件夹
+- **危险操作（10，需带外人工批准）** —— 移动邮件、发送、回复、删除邮件、删除文件夹、
   创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站
 
 日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；

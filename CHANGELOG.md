@@ -21,7 +21,11 @@
     local-index rows (also in `sender_history`) carry no mail text;
   - drafts (watcher and console) are written from the backend's own checked
     copy, the console's cached text is no longer used, and the injection
-    check also reads the hidden part; an unchecked body gets no draft;
+    check also reads the hidden part; an unchecked body is drafted from
+    the best-effort text, with a warning, only where a person reads the
+    draft first (console reply button, `semi` rules); `auto` rules, the
+    agent bar and MCP clients get no body;
+  - `read_message` lists the visible links (`links`: text and url);
   - every text made from HTML for a person (previews, archive search,
     alerts) skips hidden text.
   See SECURITY.md for what it does not catch.
