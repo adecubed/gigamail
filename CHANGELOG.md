@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The agent reads what the person sees, and nothing hidden.** A mail
+  can carry text the reader never sees (display:none, font size zero,
+  white on white, off-screen blocks, zero-width or Unicode tag
+  characters), and an instruction hidden there reached the agent:
+  `read_message` returned the HTML itself, and the text made from it kept
+  everything but tags. Now:
+  - `read_message` returns the visible text only (`contentType: "text"`),
+    and `hidden_text` when something was left out;
+  - subjects and previews of `list_messages`, `list_unread` and
+    `search_mail` lose their invisible characters;
+  - drafts (watcher and console) are written from the visible text, while
+    the injection check also reads the hidden part;
+  - every text made from HTML (previews, archive search, alerts) skips
+    hidden text.
+  See SECURITY.md for what it does not catch.
 - **Executable attachments never reach an agent and are never opened.**
   GigaMail also runs inside harnesses whose agent holds a shell, and a
   mail saying "install the attachment" next to a program was read by that

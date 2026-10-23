@@ -354,6 +354,46 @@ What this does not stop, stated plainly:
   that runs commands, keep its command approvals on, or run its commands in
   a container that cannot see GigaMail's data folder.
 
+## Hidden text: the agent reads what the person sees
+
+A mail can address the agent in text the person never sees: a block with
+`display:none`, a font of size zero, white text on white, a paragraph
+pushed off screen, zero-width characters, Unicode "tag" characters that
+spell ASCII no font draws. The person approves what the console shows; an
+agent handed the HTML, or a text made by dropping its tags, reads all of
+it, and an instruction hidden there is addressed to the agent alone.
+
+- **`read_message` hands the visible text, never the HTML.** The body is
+  read the way a person sees it (`core/html_text.py`): inline styles,
+  `hidden`, `<font color>`, `bgcolor` and simple class or id rules of
+  `<style>` blocks decide what is hidden; zero-width, bidi-control and tag
+  characters are dropped. When anything was left out, the result carries
+  `hidden_text`, saying how much and that the agent should not go looking
+  for it.
+- **Subjects and previews** of `list_messages`, `list_unread` and
+  `search_mail` lose their invisible characters.
+- **Drafts are written from the visible text**, in the watcher and in the
+  console, while the injection check reads the visible text *and* what was
+  hidden, so an order hidden in the HTML still stops the draft.
+- **Every text made from HTML** (previews, the archive's search text, the
+  IMAP body text, alerts) goes through the same reader.
+
+What this does not stop, stated plainly:
+
+- **Tricks the reader does not know.** Rules with descendant selectors,
+  external style sheets, text a shade off the background but not close
+  enough, text under an image. It narrows the gap between what the person
+  sees and what the agent reads; it does not close it.
+- **Previews from Microsoft.** Graph's `bodyPreview` is text Microsoft made
+  from the HTML; what was hidden in it cannot be told apart there.
+  `read_message` can.
+- **Text stored before this change.** The archive's search text and the
+  older local index of mail saved earlier may still hold hidden text in
+  search previews; reading the mail gives the visible text.
+- **Visible text.** An instruction a person can read is still in the
+  body. The text stays untrusted data, and the gates on sending stay where
+  they are.
+
 ## The desktop console
 
 The Windows app (0.3) renders mail written by strangers, so its renderer is

@@ -420,7 +420,8 @@ def _prompt(row: Dict[str, Any], message: Dict[str, Any],
     notes = mail_memory.client_notes(_address(row["thread_key"]))
     body = drafting._message_body_text(message)
     try:
-        if injection_guard.check(body, str(message.get("subject") or "")).blocked:
+        if injection_guard.check(drafting.guard_text(message),
+                                 str(message.get("subject") or "")).blocked:
             body = "(not shown: it contains instructions aimed at the assistant)"
     except Exception as e:
         logger.debug("injection_guard unavailable: %s", e)
