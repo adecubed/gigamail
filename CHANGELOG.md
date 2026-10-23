@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Telegram messages have no link preview.** Telegram fetches the first
+  link of a message from its own servers to preview it, as soon as the
+  message is sent. A draft written by an agent that read a hostile mail
+  could carry a link with data in it (`https://attacker.example/?d=...`),
+  and the data left the moment the draft reached the phone for approval,
+  approved or not. Every text GigaMail sends to Telegram now disables the
+  preview, and the custom notify-command example in `policy.py` does too.
 - **Executable attachments never reach an agent and are never opened.**
   GigaMail also runs inside harnesses whose agent holds a shell, and a
   mail saying "install the attachment" next to a program was read by that
