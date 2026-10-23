@@ -16,6 +16,7 @@ from gigamail.core import (
     calendar_router,
     extensions,
     file_extractor,
+    html_text,
     injection_guard,
     knowledge_index,
     mail_guard,
@@ -204,12 +205,23 @@ def _slot_liberi_text(exclude: Sequence[str] = ()) -> str:
 
 
 def _message_body_text(message: Dict[str, Any]) -> str:
-    body = message.get("body_text")
-    if not body:
-        body = message.get("body")
-        if isinstance(body, dict):
-            body = body.get("content") or ""
-    return str(body or "")[:_MAIL_CHARS_MAX]
+    """What the drafting agent reads: only the visible text, and nothing
+    when the HTML could not be checked (core/html_text.read_mail). Graph
+    hands the HTML, and the prompt used to receive it raw."""
+    return html_text.read_mail(message).visible[:_MAIL_CHARS_MAX]
+
+
+def guard_text(message: Dict[str, Any]) -> str:
+    """What the injection check reads: the visible text AND what was hidden
+    from the reader, so an order hidden in the HTML still stops the draft."""
+    m = html_text.read_mail(message)
+    return f"{m.visible[:_MAIL_CHARS_MAX]}\n{m.hidden[:_MAIL_CHARS_MAX]}"
+
+
+def body_checked(message: Dict[str, Any]) -> bool:
+    """False when the mail's HTML could not be checked for hidden text: no
+    draft is written from it."""
+    return html_text.read_mail(message).checked
 
 
 def _vincoli_estensioni(subject: str, body: str) -> str:
@@ -307,15 +319,31 @@ class MailConOrdini(Exception):
 def draft_reply(rule: Dict[str, Any], account_id: int,
                 message: Dict[str, Any],
                 feedback: Optional[str] = None,
-                previous_body: Optional[str] = None) -> str:
+                previous_body: Optional[str] = None,
+                allow_unchecked: bool = False) -> str:
     """Corpo della risposta, scritto dall'agente dell'utente. Solleva
     agent_bridge.AgentUnavailable se l'agente non c'e' o non risponde,
     MailConOrdini se la mail impartisce ordini all'assistente.
 
     Il presidio gira qui e non solo in smart_draft: questo percorso e' il
-    piu' esposto dei due, perche' la regola puo' anche spedire da sola."""
-    verdetto = injection_guard.check(_message_body_text(message),
-                                     str(message.get("subject") or ""))
+    piu' esposto dei due, perche' la regola puo' anche spedire da sola.
+
+    A mail whose HTML could not be checked for hidden text gets no draft,
+    unless allow_unchecked: a semi rule, where a person reads the draft and
+    a warning before anything leaves. Then the draft is written from the
+    best reading available, and the check still reads the hidden part."""
+    mail = html_text.read_mail(message)
+    if not mail.checked:
+        if not (allow_unchecked and mail.unverified):
+            raise MailConOrdini(["unchecked_markup"])
+        hidden = mail.hidden
+        message = dict(message)
+        message.pop("body_text", None)
+        message["body"] = {"contentType": "text", "content": mail.unverified}
+        guard = f"{guard_text(message)}\n{hidden[:_MAIL_CHARS_MAX]}"
+    else:
+        guard = guard_text(message)
+    verdetto = injection_guard.check(guard, str(message.get("subject") or ""))
     if verdetto.blocked:
         raise MailConOrdini(verdetto.reasons, verdetto.passage)
     # Timeout piu' largo del default (180 s): misurato dal vivo, claude -p

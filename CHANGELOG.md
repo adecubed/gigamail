@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- **The agent reads what the person sees, and nothing hidden.** A mail
+  can carry text the reader never sees (display:none, font size zero,
+  white on white, off-screen blocks, zero-width or Unicode tag
+  characters), and an instruction hidden there reached the agent:
+  `read_message` returned the HTML itself, and the text made from it kept
+  everything but tags. Now:
+  - `read_message` returns the visible text only (`contentType: "text"`),
+    with body, `body_text` and `bodyPreview` from one reading, and
+    `hidden_text` when something was left out; style blocks are read
+    first wherever they sit, rules match by compound selector with
+    `!important` and inline styles cascading;
+  - a body that cannot be checked (parser error, a hiding rule it cannot
+    evaluate, an external style sheet) is withheld with `withheld`, never
+    read some cruder way;
+  - provider previews in `list_messages`, `list_unread` and `search_mail`
+    are withheld, archive previews are rebuilt from the checked text, and
+    local-index rows (also in `sender_history`) carry no mail text;
+  - drafts (watcher and console) are written from the backend's own checked
+    copy, the console's cached text is no longer used, and the injection
+    check also reads the hidden part; an unchecked body is drafted from
+    the best-effort text, with a warning, only where a person reads the
+    draft first (console reply button, `semi` rules); `auto` rules, the
+    agent bar and MCP clients get no body;
+  - `read_message` lists the visible links (`links`: text and url);
+  - every text made from HTML for a person (previews, archive search,
+    alerts) skips hidden text.
+  See SECURITY.md for what it does not catch.
 - **Executable attachments never reach an agent and are never opened.**
   GigaMail also runs inside harnesses whose agent holds a shell, and a
   mail saying "install the attachment" next to a program was read by that

@@ -11,6 +11,7 @@ from gigamail.core import accounts as core_accounts
 from gigamail.core import (
     availability,
     calendar_router,
+    html_text,
     identity_reader,
     injection_guard,
     mail_memory,
@@ -288,20 +289,44 @@ class SmartDraftRequest(BaseModel):
 def smart_draft(message_id: str, req: SmartDraftRequest,
                 account_id: Optional[int] = None, folder: str = ""):
     aid = account_id or _active_id()
-    body = req.body_text
-    if not body:
-        try:
-            msg = mail_router.get_message(aid, message_id=message_id, folder=folder) or {}
-            body = (msg.get("body", {}) or {}).get("content") or msg.get("bodyPreview") or ""
-            req.subject = req.subject or msg.get("subject") or ""
-        except Exception:
-            pass
+    # The draft is written from the backend's own copy of the mail, read
+    # as a person sees it (core/html_text.read_mail). The text the console
+    # sends (req.body_text) is a cache of what it showed and was never
+    # checked for hidden text: with it the same mail was blocked without
+    # the cache and drafted with it. It is no longer used for the prompt.
+    try:
+        msg = mail_router.get_message(aid, message_id=message_id, folder=folder) or {}
+    except Exception:
+        msg = {}
+    if not msg:
+        raise HTTPException(404, "The mail could not be read from the server or the archive, "
+                                 "so it could not be checked: no draft.")
+    mail = html_text.read_mail(msg)
+    req.subject = req.subject or html_text.strip_invisible(msg.get("subject") or "")[0]
+    # A person clicked here and reads the draft before sending it: a mail
+    # whose HTML could not be checked is drafted from the best reading,
+    # with a warning on screen. Only when nothing could be read is it refused.
+    warning = ""
+    if mail.checked:
+        body = mail.visible
+    elif mail.unverified:
+        body, warning = mail.unverified, "unchecked_markup"
+    else:
+        return {
+            "blocked": True,
+            "draft": "",
+            "engine": "injection_guard",
+            "reasons": ["unchecked_markup"],
+            "passage": "",
+            "suggested_attachments": [],
+        }
+    hidden = mail.hidden
     # Il presidio gira PRIMA di qualunque generazione: se la mail impartisce
     # ordini all'assistente non si scrive nessuna bozza e non si propone
     # nessun allegato. Difendersi dentro l'istruzione non basta — l'attacco
     # viaggia nello stesso canale; qui il controllo e' deterministico e non
     # interpella nessun modello, quindi il testo non puo' manipolarlo.
-    verdetto = injection_guard.check(body, req.subject)
+    verdetto = injection_guard.check(f"{body}\n{hidden}", req.subject)
     if verdetto.blocked:
         return {
             "blocked": True,
@@ -338,6 +363,8 @@ def smart_draft(message_id: str, req: SmartDraftRequest,
     )
     out = _run_agent(prompt)
     out["blocked"] = False
+    if warning:
+        out["warning"] = warning
     out["suggested_attachments"] = _suggest_attachments(
         aid, f"{out.get('draft', '')} {req.instruction} {req.subject} {body[:1000]}",
         folder,

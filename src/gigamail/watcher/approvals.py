@@ -24,7 +24,8 @@ _RULE_TTL_SECONDS = policy._env_int("GIGAMAIL_RULE_APPROVAL_TTL", 4 * 3600)
 def _preview_for(rule: Dict[str, Any], message: Dict[str, Any],
                  body: str, mode: str,
                  to_address: Optional[str] = None,
-                 allegati: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+                 allegati: Optional[List[Dict[str, str]]] = None,
+                 unchecked: bool = False) -> Dict[str, Any]:
     preview = {
         "replying_to": {
             "from": mail_guard.sender_address(message),
@@ -45,6 +46,11 @@ def _preview_for(rule: Dict[str, Any], message: Dict[str, Any],
         preview["cc"] = rule["cc"]
     if allegati:
         preview["attachments"] = attachments_mod.preview(allegati)
+    if unchecked:
+        # Shown where the person approves: the draft was written from a mail
+        # whose HTML could not be checked for hidden text.
+        preview["warning"] = ("the incoming mail has styles GigaMail could not "
+                              "check for hidden text: read it before approving")
     return preview
 
 
