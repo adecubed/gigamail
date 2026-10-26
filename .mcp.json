@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "gigamail": {
+      "command": "${GIGAMAIL_SERVER:-gigamail-server}",
+      "args": [],
+      "env_vars": [
+        "APPDATA",
+        "LOCALAPPDATA",
+        "USERPROFILE",
+        "HOME",
+        "PATH",
+        "GIGAMAIL_ROOT",
+        "ADE_ROOT",
+        "GIGAMAIL_APPROVAL_NOTIFY_CMD"
+      ],
+      "startup_timeout_sec": 30
+    }
+  }
+}

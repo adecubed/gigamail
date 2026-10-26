@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found — GigaMail</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#070b18">
+<link rel="icon" href="/brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="/brand/gigamail-logo-96.png?v=2">
+<style>
+  :root {
+    --bg: #070b18; --text: #e8eefb; --muted: #9fb0cc;
+    --line: rgba(143,168,214,.22); --line-2: rgba(143,168,214,.4);
+    --blue: #4fc3ff; --pink: #ff5fcf; --amber: #ffb454;
+    --grad: linear-gradient(135deg, #4fc3ff, #ff5fcf);
+    --display: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); }
+  .mono { font-family: var(--display); }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: .9rem clamp(1rem, 3vw, 2rem); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: .6rem; font-family: var(--display); font-weight: 700; font-size: 1.05rem; color: var(--text); text-decoration: none; letter-spacing: -.02em; }
+  .brand img { width: 30px; height: 30px; }
+  .brand img.wordmark { width: auto; height: 30px; }
+  .brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pill { font-family: var(--display); font-size: .82rem; padding: .45rem .9rem; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); text-decoration: none; }
+
+  main { max-width: 46rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 2rem) 6rem; }
+  h1 { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -.03em; margin: 0 0 .4rem; }
+  .updated { color: var(--muted); font-family: var(--display); font-size: .85rem; margin: 0 0 2.5rem; }
+  h2 { font-family: var(--display); font-size: 1.15rem; letter-spacing: -.02em; margin: 2.6rem 0 .7rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+  p, li { color: #cfdcf2; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .45rem 0; }
+  strong { color: var(--text); }
+  .lede { font-size: 1.08rem; color: var(--text); }
+  .callout { border: 1px solid var(--line-2); border-left: 3px solid var(--amber); border-radius: 10px; padding: 1rem 1.2rem; background: rgba(255,180,84,.06); margin: 1.4rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 2rem clamp(1rem, 4vw, 2rem); color: var(--muted); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/"><img class="wordmark" src="/brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="110" height="30"></a>
+  <a class="pill" href="/">Back to site</a>
+</header>
+
+<main>
+  <h1>404 — page not found</h1>
+  <p class="updated">Pagina non trovata.</p>
+  <p class="lede">There is nothing at this address. The page may have moved, or the link may be wrong.</p>
+  <ul>
+    <li><a href="/">GigaMail home</a> — the email layer for AI agents</li>
+    <li><a href="/it.html">Versione italiana</a></li>
+    <li><a href="https://github.com/adecubed/gigamail">Source code and downloads on GitHub</a></li>
+    <li><a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a></li>
+  </ul>
+</main>
+
+<footer>
+  GigaMail — Adecubed — AGPL-3.0 —
+  <a href="/">gigamail.ai</a>
+</footer>
+
+</body>
+</html>

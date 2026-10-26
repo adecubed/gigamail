@@ -1,0 +1,38 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.env
+NOTES.dev.md
+*.db
+*.token*
+.token_cache.json
+node_modules/
+POST_DRAFTS.md
+# Interprete Python che l'installer della console impacchetta: si rigenera
+# con lo script di preparazione, pesa centinaia di MB, non va versionato.
+console/python-embedded/
+console/e2e-electron.log
+
+# Claude Code: file locali della sessione (launch.json, settings.local.json, worktree)
+.claude/
+
+# Il sito pubblico vendorizza three.js: la cartella build/ qui dentro e' una
+# dipendenza da versionare, non un artefatto di compilazione.
+!docs/vendor/three/build/
+!docs/vendor/three/build/*.js
+# File credenziali OAuth scaricato da Google: contiene un secret,
+# va nella cartella dati dell'utente, mai nel repository.
+client_secret_*.json
+google_client_secret.json
+
+# Prova a vuoto della demo: stato applicativo e dati generati a ogni giro
+demo_video/.stato/
+demo_video/dati/
+demo_video/video/*.mp4
+demo_video/.frame/
+demo_video/.montaggio/
+demo_video/video/*.json
+demo_video/video/*.srt

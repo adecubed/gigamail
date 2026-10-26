@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: http://127.0.0.1:* http://localhost:* https: http: data: blob:; connect-src http://127.0.0.1:* http://localhost:*; media-src 'self' file: blob: data: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<title>GigaMail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent: #eeb9dd;
+    --accent-l: #b0c7f4;
+    --font: 'Saira','Segoe UI',-apple-system,sans-serif;
+    --pink: #eeb9dd;
+    --blue: #b0c7f4;
+  }
+  *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  body {
+    font-family: var(--font);
+    background: #f3e6f0;
+    width:100vw; height:100vh;
+    overflow:hidden; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px;
+  }
+
+  /* ── TITLEBAR ── */
+  .titlebar {
+    height:34px; flex-shrink:0;
+    display:flex; align-items:center; padding:0 14px; gap:8px;
+    background:#f3e6f0;
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    -webkit-app-region:drag; user-select:none;
+  }
+  .tb-title { font-size:11px; color:rgba(0,0,0,0.75); font-weight:600; flex:1; }
+  .tb-buttons { display:flex; gap:6px; align-items:center; -webkit-app-region:no-drag; }
+  .tb-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; cursor:pointer;
+    color:rgba(0,0,0,0.6); transition:all 0.15s; flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tb-btn:hover { box-shadow:0 3px 10px rgba(0,0,0,0.12); }
+  .tb-btn.close:hover { background:rgba(220,38,38,0.15); color:#dc2626; }
+  .tb-btn.minimize:hover { background:rgba(245,158,11,0.15); color:#d97706; }
+  .tb-btn.maximize:hover { background:rgba(34,197,94,0.15); color:#16a34a; }
+
+  /* ── BODY ── */
+  /* un solo scorrimento per tutta la finestra: prima la griglia scorreva
+     in una striscia sotto i prossimi appuntamenti */
+  .cal-body {
+    flex:1; display:flex; flex-direction:column; overflow-y:auto; min-height:0;
+    background:rgba(245,247,250,0.98); border-radius:0 0 7px 7px;
+  }
+
+  /* ── PROSSIMI APPUNTAMENTI ── */
+  .upcoming-section {
+    padding:12px 14px 8px; flex-shrink:0;
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    background:rgba(255,255,255,0.95);
+  }
+  .section-title {
+    font-size:9.5px; font-weight:700; letter-spacing:1.5px;
+    color:rgba(0,0,0,0.6); text-transform:uppercase; margin-bottom:8px;
+  }
+  .upcoming-list {
+    display:flex; flex-direction:column; gap:6px;
+    max-height:180px; overflow-y:auto;
+    padding-right:4px;
+  }
+  .upcoming-list::-webkit-scrollbar { width:5px; }
+  .upcoming-list::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  .upcoming-item {
+    display:flex; align-items:flex-start; gap:10px;
+    background:white; border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px; padding:8px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+    cursor:pointer; transition:all 0.15s;
+  }
+  .upcoming-item:hover { box-shadow:0 2px 8px rgba(0,0,0,0.07); transform:translateY(-1px); }
+  .upcoming-dot {
+    width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px;
+    background:#f3e6f0;
+    border:1.5px solid rgba(0,0,0,0.5);
+  }
+  .upcoming-info { flex:1; min-width:0; }
+  .upcoming-title { font-size:12px; font-weight:600; color:rgba(0,0,0,0.82); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .upcoming-meta { font-size:10.5px; color:rgba(0,0,0,0.6); }
+  .upcoming-date {
+    font-size:10px; font-weight:600; color:rgba(0,0,0,0.6);
+    text-align:right; flex-shrink:0; white-space:nowrap;
+  }
+
+  /* ── TOOLBAR CALENDARIO ── */
+  .cal-toolbar {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px; background:white;
+    border-bottom:1px solid rgba(0,0,0,0.08); flex-shrink:0;
+    position:sticky; top:0; z-index:5;
+  }
+  .cal-nav-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:rgba(255,255,255,0.95); border:1px solid rgba(0,0,0,0.14);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .cal-nav-btn:hover { background:#f3e6f0; }
+  .cal-month-label { font-size:14px; font-weight:600; color:rgba(0,0,0,0.82); flex:1; }
+  .cal-today-btn {
+    padding:5px 12px; border-radius:7px;
+    background:rgba(255,255,255,0.95); border:1px solid rgba(0,0,0,0.14);
+    font-size:11px; font-weight:500; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s; box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .cal-today-btn:hover { background:#f3e6f0; }
+  .add-btn {
+    padding:5px 12px; border-radius:7px;
+    background:#f3e6f0; border:1px solid rgba(0,0,0,0.14);
+    font-size:11px; font-weight:600; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s; box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .add-btn:hover { box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+
+  /* ── GRIGLIA CALENDARIO ── */
+  .cal-grid-wrap { flex:none; padding:0 14px 14px; }
+  .cal-grid {
+    display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:1px; background:rgba(0,0,0,0.1);
+    border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px; overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+    margin-top:8px;
+  }
+  .cal-day-header {
+    background:#f3e6f0;
+    padding:6px 4px; text-align:center;
+    font-size:10px; font-weight:700; color:rgba(0,0,0,0.7);
+    letter-spacing:0.5px; text-transform:uppercase;
+  }
+  .cal-cell {
+    background:white; min-height:80px; padding:4px; min-width:0;
+    display:flex; flex-direction:column; gap:2px;
+    cursor:pointer; transition:background 0.1s;
+  }
+  .cal-cell:hover { background:rgba(238,185,221,0.08); }
+  .cal-cell.other-month { background:rgba(0,0,0,0.02); }
+  .cal-cell.other-month .cal-day-num { color:rgba(0,0,0,0.55); }
+  .cal-cell.today { background:rgba(238,185,221,0.15); }
+  .cal-day-num {
+    font-size:11px; font-weight:600; color:rgba(0,0,0,0.6);
+    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; flex-shrink:0;
+  }
+  .cal-cell.today .cal-day-num {
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14); color:rgba(0,0,0,0.8);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .cal-event-chip {
+    font-size:9.5px; padding:1px 5px; border-radius:4px;
+    background:linear-gradient(135deg,rgba(238,185,221,0.7),rgba(176,199,244,0.7));
+    border:1px solid rgba(0,0,0,0.2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    cursor:pointer; color:rgba(0,0,0,0.7); font-weight:500;
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+  }
+  .cal-event-chip:hover { background:#f3e6f0; box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .cal-event-chip.all-day { background:var(--gm-pink, #e0409a) !important; color:#fff !important; }
+  .event-allday { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; cursor:pointer;
+    color:rgba(0,0,0,0.82); user-select:none; }
+  .event-allday input { width:16px; height:16px; accent-color:var(--gm-pink, #e0409a); cursor:pointer; margin:0; }
+  .cal-more { font-size:9px; color:rgba(0,0,0,0.55); padding:1px 4px; }
+
+  /* ── MODAL EVENTO ── */
+  .event-modal {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.25); display:none;
+    align-items:center; justify-content:center;
+  }
+  .event-modal.visible { display:flex; }
+  .event-box {
+    background:white; border-radius:12px;
+    border:1px solid rgba(0,0,0,0.14);
+    box-shadow:0 16px 48px rgba(0,0,0,0.35);
+    width:400px; display:flex; flex-direction:column; overflow:hidden;
+    max-height:90vh;
+  }
+  .event-hdr {
+    padding:12px 16px; background:#f3e6f0;
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; font-weight:600; flex-shrink:0;
+  }
+  .event-body { padding:16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+  .event-field { display:flex; flex-direction:column; gap:4px; }
+  .event-label { font-size:9.5px; font-weight:700; letter-spacing:1.5px; color:rgba(0,0,0,0.6); text-transform:uppercase; }
+  .event-input {
+    width:100%; background:rgba(255,255,255,0.95); border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px; padding:7px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none; box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .event-ftr {
+    padding:10px 16px; border-top:1px solid rgba(0,0,0,0.08);
+    display:flex; gap:8px; align-items:center; flex-shrink:0;
+  }
+  .btn {
+    padding:6px 14px; border-radius:8px; border:1px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .btn:hover { background:#f3e6f0; }
+  .btn.primary {
+    background:#f3e6f0;
+    font-weight:600;
+  }
+  .btn.danger { border-color:rgba(220,38,38,0.75); color:#dc2626; }
+  .btn.danger:hover { background:rgba(220,38,38,0.1); }
+  .loading { text-align:center; padding:20px; color:rgba(0,0,0,0.55); font-size:12px; }
+  .filter-btn {
+    padding:4px 10px; border-radius:7px; border:1px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.95); font-size:10px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  }
+  .filter-btn:hover { background:#f3e6f0; }
+  .filter-btn.active { background:#f3e6f0; font-weight:700; }
+
+  /* ── ATTENDEES CHIPS ── */
+  .attendee-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(176,199,244,0.2); border:1px solid rgba(176,199,244,0.6);
+    color:rgba(26,80,180,0.85); font-size:11px; font-weight:500;
+    padding:2px 10px; border-radius:20px; font-family:var(--font);
+  }
+  .attendee-chip-x {
+    cursor:pointer; opacity:0.5; font-size:13px; line-height:1;
+    background:none; border:none; color:inherit; padding:0;
+  }
+  .attendee-chip-x:hover { opacity:1; color:#dc2626; }
+
+  /* ── Menu contesto (tasto destro) ── */
+  .ctx-menu {
+    position:fixed; z-index:9999; min-width:170px;
+    background:#ffffff;
+    border:1px solid rgba(0,0,0,0.14); border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+    padding:5px; display:none; font-family:var(--font);
+  }
+  .ctx-menu.visible { display:block; }
+  .ctx-item {
+    display:flex; align-items:center; gap:9px;
+    padding:8px 12px; border-radius:7px;
+    font-size:13px; color:rgba(0,0,0,0.8); cursor:pointer;
+    user-select:none; transition:background 0.12s;
+  }
+  .ctx-item:hover { background:linear-gradient(135deg,rgba(238,185,221,0.35),rgba(176,199,244,0.35)); }
+  .ctx-item.danger { color:#dc2626; }
+  .ctx-item.danger:hover { background:rgba(220,38,38,0.12); }
+  .ctx-ico { width:16px; text-align:center; flex-shrink:0; }
+  .ctx-sep { height:1px; background:rgba(0,0,0,0.1); margin:4px 6px; }
+</style>
+<link rel="stylesheet" href="theme-popup.css"/>
+<link rel="stylesheet" href="theme-dark.css"/>
+<script src="theme_mode.js"></script>
+<script src="dialog.js"></script>
+<script src="icons.js"></script>
+</head>
+<body>
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" data-action="edit"><span class="ctx-ico"><span data-icon="pencil" data-icon-size="14"></span></span><span data-i18n="cal_edit">Modifica</span></div>
+  <div class="ctx-item" data-action="followup"><span class="ctx-ico"><span data-icon="pin" data-icon-size="14"></span></span><span data-i18n="cal_followup">Follow up</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" data-action="delete"><span class="ctx-ico"><span data-icon="trash" data-icon-size="14"></span></span><span data-i18n="cal_delete">Cancella</span></div>
+</div>
+<div class="titlebar">
+  <div class="tb-title"><span data-icon="calendar" data-icon-size="15"></span> <span data-i18n="cal_title">GIGA Calendario</span></div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin" data-i18n-title="hide" title="Nascondi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    <button class="tb-btn maximize" id="btnMax" data-i18n-title="fullscreen" title="Tutto schermo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+    <button class="tb-btn close"   id="btnClose" data-i18n-title="close" title="Chiudi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+
+<div class="cal-body">
+
+  <!-- PROSSIMI 5 APPUNTAMENTI -->
+  <div class="upcoming-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="section-title" style="margin-bottom:0" data-i18n="cal_upcoming">Prossimi appuntamenti</div>
+      <div style="display:flex;gap:5px;">
+        <button class="filter-btn active" id="btnFilterAll" data-i18n="cal_all">Tutti</button>
+        <button class="filter-btn" id="btnFilterToday" data-i18n="cal_today">Oggi</button>
+        <button class="filter-btn" id="btnFilterWeek" data-i18n="cal_next7">Prossimi 7 giorni</button>
+      </div>
+    </div>
+    <div class="upcoming-list" id="upcomingList">
+      <div class="loading" data-i18n="loading">Caricamento…</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="cal-toolbar">
+    <button class="cal-nav-btn" id="btnPrevMonth">‹</button>
+    <button class="cal-nav-btn" id="btnNextMonth">›</button>
+    <div class="cal-month-label" id="calMonthLabel"></div>
+    <button class="cal-today-btn" id="btnToday" data-i18n="cal_today">Oggi</button>
+    <button class="cal-today-btn" id="btnRefreshCal" data-i18n-title="win_refresh_shortcut" title="Aggiorna (Ctrl+R)">↻</button>
+    <button class="add-btn" id="btnAddEvent">+ <span data-i18n="cal_event">Evento</span></button>
+  </div>
+
+  <!-- GRIGLIA -->
+  <div class="cal-grid-wrap">
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+</div>
+
+<!-- MODAL EVENTO -->
+<div class="event-modal" id="eventModal">
+  <div class="event-box">
+    <div class="event-hdr">
+      <span id="eventModalTitle" data-i18n="cal_new_event">Nuovo evento</span>
+      <button class="btn" id="btnModalClose" style="padding:3px 8px" data-i18n-title="close" title="Chiudi">✕</button>
+    </div>
+    <div class="event-body">
+      <input type="hidden" id="eventId"/>
+      <div class="event-field">
+        <div class="event-label" data-i18n="title_label">Titolo</div>
+        <input type="text" id="eventSubject" class="event-input" data-i18n-ph="event_title_ph" placeholder="Titolo evento…"/>
+      </div>
+      <label class="event-allday"><input type="checkbox" id="eventAllDay"/><span data-i18n="cal_all_day">Tutto il giorno</span></label>
+      <div class="event-field">
+        <div class="event-label" data-i18n="start_label">Inizio</div>
+        <input type="datetime-local" id="eventStart" class="event-input"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="end_label">Fine</div>
+        <input type="datetime-local" id="eventEnd" class="event-input"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="place_label">Luogo</div>
+        <input type="text" id="eventLocation" class="event-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="notes_label">Note</div>
+        <input type="text" id="eventBody" class="event-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+      </div>
+      <div class="event-field">
+        <div class="event-label" data-i18n="invite_label">Invita</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="eventAttendeesInput" class="event-input" data-i18n-ph="win_attendee_email_ph" placeholder="mario.rossi@example.com" style="flex:1"/>
+          <button class="btn" id="btnAddAttendee" style="padding:5px 12px;white-space:nowrap;flex-shrink:0;">+ <span data-i18n="cal_add_attendee">Aggiungi</span></button>
+        </div>
+        <div id="eventAttendeesList" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;min-height:0;"></div>
+      </div>
+    </div>
+    <div class="event-ftr">
+      <button class="btn danger" id="btnDeleteEvent" style="display:none"><span data-icon="trash" data-icon-size="14"></span> <span data-i18n="delete_cap">Elimina</span></button>
+      <div style="flex:1"></div>
+      <button class="btn" id="btnCancelEvent" data-i18n="cancel">Annulla</button>
+      <button class="btn primary" id="btnSaveEvent" data-i18n="save">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script src="calendar_window_page.js"></script>
+  <script src="i18n.js"></script>
+</body>
+</html>

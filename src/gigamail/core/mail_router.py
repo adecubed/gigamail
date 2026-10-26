@@ -1,0 +1,753 @@
+"""
+mail_router.py — Router che indirizza le chiamate mail/calendar
+al backend corretto (Microsoft Graph o IMAP) in base all'account attivo.
+Microsoft → usa auth.py (token cache MSAL)
+IMAP      → usa email + password cifrata in accounts.py
+Calendar  → Google Calendar via OAuth2 (calendar_client.py)
+"""
+import logging
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+from typing import Dict, List, Optional
+
+from . import accounts as acc
+from . import auth as ms_auth
+from . import demo_mailbox as demo
+from . import imap_client as imap
+from . import mail as ms_mail
+
+try:
+    import calendar_client as gcal
+    _GCAL_OK = True
+except ImportError:
+    _GCAL_OK = False
+def _account(account_id=None):
+    """
+    Risolve l'account corretto.
+    Accetta: int (id), dict (oggetto account), None (usa attivo).
+    """
+    if account_id is not None:
+        # Se è già un dict account, restituiscilo direttamente
+        if isinstance(account_id, dict):
+            return _with_ms_context(account_id)
+        # Normalizza a int
+        try:
+            aid = int(account_id)
+        except (TypeError, ValueError):
+            return acc.get_active_account()
+        # Id esplicito: se non esiste NON ripiegare sull'account attivo —
+        # un chiamante (specie un agente) che chiede l'account X non deve
+        # mai ricevere silenziosamente i dati di un altro account.
+        return _with_ms_context(acc.get_account_by_id(aid))
+    return _with_ms_context(acc.get_active_account())
+
+
+def _with_ms_context(a):
+    """Per gli account Microsoft imposta il contesto auth (email + copia del
+    token cache dal DB) cosi' get_token() seleziona l'identita' GIUSTA anche
+    con piu' account Microsoft configurati."""
+    if a and a.get('type', 'microsoft') == 'microsoft':
+        data = a.get('data') or {}
+        ms_auth.set_current_account(
+            a.get('email', ''), a.get('id'), data.get('token_cache')
+        )
+    return a
+def _demo(a) -> bool:
+    """Account di tipo 'demo': la casella e' un file, non una connessione.
+    Esiste solo se qualcuno l'ha creato apposta — per le riprese o per una
+    prova — quindi su un'installazione normale questo ramo non esiste."""
+    return bool(a) and a.get('type') == 'demo'
+
+
+def _is_microsoft(account_id=None) -> bool:
+    a = _account(account_id)
+    if not a:
+        return False
+    return a.get('type', 'microsoft') == 'microsoft'
+def _imap_credentials(a: dict) -> tuple:
+    """Estrae credenziali IMAP/SMTP da un oggetto account."""
+    d = a.get('data', a)
+    cred = (
+        d.get('imap_host', a.get('imap_host', '')),
+        d.get('imap_port', a.get('imap_port', 993)),
+        a.get('email', ''),
+        d.get('password', a.get('password', '')),
+    )
+    if d.get('insecure_tls'):
+        imap.consenti_tls_non_verificato(*cred[:3])
+    return cred
+def _smtp_credentials(a: dict) -> tuple:
+    """Estrae credenziali SMTP da un oggetto account."""
+    d = a.get('data', a)
+    return (
+        d.get('smtp_host', a.get('smtp_host', '')),
+        d.get('smtp_port', a.get('smtp_port', 465)),
+        a.get('email', ''),
+        d.get('password', a.get('password', '')),
+    )
+
+
+def _normalize_send_result(result) -> Dict:
+    if isinstance(result, dict):
+        out = {
+            'success': bool(result.get('success')),
+            'provider': result.get('provider'),
+            'sent_copy_saved': bool(result.get('sent_copy_saved', result.get('success'))),
+            'warning': result.get('warning'),
+            'error': result.get('error'),
+        }
+        # cio' che il provider ha accettato (SMTP: per destinatario; Graph:
+        # id/errore) — finisce nell'audit accanto al payload approvato
+        if result.get('provider_result') is not None:
+            out['provider_result'] = result['provider_result']
+        return out
+    ok = bool(result)
+    return {
+        'success': ok,
+        'provider': None,
+        'sent_copy_saved': ok,
+        'warning': None,
+        'error': None,
+    }
+# ── MAIL ──────────────────────────────────────────────────────────────────────
+def get_messages(
+    account_id=None,
+    folder: str = 'inbox',
+    top: int = 20,
+    skip: int = 0,
+    priority: bool = False,
+) -> List[Dict]:
+    a = _account(account_id)
+    if not a:
+        return []
+    if _demo(a):
+        return demo.get_messages(a, folder=folder, top=top, skip=skip)
+    f = (folder or 'inbox').lower()
+    # Microsoft Graph
+    if a.get('type', 'microsoft') == 'microsoft':
+        if f in ('inbox',):
+            target = 'inbox'
+        elif f in ('deleteditems', 'trash', 'cestino', 'deleted'):
+            target = 'deleteditems'
+        elif f in ('junkemail', 'spam', 'postaindesiderata', 'posta_indesiderata', 'junk'):
+            target = 'junkemail'
+        elif f in ('sentitems', 'sent', 'postainviata', 'posta_inviata'):
+            target = 'sentitems'
+        elif f in ('draft', 'drafts', 'bozze'):
+            target = 'drafts'
+        else:
+            target = folder
+        if priority:
+            return ms_mail.get_priority_messages(top=top)
+        return ms_mail.get_messages(folder=target, top=top, skip=skip)
+    # IMAP
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    # Normalizza nomi cartella stile Graph → alias IMAP usati da imap_client._resolve_folder
+    if f in ('inbox',):
+        target = 'INBOX'
+    elif f in ('deleteditems', 'trash', 'cestino', 'deleted'):
+        target = 'trash'
+    elif f in ('junkemail', 'spam', 'postaindesiderata', 'posta_indesiderata'):
+        target = 'junk'
+    elif f in ('sentitems', 'sent', 'postainviata', 'posta_inviata'):
+        target = 'sent'
+    else:
+        target = folder
+    return imap.get_messages(
+        imap_host,
+        imap_port,
+        email_addr,
+        password,
+        folder=target,
+        top=top,
+        skip=skip,
+    )
+def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict:
+    """Dal server; e se il server non ce l'ha piu', dall'archivio.
+
+    Un id "arch-..." viene dalla ricerca nell'archivio e si legge solo li'.
+    Un id del provider che il server non trova piu' (Outlook l'ha tolto,
+    qualcuno l'ha cancellato) si cerca nell'archivio prima di arrendersi."""
+    a = _account(account_id)
+    if not a:
+        return {}
+    from . import archivio
+    aid = a.get('id')
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        m = archivio.leggi(aid, message_id)
+        if not m:
+            raise ValueError(f"Messaggio non trovato nell'archivio: {message_id}")
+        return m
+    try:
+        m = _get_message_provider(a, account_id, message_id, folder)
+    except Exception:
+        m = archivio.leggi(aid, message_id, folder)
+        if m:
+            return m
+        raise
+    if not m:
+        m = archivio.leggi(aid, message_id, folder) or {}
+    return m
+
+
+def _get_message_provider(a, account_id, message_id: str, folder: str) -> Dict:
+    if _demo(a):
+        return demo.get_message(a, message_id)
+    if a.get('type', 'microsoft') == 'microsoft':
+        # Guardia: se l'ID è puramente numerico è un UID IMAP — non appartiene a questo account
+        if str(message_id).isdigit():
+            raise ValueError(f"ID numerico '{message_id}' non valido per account Microsoft (account_id={account_id})")
+        return ms_mail.get_message(message_id)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.get_message(imap_host, imap_port, email_addr, password, message_id, folder=folder or "INBOX")
+def get_message_headers(account_id=None, message_id: str = '', folder: str = '') -> Optional[Dict]:
+    """Intestazioni complete ({nome-minuscolo: [valori]}) per le barriere
+    anti-spam delle regole (mail_guard). None = non recuperabili."""
+    a = _account(account_id)
+    if not a:
+        return None
+    if _demo(a):
+        return demo.get_message_headers(a, message_id)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.get_message_headers(message_id)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.get_message_headers(
+        imap_host, imap_port, email_addr, password, message_id,
+        folder=folder or 'INBOX',
+    )
+
+
+def send_message(
+    account_id=None,
+    to: str = '',
+    subject: str = '',
+    body: str = '',
+    reply_to_id: str = None,
+    attachments: list = None,
+    cc: list = None,
+    bcc: list = None,
+    auto_submitted: bool = False,
+) -> Dict:
+    """Invia, e con gli appuntamenti accesi (`gigamail extensions enable
+    appointments`) porta in agenda quelli di cui la mail parla.
+
+    L'aggancio sta qui e non nei singoli tool perche' qui passano TUTTE le
+    mail in uscita: quelle dell'agente via MCP, quelle delle regole del
+    watcher, quelle della console. Prima mancava del tutto, e un
+    appuntamento proposto per mail non compariva da nessuna parte.
+
+    Il calendario non puo' far fallire un invio: la lettura gira in un
+    thread a perdere e qualunque errore resta nel log."""
+    esito = _send_backend(
+        account_id=account_id, to=to, subject=subject, body=body,
+        reply_to_id=reply_to_id, attachments=attachments, cc=cc, bcc=bcc,
+        auto_submitted=auto_submitted)
+    try:
+        if isinstance(esito, dict) and esito.get('success'):
+            a = _account(account_id)
+            aid = (a or {}).get('id')
+            from . import extensions
+            if aid is not None and extensions.enabled("appointments"):
+                from . import appointments
+                # Ogni mail che esce verso l'esterno, risposta o invio
+                # nuovo, mette il thread in ascolto: la replica del cliente
+                # deve arrivare a un umano anche se non parla di orari.
+                # Prima valeva solo per le risposte, e il cliente che
+                # rispondeva a una mail nuova con listino e planimetrie non
+                # generava avvisi. I nostri indirizzi restano fuori: un
+                # inoltro a un collega non accende allarmi.
+                video = appointments.parla_di_video(body)
+                for indirizzo in appointments.destinatari_da_seguire(
+                        str(to or '')):
+                    appointments.segui(int(aid), subject, indirizzo)
+                    if video:
+                        appointments.segna_video(int(aid), subject, indirizzo)
+                appointments.dalla_mail_async(int(aid), subject, body,
+                                              str(to or ''))
+    except Exception as e:
+        # Nessun errore del calendario deve somigliare a un errore di invio.
+        # It must still leave a trace: a bare `pass` here hides a lost
+        # appointment.
+        logging.getLogger("gigamail.mail_router").warning(
+            "appointment hook failed after sending: %s", e)
+    return esito
+
+
+def _send_backend(
+    account_id=None,
+    to: str = '',
+    subject: str = '',
+    body: str = '',
+    reply_to_id: str = None,
+    attachments: list = None,
+    cc: list = None,
+    bcc: list = None,
+    auto_submitted: bool = False,
+) -> Dict:
+    a = _account(account_id)
+    if not a:
+        return {
+            'success': False,
+            'provider': None,
+            'sent_copy_saved': False,
+            'warning': None,
+            'error': 'Account non trovato',
+        }
+    if _demo(a):
+        return _normalize_send_result(demo.send_message(
+            a, to, subject, body, reply_to_id=reply_to_id,
+            attachments=attachments, cc=cc, bcc=bcc,
+        ))
+    if a.get('type', 'microsoft') == 'microsoft':
+        return _normalize_send_result(ms_mail.send_message(
+            to,
+            subject,
+            body,
+            reply_to_id=reply_to_id,
+            cc=cc,
+            bcc=bcc,
+            attachments=attachments,
+        ))
+    imap_host, imap_port, _, imap_password = _imap_credentials(a)
+    smtp_host, smtp_port, email_addr, password = _smtp_credentials(a)
+    d = a.get('data', a)
+    # RFC 3834 sulle risposte generate dalle regole (0.2): via SMTP l'header
+    # Auto-Submitted si mette; via Graph no (accetta solo header x-*), il
+    # limite e' dichiarato in SECURITY.md — l'anti-loop in INGRESSO
+    # (mail_guard) non dipende da questo.
+    extra = {"Auto-Submitted": "auto-replied",
+             "X-Auto-Response-Suppress": "All"} if auto_submitted else None
+    return _normalize_send_result(imap.send_message(
+        smtp_host,
+        smtp_port,
+        email_addr,
+        password,
+        to,
+        subject,
+        body,
+        insecure_tls=bool(d.get('insecure_tls', False)),
+        cc=cc,
+        bcc=bcc,
+        attachments=attachments,
+        imap_host=imap_host,
+        imap_port=imap_port,
+        imap_password=imap_password,
+        extra_headers=extra,
+    ))
+def reply_message(account_id=None, message_id: str = '', body: str = '',
+                  auto_submitted: bool = False,
+                  attachments: list = None, cc: list = None,
+                  folder: str = '') -> Dict:
+    """
+    Risponde a una mail esistente.
+    Recupera mittente e oggetto originale, poi invia la risposta
+    con il reply_to_id impostato (thread corretto su Microsoft).
+    Ritorna il risultato normalizzato di send_message (con provider_result):
+    "success: false" senza il PERCHE' del provider era un buco nell'audit.
+    """
+    a = _account(account_id)
+    if not a:
+        return {'success': False, 'error': 'Account non trovato'}
+    msg = get_message(account_id, message_id, folder=folder)
+    if not msg:
+        return {'success': False, 'error': 'Messaggio originale non trovato'}
+    # Estrai mittente originale
+    from_field = msg.get('from', {})
+    if isinstance(from_field, dict):
+        to_addr = from_field.get('emailAddress', {}).get('address', '')
+        if not to_addr:
+            to_addr = from_field.get('address', '')
+    else:
+        to_addr = str(from_field)
+    original_subject = msg.get('subject', '')
+    if original_subject.lower().startswith('re:'):
+        reply_subject = original_subject
+    else:
+        reply_subject = f"Re: {original_subject}"
+    # Una mail letta dall'archivio non ha un id valido sul server: si
+    # risponde con l'id del provider se lo conosciamo, altrimenti come
+    # messaggio nuovo con il "Re:" nell'oggetto.
+    from . import archivio
+    risposta_a = message_id
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        risposta_a = msg.get('provider_id') or None
+    result = send_message(
+        account_id=account_id,
+        to=to_addr,
+        subject=reply_subject,
+        body=body,
+        reply_to_id=risposta_a,
+        auto_submitted=auto_submitted,
+        attachments=attachments,
+        cc=cc,
+    )
+    return result if isinstance(result, dict) else {'success': bool(result)}
+
+def save_draft(account_id=None, draft: Dict = None, remote_id: str = None) -> Dict:
+    """Bozza nella cartella Bozze della casella: {success, remote_id,
+    remote_folder} oppure {success: False, error}. Con `remote_id` sostituisce
+    quella versione invece di crearne un'altra."""
+    a = _account(account_id)
+    if not a:
+        return {'success': False, 'error': 'Account non trovato'}
+    if _demo(a):
+        return {'success': False, 'error': 'La casella demo non ha bozze sincronizzate'}
+    if a.get('type', 'microsoft') == 'microsoft':
+        r = ms_mail.save_draft(draft, remote_id=remote_id)
+        return {'success': r['success'], 'remote_id': r.get('id'),
+                'remote_folder': 'drafts', 'error': r.get('error')}
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    r = imap.save_draft(imap_host, imap_port, email_addr, password, draft,
+                        replace_uid=remote_id)
+    return {'success': r['success'], 'remote_id': r.get('uid'),
+            'remote_folder': r.get('folder'), 'error': r.get('error')}
+
+
+def delete_draft(account_id=None, draft_id: str = '', remote_id: str = None) -> Dict:
+    a = _account(account_id)
+    if not a:
+        return {'success': False, 'error': 'Account non trovato'}
+    if _demo(a):
+        return {'success': True}
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.delete_draft(remote_id) if remote_id else {'success': True}
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.delete_draft(imap_host, imap_port, email_addr, password,
+                             draft_id, uid=remote_id)
+
+
+def get_priority_messages(account_id=None, top: int = 20) -> List[Dict]:
+    a = _account(account_id)
+    if not a:
+        return []
+    if _demo(a):
+        return demo.get_messages(a, folder='inbox', top=top)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.get_priority_messages(top=top)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.get_messages(imap_host, imap_port, email_addr, password, top=top)
+
+def search_messages(account_id=None, query: str = '', top: int = 10) -> List[Dict]:
+    a = _account(account_id)
+    if not a:
+        return []
+    if _demo(a):
+        return demo.search_messages(a, query, top=top)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.search_messages(query, top=top)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.search_messages(
+        imap_host,
+        imap_port,
+        email_addr,
+        password,
+        query,
+        top=top,
+    )
+
+def set_read_status(account_id=None, message_id: str = '', folder: str = 'inbox', is_read: bool = True) -> bool:
+    a = _account(account_id)
+    if not a:
+        return False
+    if _demo(a):
+        return demo.set_read_status(a, message_id, is_read)
+    if a.get('type', 'microsoft') == 'microsoft':
+        try:
+            ms_mail.set_read_status(message_id, is_read)
+            return True
+        except Exception as e:
+            print(f"[mail_router set_read_status] ms error: {e}")
+            return False
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    target = 'INBOX' if folder.lower() == 'inbox' else folder
+    return imap.set_read_status(imap_host, imap_port, email_addr, password, message_id, target, is_read)
+
+
+def _message_datetime(value: str) -> Optional[datetime]:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    candidates = [raw]
+    if raw.endswith("Z"):
+        candidates.append(raw[:-1] + "+00:00")
+    for candidate in candidates:
+        try:
+            dt = datetime.fromisoformat(candidate)
+            return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+        except Exception:
+            continue
+    try:
+        dt = parsedate_to_datetime(raw)
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+    
+def get_all_uids(account_id=None, folder: str = 'inbox') -> List[str]:
+    """Ritorna tutti gli UID IMAP di una cartella. Solo per account IMAP."""
+    a = _account(account_id)
+    if _demo(a):
+        return demo.get_all_uids(a, folder=folder)
+    if not a or a.get('type', 'microsoft') == 'microsoft':
+        return []
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    target = folder if folder not in ('inbox',) else 'INBOX'
+    return imap.get_all_uids(imap_host, imap_port, email_addr, password, folder=target)
+
+
+def fetch_messages_by_uids(account_id=None, uids: List[str] = None, folder: str = 'inbox') -> List[Dict]:
+    """Fetcha mail per lista UID. Solo per account IMAP."""
+    a = _account(account_id)
+    if _demo(a):
+        return demo.fetch_messages_by_uids(a, uids or [])
+    if not a or a.get('type', 'microsoft') == 'microsoft':
+        return []
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    target = folder if folder not in ('inbox',) else 'INBOX'
+    return imap.fetch_messages_by_uids(imap_host, imap_port, email_addr, password, uids or [], folder=target)
+
+
+def count_unread(account_id=None, days: int = 5, cap: int = 99) -> int:
+    """How many unread mails of the last `days` days, up to `cap`: the
+    console's badge. Microsoft counts on Graph's side; IMAP and the demo
+    reuse get_unread_messages."""
+    a = _account(account_id)
+    if not a:
+        return 0
+    if not _demo(a) and a.get('type', 'microsoft') == 'microsoft':
+        since = datetime.now(timezone.utc) - timedelta(days=max(int(days or 5), 1))
+        return ms_mail.count_unread('inbox', since.strftime('%Y-%m-%dT%H:%M:%SZ'), cap)
+    return len(get_unread_messages(account_id, top=cap, days=days))
+
+
+def get_unread_messages(
+    account_id=None,
+    folder: str = 'inbox',
+    top: int = 20,
+    days: int = 5,
+) -> List[Dict]:
+    sample_top = max(int(top or 20) * 5, 50)
+    source = get_messages(account_id=account_id, folder=folder, top=sample_top)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max(int(days or 5), 1))
+    filtered: List[Dict] = []
+    for msg in source:
+        if not isinstance(msg, dict):
+            continue
+        if bool(msg.get('isRead')):
+            continue
+        msg_dt = _message_datetime(str(msg.get('receivedDateTime') or ''))
+        if msg_dt is None or msg_dt >= cutoff:
+            filtered.append(msg)
+    filtered.sort(
+        key=lambda item: _message_datetime(str(item.get('receivedDateTime') or '')) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    return filtered[: max(int(top or 20), 1)]
+
+
+def move_to_folder(account_id=None, message_id: str = '', folder_id: str = '', source_folder: str = None) -> bool:
+    a = _account(account_id)
+    if not a:
+        return False
+    if _demo(a):
+        return demo.move_to_folder(a, message_id, folder_id)
+    f = (folder_id or '').lower()
+    if f in ('inbox', 'posta_in_arrivo', 'postainarrivo'):
+        normalized = 'inbox'
+    elif f in ('deleteditems', 'trash', 'cestino', 'deleted'):
+        normalized = 'deleteditems'
+    elif f in ('junkemail', 'spam', 'postaindesiderata', 'posta_indesiderata', 'junk'):
+        normalized = 'junkemail'
+    elif f in ('sentitems', 'sent', 'postainviata', 'posta_inviata'):
+        normalized = 'sentitems'
+    elif f in ('draft', 'drafts', 'bozze'):
+        normalized = 'drafts'
+    else:
+        normalized = folder_id
+    # Microsoft Graph
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.move_to_folder(message_id, normalized)
+    # IMAP
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    if f in ('inbox', 'posta_in_arrivo', 'postainarrivo'):
+        dest = 'INBOX'
+    elif f in ('deleteditems', 'trash', 'cestino'):
+        dest = 'trash'
+    elif f in ('junkemail', 'spam', 'postaindesiderata', 'posta_indesiderata'):
+        dest = 'junk'
+    elif f in ('sentitems', 'sent', 'postainviata', 'posta_inviata'):
+        dest = 'sent'
+    else:
+        dest = folder_id
+    # Se source_folder non passato e stiamo muovendo verso inbox, assumiamo venga da junk
+    effective_source = source_folder
+    if not effective_source and f in ('inbox', 'posta_in_arrivo', 'postainarrivo'):
+        effective_source = 'junk'
+    return imap.move_to_folder(
+        imap_host,
+        imap_port,
+        email_addr,
+        password,
+        message_id,
+        folder=dest,
+        source_folder=effective_source,
+    )
+
+def list_folders(account_id=None) -> List[Dict]:
+    a = _account(account_id)
+    if not a:
+        return []
+    if _demo(a):
+        return demo.list_folders(a)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.list_folders()
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.list_folders(imap_host, imap_port, email_addr, password)
+
+def create_folder(account_id=None, name: str = '') -> Dict:
+    a = _account(account_id)
+    if not a:
+        return {}
+    if _demo(a):
+        return demo.create_folder(a, name)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.create_folder(name)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.create_folder(imap_host, imap_port, email_addr, password, name)
+
+def delete_folder(account_id=None, folder_id: str = '') -> bool:
+    a = _account(account_id)
+    if not a:
+        return False
+    if _demo(a):
+        return demo.delete_folder(a, folder_id)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.delete_folder(folder_id)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.delete_folder(imap_host, imap_port, email_addr, password, folder_id)
+
+def delete_message(account_id=None, message_id: str = '', folder: str = None) -> bool:
+    a = _account(account_id)
+    if not a:
+        return False
+    if _demo(a):
+        return demo.delete_message(a, message_id)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.delete_message(message_id)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.delete_message(
+        imap_host,
+        imap_port,
+        email_addr,
+        password,
+        message_id,
+        folder=folder,
+    )
+def get_attachment(account_id=None, message_id: str = '', filename: str = '', folder: str = '') -> tuple:
+    """Come get_message: dal server, con l'archivio di riserva."""
+    a = _account(account_id)
+    if not a:
+        raise ValueError('Account non trovato')
+    from . import archivio
+    aid = a.get('id')
+    if str(message_id).startswith(archivio.PREFISSO_ID):
+        dati = archivio.leggi_allegato(aid, message_id, filename)
+        if dati is None:
+            raise ValueError(f"Messaggio non trovato nell'archivio: {message_id}")
+        return dati
+    try:
+        return _get_attachment_provider(a, message_id, filename, folder)
+    except Exception:
+        dati = archivio.leggi_allegato(aid, message_id, filename, folder)
+        if dati is not None:
+            return dati
+        raise
+
+
+def _get_attachment_provider(a, message_id: str, filename: str, folder: str) -> tuple:
+    if _demo(a):
+        return demo.get_attachment(a, message_id, filename)
+    if a.get('type', 'microsoft') == 'microsoft':
+        return ms_mail.get_attachment(message_id, filename)
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    return imap.get_attachment(
+        imap_host,
+        imap_port,
+        email_addr,
+        password,
+        message_id,
+        filename,
+        folder=folder or "INBOX",
+    )
+
+
+def debug_imap_folders(account_id=None) -> Dict:
+    a = _account(account_id)
+    if not a:
+        return {}
+    if a.get('type', 'microsoft') == 'microsoft':
+        return {
+            'type': 'microsoft',
+            'note': 'Debug cartelle IMAP non applicabile agli account Microsoft Graph',
+        }
+    imap_host, imap_port, email_addr, password = _imap_credentials(a)
+    result = imap.debug_folders(imap_host, imap_port, email_addr, password)
+    result['account'] = {
+        'id': a.get('id'),
+        'name': a.get('name'),
+        'email': a.get('email'),
+        'type': a.get('type'),
+    }
+    return result
+# ── GOOGLE CALENDAR ───────────────────────────────────────────────────────────
+def calendar_get_events(
+    calendar_id: str = 'primary',
+    max_results: int = 20,
+    time_min: str = None,
+    time_max: str = None,
+) -> List[Dict]:
+    if not _GCAL_OK:
+        return []
+    return gcal.get_events(
+        calendar_id=calendar_id,
+        max_results=max_results,
+        time_min=time_min,
+        time_max=time_max,
+    )
+def calendar_get_event(event_id: str, calendar_id: str = 'primary') -> Dict:
+    if not _GCAL_OK:
+        return {}
+    return gcal.get_event(event_id, calendar_id=calendar_id)
+def calendar_create_event(
+    summary: str,
+    start: str,
+    end: str,
+    description: str = '',
+    location: str = '',
+    attendees: list = None,
+    calendar_id: str = 'primary',
+    timezone: str = 'Europe/Rome',
+) -> Dict:
+    if not _GCAL_OK:
+        return {}
+    return gcal.create_event(
+        summary,
+        start,
+        end,
+        description=description,
+        location=location,
+        attendees=attendees,
+        calendar_id=calendar_id,
+        timezone=timezone,
+    )
+def calendar_update_event(event_id: str, **kwargs) -> Dict:
+    if not _GCAL_OK:
+        return {}
+    return gcal.update_event(event_id, **kwargs)
+def calendar_delete_event(event_id: str, calendar_id: str = 'primary') -> bool:
+    if not _GCAL_OK:
+        return False
+    return gcal.delete_event(event_id, calendar_id=calendar_id)
+def calendar_list_calendars() -> List[Dict]:
+    if not _GCAL_OK:
+        return []
+    return gcal.list_calendars()

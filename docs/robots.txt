@@ -1,0 +1,6 @@
+# GigaMail website (GitHub Pages). All pages and their assets are crawlable:
+# JS, CSS and images must stay allowed so Google can render the landing.
+User-agent: *
+Allow: /
+
+Sitemap: https://gigamail.ai/sitemap.xml

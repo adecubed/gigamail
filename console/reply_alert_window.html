@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: data:; connect-src http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<title data-i18n="ra_title">Rispondi</title>
+<style>
+  :root { --font:'Segoe UI',-apple-system,sans-serif; }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{ font-family:var(--font); width:100vw; height:100vh; overflow:hidden; display:flex; flex-direction:column;
+    border:2px solid rgba(0,0,0,0.85); border-radius:8px; -webkit-font-smoothing:antialiased; }
+  .titlebar{ height:34px; flex-shrink:0; display:flex; align-items:center; padding:0 14px; -webkit-app-region:drag; user-select:none; border-radius:6px 6px 0 0; }
+  .tb-title{ font-size:11px; font-weight:600; flex:1; }
+  .tb-buttons{ display:flex; gap:6px; -webkit-app-region:no-drag; }
+  .tb-btn{ width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:none; background:transparent; }
+  .fields{ padding:12px 16px 10px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  .row{ display:flex; gap:8px; font-size:12.5px; }
+  .field-label{ width:60px; flex-shrink:0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+  .field-value{ flex:1; min-width:0; word-break:break-word; }
+  .excerpt{ flex:1; min-height:0; overflow:auto; padding:12px 16px; font-size:13.5px; line-height:1.55; white-space:pre-wrap; word-break:break-word; border-top:1px solid var(--gm-line,#e6e6ec); opacity:.9; }
+  .ask{ padding:10px 16px; border-top:1px solid var(--gm-line,#e6e6ec); flex-shrink:0; }
+  .ask .hint{ font-size:11.5px; opacity:.75; margin-bottom:6px; }
+  .ask textarea{ width:100%; height:80px; resize:none; font:inherit; font-size:13.5px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--gm-line,#e6e6ec); outline:none; }
+  .toolbar{ display:flex; gap:8px; align-items:center; padding:10px 14px; flex-shrink:0; border-top:1px solid var(--gm-line,#e6e6ec); }
+  .status{ flex:1; font-size:12px; }
+  .status.ok{ color:#16a34a; } .status.err{ color:#dc2626; }
+  .send-btn{ padding:8px 16px; border-radius:10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:none; }
+  .send-btn:disabled{ opacity:.6; cursor:default; }
+</style>
+<link rel="stylesheet" href="theme-popup.css"/>
+<link rel="stylesheet" href="theme-dark.css"/>
+<script src="theme_mode.js"></script>
+</head>
+<body>
+<div class="titlebar">
+  <div class="tb-title" data-i18n="ra_title">Rispondi</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin" title="Nascondi" data-i18n-title="hide"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    <button class="tb-btn close" id="btnClose" title="Chiudi" data-i18n-title="close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+<div class="fields">
+  <div class="row"><span class="field-label" data-i18n="detail_from">Da</span><span class="field-value" id="who"></span></div>
+  <div class="row"><span class="field-label" data-i18n="detail_subject">Oggetto</span><span class="field-value" id="subject"></span></div>
+</div>
+<div class="excerpt" id="excerpt"></div>
+<div class="ask">
+  <div class="hint" data-i18n="ra_hint">Cosa rispondo? L'agente scrive la bozza e te la propone da approvare: niente parte da qui.</div>
+  <textarea id="instruction" data-i18n-ph="ra_ph" placeholder="per esempio: ok, va bene per giovedì alle 15"></textarea>
+</div>
+<div class="toolbar">
+  <div class="status" id="status"></div>
+  <button class="send-btn" id="btnQueue" data-i18n="ra_queue">Prepara la risposta</button>
+</div>
+<script src="reply_alert_window_page.js"></script>
+<div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
+<script src="window_resize.js" data-api="replyAlertWindowAPI" data-min-w="420" data-min-h="360"></script>
+<script src="i18n.js"></script>
+</body>
+</html>

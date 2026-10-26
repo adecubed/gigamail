@@ -1,0 +1,303 @@
+"""Consenso umano sull'approvazione: cio' che un processo non puo' digitare.
+
+Contesto (r/mcp, agosto 2026): un agente con la shell puo' lanciare
+`gigamail approvals approve <id>`. Finche' quel comando bastava, il gate
+era aggirabile dall'agente che doveva supervisionare. Ora approvare —
+da CLI o da console — passa da un prompt dell'OS (Windows Hello / Touch
+ID) che un processo puo' aprire ma non superare.
+
+Questi test NON aprono prompt veri: conftest forza il backend 'deny';
+qui si alternano 'deny' e 'allow' (quest'ultimo ammesso solo in dry-run).
+Il comportamento reale dei backend e' documentato in SECURITY.md dal
+test manuale (Windows 11, 2026-08-19: prompt a ogni chiamata, zero cache).
+"""
+import importlib
+import types
+
+import pytest
+from fastapi.testclient import TestClient
+
+from gigamail import consent, policy
+
+
+@pytest.fixture(autouse=True)
+def store_isolato(tmp_path):
+    policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
+    yield
+    policy.set_store(None)
+
+
+def _nuova_richiesta():
+    return policy.store().create("send_mail", {"to": "a@b.it"}, {"to": "a@b.it"})
+
+
+# ----------------------------------------------------------- modulo consent
+
+def test_default_suite_nega(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    assert consent.backend_name() == "test-override"
+    assert consent.require_human("x") is False
+
+
+def test_allow_vale_solo_in_dryrun(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    monkeypatch.delenv("ADE_MAIL_DRYRUN", raising=False)
+    # fuori dal dry-run 'allow' e' ignorato: torna il backend reale (o nessuno)
+    assert consent._test_override() is None
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    assert consent.require_human("x") is True
+
+
+def test_senza_backend_solleva_non_approva(monkeypatch):
+    """Nessun backend = ConsentUnavailable, mai True silenzioso."""
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    monkeypatch.setattr(consent, "_WIN", False)
+    monkeypatch.setattr(consent, "_MAC", False)
+    assert consent.available() is False
+    with pytest.raises(consent.ConsentUnavailable):
+        consent.require_human("x")
+
+
+def test_backend_windows_nega_tutto_tranne_verified(monkeypatch):
+    """Qualunque esito diverso da VERIFIED (annullato, occupato, tentativi
+    esauriti...) e' un NO: fail-closed per costruzione."""
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    for esito, atteso in ((0, True), (1, False), (2, False), (4, False), (5, False)):
+        async def fake_request(_reason, _e=esito):
+            return _e
+
+        class R:
+            VERIFIED = 0
+
+        fake_mod = types.SimpleNamespace(
+            UserConsentVerifier=types.SimpleNamespace(
+                request_verification_async=fake_request),
+            UserConsentVerificationResult=R,
+        )
+        monkeypatch.setitem(__import__("sys").modules,
+                            "winrt.windows.security.credentials.ui", fake_mod)
+        monkeypatch.setitem(__import__("sys").modules, "winrt", types.ModuleType("winrt"))
+        monkeypatch.setitem(__import__("sys").modules, "winrt.windows", types.ModuleType("w"))
+        monkeypatch.setitem(__import__("sys").modules, "winrt.windows.security", types.ModuleType("w"))
+        monkeypatch.setitem(__import__("sys").modules, "winrt.windows.security.credentials", types.ModuleType("w"))
+        assert consent._win_ask("x") is atteso, f"esito {esito}"
+
+
+def test_macos_contesto_fresco_per_ogni_approvazione(monkeypatch):
+    """r/mcp (ranbuman): la finestra di riuso di macOS appartiene
+    all'ISTANZA di LAContext, non al processo — un contesto tenuto vivo
+    puo' dare un successo silenzioso anche con reuseDuration al default.
+    Quindi: un LAContext NUOVO per ogni approvazione, e reuseDuration=0
+    su ciascuno. Questo test lo asserisce, cosi' nessun refactor potra'
+    spostare il contesto a livello modulo senza che si accenda."""
+    created = []
+
+    class _FakeCtx:
+        def __init__(self):
+            self.reuse = None
+            created.append(self)
+
+        def setTouchIDAuthenticationAllowableReuseDuration_(self, v):
+            self.reuse = v
+
+        def evaluatePolicy_localizedReason_reply_(self, policy_, reason, reply):
+            reply(True, None)
+
+    fake_la = types.SimpleNamespace(
+        LAContext=types.SimpleNamespace(
+            alloc=lambda: types.SimpleNamespace(init=lambda: _FakeCtx())),
+        LAPolicyDeviceOwnerAuthentication=1,
+    )
+    monkeypatch.setitem(__import__("sys").modules, "LocalAuthentication", fake_la)
+    assert consent._mac_ask("prima") is True
+    assert consent._mac_ask("seconda") is True
+    assert len(created) == 2, "stesso LAContext riusato tra due approvazioni"
+    assert all(c.reuse == 0 for c in created)
+
+
+# ------------------------------------------------------------------- CLI
+
+def _run_cli(argv):
+    from gigamail import cli
+    return cli.main(argv)
+
+
+def test_cli_approve_non_ha_piu_yes():
+    """--yes era la scorciatoia che un agente avrebbe usato. Sparita."""
+    rid = _nuova_richiesta()
+    with pytest.raises(SystemExit):
+        _run_cli(["approvals", "approve", rid, "--yes"])
+    assert policy.store().get(rid)["status"] == policy.PENDING
+
+
+def test_cli_approve_negato_lascia_pending(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    rid = _nuova_richiesta()
+    assert _run_cli(["approvals", "approve", rid]) == 1
+    assert policy.store().get(rid)["status"] == policy.PENDING
+
+
+def test_cli_approve_senza_backend_rifiuta(monkeypatch):
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    monkeypatch.setattr(consent, "_WIN", False)
+    monkeypatch.setattr(consent, "_MAC", False)
+    rid = _nuova_richiesta()
+    assert _run_cli(["approvals", "approve", rid]) == 2
+    assert policy.store().get(rid)["status"] == policy.PENDING
+
+
+def test_cli_approve_con_consenso_approva(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    rid = _nuova_richiesta()
+    assert _run_cli(["approvals", "approve", rid]) == 0
+    # approved and carried out at once (dryrun here), not left to the agent
+    assert policy.store().get(rid)["status"] == policy.EXECUTED
+
+
+def test_cli_reject_non_richiede_consenso(monkeypatch):
+    """Rifiutare e' sempre sicuro: non serve il prompt (fail-closed)."""
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    rid = _nuova_richiesta()
+    assert _run_cli(["approvals", "reject", rid]) == 0
+    assert policy.store().get(rid)["status"] == policy.REJECTED
+
+
+# --------------------------------------------------------------- console
+
+@pytest.fixture()
+def client(monkeypatch):
+    monkeypatch.setenv("ADE_CONSOLE_TOKEN", "tok")
+    from gigamail import http_api
+    importlib.reload(http_api)
+    with TestClient(http_api.app) as c:
+        yield c
+    monkeypatch.delenv("ADE_CONSOLE_TOKEN")
+    importlib.reload(http_api)
+
+
+H = {"X-ADE-Token": "tok"}
+
+
+def test_console_approve_col_solo_token_non_basta(client, monkeypatch):
+    """Il token sta in un file: un processo puo' leggerlo e fare il POST.
+    Senza consenso umano l'endpoint NON approva."""
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    rid = _nuova_richiesta()
+    r = client.post(f"/approvals/{rid}/approve", headers=H)
+    assert r.status_code == 403
+    assert policy.store().get(rid)["status"] == policy.PENDING
+
+
+def test_console_approve_senza_backend_503(client, monkeypatch):
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    monkeypatch.setattr(consent, "_WIN", False)
+    monkeypatch.setattr(consent, "_MAC", False)
+    rid = _nuova_richiesta()
+    r = client.post(f"/approvals/{rid}/approve", headers=H)
+    assert r.status_code == 503
+    assert policy.store().get(rid)["status"] == policy.PENDING
+
+
+def test_console_approve_con_consenso(client, monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    rid = _nuova_richiesta()
+    r = client.post(f"/approvals/{rid}/approve", headers=H)
+    assert r.status_code == 200
+    assert policy.store().get(rid)["status"] == policy.EXECUTED
+
+
+def test_console_reject_senza_consenso(client, monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    rid = _nuova_richiesta()
+    r = client.post(f"/approvals/{rid}/reject", headers=H)
+    assert r.status_code == 200
+    assert policy.store().get(rid)["status"] == policy.REJECTED
+
+
+# --------------------------------------------- why Windows Hello is absent
+
+class _FakeWinrt:
+    """winrt.windows.security.credentials.ui, enough for _win_available:
+    check_availability_async returns an awaitable with the enum value."""
+
+    def __init__(self, availability):
+        import types as _types
+        self.module = _types.SimpleNamespace()
+
+        async def _check():
+            return availability
+        self.module.UserConsentVerifier = _types.SimpleNamespace(
+            check_availability_async=lambda: _check())
+        self.module.UserConsentVerifierAvailability = _types.SimpleNamespace(
+            AVAILABLE=0)
+
+
+@pytest.fixture()
+def finestra(monkeypatch):
+    monkeypatch.delenv("GIGAMAIL_CONSENT_BACKEND", raising=False)
+    monkeypatch.setattr(consent, "_WIN", True)
+    monkeypatch.setattr(consent, "_MAC", False)
+    monkeypatch.setattr(consent, "_motivo_indisponibile", "")
+
+
+def _installa(monkeypatch, availability):
+    import sys
+    monkeypatch.setitem(sys.modules, "winrt.windows.security.credentials.ui",
+                        _FakeWinrt(availability).module)
+
+
+def test_hello_non_configurato_lo_dice(finestra, monkeypatch):
+    """On the PC where the prompt never showed, 'no backend' said nothing:
+    the availability enum names the cause and what to do about it."""
+    _installa(monkeypatch, 2)
+    assert consent.backend_name() is None
+    assert "NotConfiguredForUser" in consent.unavailable_reason()
+    with pytest.raises(consent.ConsentUnavailable) as e:
+        consent.require_human("x")
+    assert "NotConfiguredForUser" in str(e.value)
+    assert "approvals check" in str(e.value)
+    stato = consent.check()
+    assert stato["backend"] is None and "NotConfiguredForUser" in stato["reason"]
+
+
+def test_hello_disponibile_azzera_il_motivo(finestra, monkeypatch):
+    _installa(monkeypatch, 0)
+    assert consent.backend_name() == "windows-hello"
+    assert consent.unavailable_reason() == ""
+
+
+def test_pacchetto_winrt_assente_lo_dice(finestra, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "winrt.windows.security.credentials.ui", None)
+    assert consent.backend_name() is None
+    assert "winrt-Windows.Security.Credentials.UI" in consent.unavailable_reason()
+    assert sys.executable in consent.unavailable_reason()
+
+
+def test_approvals_check_riporta_la_diagnosi(monkeypatch, capsys):
+    from gigamail import cli
+    monkeypatch.setattr(consent, "check", lambda: {
+        "backend": None, "reason": "Windows Hello non e' configurato (NotConfiguredForUser)",
+        "python": "C:/py/python.exe", "platform": "win32"})
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 2
+    out = capsys.readouterr().out
+    assert "NESSUNO" in out and "NotConfiguredForUser" in out
+
+    monkeypatch.setattr(consent, "check", lambda: {
+        "backend": "windows-hello", "reason": "", "python": "x", "platform": "win32"})
+    monkeypatch.setattr(consent, "require_human", lambda reason: False)
+    monkeypatch.setattr(consent, "last_reason", lambda: "annullata")
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 1
+    assert "annullata" in capsys.readouterr().out
+    monkeypatch.setattr(consent, "require_human", lambda reason: True)
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=False)) == 0
+    assert cli.cmd_approvals_check(types.SimpleNamespace(no_prompt=True)) == 0
+
+
+def test_bringing_the_hello_dialog_to_front_is_best_effort_everywhere():
+    """Off Windows there is no user32: the helper returns at once and the
+    verification goes on as before."""
+    from gigamail import consent
+    consent._bring_hello_to_front(seconds=0.2)

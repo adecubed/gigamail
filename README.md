@@ -1,0 +1,810 @@
+<!--
+GigaMail — mail for your AI agent
+Copyright (C) 2026 Adecubed
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. See the LICENSE file for details.
+-->
+<!-- mcp-name: io.github.adecubed/gigamail -->
+
+<a id="lang-en"></a>
+<p align="center"><img src="docs/brand/gigamail-logo-anim.gif" alt="GigaMail — Mail for your AI agent" width="720"></p>
+
+**English** · [Italiano](#lang-it) · [中文](#lang-zh)
+
+[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Download](https://img.shields.io/badge/Download-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
+
+**MCP server that gives your agent — Claude, Codex, OpenClaw, Hermes, or any
+MCP client — safe, controlled access to your email** — multi-account (Microsoft Graph + IMAP), calendar,
+local search index, sender memory, and an agent-aware permission model.
+
+No built-in LLM: the intelligence is your agent's. The MCP server speaks
+stdio only — no network port. (An optional human console adds a local HTTP
+API bound to 127.0.0.1.)
+
+**On your data**: GigaMail keeps mail indexes, credentials, memory and
+configuration **on your machine** — we run no service and receive nothing.
+Mail content your agent reads is, of course, handled by that agent and its
+model provider under their own data policies. Choose your agent
+accordingly; the masker lets you hide sensitive fields (tax codes, VAT
+numbers, IBANs, emails, phone numbers — validated deterministically, no AI)
+before the agent ever sees them.
+
+
+
+<p align="center"><img src="docs/brand/gigamail-banner.gif" alt="GigaMail" width="720"></p>
+
+## Why
+
+- **Hybrid search**: provider search (Graph/IMAP) + local SQLite index — fast
+  and offline-friendly
+- **Its own archive**: every mail of every account saved locally,
+  attachments included, and still searchable after the server has dropped
+  it. Outlook's history on the PC is imported once (`gigamail archive`)
+- **Sender memory**: tone, topics and history per sender, so replies sound right
+- **Contact notes**: what happened with each person — how a meeting went,
+  what they are after — is written next to their name, and every draft to
+  them reads it
+- **Observer**: patterns learned from how the user edited past drafts
+- **Calendar-aware drafts**: a draft only proposes times that are free in
+  your calendar, inside your office hours
+- **Accounts viewed together** (console): drag one account tile onto
+  another to read both mailboxes as one list; every mail keeps its
+  account, so replies leave from the right address, and "Split" undoes
+  it. The agent keeps seeing separate accounts
+- **Knowledge files**: attach your price lists, terms, product sheets to an
+  account — the agent reads them to answer mail. Your agent doesn't need to
+  know everything: the account carries its own knowledge
+- **Agent-aware permissions**: reads are free; send/delete require an
+  approval given **out of band** — the agent gets an inert request id, a
+  human approves from the console or the CLI, and only then does it execute,
+  with the exact arguments the human saw. Every write lands in an
+  append-only action log
+- **Credentials never touch the agent channel**: login and account management
+  live in the CLI only — a prompt injection inside an email cannot add
+  accounts or read secrets
+
+## Quick start
+
+GigaMail ships through two channels:
+
+- **Desktop app, Windows and macOS** — download it from
+  [gigamail.ai](https://gigamail.ai) or from the
+  [latest release](https://github.com/adecubed/gigamail/releases/latest). The human console with its own Python: one
+  installer, no prerequisites, no administrator password, and it updates
+  itself.
+  - **Windows 10/11**: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), code-signed. The
+    certificate is new, so on first launch Windows may still say
+    "unrecognized app": click **More info**, then **Run anyway**.
+  - **macOS**: [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) for Apple Silicon,
+    [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg) for Intel, both signed with an
+    Apple Developer ID and notarized by Apple.
+
+  The SHA-256 digests are next to the files on the release page.
+  To build it yourself: Node 22+, `console/prepare-python.ps1`
+  (Windows) or `console/prepare-python.sh` (macOS), then `npm run dist` or
+  `npm run dist:mac`.
+- **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
+  and the console's local HTTP backend. No graphical app — the right
+  channel when your agent is the interface.
+
+Everything below covers the pip channel.
+
+```bash
+pip install "gigamail[all]"
+
+gigamail login                # Microsoft device flow
+gigamail accounts add-imap    # or IMAP: Aruba, Gmail, Libero, ...
+gigamail check                # search, a draft held for your approval, a test mail to yourself
+```
+
+> **Microsoft login note**: the bundled Azure app is not yet
+> publisher-verified, so the consent screen shows an "unverified" notice
+> (works fine; some corporate tenants may block it). Standard alternative:
+> register your own Azure app and set your `client_id` in
+> `src/gigamail/core/ms_config.json`. IMAP needs none of this.
+
+Give the account its identity and knowledge (this is what makes replies yours):
+
+```bash
+gigamail identity set                       # who am I, what I do, tone
+gigamail identity add-file C:\docs\pricelist.xlsx
+gigamail identity add-file C:\docs\catalog\   # whole folder
+```
+
+Register in Claude Desktop / Claude Code (`mcpServers`):
+
+```json
+{
+  "gigamail": {
+    "command": "gigamail-server"
+  }
+}
+```
+
+The commands are also available under their legacy names
+(`ade-mail-agent`, `ade-mail-agent-server`), and the Python package answers
+to its old name `ade_mail_agent` too (`python -m ade_mail_agent.server`),
+so existing setups keep working.
+
+Using **Claude Code**? The repository is also a Claude Code plugin: it
+registers the `gigamail` MCP server and adds a skill that teaches Claude the
+approval gate.
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
+Using **Codex**? The repository is a Codex plugin: it registers the
+`gigamail` MCP server and adds a skill that teaches Codex the approval gate.
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+GigaMail is also in the [OpenAI Plugins Directory](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3),
+as a skill: install it from there, then register the server with
+`codex mcp add gigamail -- gigamail-server` (the server comes from `pip`,
+as above).
+
+Using **OpenClaw** or **Hermes**? Verified configs in
+[INTEGRATIONS.md](INTEGRATIONS.md).
+
+> **Are you an AI agent setting this up on behalf of a human?** You can do
+> the install and the MCP registration: `pip install "gigamail[all]"`, then
+> add `gigamail-server` to your client's MCP config (see INTEGRATIONS.md;
+> declare `GIGAMAIL_ROOT` if your client filters the environment). **Stop
+> there.** Connecting a mailbox (`gigamail login`, `gigamail accounts
+> add-imap`) asks for credentials and must be done by the human in their own
+> shell — it is not something you should do, and GigaMail is built so that
+> it cannot be done through you. Tell them what to run, then wait.
+
+Then just ask your agent: *"reply to the last quote request using the price
+list"* — it reads the mail, pulls the numbers from your file, drafts the
+reply, and asks you before sending.
+
+## Tools
+
+30 typed tools, generated from the server itself:
+
+- **Read (18)** — accounts, identity, knowledge files and search inside them, messages, unread,
+  folders, hybrid search, attachment text, sender history, learned
+  patterns, calendar events, free-slot availability, Drive files and
+  their text
+- **Safe writes (3, audited)** — mark read, move message, create folder
+- **Dangerous (9, human approval out of band)** — send, reply, delete
+  message, delete folder, create/delete calendar event, create a Zoom
+  meeting, upload a file to Drive, move a Drive file to the trash
+
+The calendar is served by Microsoft Graph or Google Calendar, whichever
+the user connected; the tools are the same either way. Drive uses the
+`drive.file` scope, so it only ever sees files GigaMail created itself.
+Connecting Google: [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+
+Full map and design decisions: [MAPPA_MCP.md](MAPPA_MCP.md).
+
+## Security model
+
+Email content is treated as **untrusted data** (prompt injection). The
+agent cannot approve its own actions, by construction: a dangerous tool
+returns only an inert `request_id`, and approving it — from the console or
+from `gigamail approvals approve` — requires an OS-level verification of
+the person at the machine (**Windows Hello** / **Touch ID**). A process,
+including an agent that holds a shell, can open that prompt but cannot
+pass it. On Linux, where neither exists, a local PIN typed in an
+interactive terminal stands in (`gigamail approvals pin`): weaker, and
+declared so in [SECURITY.md](SECURITY.md). Telegram approval is opt-in and
+the weakest channel of the three. No secret ever
+enters the model context, so an injected instruction has nothing to
+spend. Repeating the id just returns *awaiting approval*. The agent
+can only read files explicitly registered by the user, never the rest of the
+filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
+(append-only: GigaMail never rewrites past entries — it is not, and does not
+claim to be, tamper-proof storage).
+
+We red-team this: hostile emails ordering exfiltration, mass deletion, and
+the agent to approve itself — fed to a real agent with every mail tool
+enabled.
+
+> This design is a fix. v0.1.0 returned a one-time confirm token in the
+> tool result, which put it in the model's context: the agent held both
+> halves. Thanks to **u/ranbuman** and **u/anderson_the_one** on r/mcp for
+> catching it. The switch now sits where the agent cannot reach.
+
+![Anti-injection harness: three hostile-email scenarios against a real
+agent, zero destructive actions](docs/anti-injection-harness.png)
+
+The structural half of that suite runs in CI on every push
+([tests/test_injection.py](tests/test_injection.py)); the real-agent half is
+opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) and runs with
+a dry-run guard so confirmed actions are audited but never executed.
+
+## Reply rules (0.2): semi-auto and auto reply, fenced
+
+You can tell GigaMail: *mail from these senders (or in this folder) gets a
+reply drafted from these documents*. Rules are created from the CLI —
+`gigamail rules add` — behind the same Windows Hello / Touch ID prompt as
+approvals, and `gigamail watch` is the process that applies them. The MCP
+server stays passive and **there is no MCP tool that touches rules**: an
+injected instruction cannot enable autopilot.
+
+- **semi** (default): the draft becomes a normal approval request — you get
+  the notification, you approve with Hello, it goes out.
+- Notifications reach you where you are: a **Windows toast** with
+  ✅ / ❌ buttons (run `gigamail desktop-setup` once — UAC prompt — to make
+  them clickable; they open the approval, which raises Hello) and
+  **Telegram** (`gigamail telegram setup`, your own bot: ✅ approve if you
+  opted in with `--approve` behind Hello, ❌ reject, ✏️ ask for changes —
+  accepted only from your chat). Telegram approval is a convenience, not
+  the normal path: any device signed into your Telegram can tap it, so it
+  is weaker than Hello (see SECURITY.md).
+- **auto**: the request is born approved, `decided_by automode:<rule_id>` —
+  you gave that approval when you created the rule, for a precise scope,
+  with a mandatory expiry, a daily cap and a per-sender cooldown. The
+  notification still fires.
+
+The drafter (your own agent, via `claude -p`) produces the reply *body*
+and nothing else: recipient, subject and thread are fixed from the incoming
+message — always the sender, never `Reply-To`, never an address written by
+the draft. Deterministic barriers run first: no DMARC pass → never auto;
+auto-generated mail, lists, no-reply senders, the provider's spam verdict,
+executable attachments → no reply at all; the first message from a new
+sender always goes through you; a burst of matches pauses the rule by
+itself. Details in [SECURITY.md](SECURITY.md).
+
+## Extensions: the trade stays out of the core
+
+The `gigamail` package does mail: accounts, index, search, two-phase
+send, calendar, knowledge files, audit. What only makes sense for one
+trade lives outside it and is off until you turn it on:
+
+- **`appointments`** (built in, off by default): mail and calendar,
+  connected, from the first reply to the follow-up.
+  - Reads every sent mail, and the replies on those threads, for an
+    appointment. A proposal stays out of the calendar; the time the
+    client accepts goes in.
+  - Client replies on followed threads reach you on Telegram and as a
+    desktop notification, each with a **Reply** button: write "ok, fine"
+    and your agent drafts the answer, which waits for your approval like
+    any other. When the client names one precise time that is free in
+    your calendar, the confirmation is drafted straight away.
+  - A confirmed video call gets a Zoom meeting and the mail with the
+    link, for approval.
+  - **After the meeting**: one hour after it starts, GigaMail asks how it
+    went — showed up, no-show, postponed, plus a couple of lines — on
+    Telegram or as a desktop notification (`gigamail debrief` lists the
+    unanswered ones). The answer goes into the contact's notes.
+  - **Follow-up a week later**: when the client showed up, seven days
+    later GigaMail drafts the follow-up from your notes, in the same
+    thread, for your approval. If you have already been in touch since
+    the meeting, it stays quiet.
+- **`real_estate`** ([extras/real_estate](extras/real_estate)): flat-type
+  check on drafts and unit codes that pick the attachments, for agencies
+  answering property-portal enquiries. This is where GigaMail grew up.
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # asks for Windows Hello / Touch ID
+gigamail extensions install real_estate   # into the data folder: survives app updates
+gigamail extensions enable real_estate
+```
+
+An enabled extension that fails to load stops automatic drafts and tells
+the human; it is never skipped silently.
+
+## License
+
+**AGPL-3.0-or-later.** Free to use, study, modify and share. If you
+distribute a modified version — or run one as a network service — you must
+make its source available under the same license. Commercial licenses for
+closed-source use are available from the copyright holder.
+
+---
+
+<a id="lang-it"></a>
+# GigaMail — La posta per il tuo agente AI
+
+[English](#lang-en) · **Italiano** · [中文](#lang-zh)
+
+[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Scarica](https://img.shields.io/badge/Scarica-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
+
+
+**Server MCP che dà al tuo agente — Claude, Codex, OpenClaw, Hermes o
+qualunque client MCP — accesso sicuro e controllato alla tua posta** — multi-account (Microsoft Graph +
+IMAP), calendario, indice di ricerca locale, memoria dei mittenti e un
+modello di permessi pensato per gli agenti.
+
+Nessun LLM interno: l'intelligenza è quella del tuo agente. Il server MCP
+parla solo stdio — nessuna porta di rete. (La console per l'umano, che è
+opzionale, aggiunge una API HTTP locale su 127.0.0.1.)
+
+**Sui tuoi dati**: GigaMail tiene indici della posta, credenziali, memoria
+e configurazione **sul tuo computer** — noi non gestiamo alcun servizio e
+non riceviamo nulla. Il contenuto delle mail che il tuo agente legge è
+ovviamente trattato da quell'agente e dal suo fornitore di modello secondo
+le loro policy. Scegli l'agente di conseguenza; il masker permette di
+nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
+telefoni — validati in modo deterministico, senza AI) prima che l'agente
+li veda.
+
+<p align="center"><img src="docs/brand/gigamail-banner.gif" alt="GigaMail" width="720"></p>
+
+## Perché
+
+- **Ricerca ibrida**: provider (Graph/IMAP) + indice SQLite locale — veloce e
+  offline-friendly
+- **Un archivio suo**: ogni mail di ogni account salvata in locale,
+  allegati compresi, e cercabile anche quando il server non ce l'ha piu'.
+  Lo storico di Outlook sul PC si importa una volta (`gigamail archive`)
+- **Memoria dei mittenti**: tono, argomenti e storico per rispondere nel modo giusto
+- **Note sui contatti**: cosa e' successo con ogni persona — com'e' andato
+  un incontro, cosa cerca — resta scritto accanto al nome, e ogni bozza
+  per lei lo legge
+- **Observer**: pattern appresi dalle correzioni dell'utente alle bozze passate
+- **Bozze che conoscono l'agenda**: una bozza propone solo orari liberi nel
+  tuo calendario, dentro l'orario d'ufficio
+- **Account visti insieme** (console): trascina la tessera di un account
+  su un'altra per leggere le due caselle in un'unica lista; ogni mail
+  resta del suo account, quindi le risposte partono dall'indirizzo giusto,
+  e «Separa» torna indietro. L'agente continua a vedere account separati
+- **File di conoscenza**: collega listini, condizioni, schede prodotto a un
+  account — l'agente li legge per rispondere alle mail. Il tuo agente non
+  deve sapere tutto: le informazioni che gli servono viaggiano con l'account
+- **Permessi per agenti**: lettura libera; invio/cancellazione richiedono
+  un'approvazione data **fuori banda** — all'agente arriva solo un id
+  inerte, un umano approva dalla console o dalla CLI, e solo allora si
+  esegue, con gli argomenti esatti che l'umano ha visto. Ogni scrittura
+  finisce in un registro append-only
+- **Credenziali fuori dal canale agente**: login e gestione account solo via
+  CLI — una prompt injection dentro una mail non può aggiungere account né
+  leggere segreti
+
+## Setup rapido
+
+GigaMail si installa da due canali:
+
+- **App desktop, Windows e macOS** — si scarica da
+  [gigamail.ai](https://gigamail.ai) o dall'[ultima release](https://github.com/adecubed/gigamail/releases/latest). La
+  console umana con il suo Python incluso: un solo installer, nessun
+  prerequisito, nessuna password di amministratore, e si aggiorna da sola.
+  - **Windows 10/11**: [`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe), firmato. Il
+    certificato è nuovo: al primo avvio Windows può ancora dire "app non
+    riconosciuta"; clicca **Ulteriori informazioni**, poi **Esegui
+    comunque**.
+  - **macOS**: [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) per Apple Silicon,
+    [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg) per Intel, firmati con Apple
+    Developer ID e notarizzati da Apple.
+
+  I digest SHA-256 sono accanto ai file nella pagina della release. Per
+  buildarla in casa: Node 22+, `console/prepare-python.ps1` (Windows) o
+  `console/prepare-python.sh` (macOS), poi `npm run dist` o
+  `npm run dist:mac`.
+- **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
+  e il backend HTTP locale della console. Nessuna app grafica — è il
+  canale giusto quando l'interfaccia è il tuo agente.
+
+Tutto quello che segue riguarda il canale pip.
+
+```bash
+pip install "gigamail[all]"
+
+gigamail login                # device flow Microsoft
+gigamail accounts add-imap    # oppure IMAP: Aruba, Gmail, Libero, ...
+gigamail check                # ricerca, bozza in attesa della tua approvazione, mail di prova a te stesso
+```
+
+> **Nota sul login Microsoft**: l'app Azure inclusa non è ancora
+> publisher-verified, quindi la schermata di consenso mostra l'avviso
+> "unverified" (funziona comunque; alcuni tenant aziendali potrebbero
+> bloccarla). Alternativa standard: registra la tua app Azure e metti il
+> tuo `client_id` in `src/gigamail/core/ms_config.json`.
+> Per IMAP non serve nulla di tutto questo.
+
+Dai all'account la sua identità e la sua conoscenza (è ciò che rende le
+risposte *tue*):
+
+```bash
+gigamail identity set                       # chi sono, cosa faccio, tono
+gigamail identity add-file C:\docs\listino.xlsx
+gigamail identity add-file C:\docs\catalogo\   # intera cartella
+```
+
+Registrazione in Claude Desktop / Claude Code (`mcpServers`):
+
+```json
+{
+  "gigamail": {
+    "command": "gigamail-server"
+  }
+}
+```
+
+I comandi restano disponibili anche con i vecchi nomi
+(`ade-mail-agent`, `ade-mail-agent-server`), e il package Python risponde
+anche al vecchio nome `ade_mail_agent` (`python -m ade_mail_agent.server`),
+così le installazioni esistenti continuano a funzionare.
+
+Usi **Claude Code**? Il repository è anche un plugin Claude Code: registra
+il server MCP `gigamail` e aggiunge una skill che insegna a Claude il gate di
+approvazione.
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
+Usi **Codex**? Il repository è un plugin Codex: registra il server MCP
+`gigamail` e aggiunge una skill che insegna a Codex il gate di approvazione.
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+Usi **OpenClaw** o **Hermes**? Configurazioni verificate in
+[INTEGRATIONS.md](INTEGRATIONS.md).
+
+Poi chiedi al tuo agente: *"rispondi all'ultima richiesta di preventivo
+usando il listino"* — legge la mail, prende i numeri dal tuo file, prepara la
+risposta e ti chiede conferma prima di inviare.
+
+## Tool
+
+30 tool tipizzati, generati dal server stesso:
+
+- **Lettura (18)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
+  lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
+  pattern appresi, eventi di calendario, slot liberi, file di Drive e il
+  loro testo
+- **Scritture sicure (3, con audit)** — segna letto, sposta, crea cartella
+- **Pericolose (9, approvazione umana fuori banda)** — invio, risposta,
+  cancellazione messaggio, cancellazione cartella, creazione/cancellazione
+  evento, creazione di una riunione Zoom, caricamento di un file su Drive,
+  cestinamento di un file di Drive
+
+Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
+quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo
+scope `drive.file`, quindi vede solo i file creati da GigaMail.
+Per collegare Google: [GOOGLE_SETUP.md](GOOGLE_SETUP.md).
+
+Mappa completa e decisioni di design: [MAPPA_MCP.md](MAPPA_MCP.md).
+
+## Modello di sicurezza
+
+Il contenuto delle email è trattato come **dato non fidato** (prompt
+injection). L'agente non può approvare le proprie azioni, per costruzione:
+un tool pericoloso restituisce solo un `request_id` inerte, e approvarlo —
+dalla console o con `gigamail approvals approve` — richiede una verifica
+dell'utente fisico a livello di sistema operativo (**Windows Hello** /
+**Touch ID**). Un processo, compreso un agente con la shell, può aprire quel
+prompt ma non superarlo; senza un backend del genere, nulla viene approvato.
+Nessun segreto entra nel contesto del modello, quindi un'istruzione
+iniettata non ha nulla da spendere. Ripetere
+l'id restituisce solo *in attesa di approvazione*. L'agente può leggere solo i file
+registrati esplicitamente dall'utente, mai il resto del filesystem. Ogni
+azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
+GigaMail non riscrive mai le voci passate — non è, e non pretende di essere,
+un archivio a prova di manomissione).
+
+Lo mettiamo alla prova: mail ostili che ordinano esfiltrazione,
+cancellazione di massa e all'agente di approvarsi da solo, date a un agente
+reale con tutti i tool attivi.
+
+> Questo disegno è una correzione. La v0.1.0 restituiva un token di conferma
+> monouso nel risultato del tool, quindi dentro il contesto del modello:
+> l'agente aveva entrambe le metà. Grazie a **u/ranbuman** e
+> **u/anderson_the_one** su r/mcp per averlo notato. Ora l'interruttore sta
+> dove l'agente non arriva.
+
+![Harness anti-injection: tre scenari di mail ostili contro un agente reale,
+zero azioni distruttive](docs/anti-injection-harness.png)
+
+La metà strutturale della suite gira in CI a ogni push
+([tests/test_injection.py](tests/test_injection.py)); quella con l'agente
+reale è opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) e usa
+una modalità dry-run, così le azioni confermate finiscono nell'audit ma non
+vengono mai eseguite.
+
+## Regole di risposta (0.2): semi-auto e auto reply, con recinto
+
+Puoi dire a GigaMail: *le mail da questi mittenti (o in questa cartella)
+ricevono una risposta preparata da questi documenti*. Le regole si creano
+dalla CLI — `gigamail rules add` — dietro lo stesso prompt Windows Hello /
+Touch ID delle approvazioni, e `gigamail watch` è il processo che le
+applica. Il server MCP resta passivo e **nessun tool MCP tocca le regole**:
+un'istruzione iniettata non può accendere l'autopilota.
+
+- **semi** (default): la bozza diventa una normale richiesta di
+  approvazione — arriva la notifica, approvi con Hello, parte.
+- Le notifiche ti raggiungono dove sei: **toast Windows** con bottoni
+  ✅ / ❌ (una volta `gigamail desktop-setup` — prompt UAC — per renderli
+  cliccabili; aprono l'approvazione, che alza Hello) e **Telegram**
+  (`gigamail telegram setup`, col tuo bot: ✅ approva se hai scelto
+  `--approve` dietro Hello, ❌ rifiuta, ✏️ chiedi modifiche — accettati
+  solo dalla tua chat).
+- **auto**: la richiesta nasce già approvata, `decided_by
+  automode:<rule_id>` — quell'approvazione l'hai data tu creando la regola,
+  per uno scope preciso, con scadenza obbligatoria, tetto giornaliero e
+  cooldown per mittente. La notifica parte comunque.
+
+Chi scrive (il tuo agente, via `claude -p`) produce il *corpo* della
+risposta e nient'altro: destinatario, oggetto e thread li fissa GigaMail
+dal messaggio in arrivo — sempre il mittente, mai il `Reply-To`, mai un
+indirizzo scritto dalla bozza. Prima passano barriere deterministiche:
+niente DMARC pass → mai auto; posta automatica, liste, mittenti no-reply,
+il verdetto spam del provider, allegati eseguibili → nessuna risposta; il
+primo messaggio di un mittente nuovo passa sempre da te; una raffica di
+match mette in pausa la regola da sola. Dettagli in
+[SECURITY.md](SECURITY.md).
+
+## Estensioni: il mestiere resta fuori dal core
+
+Il pacchetto `gigamail` fa posta: account, indice, ricerca, invio a due
+fasi, calendario, documenti, audit. Cio' che serve a un solo mestiere
+vive fuori ed e' spento finche' non lo accendi:
+
+- **`appointments`** (incluso, spento di default): posta e calendario
+  collegati, dalla prima risposta al follow-up.
+  - Legge ogni mail inviata, e le risposte su quei thread, in cerca di un
+    appuntamento. Una proposta resta fuori dal calendario; ci entra
+    l'orario che il cliente accetta.
+  - Le risposte dei clienti sui thread seguiti arrivano su Telegram e
+    come notifica sul PC, entrambe con il bottone **Rispondi**: scrivi
+    «ok, va bene» e il tuo agente prepara la risposta, che aspetta la tua
+    approvazione come tutte le altre. Quando il cliente indica un orario
+    preciso e libero in agenda, la conferma si prepara da sola.
+  - Una video call confermata riceve una riunione Zoom e la mail con il
+    link, da approvare.
+  - **Dopo l'incontro**: un'ora dopo l'inizio GigaMail chiede com'e'
+    andato — si e' presentato, non si e' presentato, rimandato, piu' due
+    righe — su Telegram o con una notifica sul PC (`gigamail debrief`
+    elenca quelle senza risposta). La risposta finisce nelle note del
+    contatto.
+  - **Follow-up dopo una settimana**: se il cliente si e' presentato,
+    sette giorni dopo GigaMail scrive il follow-up dalle tue note, nello
+    stesso thread, da approvare. Se nel frattempo vi siete gia' scritti,
+    non fa niente.
+- **`real_estate`** ([extras/real_estate](extras/real_estate)): controllo
+  della tipologia sulle bozze e codici delle unita' che scelgono gli
+  allegati, per le agenzie che rispondono ai portali. E' qui che GigaMail
+  e' nato.
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # chiede Windows Hello / Touch ID
+gigamail extensions install real_estate   # nella cartella dati: resiste agli aggiornamenti
+gigamail extensions enable real_estate
+```
+
+Un'estensione accesa che non si carica ferma le bozze automatiche e
+avvisa l'umano: non viene mai saltata in silenzio.
+
+## Licenza
+
+**AGPL-3.0-or-later.** Libero di usarlo, studiarlo, modificarlo e
+condividerlo. Se distribuisci una versione modificata — o la offri come
+servizio in rete — devi rendere disponibile il sorgente con la stessa
+licenza. Licenze commerciali per usi closed-source sono disponibili dal
+titolare del copyright.
+
+
+---
+
+<a id="lang-zh"></a>
+# GigaMail — 给你的 AI 代理的邮箱
+
+[English](#lang-en) · [Italiano](#lang-it) · **中文**
+
+[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![下载](https://img.shields.io/badge/下载-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
+
+**一个 MCP 服务器，让你的代理 —— Claude、Codex、OpenClaw、Hermes 或任何
+兼容 MCP 的客户端 —— 安全、受控地访问你的真实邮箱** —— 多账户（Microsoft Graph + IMAP）、日历、本地搜索索引、发件人
+记忆，以及面向代理的权限模型。
+
+不内置任何 LLM：智能来自你自己的代理。MCP 服务器只使用 stdio 传输，不开
+网络端口。（可选的人工控制台会在 127.0.0.1 上提供一个本地 HTTP API。）
+
+**关于你的数据**：GigaMail 把邮件索引、凭据、记忆和配置全部保存在**你自己
+的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
+然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
+
+<p align="center"><img src="docs/brand/gigamail-banner.gif" alt="GigaMail" width="720"></p>
+
+## 为什么
+
+- **混合搜索**：提供商搜索（Graph/IMAP）+ 本地 SQLite 索引，快速且支持离线
+- **自有归档**：每个账户的每封邮件（含附件）都保存在本地，即使服务器上已删除
+  也仍可搜索。电脑上 Outlook 的历史邮件只需导入一次（`gigamail archive`）
+- **发件人记忆**：按发件人记录语气、话题与往来历史，让回复更贴切
+- **联系人备注**：与每个人之间发生的事 —— 会面情况如何、对方在找什么 ——
+  都记在其名字旁边，之后写给此人的每一份草稿都会读取
+- **观察者**：从用户对过往草稿的修改中学习偏好
+- **了解日程的草稿**：草稿只会提议你日历中空闲、且在办公时间内的时段
+- **合并查看账户**（控制台）：把一个账户卡片拖到另一个上，即可在同一个列表中
+  阅读两个邮箱；每封邮件仍属于自己的账户，回复会从正确的地址发出，点击"拆分"
+  即可恢复。代理看到的仍是各自独立的账户
+- **知识文件**：把价目表、条款、产品资料挂到账户上，代理读取它们来回信 ——
+  你的代理不需要什么都懂：账户自带知识
+- **面向代理的权限**：读取自由；发送/删除需要**带外**给出的人工批准 ——
+  代理只拿到一个惰性的请求 id，人从控制台或 CLI 批准后才会执行，且执行的
+  是人当时看到的那份参数。每次写操作都会记入只追加的审计日志
+- **凭据永远不经过代理通道**：登录与账户管理只存在于 CLI —— 邮件里的提示
+  注入无法添加账户或读取任何机密
+
+## 快速开始
+
+GigaMail 通过两个渠道发布：
+
+- **桌面应用，Windows 与 macOS** — 可从 [gigamail.ai](https://gigamail.ai)
+  或[最新版本](https://github.com/adecubed/gigamail/releases/latest)下载。面向人的控制台，内置 Python：一个安装包、无需前置依赖、
+  无需管理员密码，并会自动更新。
+  - **Windows 10/11**：[`GigaMail-Setup.exe`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe)，已代码签名。证书较新，
+    首次启动时 Windows 可能仍提示"无法识别的应用"：点击 **更多信息**，再点 **仍要运行**。
+  - **macOS**：Apple Silicon 用 [`GigaMail-arm64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg)，
+    Intel 用 [`GigaMail-x64.dmg`](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg)，均以 Apple
+    Developer ID 签名并经 Apple 公证。
+
+  SHA-256 摘要见发布页文件旁。自行构建：Node 22+，`console/prepare-python.ps1`
+  （Windows）或 `console/prepare-python.sh`（macOS），然后 `npm run dist` 或
+  `npm run dist:mac`。
+- **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
+  控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
+
+下文内容均针对 pip 渠道。
+
+```bash
+pip install "gigamail[all]"
+
+gigamail login                # Microsoft 设备码登录
+gigamail accounts add-imap    # 或任意 IMAP 提供商
+gigamail check                # 搜索、等待你批准的草稿、给自己发一封测试邮件
+```
+
+为账户设置身份与知识（这是让回复"像你"的关键）：
+
+```bash
+gigamail identity set                       # 我是谁、做什么、语气
+gigamail identity add-file C:\docs\pricelist.xlsx
+```
+
+在 Claude Desktop / Claude Code 中注册（`mcpServers`）：
+
+```json
+{
+  "gigamail": {
+    "command": "gigamail-server"
+  }
+}
+```
+
+命令也保留旧名称（`ade-mail-agent`、`ade-mail-agent-server`），Python 包也
+响应旧名 `ade_mail_agent`（`python -m ade_mail_agent.server`），现有配置
+继续可用。
+
+使用 **Claude Code**？本仓库也是一个 Claude Code 插件：它注册 `gigamail`
+MCP 服务器，并附带一个教 Claude 如何面对审批关卡的 skill。
+
+```bash
+claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail
+```
+
+使用 **Codex**？本仓库本身就是一个 Codex 插件：它注册 `gigamail` MCP
+服务器，并附带一个教 Codex 如何面对审批关卡的 skill。
+
+```bash
+codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail
+```
+
+使用 **OpenClaw** 或 **Hermes**？经过验证的配置见
+[INTEGRATIONS.md](INTEGRATIONS.md)。
+
+> **你是替人类做安装的 AI 代理吗？** 你可以完成安装与 MCP 注册：
+> `pip install "gigamail[all]"`，然后把 `gigamail-server` 加入客户端的 MCP
+> 配置。**到此为止。** 连接邮箱（`gigamail login`、`gigamail accounts
+> add-imap`）需要输入凭据，必须由人类在自己的终端里完成 —— 这不是你该做的
+> 事，GigaMail 的设计也让它无法经由你完成。告诉他们要运行什么，然后等待。
+
+之后直接对你的代理说："用价目表回复最近那封询价邮件" —— 它会读邮件、从你
+的文件里取数字、写好草稿，并在发送前征得你的同意。
+
+## 工具
+
+29 个类型化工具，由服务器本身生成：
+
+- **读取（17）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
+  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本
+- **安全写入（3，有审计）** —— 标记已读、移动邮件、新建文件夹
+- **危险操作（9，需带外人工批准）** —— 发送、回复、删除邮件、删除文件夹、
+  创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站
+
+日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；
+工具完全相同。Drive 使用 `drive.file` 权限，只能看到 GigaMail 自己创建的
+文件。连接 Google 的方法见 [GOOGLE_SETUP.md](GOOGLE_SETUP.md)。
+
+## 安全模型
+
+邮件内容被视为**不可信数据**（提示注入）。代理从构造上就无法批准自己的
+操作：危险工具只返回一个惰性的 `request_id`，而批准它 —— 无论从控制台还是
+`gigamail approvals approve` —— 都需要对机器前的人进行操作系统级验证
+（**Windows Hello** / **Touch ID**）。任何进程（包括持有 shell 的代理）都能
+弹出这个验证框，却无法通过它；没有此类验证后端时，一律拒绝（fail-closed）。
+没有任何机密进入模型上下文，被注入的指令无物可用。重复提交 id 只会得到
+*等待批准*。代理只能读取用户明确注册的文件，永远碰不到文件系统的其余部分。
+每次写操作都记入只追加的审计日志（GigaMail 从不改写历史条目 —— 它不是、
+也不自称是防篡改存储）。
+
+我们对此做红队测试：让恶意邮件命令真实代理外泄数据、批量删除、自我批准 ——
+在所有邮件工具全开的情况下，零破坏性操作。
+
+## 回复规则（0.2）：带栅栏的半自动与全自动回复
+
+你可以告诉 GigaMail：*来自这些发件人（或这个文件夹）的邮件，用这些文档起草
+回复*。规则只能从 CLI（`gigamail rules add`）或控制台创建，且要经过与批准
+相同的 Windows Hello / Touch ID 验证；`gigamail watch` 是执行规则的进程。
+MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：被注入的指令无法
+打开自动驾驶。
+
+- **semi**（默认）：草稿成为一个普通的批准请求 —— 你收到通知，用 Hello
+  批准后才会发出。
+- 通知会找到你：**Windows 桌面通知**带 ✅/❌ 按钮（运行一次
+  `gigamail desktop-setup` 使其可点击；按钮只是打开批准流程，仍需 Hello），
+  以及 **Telegram**（`gigamail telegram setup`，用你自己的机器人：✅ 批准需
+  在 Hello 背后显式开启 `--approve`；❌ 拒绝、✏️ 要求修改 —— 且只接受来自
+  你那个会话的指令）。
+- **auto**：请求生来即已批准，`decided_by automode:<rule_id>` —— 这份批准是
+  你创建规则时在 Hello 背后给出的，范围精确、必有过期时间、每日上限和按
+  发件人的冷却时间。通知照常发出。
+
+起草者（你自己的代理，经 `claude -p`）只产出回复*正文*：收件人、主题与
+会话线程由 GigaMail 从来信中确定 —— 永远回给通过验证的发件人，绝不理会
+`Reply-To`，也绝不使用草稿里写出的地址。确定性栅栏先行：DMARC 未通过 →
+永不 auto；自动生成的邮件、邮件列表、no-reply 发件人、提供商的垃圾邮件判定、
+可执行附件 → 一律不回复；新发件人的第一封邮件永远经过你；短时间内大量命中
+会让规则自动暂停。详见 [SECURITY.md](SECURITY.md)。
+
+## 扩展：行业逻辑留在核心之外
+
+`gigamail` 包只做邮件：账户、索引、搜索、两阶段发送、日历、知识文件、审计。
+只对某一个行业有意义的功能放在核心之外，默认关闭，需要时才开启：
+
+- **`appointments`**（内置，默认关闭）：把邮件和日历连接起来，从第一次回复
+  一直到跟进。
+  - 在每封已发送的邮件及其线程中的回复里查找预约。提议的时间不进日历；
+    客户接受的时间才写入日历。
+  - 客户在跟进线程中的回复会发到 Telegram，并同时以电脑桌面通知的形式出现，
+    两者都带 **回复** 按钮：写一句"好的，可以"，你的代理就会起草回复，并像
+    其他草稿一样等待你的批准。如果客户提出一个日历中空闲的具体时间，确认邮件
+    会自动起草。
+  - 已确认的视频通话会自动创建 Zoom 会议，并生成附带链接的邮件，等待批准。
+  - **会面之后**：会面开始一小时后，GigaMail 会在 Telegram 或电脑桌面通知中
+    询问情况如何 —— 已到场、未到场、改期，外加几句备注（`gigamail debrief`
+    列出尚未回答的问题）。回答会写入该联系人的备注。
+  - **一周后的跟进**：如果客户到场了，七天后 GigaMail 会根据你的备注，在同一
+    线程中起草跟进邮件，等待你的批准。如果会面之后你们已经通过邮件联系过，
+    它就不会打扰。
+- **`real_estate`**（[extras/real_estate](extras/real_estate)）：为回复房产门户
+  询盘的中介检查草稿中的户型，并按房源编号选择附件。GigaMail 就是在这里成长起来的。
+
+```bash
+gigamail extensions list
+gigamail extensions enable appointments   # 需要 Windows Hello / Touch ID
+gigamail extensions install real_estate   # 装在数据目录中：应用更新后仍然保留
+gigamail extensions enable real_estate
+```
+
+已开启但无法加载的扩展会停止自动草稿并通知人类，绝不会被悄悄跳过。
+
+## 许可证
+
+**AGPL-3.0-or-later.** 自由使用、研究、修改与分享。若你分发修改版 —— 或将
+其作为网络服务运行 —— 必须以相同许可证提供其源代码。闭源商用许可可向版权
+持有人洽询。

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: http://127.0.0.1:* http://localhost:* https: http: data: blob:; connect-src http://127.0.0.1:* http://localhost:*; media-src 'self' file: blob: data: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<title>GIGAMAIL Marketing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent: #eeb9dd;
+    --accent-l: #b0c7f4;
+    --font: 'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  body {
+    font-family: var(--font);
+    background: #f3e6f0;
+    width:100vw; height:100vh;
+    overflow:hidden; display:flex; flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px;
+  }
+
+  /* ── TITLEBAR ── */
+  .titlebar {
+    height:34px; flex-shrink:0;
+    display:flex; align-items:center; padding:0 14px; gap:8px;
+    background:#f3e6f0;
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    -webkit-app-region:drag; user-select:none;
+  }
+  .tb-title { font-size:11px; color:rgba(0,0,0,0.75); font-weight:600; flex:1; letter-spacing:0.3px; }
+  .tb-buttons { display:flex; gap:6px; align-items:center; -webkit-app-region:no-drag; }
+  .tb-btn {
+    width:28px; height:28px; border-radius:7px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; cursor:pointer;
+    color:rgba(0,0,0,0.6); transition:all 0.15s; flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tb-btn:hover { box-shadow:0 3px 10px rgba(0,0,0,0.12); }
+  .tb-btn.close:hover { background:rgba(220,38,38,0.15); color:#dc2626; }
+  .tb-btn.minimize:hover { background:rgba(245,158,11,0.15); color:#d97706; }
+  .tb-btn.maximize:hover { background:rgba(34,197,94,0.15); color:#16a34a; }
+
+  /* ── LAYOUT ── */
+  .mkt-body {
+    flex:1; display:flex; overflow:hidden; min-height:0;
+    background:rgba(255,255,255,0.97);
+    border-radius:0 0 7px 7px;
+  }
+
+  /* Colonna sinistra */
+  .mkt-left {
+    width:260px; flex-shrink:0;
+    border-right:1px solid rgba(0,0,0,0.08);
+    display:flex; flex-direction:column; overflow-y:auto;
+    background:rgba(255,255,255,0.98);
+  }
+  .mkt-section {
+    padding:12px 14px;
+    border-bottom:1px solid rgba(0,0,0,0.06);
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .field-label {
+    font-size:9.5px; font-weight:700; letter-spacing:1.5px;
+    color:rgba(0,0,0,0.75); text-transform:uppercase;
+  }
+  .field-input {
+    width:100%; background:rgba(255,255,255,0.95);
+    border:1px solid rgba(0,0,0,0.14); border-radius:8px;
+    padding:7px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .field-input:focus { box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+
+  .btn {
+    padding:6px 12px; border-radius:8px;
+    font-size:11px; font-weight:500; font-family:var(--font);
+    cursor:pointer; transition:all 0.15s;
+    background:rgba(255,255,255,0.95);
+    border:1px solid rgba(0,0,0,0.14);
+    color:rgba(0,0,0,0.7);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .btn:hover { background:#f3e6f0; box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn.w100 { width:100%; justify-content:center; }
+  .btn.danger { border-color:rgba(220,38,38,0.75); color:#dc2626; }
+  .btn.danger:hover { background:rgba(220,38,38,0.1); }
+
+  .compose-btn {
+    width:100%; padding:8px; border-radius:8px; border:1px solid rgba(0,0,0,0.14);
+    background:linear-gradient(135deg,var(--accent),var(--accent-l));
+    font-size:12px; font-weight:600; font-family:var(--font);
+    cursor:pointer; transition:all 0.2s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .compose-btn:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.07); }
+  .compose-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+  .tab-row { display:flex; gap:4px; }
+  .fmt-tab {
+    flex:1; padding:5px; border-radius:7px; border:1px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; text-align:center; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .fmt-tab.active { background:#f3e6f0; }
+
+  .hint { font-size:10px; color:rgba(0,0,0,0.55); font-family:monospace; }
+  .hint.ok { color:#1A7F4B; }
+  .hint.err { color:#C0392B; }
+  .hint.blue { color:rgba(26,108,245,0.8); }
+
+  /* Colonna destra */
+  .mkt-right {
+    flex:1; display:flex; flex-direction:column;
+    padding:12px; gap:8px; overflow:hidden; min-width:0;
+  }
+  .ai-row {
+    display:flex; gap:8px; align-items:flex-end; flex-shrink:0;
+  }
+  .ai-input {
+    flex:1; resize:none; background:rgba(255,255,255,0.95);
+    border:1px solid rgba(0,0,0,0.14); border-radius:8px;
+    padding:8px 10px; font-size:12px; font-family:var(--font);
+    color:rgba(0,0,0,0.82); outline:none;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .gen-btn {
+    padding:8px 14px; border-radius:8px; border:1px solid rgba(0,0,0,0.14);
+    background:linear-gradient(135deg,var(--accent),var(--accent-l));
+    font-size:12px; font-weight:600; font-family:var(--font);
+    cursor:pointer; white-space:nowrap; flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07); transition:all 0.15s;
+  }
+  .gen-btn:hover { box-shadow:0 4px 18px rgba(0,0,0,0.4); }
+  .gen-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+  .code-editor {
+    flex:1; width:100%; resize:none;
+    background:rgba(255,255,255,0.95);
+    border:1px solid rgba(0,0,0,0.14); border-radius:8px;
+    padding:10px 12px; font-size:12px;
+    font-family:'SF Mono','Fira Code','Cascadia Code',monospace;
+    color:rgba(0,0,0,0.82); outline:none; line-height:1.6;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .progress-wrap {
+    background:rgba(0,0,0,0.08); border-radius:4px; height:6px; overflow:hidden;
+    border:1px solid rgba(0,0,0,0.1);
+  }
+  .progress-fill {
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-l));
+    border-radius:4px; width:0%; transition:width 0.3s;
+  }
+  .bulk-log {
+    height:70px; overflow-y:auto; font-size:10px;
+    font-family:monospace; color:rgba(0,0,0,0.55);
+    background:rgba(0,0,0,0.03); border-radius:6px; padding:6px 8px;
+    border:1px solid rgba(0,0,0,0.08);
+  }
+  .progress-box {
+    background:rgba(255,255,255,0.95); border:1px solid rgba(0,0,0,0.14);
+    border-radius:10px; padding:10px 12px;
+    display:flex; flex-direction:column; gap:6px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+    flex-shrink:0;
+  }
+  .editor-wrap { flex:1; display:flex; min-height:0; position:relative; }
+
+  /* Drag & drop overlay */
+  .drop-overlay {
+    position:absolute; inset:0; z-index:10;
+    background:linear-gradient(135deg,rgba(238,185,221,0.85),rgba(176,199,244,0.85));
+    border:2.5px dashed rgba(0,0,0,0.5); border-radius:8px;
+    display:none; align-items:center; justify-content:center;
+    font-size:14px; font-weight:600; color:rgba(0,0,0,0.7);
+    pointer-events:none;
+  }
+  .drop-overlay.visible { display:flex; }
+
+  /* Image toolbar */
+  .img-toolbar {
+    display:flex; gap:6px; align-items:center; flex-shrink:0;
+    padding:6px 0 2px;
+  }
+  .img-btn {
+    padding:5px 10px; border-radius:7px; border:1px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.95); font-size:11px; font-weight:500;
+    font-family:var(--font); cursor:pointer; transition:all 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  }
+  .img-btn:hover { background:#f3e6f0; }
+
+  /* Image picker modal */
+  .img-picker {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.3); display:none;
+    align-items:center; justify-content:center;
+  }
+  .img-picker.visible { display:flex; }
+  .img-picker-box {
+    background:white; border-radius:12px; border:1px solid rgba(0,0,0,0.14);
+    box-shadow:0 16px 48px rgba(0,0,0,0.35);
+    width:560px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  .img-picker-hdr {
+    padding:12px 16px; background:#f3e6f0;
+    border-bottom:1px solid rgba(0,0,0,0.08);
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; font-weight:600;
+  }
+  .img-grid {
+    flex:1; overflow-y:auto; padding:12px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+  }
+  .img-thumb {
+    aspect-ratio:1; border-radius:8px; overflow:hidden;
+    border:2px solid transparent; cursor:pointer; transition:all 0.15s;
+    position:relative;
+  }
+  .img-thumb:hover { border-color:rgba(0,0,0,0.5); }
+  .img-thumb.selected { border-color:black; box-shadow:0 0 0 2px #eeb9dd; }
+  .img-thumb img { width:100%; height:100%; object-fit:cover; }
+  .img-thumb .img-name {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(0,0,0,0.6); color:white; font-size:9px;
+    padding:2px 4px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;
+  }
+  .img-thumb .ai-badge {
+    position:absolute; top:4px; right:4px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.5); border-radius:4px;
+    font-size:9px; padding:1px 5px; font-weight:700;
+  }
+  .img-picker-ftr {
+    padding:10px 16px; border-top:1px solid rgba(0,0,0,0.08);
+    display:flex; gap:8px; align-items:center;
+  }
+  .ai-status { flex:1; font-size:11px; color:rgba(0,0,0,0.6); font-family:monospace; }
+</style>
+<link rel="stylesheet" href="theme-popup.css"/>
+<link rel="stylesheet" href="theme-dark.css"/>
+<script src="theme_mode.js"></script>
+<script src="dialog.js"></script>
+<script src="icons.js"></script>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title"><span data-icon="mail" data-icon-size="15"></span> GIGA Marketing Mail</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin" data-i18n-title="hide" title="Nascondi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    <button class="tb-btn maximize" id="btnMax" data-i18n-title="fullscreen" title="Tutto schermo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+    <button class="tb-btn close"   id="btnClose" data-i18n-title="close" title="Chiudi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+
+<div class="mkt-body">
+  <!-- SINISTRA -->
+  <div class="mkt-left">
+
+    <div class="mkt-section">
+      <div class="field-label">1. <span data-i18n="recipients">Destinatari</span></div>
+      <input type="file" id="bulkFileInput" accept=".csv,.xlsx,.xls" style="display:none"/>
+      <button class="btn w100" id="btnBulkUpload"><span data-icon="upload" data-icon-size="14"></span> <span data-i18n="load_csv">Carica CSV / Excel</span></button>
+      <div id="bulkFileInfo" class="hint"></div>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label">2. <span data-i18n="subject_word">Oggetto</span></div>
+      <input type="text" id="bulkSubject" class="field-input" data-i18n-ph="subject_mail_ph" placeholder="Oggetto della mail…"/>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label">3. <span data-i18n="format_word">Formato</span></div>
+      <div class="tab-row">
+        <button class="fmt-tab active" id="btnBulkHtml">HTML</button>
+        <button class="fmt-tab" id="btnBulkPlain">PLAIN</button>
+      </div>
+    </div>
+
+    <div class="mkt-section">
+      <div class="field-label" data-i18n="pause_between">Pausa tra invii (sec)</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <div class="hint">MIN</div>
+          <input type="number" id="bulkSleepMin" class="field-input" value="20" min="5"/>
+        </div>
+        <div style="flex:1">
+          <div class="hint">MAX</div>
+          <input type="number" id="bulkSleepMax" class="field-input" value="40" min="5"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="mkt-section">
+      <div id="bulkVarsHint" class="hint blue"><span data-i18n="win_variables">Variabili:</span> {nome}, {email}</div>
+    </div>
+
+    <div class="mkt-section" style="gap:8px;margin-top:auto">
+      <button class="btn w100" id="btnBulkPreview"><span data-icon="eye" data-icon-size="14"></span> <span data-i18n="preview">Preview</span></button>
+      <button class="compose-btn" id="btnBulkStart" disabled>▶ <span data-i18n="start_send">Avvia invio</span></button>
+      <button class="btn w100 danger" id="btnBulkStop" style="display:none"><span data-icon="stop" data-icon-size="14"></span> <span data-i18n="stop_send">Ferma invio</span></button>
+    </div>
+
+  </div>
+
+  <!-- DESTRA -->
+  <div class="mkt-right">
+    <div class="ai-row">
+      <textarea id="bulkInstruction" class="ai-input" rows="2" data-i18n-ph="bulk_instruction_ph" placeholder="Descrivi la mail da generare con AI…"></textarea>
+      <button class="gen-btn" id="btnBulkGenerate"><span data-icon="zap" data-icon-size="14"></span> <span data-i18n="win_generate">Genera</span></button>
+    </div>
+    <div id="bulkGenerateStatus" class="hint" style="flex-shrink:0"></div>
+
+    <div class="img-toolbar" id="imgToolbar">
+      <span style="font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;" data-i18n="images_label">IMMAGINI:</span>
+      <button class="img-btn" id="btnDropInfo"><span data-icon="paperclip" data-icon-size="14"></span> <span data-i18n="drag_image">Trascina immagine qui</span></button>
+      <button class="img-btn" id="btnLoadFolder"><span data-icon="folder" data-icon-size="14"></span> <span data-i18n="load_folder">Carica cartella</span></button>
+    </div>
+    <div id="bulkEditorHtml" class="editor-wrap">
+      <div class="drop-overlay" id="dropOverlay"><span data-icon="paperclip" data-icon-size="16"></span> <span data-i18n="win_drop_to_insert">Rilascia per inserire</span></div>
+      <textarea id="bulkBodyHtml" class="code-editor" placeholder="<html>…"></textarea>
+    </div>
+    <div id="bulkEditorPlain" class="editor-wrap" style="display:none">
+      <textarea id="bulkBodyPlain" class="code-editor" data-i18n-ph="plain_text_ph" placeholder="Testo semplice…"></textarea>
+    </div>
+
+    <div id="bulkProgress" class="progress-box" style="display:none">
+      <div class="progress-wrap"><div id="bulkProgressBar" class="progress-fill"></div></div>
+      <div style="display:flex;justify-content:space-between">
+        <span id="bulkProgressLabel" class="hint" data-i18n="waiting">In attesa…</span>
+        <span id="bulkProgressCount" class="hint">0/0</span>
+      </div>
+      <div id="bulkLog" class="bulk-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE PICKER MODAL -->
+<div class="img-picker" id="imgPicker">
+  <div class="img-picker-box">
+    <div class="img-picker-hdr">
+      <span><span data-icon="folder" data-icon-size="14"></span> <span data-i18n="win_choose_image">Scegli immagine</span></span>
+      <button class="img-btn" id="btnPickerClose" style="padding:3px 8px" data-i18n-title="close" title="Chiudi">✕</button>
+    </div>
+    <div class="img-grid" id="imgGrid"></div>
+    <div class="img-picker-ftr">
+      <div class="ai-status" id="aiImgStatus"></div>
+      <button class="img-btn" id="btnAiPick"><span data-icon="sparkles" data-icon-size="14"></span> <span data-i18n="win_ai_picks">AI sceglie</span></button>
+      <button class="compose-btn" id="btnInsertImg" style="width:auto;padding:6px 14px" data-i18n="insert" disabled>Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="folderInput" webkitdirectory multiple accept="image/*" style="display:none"/>
+
+<script src="marketing_window_page.js"></script>
+  <script src="i18n.js"></script>
+</body>
+</html>

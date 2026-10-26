@@ -1,0 +1,5 @@
+{
+  "client_id": "",
+  "client_secret": "",
+  "_nota": "Identificativi PUBBLICI del client OAuth 'Desktop app' del progetto Google Cloud. Per un client desktop il secret non e' un segreto (Google lo documenta come tale) e viaggia nel pacchetto, esattamente come client_id in ms_config.json. In sviluppo hanno la precedenza GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET dal .env utente."
+}

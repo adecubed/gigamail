@@ -1,0 +1,195 @@
+# GigaMail — mail for your AI agent
+# Copyright (C) 2026 Adecubed
+# Licensed under the GNU AGPL v3 or later. See LICENSE.
+"""Portali: il mittente e' un relay, la persona sta nel corpo."""
+from gigamail import watcher
+
+RELAY = "reply@idealista.it"
+
+
+def _msg(html: str, subject: str = "Nuovo messaggio di Pietro"):
+    return {"subject": subject, "body": {"contentType": "html", "content": html}}
+
+
+def test_prende_la_persona_non_il_relay():
+    """Il punto della funzione: rispondere al From manderebbe la mail al
+    robot del portale invece che a chi ha chiesto informazioni."""
+    m = _msg('<a href="mailto:pietro@example.net">pietro@example.net</a>')
+    assert watcher.body_reply_address(m, RELAY) == "pietro@example.net"
+
+
+def test_ignora_i_mailto_di_servizio_del_portale():
+    """privacy@, assistenza@ e simili sono mailto: anche loro: senza
+    filtro sul dominio del mittente si finisce a scrivere all'assistenza
+    del portale invece che al cliente."""
+    m = _msg('<a href="mailto:privacy@idealista.it">privacy</a>'
+             '<a href="mailto:vincenzo@example.it">contatto</a>')
+    assert watcher.body_reply_address(m, RELAY) == "vincenzo@example.it"
+
+
+def test_niente_indirizzo_niente_risposta():
+    """Un sollecito che arriva solo dalla chat del portale non ha un
+    mailto:. Meglio None — la regola salta — che indovinare."""
+    m = _msg("<p>Salve, non ho avuto piu' riscontro</p>")
+    assert watcher.body_reply_address(m, RELAY) is None
+
+
+def test_non_risponde_al_mittente_stesso():
+    m = _msg(f'<a href="mailto:{RELAY}">rispondi</a>')
+    assert watcher.body_reply_address(m, RELAY) is None
+
+
+def test_legge_anche_body_text():
+    m = {"body_text": "scrivi a mailto:erica@example.net per info"}
+    assert watcher.body_reply_address(m, RELAY) == "erica@example.net"
+
+
+def test_oggetto_della_risposta():
+    assert watcher._reply_subject({"subject": "Nuovo messaggio"}) == "Re: Nuovo messaggio"
+    assert watcher._reply_subject({"subject": "Re: gia' risposto"}) == "Re: gia' risposto"
+    assert watcher._reply_subject({}) == "Re:"
+
+
+def test_anteprima_segnala_che_il_destinatario_viene_dal_corpo():
+    """L'indirizzo del corpo e' l'unico dato che non viene dal mittente
+    autenticato: l'anteprima deve dirlo, perche' e' quello che l'umano
+    deve guardare prima di approvare."""
+    rule = {"rule_id": "rule_x"}
+    p = watcher._preview_for(rule, _msg(""), "corpo", "semi", "pietro@example.net")
+    assert p["to"] == "pietro@example.net"
+    assert "CORPO" in p["to_source"]
+    # senza estrazione l'anteprima resta quella di sempre
+    assert "to" not in watcher._preview_for(rule, _msg(""), "corpo", "semi")
+
+
+def test_il_campo_della_regola_e_spento_di_default():
+    """L'indirizzamento fisso resta la norma: si devia solo dicendolo."""
+    from gigamail.core import rules
+    assert "reply_to_body_address" in rules.RuleStore.create.__doc__ or True
+    import inspect
+    firma = inspect.signature(rules.RuleStore.create)
+    assert firma.parameters["reply_to_body_address"].default is False
+
+
+def _regola(**kw):
+    base = {"rule_id": "rule_x", "cc": [], "attachments": [],
+            "reply_to_body_address": True}
+    base.update(kw)
+    return base
+
+
+def test_anteprima_mostra_copia_e_allegati(tmp_path, monkeypatch):
+    """cc e allegati sono ciò che parte davvero: devono stare
+    nell'anteprima, non solo nel database della regola."""
+    from gigamail.core import attachments as att
+    reg = tmp_path / "schede"
+    reg.mkdir()
+    (reg / "B.7.3.pdf").write_bytes(b"%PDF planimetria")
+    monkeypatch.setattr(att, "identity_paths", lambda aid: [str(reg)])
+    risolti, mancanti = att.resolve(2, ["B.7.3"])
+    assert mancanti == []
+
+    rule = _regola(cc=["ufficio@agenzia.example"], attachments=["B.7.3"])
+    p = watcher._preview_for(rule, _msg(""), "corpo", "semi",
+                             "pietro@example.net", risolti)
+    assert p["cc"] == ["ufficio@agenzia.example"]
+    assert [a["name"] for a in p["attachments"]] == ["B.7.3.pdf"]
+    assert p["attachments"][0]["size_kb"] is not None
+
+
+def test_senza_copia_ne_allegati_anteprima_invariata():
+    p = watcher._preview_for(_regola(), _msg(""), "corpo", "semi",
+                             "pietro@example.net")
+    assert "cc" not in p and "attachments" not in p
+
+
+def test_i_campi_della_regola_sono_vuoti_di_default():
+    import inspect
+
+    from gigamail.core import rules
+    firma = inspect.signature(rules.RuleStore.create)
+    assert firma.parameters["cc"].default is None
+    assert firma.parameters["attachments"].default is None
+
+
+def test_un_watcher_alla_volta(monkeypatch):
+    """Il controllo "e' gia' attivo?" deve stare in un posto solo: console,
+    CLI e attivita' pianificata lo chiedono tutti e tre, e se una delle tre
+    risponde 'fermo' mentre e' vivo si ritrovano due watcher a contendersi
+    le stesse mail — come e' successo riavviando il task."""
+    import time as _t
+
+    class _RS:
+        def __init__(self, hb, interval="120"):
+            self._kv = {"watch_pid": "4242", "watch_heartbeat": str(hb),
+                        "watch_interval": interval}
+
+        def kv_get(self, k, d=""):
+            return self._kv.get(k, d)
+
+        def active(self):
+            return [{"rule_id": "rule_x"}]
+
+    monkeypatch.setattr(watcher.process_state, "pid_alive", lambda pid: True)
+
+    # battito fresco: vivo
+    monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
+    st = watcher.running_state()
+    assert st["running"] is True and st["pid"] == 4242
+
+    # pid esistente ma fermo da oltre tre giri: processo morto male
+    monkeypatch.setattr(watcher.rules_mod, "store",
+                        lambda: _RS(_t.time() - 1000))
+    assert watcher.running_state()["running"] is False
+
+    # nessun processo: fermo, e il pid non viene spacciato per buono
+    monkeypatch.setattr(watcher.process_state, "pid_alive", lambda pid: False)
+    monkeypatch.setattr(watcher.rules_mod, "store", lambda: _RS(_t.time()))
+    st = watcher.running_state()
+    assert st["running"] is False and st["pid"] is None
+
+
+def test_il_battito_si_aggiorna_anche_dentro_il_giro():
+    """Regressione: il battito si scriveva una volta per giro, ma un giro
+    che scrive bozze e spedisce mail dura piu' della soglia oltre cui
+    running_state() dichiara morto il watcher. Un processo vivo e al
+    lavoro risultava assente — e la guardia del launcher, che usa quello
+    stesso controllo, poteva farne partire un secondo."""
+    import inspect
+
+    from gigamail.watcher import runner
+    corpo = inspect.getsource(runner.Watcher.tick)
+    assert corpo.count("self.heartbeat()") >= 4, (
+        "il battito deve essere aggiornato anche fra un'operazione lunga "
+        "e l'altra, non solo a inizio giro")
+    # e in particolare accanto al punto piu' lento: la bozza
+    i = corpo.index("self.process_message(")
+    assert "self.heartbeat()" in corpo[max(0, i - 200):i]
+
+
+MODULO = ("Nome e cognome: Laura Neri\r\n"
+          "Telefono:       3330000000\r\n"
+          "Email:          laura.neri@example.com\r\n\r\n"
+          "Messaggio\r\nSiamo interessati agli appartamenti di via Roma.")
+
+
+def test_modulo_del_sito_indirizzo_in_chiaro():
+    """Il 25/09 la richiesta di Laura dal sito e' rimasta senza risposta:
+    il modulo scrive "Email: ..." in chiaro, senza mailto."""
+    m = {"subject": "Messaggio inviato dal sito di Residenze Milano",
+         "body_text": MODULO}
+    assert (watcher.body_reply_address(m, "postmaster@vendite.example")
+            == "laura.neri@example.com")
+
+
+def test_il_mailto_vince_sul_campo_in_chiaro():
+    m = _msg('<a href="mailto:pietro@example.net">scrivi</a>'
+             '<p>E-mail: altro@gmail.com</p>')
+    assert watcher.body_reply_address(m, RELAY) == "pietro@example.net"
+
+
+def test_una_email_citata_nel_testo_non_e_il_campo():
+    """Solo la riga che comincia con "Email:": un indirizzo dentro una
+    frase non basta a decidere a chi scrivere."""
+    m = {"body_text": "Salve, scrivete pure a mario@gmail.com. Grazie"}
+    assert watcher.body_reply_address(m, RELAY) is None

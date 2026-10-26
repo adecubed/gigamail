@@ -1,0 +1,1056 @@
+function T(key, it){ return (window.i18n && window.i18n.t) ? window.i18n.t(key, it) : it; }
+function LOCALE(){ return (window.i18n && window.i18n.locale) || 'it-IT'; }
+// renderer_utils.js — Utility, toast, folder, dashboard, DOM helpers
+// Caricato prima di renderer.js in index_v2.html
+
+// TOAST
+// ============================================================
+
+function showToast(message, type = 'info', duration = 3500) {
+  let container = document.getElementById('ade-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'ade-toast-container';
+    document.body.appendChild(container);
+  }
+
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: '◉' };
+  const labels = { success: 'OK', error: T('app_toast_error', 'ERRORE'), warning: T('app_toast_warning', 'ATTENZIONE'), info: 'ADE MAIL' };
+
+  const toast = document.createElement('div');
+  toast.className = `ade-toast toast-${type}`;
+  toast.innerHTML = `
+    <div class="ade-toast-icon">${icons[type] || '◉'}</div>
+    <div class="ade-toast-body">
+      <div class="ade-toast-label">${labels[type] || 'ADE MAIL'}</div>
+      <div class="ade-toast-msg">${esc(message)}</div>
+    </div>`;
+
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+
+  setTimeout(() => {
+    toast.classList.add('hide');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, duration);
+}
+
+// ============================================================
+// NOTIFICA NUOVA MAIL IN-APP (con bottone CREA BOZZA)
+// ============================================================
+
+function showMailAlert(mailData) {
+  // mailData: { id, subject, sender, senderName, folder, account_id }
+  const existing = document.getElementById('ade-mail-alert');
+  if (existing) existing.remove();
+
+  const container = document.createElement('div');
+  container.id = 'ade-mail-alert';
+  // Colori e forma dal tema (theme.css .gm-mail-alert): con i colori
+  // scritti qui il tema scuro scuriva lo sfondo dei pulsanti e lasciava il
+  // testo nero, e APRI spariva.
+  container.className = 'gm-mail-alert';
+
+  const senderLabel = mailData.senderName || mailData.sender || T('app_unknown_sender', 'Mittente sconosciuto');
+  const subjectLabel = mailData.subject || T('no_subject', '(nessun oggetto)');
+
+  container.innerHTML = `
+    <div class="gm-mail-alert-body">
+      <div class="gm-mail-alert-head">
+        <span class="gm-mail-alert-badge">${T('new_mail_badge','NUOVA MAIL')}</span>
+        <button id="btnCloseMailAlert" class="gm-mail-alert-x" aria-label="×">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('x', 14) : '×')}</button>
+      </div>
+      <div class="gm-mail-alert-sender" title="${esc(senderLabel)}">${esc(senderLabel)}</div>
+      <div class="gm-mail-alert-subject" title="${esc(subjectLabel)}">${esc(subjectLabel)}</div>
+      <div class="gm-mail-alert-actions">
+        <button id="btnMailAlertDraft" class="gm-mail-alert-btn primary">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('zap', 12) : '')} ${T('app_create_draft_upper', 'CREA BOZZA')}</button>
+        <button id="btnMailAlertOpen" class="gm-mail-alert-btn">${T('app_open_upper', 'APRI')}</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(container);
+
+  // Auto-chiudi dopo 12 secondi
+  const autoClose = setTimeout(() => {
+    container.style.opacity = '0';
+    container.style.transition = 'opacity 0.3s';
+    setTimeout(() => container.remove(), 300);
+  }, 12000);
+
+  const close = () => {
+    clearTimeout(autoClose);
+    container.remove();
+  };
+
+  document.getElementById('btnCloseMailAlert')?.addEventListener('click', close);
+
+  // APRI — apre la mail nel pannello
+  document.getElementById('btnMailAlertOpen')?.addEventListener('click', async () => {
+    close();
+    if (mailData.account_id && mailData.account_id !== activeAccountId) {
+      try {
+        await api.switchAccount(mailData.account_id);
+        activeAccountId = mailData.account_id;
+      } catch(e) {}
+    }
+    openMail(String(mailData.id), mailData.folder || null);
+  });
+
+  // CREA BOZZA — apre popup reply già compilato con AI
+  document.getElementById('btnMailAlertDraft')?.addEventListener('click', async () => {
+    close();
+    try {
+      // Switca account se necessario
+      if (mailData.account_id && mailData.account_id !== activeAccountId) {
+        await api.switchAccount(mailData.account_id);
+        activeAccountId = mailData.account_id;
+      }
+      // Seleziona la mail
+      selectedMailId = String(mailData.id);
+      selectedMailFolder = mailData.folder || null;
+      // Apri reply modal con generazione automatica
+      const defaultTo = mailData.sender || '';
+      const defaultSubject = (mailData.subject || '').match(/^re:/i)
+        ? mailData.subject
+        : `Re: ${mailData.subject || ''}`;
+      currentReplyDefaultTo = defaultTo;
+      currentReplyDefaultSubject = defaultSubject;
+      openReplyModal(defaultTo, defaultSubject);
+      // Genera bozza automaticamente dopo 300ms (modal deve essere aperto)
+      setTimeout(async () => {
+        await generateDraft();
+      }, 300);
+    } catch(e) {
+      showToast(T('app_draft_open_error', 'Errore apertura bozza') + ': ' + e.message, 'error');
+    }
+  });
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+
+function esc(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function linkifyText(text) {
+  const escaped = esc(text);
+  return escaped.replace(
+    /(https?:\/\/[^\s<]+)/gi,
+    (url) => `<a href="${url}" class="mail-link" target="_blank" rel="noopener noreferrer">${url}</a>`
+  );
+}
+
+function formatMailBodyHtml(text) {
+  const raw = String(text ?? '').replace(/\r\n/g, '\n').trim();
+  if (!raw) return '';
+
+  function parseLine(line) {
+    // Markdown links [text](url)
+    line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) =>
+      `<a href="${u}" class="mail-link" target="_blank" rel="noopener noreferrer">${t}</a>`
+    );
+    // Bold **text** or __text__
+    line = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    line = line.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    // Italic *text* or _text_
+    line = line.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    line = line.replace(/_([^_]+)_/g, '<em>$1</em>');
+    // Strikethrough ~~text~~
+    line = line.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+    // Remaining URLs
+    line = linkifyText(line);
+    return line;
+  }
+
+  const blocks = raw.split(/\n{2,}/).map(block => block.trim()).filter(Boolean);
+  return blocks.map(block => {
+    // Heading # ## ###
+    if (/^#{1,3} /.test(block)) {
+      const level = block.match(/^(#{1,3}) /)[1].length;
+      const text = parseLine(block.replace(/^#{1,3} /, ''));
+      const size = level === 1 ? '18px' : level === 2 ? '15px' : '13px';
+      return `<p class="mail-paragraph" style="font-size:${size};font-weight:600;margin-bottom:8px;">${text}</p>`;
+    }
+    // Horizontal rule ---
+    if (/^[-*_]{3,}$/.test(block)) {
+      return '<hr style="border:none;border-top:1px solid rgba(0,0,0,0.1);margin:10px 0;"/>';
+    }
+    // List items * - •
+    const listLines = block.split('\n');
+    const isList = listLines.every(l => /^[*\-•] /.test(l.trim()) || l.trim() === '');
+    if (isList) {
+      const items = listLines.filter(l => /^[*\-•] /.test(l.trim()))
+        .map(l => `<li style="margin-bottom:3px;">${parseLine(l.trim().replace(/^[*\-•] /, ''))}</li>`).join('');
+      return `<ul style="padding-left:18px;margin-bottom:10px;">${items}</ul>`;
+    }
+    // Normal paragraph
+    const lines = block.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
+    const html = lines.map(parseLine).join('<br>');
+    return `<p class="mail-paragraph">${html}</p>`;
+  }).join('');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(LOCALE(), {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return '—'; }
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  return String(iso).slice(0, 16);
+}
+
+function byId(id) { return document.getElementById(id); }
+
+function suggestKeywordsFromFolderName(name) {
+  const raw = String(name || '').toLowerCase();
+  const normalized = raw
+    .replace(/[/\\|]+/g, ' ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) return [];
+
+  const baseTokens = normalized
+    .split(' ')
+    .map(part => part.trim())
+    .filter(part => part.length >= 3);
+
+  const extras = [];
+  if (normalized.includes('immob')) extras.push('appartamento', 'rogito', 'visita');
+  if (normalized.includes('client')) extras.push('preventivo', 'contratto');
+  if (normalized.includes('idealista')) extras.push('appartamento', 'visita', 'immobile');
+  if (normalized.includes('spam')) extras.push('newsletter', 'promo');
+  if (normalized.includes('news')) extras.push('newsletter');
+  if (normalized.includes('fattur')) extras.push('fattura', 'pagamento');
+  if (normalized.includes('legal')) extras.push('contratto', 'documenti');
+
+  return [...new Set([...baseTokens, ...extras])].slice(0, 8);
+}
+
+function normalizeFolderName(folder) {
+  return String(folder?.displayName || folder?.name || folder?.id || '').trim();
+}
+
+function normalizeFolderToken(value) {
+  return String(value || '').toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function isBuiltInFolder(folder) {
+  const id = normalizeFolderToken(folder?.id || '');
+  const name = normalizeFolderToken(normalizeFolderName(folder));
+  const flags = String(folder?.flags || '').toLowerCase();
+  return [
+    'inbox',
+    'sent',
+    'sentitems',
+    'drafts',
+    'draft',
+    'junk',
+    'junkemail',
+    'spam',
+    'trash',
+    'deleted',
+    'deleteditems',
+    'archive',
+    'outbox',
+    'conversationhistory',
+    'syncissues',
+    'serverfailures',
+    'localfailures',
+    'rssfeeds',
+  ].some(token => id === token || name === token || flags.includes(`\\${token}`));
+}
+
+function getCustomFolders() {
+  return (Array.isArray(mailFolderCache) ? mailFolderCache : []).filter(folder => !isBuiltInFolder(folder));
+}
+
+function formatFolderNewCount(count) {
+  const safe = Number(count || 0);
+  if (!safe) return '';
+  return safe > 99 ? '99+' : String(safe);
+}
+
+function isRecentUnreadMail(message, nowTs = Date.now()) {
+  if (!message || message.isRead) return false;
+  const rawDate = message.receivedDateTime || message.sentDateTime || message.createdDateTime;
+  if (!rawDate) return false;
+  const ts = Date.parse(rawDate);
+  if (!Number.isFinite(ts)) return false;
+  const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+  return (nowTs - ts) <= fiveDaysMs;
+}
+
+function renderCustomFolders() {
+  const box = byId('customFoldersList');
+  if (!box) return;
+  const folders = getCustomFolders();
+  if (!folders.length) {
+    box.innerHTML = '<div class="list-empty">'+T('no_personal_folder','Nessuna cartella personale.')+'</div>';
+    return;
+  }
+  // In testa: la via di ritorno. Dentro una cartella personalizzata l'unica
+  // strada verso la posta in arrivo era l'icona nella sidebar, che non si
+  // legge come "indietro".
+  const homeChip = `
+      <span class="custom-folder-row">
+        <button class="custom-folder-chip custom-folder-home ${currentFolder === 'inbox' ? 'active' : ''}" data-home="1">
+          <span class="custom-folder-chip-label">${GMIcons.svg('inbox', 13)} ${T('inbox','Posta in arrivo')}</span>
+        </button>
+      </span>`;
+  box.innerHTML = homeChip + folders.map(folder => {
+    const id = String(folder.id || normalizeFolderName(folder));
+    const label = normalizeFolderName(folder) || id;
+    const active = currentFolder === `custom:${id}` ? 'active' : '';
+    const newCount = formatFolderNewCount(customFolderNewCounts.get(id) || 0);
+    return `
+      <span class="custom-folder-row">
+        <button class="custom-folder-chip ${active}" data-folder-id="${esc(id)}" data-folder-label="${esc(label)}">
+          <span class="custom-folder-chip-label">${esc(label)}</span>
+          ${newCount ? `<span class="custom-folder-badge" title="${T('recent_unread_5d','Mail recenti non lette negli ultimi 5 giorni')}">${esc(newCount)}</span>` : ''}
+        </button>
+        <button class="custom-folder-identity" data-folder-id="${esc(id)}" data-folder-label="${esc(label)}" title="${T('config_folder_identity','Configura identity cartella')}" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:#8A8280;font-size:11px;opacity:0.7;">${GMIcons.svg('gear', 12)}</button>
+        <button class="custom-folder-delete" data-folder-delete-id="${esc(id)}" data-folder-delete-label="${esc(label)}" title="${T('delete_folder','Elimina cartella')}">×</button>
+      </span>`;
+  }).join('');
+  box.querySelectorAll('.custom-folder-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.home) { openFolder('inbox', 'btnShowInbox'); return; }
+      const folderId = btn.getAttribute('data-folder-id') || '';
+      const label = btn.getAttribute('data-folder-label') || folderId;
+      // ri-click sulla cartella gia' aperta = torna alla posta in arrivo
+      if (currentFolder === `custom:${folderId}`) { openFolder('inbox', 'btnShowInbox'); return; }
+      openCustomFolder(folderId, label);
+    });
+  });
+  box.querySelectorAll('.custom-folder-identity').forEach(btn => {
+    btn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const folderId = btn.getAttribute('data-folder-id') || '';
+      const label = btn.getAttribute('data-folder-label') || folderId;
+      if (!folderId || !activeAccountId) return;
+      openFolderIdentityModal(activeAccountId, folderId, label);
+    });
+  });
+  box.querySelectorAll('.custom-folder-delete').forEach(btn => {
+    btn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const folderId = btn.getAttribute('data-folder-delete-id') || '';
+      const label = btn.getAttribute('data-folder-delete-label') || folderId;
+      if (!folderId) return;
+      if (!(await GMDialog.confirm(T('app_confirm_delete_folder', 'Eliminare la cartella "{name}"?').replace('{name}', () => label), { danger: true }))) return;
+      try {
+        await api.deleteMailFolder(folderId, activeAccountId);
+        if (currentFolder === `custom:${folderId}`) {
+          currentFolder = 'inbox';
+          currentFolderLabel = 'inbox';
+          setFolderActive('btnShowInbox');
+          resetMailDetail();
+          await refreshCurrentFolder();
+        }
+        await loadMailFolders(false);
+      } catch (e) {
+        showToast(`${T('app_folder_delete_error', 'Errore eliminazione cartella')}: ${e}`);
+      }
+    });
+  });
+}
+
+async function refreshCustomFolderNewCounts() {
+  const requestId = ++customFolderCountsRequestId;
+  const accountId = activeAccountId;
+  const folders = getCustomFolders();
+  if (!folders.length || !accountId) {
+    customFolderNewCounts = new Map();
+    renderCustomFolders();
+    return;
+  }
+
+  const nowTs = Date.now();
+  const nextCounts = new Map();
+  await Promise.all(
+    folders.map(async (folder) => {
+      const id = String(folder.id || normalizeFolderName(folder) || '').trim();
+      if (!id) return;
+      try {
+        const mails = await api.getFolderMail(id, 100, accountId);
+        const count = Array.isArray(mails)
+          ? mails.filter(message => isRecentUnreadMail(message, nowTs)).length
+          : 0;
+        nextCounts.set(id, count);
+      } catch (e) {
+        console.error(`refreshCustomFolderNewCounts ${id}:`, e);
+        nextCounts.set(id, 0);
+      }
+    })
+  );
+  if (requestId !== customFolderCountsRequestId || accountId !== activeAccountId) {
+    return;
+  }
+  customFolderNewCounts = nextCounts;
+  renderCustomFolders();
+}
+
+function getMoveTargetFolderId() {
+  return byId('moveFolderSelect')?.value || '';
+}
+
+function renderFolderOptions(folders) {
+  const select = byId('moveFolderSelect');
+  if (!select) return;
+  const items = Array.isArray(folders) ? folders : [];
+  mailFolderCache = items;
+  if (!items.length) {
+    select.innerHTML = '<option value="">'+T('no_folder_avail','Nessuna cartella disponibile')+'</option>';
+    renderCustomFolders();
+    return;
+  }
+  select.innerHTML = items.map(folder => {
+    const id = String(folder.id || normalizeFolderName(folder));
+    const label = normalizeFolderName(folder) || id;
+    return `<option value="${esc(id)}">${esc(label)}</option>`;
+  }).join('');
+  renderCustomFolders();
+}
+
+async function loadMailFolders(selectFirst = false) {
+  const status = byId('moveMailStatus');
+  if (status) status.textContent = T('loading','Caricamento…');
+  try {
+    const folders = await api.getMailFolders(activeAccountId);
+    renderFolderOptions(folders);
+    refreshCustomFolderNewCounts().catch(e => console.error('refreshCustomFolderNewCounts:', e));
+    if (selectFirst && byId('moveFolderSelect') && byId('moveFolderSelect').options.length) {
+      byId('moveFolderSelect').selectedIndex = 0;
+    }
+    if (status) status.textContent = '';
+    return folders;
+  } catch (e) {
+    renderCustomFolders();
+    if (status) status.textContent = `${T('app_folders_error', 'Errore cartelle')}: ${e}`;
+    throw e;
+  }
+}
+
+async function openCreateFolderPanel() {
+  setHidden('folderPanel', false);
+  setText('folderStatus', '');
+  const panel = byId('folderPanel');
+  const card = panel?.querySelector?.('.login-card');
+  const input = byId('folderNameInput');
+  const keywordsInput = byId('folderKeywordsInput');
+  folderKeywordsDirty = false;
+  if (panel) {
+    panel.style.pointerEvents = 'auto';
+  }
+  if (card) {
+    card.style.pointerEvents = 'auto';
+  }
+  if (input) {
+    input.value = '';
+  }
+  if (keywordsInput) {
+    keywordsInput.value = '';
+  }
+  setTimeout(() => {
+    const target = keywordsInput || input;
+    target?.focus?.();
+    target?.click?.();
+    target?.setSelectionRange?.(target.value.length, target.value.length);
+  }, 30);
+}
+
+function refreshFolderKeywordSuggestion() {
+  const input = byId('folderNameInput');
+  const keywordsInput = byId('folderKeywordsInput');
+  if (!input || !keywordsInput || folderKeywordsDirty) return;
+  const suggested = suggestKeywordsFromFolderName(input.value);
+  keywordsInput.value = suggested.join(', ');
+}
+
+async function saveFolder() {
+  const input = byId('folderNameInput');
+  const keywordsInput = byId('folderKeywordsInput');
+  const status = byId('folderStatus');
+  const name = input?.value.trim() || '';
+  const keywords = String(keywordsInput?.value || '')
+    .split(/[,;\n]+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+  if (!name) {
+    if (status) status.textContent = T('app_folder_name_required', 'Inserisci un nome cartella.');
+    return;
+  }
+  if (status) status.textContent = T('app_creating', 'Creazione in corso...');
+  try {
+    const result = await api.createMailFolder(name, keywords, activeAccountId);
+    const suffix = keywords.length ? ` | ${T('app_keywords', 'keywords')}: ${keywords.join(', ')}` : '';
+    if (status) status.textContent = `${T('app_folder_created', 'Cartella creata')}: ${result.displayName || result.name || name}${suffix}`;
+    await loadMailFolders(true);
+    renderCustomFolders();
+    setTimeout(() => setHidden('folderPanel', true), 500);
+  } catch (e) {
+    if (status) status.textContent = `${T('app_create_error', 'Errore creazione')}: ${e}`;
+  }
+}
+
+async function openMoveMailPanel(mailId) {
+  if (!mailId) return;
+  selectedMailId = mailId;
+  setHidden('moveMailPanel', false);
+  setText('moveMailStatus', '');
+  try {
+    await loadMailFolders(true);
+    // La prima cartella dell'elenco e' quasi sempre INBOX, cioe' quella in
+    // cui la mail si trova gia': proporla come destinazione non ha senso.
+    const sel = byId('moveFolderSelect');
+    const qui = String(currentFolder || '').toLowerCase();
+    const altra = sel ? [...sel.options].find((o) => o.value && o.value.toLowerCase() !== qui) : null;
+    if (altra) sel.value = altra.value;
+  } catch {}
+}
+
+async function moveSelectedMail() {
+  const folderId = getMoveTargetFolderId();
+  const status = byId('moveMailStatus');
+  if (!selectedMailId) {
+    if (status) status.textContent = T('app_no_mail_selected', 'Nessuna mail selezionata.');
+    return;
+  }
+  if (!folderId) {
+    if (status) status.textContent = T('app_pick_target_folder', 'Seleziona una cartella di destinazione.');
+    return;
+  }
+  if (String(folderId).toLowerCase() === String(currentFolder || '').toLowerCase()) {
+    if (status) status.textContent = T('app_mail_already_in_folder', "La mail e' gia' in questa cartella: scegline un'altra.");
+    return;
+  }
+  const bottone = byId('btnConfirmMoveMail');
+  if (bottone) bottone.disabled = true;
+  if (status) status.textContent = T('app_moving', 'Spostamento in corso...');
+  try {
+    const esito = await api.moveMailToFolder(selectedMailId, folderId, activeAccountId, currentFolder);
+    if (esito && esito.success === false) {
+      throw new Error(T('app_move_not_done', 'il server di posta non ha spostato la mail'));
+    }
+    document.querySelector(`[data-id="${selectedMailId}"]`)?.remove();
+    resetMailDetail();
+    setHidden('moveMailPanel', true);
+    await refreshCurrentFolder();
+  } catch (e) {
+    if (status) status.textContent = `${T('app_move_error', 'Errore spostamento')}: ${e && e.message ? e.message : e}`;
+  } finally {
+    if (bottone) bottone.disabled = false;
+  }
+}
+
+function setVoicePlaybackActive(active) {
+  document.dispatchEvent(new CustomEvent('ade-voice-playback', { detail: { active: Boolean(active) } }));
+}
+
+async function ensureMailSummary(id, accountId, detailRoot = null, folder = null) {
+  const box = detailRoot?.querySelector?.('#mailSummaryBox') || byId('mailSummaryBox');
+  if (!box) return '';
+
+  const cacheKey = `${accountId || 'default'}::${folder || 'default-folder'}::${id}`;
+  const cached = mailSummaryCache.get(cacheKey);
+  if (cached) {
+    setSummaryBoxState(box, cached, false);
+    return cached;
+  }
+
+  setSummaryBoxState(box, T('loading','Caricamento…'), true);
+  try {
+    const sumData = await api.getSummary(id, accountId, folder);
+    const summary = sumData?.summary || T('app_summary_unavailable', 'Riassunto non disponibile.');
+    const actions = sumData?.actions || [];
+    mailSummaryCache.set(cacheKey, summary);
+    setSummaryBoxState(box, summary, false, actions);
+    return summary;
+  } catch {
+    setSummaryBoxState(box, T('app_summary_unavailable', 'Riassunto non disponibile.'), false);
+    return '';
+  }
+}
+
+function setSummaryBoxState(target, text, isLoading = false, actions = []) {
+  if (!target) return;
+  target.classList.toggle('loading', Boolean(isLoading));
+  if (isLoading) {
+    target.innerHTML = `${(typeof GMIcons !== 'undefined' ? GMIcons.svg('clipboard', 12) : '')} ${esc(text)}`;
+    return;
+  }
+
+  // Renderizza testo formattato (bold, bullet) + bottoni azione
+  const formatted = (text || '')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  let actionsHtml = '';
+  if (actions && actions.length) {
+    actionsHtml = `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">` +
+      actions.map((a, i) =>
+        `<button class="summary-action-btn" data-action="${esc(a)}" style="
+          padding:4px 10px;border-radius:14px;font-size:10.5px;font-family:var(--font,sans-serif);
+          background:rgba(255,255,255,0.7);border:1.5px solid rgba(0,0,0,0.55);
+          color:rgba(0,0,0,0.7);cursor:pointer;transition:all 0.15s;
+          box-shadow:0 2px 8px rgba(0,0,0,0.07);">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('zap', 12) : '')} ${esc(a)}</button>`
+      ).join('') +
+    `</div>`;
+  }
+
+  target.innerHTML = `<span style="font-weight:700;letter-spacing:.5px;opacity:.6;font-size:10px">📋 ${T('app_analysis_upper', 'ANALISI')}</span><br>${formatted}${actionsHtml}`;
+
+  // Click su bottone azione → apre reply window con quell'istruzione
+  target.querySelectorAll('.summary-action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (!action) return;
+      // Precompila istruzione nella reply window e apre
+      currentReplyDefaultTo      = window._currentReplyDefaultTo || '';
+      currentReplyDefaultSubject = window._currentReplyDefaultSubject || '';
+      if (typeof openNativeReplyWindow === 'function') {
+        openNativeReplyWindow(currentReplyDefaultTo, currentReplyDefaultSubject, action);
+      }
+    });
+  });
+}
+
+async function loadFolderSuggestion(id, detailRoot = null) {
+  const box = detailRoot?.querySelector?.('#mailSuggestionBox') || byId('mailSuggestionBox');
+  if (!box || !id) return;
+  const dismissKey = `${activeAccountId || 'default'}::${id}`;
+  if (dismissedSuggestions.has(dismissKey)) {
+    box.classList.add('hidden');
+    return;
+  }
+  try {
+    const result = await api.getFolderSuggestion(id, activeAccountId, getCurrentFolderRequestValue());
+    const suggestion = result?.suggestion || null;
+    if (!suggestion?.folder_id || !suggestion?.displayName) {
+      box.classList.add('hidden');
+      return;
+    }
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <div class="mail-suggestion-title">${T('folder_suggestion','SUGGERIMENTO CARTELLA')}</div>
+      <div>${T('app_suggest_move_to', 'Potresti spostarla in')} <strong>${esc(suggestion.displayName)}</strong>.<br>${T('app_suggest_signals', 'Segnali')}: ${esc(suggestion.reason || T('app_suggest_history', 'storico'))}.</div>
+      <div class="mail-suggestion-actions">
+        <button class="btn btn-secondary" id="btnAcceptSuggestion">${T('yes_move','SÌ, SPOSTA')}</button>
+        <button class="btn btn-secondary" id="btnDismissSuggestion">${T('no','NO')}</button>
+      </div>`;
+    byId('btnAcceptSuggestion')?.addEventListener('click', async () => {
+      try {
+        await api.moveMailToFolder(id, suggestion.folder_id, activeAccountId, currentFolder);
+        document.querySelector(`[data-id="${id}"]`)?.remove();
+        resetMailDetail();
+        await refreshCurrentFolder();
+        await loadMailFolders(false);
+      } catch (e) {
+        showToast(`${T('app_suggested_move_error', 'Errore spostamento suggerito')}: ${e}`);
+      }
+    });
+    byId('btnDismissSuggestion')?.addEventListener('click', () => {
+      dismissedSuggestions.add(dismissKey);
+      box.classList.add('hidden');
+    });
+  } catch (e) {
+    console.error('folderSuggestion:', e);
+    box.classList.add('hidden');
+  }
+}
+
+function on(id, eventName, handler) {
+  const el = byId(id);
+  if (el) el.addEventListener(eventName, handler);
+}
+
+function setHidden(id, hidden) {
+  const el = byId(id);
+  if (el) el.classList.toggle('hidden', hidden);
+}
+
+function setText(id, text) {
+  const el = byId(id);
+  if (el) el.textContent = text;
+}
+
+function focusMailItemByIndex(index) {
+  if (!Array.isArray(currentMailList) || !currentMailList.length) return;
+  const clamped = Math.max(0, Math.min(index, currentMailList.length - 1));
+  const msg = currentMailList[clamped];
+  if (!msg?.id) return;
+  currentMailIndex = clamped;
+  useAccountOfItem(msg._accountId);
+  openMail(String(msg.id));
+  const ofAccount = msg._accountId ? `[data-account-id="${CSS.escape(String(msg._accountId))}"]` : '';
+  const selected = document.querySelector(`.mail-item[data-id="${CSS.escape(String(msg.id))}"]${ofAccount}`);
+  selected?.scrollIntoView?.({ block: 'nearest' });
+}
+
+function bindKeyboardNav() {
+  document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const tag = target?.tagName?.toLowerCase?.() || '';
+    const isEditable =
+      target?.isContentEditable ||
+      tag === 'input' ||
+      tag === 'textarea' ||
+      tag === 'select';
+    if (isEditable) return;
+    if (!Array.isArray(currentMailList) || currentMailList.length === 0) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusMailItemByIndex(currentMailIndex < 0 ? 0 : currentMailIndex + 1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusMailItemByIndex(currentMailIndex <= 0 ? 0 : currentMailIndex - 1);
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      if (currentMailIndex < 0) return;
+      event.preventDefault();
+      focusMailItemByIndex(currentMailIndex);
+    }
+  });
+}
+
+function resetMailDetail() {
+  const detail = byId('mailDetail');
+  if (!detail) return;
+  // Rimuovi allegati suggeriti della mail precedente
+  document.getElementById('suggestedAttachmentsBanner')?.remove();
+  detail.className = 'main-area';
+  detail.style.cssText = '';
+  detail.innerHTML = '<div id="ade-dashboard" style="padding:10px;display:flex;flex-direction:column;gap:10px;width:100%;height:100%;overflow-y:auto;box-sizing:border-box;"></div>';
+  renderDashboard();
+}
+
+async function renderDashboard() {
+  const dash = byId('ade-dashboard');
+  if (!dash) return;
+
+  const DOT_COLORS = ['#185FA5','#A32D2D','#1A7F4B','#7C3AED','#B45309'];
+  const API = window.GIGAMAIL_API || 'http://127.0.0.1:8002';
+
+  function card(content) {
+    return `<div style="background:white;border:1px solid rgba(0,0,0,0.14);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);padding:12px 14px;">${content}</div>`;
+  }
+  function secLabel(t) {
+    return `<div style="font-size:9px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:rgba(0,0,0,0.55);margin-bottom:4px;">${t}</div>`;
+  }
+
+  // Scheletro solo la prima volta: poi l'ultima dashboard resta a video
+  // mentre i dati si aggiornano (niente "Caricamento…" a ogni cartella).
+  const loading = T('loading','Caricamento…');
+  const stale = renderDashboard._last;
+  let dashTiles = [];
+  if (stale && stale.lang === (window.i18n?.lang || 'it')) {
+    dash.innerHTML = stale.html;
+    bindDashboardTiles(byId('dash-accounts'), stale.tiles);
+  } else {
+    dash.innerHTML = secLabel(T('account_label','Account')) +
+      `<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="dash-accounts">` +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:12px 0;">${loading}</div>`) +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:12px 0;">${loading}</div>`) +
+      `</div>` +
+      secLabel(T('calendar','Calendario')) +
+      `<div id="dash-calendar">` +
+      card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:8px 0;">${loading}</div>`) +
+      `</div>`;
+  }
+
+  // Carica account
+  try {
+    const accounts = await api.getAccounts();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    // One entry per account, then one tile per account or per group.
+    const stats = new Map();
+    await Promise.all((accounts||[]).map(async (acc) => {
+      let unread = 0, sentToday = 0, lastMail = '', lastTs = 0;
+      try {
+        const u = await fetch(`${API}/mail/unread_count?account_id=${acc.id}`).then(r=>r.json());
+        unread = u?.count ?? 0;
+      } catch {}
+      try {
+        const sent = await api.getSentMail(20, acc.id);
+        const arr = Array.isArray(sent) ? sent : [];
+        sentToday = arr.filter(m => {
+          const d = new Date(m.sentDateTime||m.receivedDateTime||0);
+          return d >= today;
+        }).length;
+      } catch {}
+      try {
+        const inbox = await fetch(`${API}/mail?top=1&account_id=${acc.id}`).then(r=>r.json());
+        const first = Array.isArray(inbox) ? inbox[0] : null;
+        if (first) {
+          lastMail = (first.from?.emailAddress?.name||'') + ' — ' + (first.subject||'');
+          lastTs = AccountGroups.when(first);
+        }
+      } catch {}
+      stats.set(Number(acc.id), { unread, sentToday, lastMail, lastTs });
+    }));
+
+    // Groups need a backend that knows them; without, tiles stay single.
+    const canGroup = !window.Features || Features.has('/accounts/groups');
+    let groups = [];
+    if (canGroup) {
+      try { groups = await api.getAccountGroups(); } catch { groups = []; }
+    }
+    dashTiles = AccountGroups.tiles(accounts, groups);
+    const accCards = dashTiles.map((tile, i) => AccountGroups.tileHtml(
+      tile,
+      AccountGroups.sum(tile.accounts.map(a => stats.get(Number(a.id)))),
+      DOT_COLORS[i % DOT_COLORS.length],
+      canGroup && (accounts||[]).length > 1));
+
+    const accGrid = byId('dash-accounts');
+    if (accGrid) {
+      accGrid.innerHTML = accCards.length ? accCards.join('') : card(`
+        <div class="ob-empty">
+          <div class="ob-empty-title">${T('ob_empty_title','Nessun account collegato')}</div>
+          <div class="ob-empty-body">${T('ob_empty_body','Collega una casella per iniziare.')}</div>
+          <button class="compose-btn ob-cta-inline" data-open-onboarding="1">${T('ob_empty_cta','Configura GigaMail')}</button>
+        </div>`).replace('<div style="background:white', '<div style="grid-column:1/-1;background:white');
+      bindDashboardTiles(accGrid, dashTiles);
+    }
+  } catch(e) {
+    const accGrid = byId('dash-accounts');
+    if (accGrid) accGrid.innerHTML = card(`<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;">${T('account_load_error','Errore caricamento account')}</div>`);
+  }
+
+  // Carica calendario
+  try {
+    const now = new Date();
+    const events = await api.getEvents(30);
+    const upcoming = (Array.isArray(events) ? events : [])
+      .filter(e => new Date(e.start?.dateTime||e.start?.date||0) >= now)
+      .sort((a,b) => new Date(a.start?.dateTime||a.start?.date) - new Date(b.start?.dateTime||b.start?.date))
+      .slice(0,4);
+
+    function fmtEvDate(dt) {
+      if (!dt) return '';
+      try {
+        const d = new Date(dt);
+        return d.toLocaleDateString(LOCALE(),{day:'2-digit',month:'short'}) + ' ' +
+               d.toLocaleTimeString(LOCALE(),{hour:'2-digit',minute:'2-digit'});
+      } catch { return ''; }
+    }
+
+    const evRows = upcoming.length ? upcoming.map(e =>
+      `<div class="dash-ev-row" data-open-calendar="1" style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:8px;cursor:pointer;transition:background 0.15s;">
+        <div class="dash-ev-dot" style="width:7px;height:7px;border-radius:50%;flex-shrink:0;"></div>
+        <div style="font-size:11px;color:rgba(0,0,0,0.82);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.subject||e.title||T('cal_event','Evento'))}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);white-space:nowrap;">${fmtEvDate(e.start?.dateTime||e.start?.date)}</div>
+      </div>`
+    ).join('') : '<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;padding:8px 0;">'+T('no_upcoming','Nessun appuntamento in arrivo')+'</div>';
+
+    const calDiv = byId('dash-calendar');
+    if (calDiv) calDiv.innerHTML = card(`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+        <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#eeb9dd,#b0c7f4);border:1px solid rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('calendar', 13) : '')}</div>
+        <div style="font-size:12px;font-weight:500;color:rgba(0,0,0,0.82);flex:1;">${T('cal_upcoming','Prossimi appuntamenti')}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.55);">${now.toLocaleDateString(LOCALE(),{day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;">${evRows}</div>
+      <div data-open-calendar="1" style="font-size:10px;color:rgba(0,0,0,0.55);text-align:right;margin-top:8px;cursor:pointer;">${T('open_calendar','Apri calendario →')}</div>
+    `);
+  } catch {
+    const calDiv = byId('dash-calendar');
+    if (calDiv) calDiv.innerHTML = card('<div style="font-size:11px;color:rgba(0,0,0,0.55);text-align:center;">'+T('no_calendar','Nessun calendario configurato')+'</div>');
+  }
+  if (dash.isConnected) renderDashboard._last = { html: dash.innerHTML, lang: window.i18n?.lang || 'it', tiles: dashTiles };
+}
+
+// Switch account dalla dashboard
+window._switchAccount = async (accountId, providerName) => {
+  try {
+    activeAccountId = accountId;
+    window.activeAccountId = accountId;
+    window._activeAccountId = accountId;
+    // Pulisci mail corrente per evitare cross-account ID mismatch
+    window._currentMailId     = null;
+    window._currentMailFolder = null;
+    // Aggiorna il select UI
+    const sel = document.getElementById('accountSelect');
+    if (sel) {
+      sel.value = String(accountId);
+      sel.dispatchEvent(new Event('change'));
+    }
+    await openFolder('inbox', 'btnShowInbox');
+  } catch(e) { console.error('_switchAccount:', e); }
+};
+
+const MAIL_PAGE = 30;
+
+function mailFetcherFor(accountId) {
+  if (currentFolder === 'sent')   return () => api.getSentMail(MAIL_PAGE, accountId);
+  if (currentFolder === 'drafts') return () => api.getDraftsMail(MAIL_PAGE, accountId);
+  if (currentFolder === 'spam')   return () => api.getSpamMail(MAIL_PAGE, accountId);
+  if (currentFolder === 'deleted') return () => api.getDeletedMail(MAIL_PAGE, accountId);
+  if (currentFolder.startsWith('custom:')) {
+    const folderId = currentFolder.slice('custom:'.length);
+    return () => api.getFolderMail(folderId, MAIL_PAGE, accountId);
+  }
+  return () => api.getMail(MAIL_PAGE, 0, priorityMode, accountId);
+}
+
+function getCurrentMailFetcher() {
+  // Merged view: the standard folders of every account of the group, mixed
+  // by date. A personal folder belongs to one account and stays single.
+  if (activeGroup && !currentFolder.startsWith('custom:')) {
+    const group = activeGroup;
+    return async () => {
+      const lists = await Promise.all(group.accounts.map(async (account) => {
+        try { return { account, mails: await mailFetcherFor(account.id)() }; }
+        catch (e) {
+          // One mailbox down must not blank the others.
+          console.error(`merged view, account ${account.id}:`, e);
+          return { account, mails: [] };
+        }
+      }));
+      return AccountGroups.mergeLists(lists, MAIL_PAGE);
+    };
+  }
+  return mailFetcherFor(activeAccountId);
+}
+
+function setFolderActive(btnId) {
+  ['btnShowInbox', 'btnShowSent', 'btnShowDrafts', 'btnShowSpam', 'btnShowDeleted'].forEach(id => byId(id)?.classList.remove('active'));
+  byId(btnId)?.classList.add('active');
+  document.querySelectorAll('.custom-folder-chip').forEach(el => el.classList.remove('active'));
+  document.querySelector('.custom-folder-home')?.classList.toggle('active', btnId === 'btnShowInbox');
+}
+
+const FOLDER_TITLE_KEYS = { inbox: 'inbox', sent: 'sent_items', drafts: 'drafts', spam: 'spam', deleted: 'trash' };
+
+/** Titolo del pannello lista: cartella standard (tradotta) o etichetta della
+ *  cartella personalizzata. Prima restava "Posta in arrivo" ovunque. */
+function setFolderTitle(folder, label) {
+  const el = byId('currentFolderLabel');
+  if (!el) return;
+  const key = FOLDER_TITLE_KEYS[folder];
+  if (key) {
+    el.setAttribute('data-i18n', key);
+    el.textContent = T(key, label || folder);
+  } else {
+    el.removeAttribute('data-i18n');   // applyLang non deve sovrascriverlo
+    el.textContent = label || folder;
+  }
+  // Merged view: say whose mail this is.
+  if (activeGroup && key) {
+    el.removeAttribute('data-i18n');
+    el.textContent += ' — ' + AccountGroups.label(activeGroup.accounts);
+  }
+}
+
+function renderMailListStatus(message) {
+  const list = byId('mailList');
+  if (!list) return;
+  list.innerHTML = `<div class="list-empty">${esc(message)}</div>`;
+}
+
+function getCurrentFolderRequestValue() {
+  if (currentFolder?.startsWith('custom:')) {
+    return currentFolder.slice('custom:'.length);
+  }
+  return currentFolder || 'inbox';
+}
+
+async function refreshCurrentFolder() {
+  const started = performance.now();
+  try {
+    const mails = await getCurrentMailFetcher()();
+    renderMailList(mails);
+    if (currentFolder === 'drafts') await renderLocalDrafts();
+    refreshCustomFolderNewCounts().catch(e => console.error('refreshCustomFolderNewCounts:', e));
+    setText('statMail', Array.isArray(mails) ? mails.length : 0);
+    const sampleIds = Array.isArray(mails) ? mails.slice(0, 3).map(m => m?.id).filter(Boolean).join(',') : '';
+    const sampleFolders = Array.isArray(mails)
+      ? [...new Set(mails.slice(0, 5).map(m => m?.folder).filter(Boolean))].join(',')
+      : '';
+    console.log(
+      `[ADE MAIL UI TIMING] refreshCurrentFolder=${Math.round(performance.now() - started)}ms ` +
+      `folder=${currentFolderLabel || currentFolder} count=${Array.isArray(mails) ? mails.length : 0} ` +
+      `accountId=${activeAccountId ?? 'none'} sampleIds=${sampleIds || '-'} sampleFolders=${sampleFolders || '-'}`
+    );
+    return mails;
+  } catch (e) {
+    console.error('refreshCurrentFolder:', e);
+    renderMailListStatus(`${T('app_folder_open_error', 'Errore apertura cartella')} ${currentFolder}: ${String(e)}`);
+    setText('statMail', '!');
+    throw e;
+  }
+}
+
+async function openFolder(folder, btnId) {
+  currentFolder = folder;
+  selectedMailFolder = null;
+  currentFolderLabel = folder;
+  setFolderActive(btnId);
+  setFolderTitle(folder);
+  setHidden('moreDropdown', true);
+  selectedMailId = null;
+  updateVoiceContext?.(null, -1);
+  currentMailIndex = -1;
+  currentMailList = [];
+  document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
+  resetMailDetail();
+  renderMailListStatus(T('loading','Caricamento…'));
+  try {
+    await refreshCurrentFolder();
+  } catch {}
+}
+
+async function openCustomFolder(folderId, label) {
+  if (!folderId) return;
+  currentFolder = `custom:${folderId}`;
+  currentFolderLabel = label || folderId;
+  setFolderActive('');
+  setFolderTitle(currentFolder, currentFolderLabel);
+  document.querySelectorAll('.custom-folder-chip').forEach(el => {
+    el.classList.toggle('active', (el.getAttribute('data-folder-id') || '') === folderId);
+  });
+  selectedMailId = null;
+  updateVoiceContext?.(null, -1);
+  currentMailIndex = -1;
+  currentMailList = [];
+  document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
+  resetMailDetail();
+  renderMailListStatus(T('loading','Caricamento…'));
+  try {
+    await refreshCurrentFolder();
+  } catch {}
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+// Dashboard links: delegated on the document, so they keep working when the
+// dashboard is restored from its cached HTML (renderDashboard._last). The CSP
+// forbids onclick="..." in the markup.
+document.addEventListener('click', (e) => {
+  const t = e.target && e.target.closest ? e.target : null;
+  if (!t) return;
+  if (t.closest('[data-open-calendar]')) window.electronAPI?.openCalendarWindow?.();
+  else if (t.closest('[data-open-onboarding]')) window.openOnboarding && window.openOnboarding();
+});

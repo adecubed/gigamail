@@ -1,0 +1,390 @@
+"""Posta: liste, cartelle, ricerca, indice locale, invio e azioni sul messaggio."""
+import mimetypes
+import threading
+from typing import List, Optional
+from urllib.parse import quote
+
+from fastapi import APIRouter, HTTPException, Path, Request, Response
+from pydantic import BaseModel, Field
+
+from gigamail import consent, policy
+from gigamail.core import (
+    mail_guard,
+    mail_memory,
+    mail_router,
+    signature,
+)
+
+from . import console_click
+from .addresses import _remember_message_addresses, _save_address
+from .common import _active_id, _human_action, _user_action
+
+router = APIRouter()
+_MIME = mimetypes.MimeTypes()
+
+
+# ── MAIL: LETTURA ────────────────────────────────────────────────────
+
+@router.get("/mail")
+def list_mail(top: int = 20, skip: int = 0, account_id: Optional[int] = None):
+    aid = account_id or _active_id()
+    result = mail_router.get_messages(aid, top=top, skip=skip)
+    _remember_message_addresses(result)
+    return result
+
+
+@router.get("/mail/sent")
+def list_sent(top: int = 20, account_id: Optional[int] = None):
+    return mail_router.get_messages(account_id or _active_id(), folder="sent", top=top)
+
+
+@router.get("/mail/spam")
+def list_spam(top: int = 20, account_id: Optional[int] = None):
+    return mail_router.get_messages(account_id or _active_id(), folder="spam", top=top)
+
+
+@router.get("/mail/deleted")
+def list_deleted(top: int = 20, account_id: Optional[int] = None):
+    return mail_router.get_messages(account_id or _active_id(), folder="deleted", top=top)
+
+
+@router.get("/mail/drafts")
+def list_drafts(top: int = 20, account_id: Optional[int] = None):
+    return mail_router.get_messages(account_id or _active_id(), folder="drafts", top=top)
+
+
+# ── BOZZE: salvate in locale mentre si scrive, copiate nella casella ──
+# Il salvataggio locale e' immediato; con sync=true la console chiede anche
+# la copia nella cartella Bozze della casella, che parte in un thread (una
+# connessione IMAP puo' prendere secondi) e si legge poi dall'elenco:
+# in_mailbox / sync_error.
+
+_DRAFT_ID = r"^[A-Za-z0-9_-]{1,64}$"
+
+
+class DraftSaveRequest(BaseModel):
+    id: Optional[str] = Field(None, pattern=_DRAFT_ID)
+    to: str = ""
+    cc: str = ""
+    bcc: str = ""
+    subject: str = ""
+    body: str = ""
+    reply_to_id: Optional[str] = None
+    account_id: Optional[int] = None
+    sync: bool = False
+    # Solo riprendendo una bozza gia' nella casella (Outlook, telefono):
+    # la prossima copia sostituisce quella invece di affiancarla.
+    remote_id: Optional[str] = Field(None, max_length=512)
+    remote_folder: Optional[str] = Field(None, max_length=512)
+
+
+def _draft_state(d: dict) -> dict:
+    return {"success": True, "id": d["draft_id"], "updated_at": d["updated_at"],
+            "in_mailbox": d["in_mailbox"], "sync_error": d.get("sync_error")}
+
+
+@router.post("/mail/draft/save")
+def save_draft(req: DraftSaveRequest):
+    from gigamail.core import drafts
+    try:
+        d = drafts.store().save(
+            req.id, account_id=req.account_id or _active_id(),
+            remote_id=req.remote_id, remote_folder=req.remote_folder,
+            to=req.to, cc=req.cc, bcc=req.bcc, subject=req.subject,
+            body=req.body, reply_to_id=req.reply_to_id)
+    except ValueError as e:
+        raise HTTPException(413, str(e)) from e
+    if req.sync and not d["in_mailbox"]:
+        drafts.sync_in_background(d["draft_id"])
+    return _draft_state(d)
+
+
+@router.get("/mail/draft/local")
+def list_local_drafts(account_id: Optional[int] = None):
+    from gigamail.core import drafts
+    return drafts.store().list(account_id)
+
+
+@router.get("/mail/draft/local/{draft_id}")
+def get_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
+    from gigamail.core import drafts
+    d = drafts.store().get(draft_id)
+    if not d:
+        raise HTTPException(404, "Bozza non trovata")
+    return d
+
+
+@router.delete("/mail/draft/local/{draft_id}")
+def delete_local_draft(draft_id: str = Path(..., pattern=_DRAFT_ID)):
+    """Toglie la bozza da GigaMail e dalla casella (dopo l'invio, o dal ✕).
+    Idempotente: la console cancella dopo l'invio anche bozze mai salvate."""
+    from gigamail.core import drafts
+    d = drafts.discard(draft_id)
+    if d:
+        drafts.remove_from_mailbox_in_background(d)
+    return {"success": True, "deleted": d is not None}
+
+
+@router.get("/mail/folder/{folder_id}")
+def list_folder(folder_id: str, top: int = 20, account_id: Optional[int] = None):
+    return mail_router.get_messages(account_id or _active_id(), folder=folder_id, top=top)
+
+
+@router.get("/mail/unread")
+def unread(top: int = 20, days: int = 5, folder: Optional[str] = None,
+           account_id: Optional[int] = None):
+    return mail_router.get_unread_messages(
+        account_id or _active_id(), folder=folder or "inbox", top=top, days=days
+    )
+
+
+@router.get("/mail/unread_count")
+def unread_count(account_id: Optional[int] = None):
+    import requests
+    try:
+        return {"count": mail_router.count_unread(account_id or _active_id(), cap=99)}
+    except requests.RequestException as e:
+        # The provider did not answer (Graph 502, a timeout): the badge waits
+        # for the next poll, without a traceback in the log at every poll.
+        raise HTTPException(502, f"Server di posta non raggiungibile: {e.__class__.__name__}") from None
+
+
+@router.get("/mail/folders")
+def folders(account_id: Optional[int] = None):
+    return mail_router.list_folders(account_id or _active_id())
+
+
+class FolderRequest(BaseModel):
+    name: str
+    account_id: Optional[int] = None
+
+
+@router.post("/mail/folders")
+def create_folder(req: FolderRequest):
+    return mail_router.create_folder(req.account_id or _active_id(), name=req.name)
+
+
+@router.delete("/mail/folders/{folder_id}")
+def delete_folder(folder_id: str, account_id: Optional[int] = None):
+    args = {"account_id": account_id or _active_id(), "folder_id": folder_id}
+    return _user_action("delete_folder", args,
+                         lambda a: {"success": mail_router.delete_folder(**a)})
+
+
+@router.get("/mail/search/{query}")
+def search(query: str, top: int = 10, account_id: Optional[int] = None):
+    return mail_router.search_messages(account_id or _active_id(), query=query, top=top)
+
+
+@router.get("/mail/sender_history")
+def sender_history(email: str, account_id: Optional[int] = None):
+    profile = mail_memory.get_sender_profile(email) or {}
+    return {"profile": profile}
+
+
+# ── MAIL MEMORY (indice locale) ──────────────────────────────────────
+
+@router.get("/mail/memory/stats")
+def memory_stats():
+    return mail_memory.get_stats()
+
+
+@router.get("/mail/memory/sender/{email}")
+def memory_sender(email: str):
+    return mail_memory.get_sender_profile(email) or {}
+
+
+@router.get("/mail/memory/indexer_state")
+def indexer_state(account_id: Optional[int] = None):
+    aid = account_id or _active_id()
+    return mail_memory.get_indexer_state(aid) if aid else {}
+
+
+@router.post("/mail/memory/index")
+def start_index(account_id: Optional[int] = None):
+    aid = account_id or _active_id()
+    if not aid:
+        raise HTTPException(400, "Nessun account")
+    threading.Thread(
+        target=lambda: mail_memory.run_indexer(aid, mail_router),
+        daemon=True, name=f"console-index-{aid}",
+    ).start()
+    return {"started": True, "account_id": aid}
+
+
+# ── MAIL: AZIONI ─────────────────────────────────────────────────────
+
+class AttachmentRequest(BaseModel):
+    name: str
+    data_b64: str
+    type: str = "application/octet-stream"
+
+
+class SendRequest(BaseModel):
+    to: str
+    subject: str = ""
+    body: str = ""
+    cc: Optional[List[str]] = None
+    bcc: Optional[List[str]] = None
+    attachments: Optional[List[AttachmentRequest]] = None
+    reply_to_id: Optional[str] = None
+    account_id: Optional[int] = None
+
+
+@router.post("/mail/send")
+def send_mail(req: SendRequest, request: Request, account_id: Optional[int] = None):
+    args = req.model_dump()
+    args["account_id"] = req.account_id or account_id or _active_id()
+    if args["account_id"] is None:
+        raise HTTPException(400, "Nessun account attivo")
+    args["body"] = signature.apply(args["account_id"], args["body"])
+    # Send, reply, reply all and forward from the console all come here: a
+    # click in the console sends without Windows Hello, any other caller
+    # still needs it (http_api/console_click.py).
+    result = _human_action(
+        "send_mail", args,
+        f"Inviare dall'account {args['account_id']} a {req.to} "
+        f"(CC: {', '.join(req.cc or [])}; Ccn: {', '.join(req.bcc or [])}) "
+        f"la mail {req.subject!r}?",
+        lambda a: mail_router.send_message(**a),
+        request=request,
+    )
+    if result.get("success") and not result.get("dryrun"):
+        try:
+            _save_address(req.to)
+        except Exception:
+            # The provider already sent the message; an autocomplete storage
+            # error must not report a failed send and invite a duplicate.
+            import logging
+            logging.getLogger(__name__).exception("Cannot save recipient to address book")
+    return result
+
+
+def _release_executable(filename: str, message_id: str, request: Optional[Request]) -> None:
+    """An executable attachment leaves the backend only for a person.
+
+    The console token sits in a file any process of the user can read, an
+    agent with a shell included: holding it proves a process, not a person.
+    A click in the console carries the click secret; any other caller meets
+    Windows Hello / Touch ID, and without a person nothing is released."""
+    if request is not None and console_click.is_console_click(request.headers):
+        policy.audit("download_attachment", {"message_id": message_id, "filename": filename},
+                     "executable_released", detail="console click")
+        return
+    try:
+        approved = consent.require_human(
+            f'GigaMail: release the executable attachment "{filename}"')
+    except consent.ConsentUnavailable as e:
+        raise HTTPException(503, str(e)) from e
+    outcome = "executable_released" if approved else "executable_refused"
+    policy.audit("download_attachment", {"message_id": message_id, "filename": filename},
+                 outcome, detail="os verification")
+    if not approved:
+        raise HTTPException(403, f'"{filename}" is an executable file: '
+                                 "releasing it needs the user's verification.")
+
+
+@router.get("/mail/{message_id}/attachment/{filename:path}")
+def download_attachment(message_id: str, filename: str, folder: str = "",
+                        account_id: Optional[int] = None, request: Request = None):
+    """I byte di un allegato, per "apri" e "salva con nome" della console.
+    Mancava del tutto: la console chiedeva questa URL e riceveva 404 su
+    qualunque allegato. Il provider (Graph o IMAP) restituisce
+    (bytes, content_type); il nome viaggia percent-encoded nel percorso.
+    An executable attachment needs a console click or the OS prompt."""
+    if mail_guard.is_executable_name(filename):
+        _release_executable(filename, message_id, request)
+    aid = account_id or _active_id()
+    try:
+        data = mail_router.get_attachment(account_id=aid, message_id=message_id,
+                                          filename=filename, folder=folder)
+    except ValueError as e:
+        raise HTTPException(404, str(e)) from e
+    if isinstance(data, tuple):
+        content = data[0] if data else b""
+        ctype = data[1] if len(data) > 1 else None
+    else:
+        content, ctype = data, None
+    if not content:
+        raise HTTPException(404, f'Allegato "{filename}" vuoto o non trovato')
+    # Tabella della libreria standard, non il registro di Windows: li' .csv e'
+    # "application/vnd.ms-excel", e il tipo cambierebbe da macchina a macchina.
+    media = ctype or _MIME.guess_type(filename)[0] or "application/octet-stream"
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
+    return Response(content=content, media_type=media, headers={
+        "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}",
+        "Content-Length": str(len(content)),
+    })
+
+
+@router.get("/mail/{message_id}")
+def read_message(message_id: str, folder: str = "", account_id: Optional[int] = None):
+    # A list left open overnight still shows mails the watcher has since
+    # archived or moved: opening one is "not found", not a 500 with a
+    # traceback in the console log for every click.
+    try:
+        return mail_router.get_message(
+            account_id or _active_id(), message_id=message_id, folder=folder
+        )
+    except ValueError as e:
+        raise HTTPException(404, str(e)) from e
+
+
+@router.delete("/mail/{message_id}")
+def delete_message(message_id: str, folder: str = "", account_id: Optional[int] = None):
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder": folder or "INBOX"}
+    return _user_action("delete_message", args,
+                         lambda a: {"success": mail_router.delete_message(**a)})
+
+
+@router.post("/mail/{message_id}/read")
+def mark_read(message_id: str, folder: str = "inbox", account_id: Optional[int] = None):
+    return {"success": mail_router.set_read_status(
+        account_id or _active_id(), message_id=message_id, folder=folder, is_read=True
+    )}
+
+
+@router.post("/mail/{message_id}/unread")
+def mark_unread(message_id: str, folder: str = "inbox", account_id: Optional[int] = None):
+    return {"success": mail_router.set_read_status(
+        account_id or _active_id(), message_id=message_id, folder=folder, is_read=False
+    )}
+
+
+class MoveRequest(BaseModel):
+    folder_id: Optional[str] = None
+
+
+@router.post("/mail/{message_id}/move")
+def move_message(message_id: str, folder_id: Optional[str] = None,
+                 source_folder: str = "", account_id: Optional[int] = None,
+                 req: Optional[MoveRequest] = None):
+    """La cartella arriva nel corpo JSON, come la manda la console, o in
+    query. Prima la voleva solo in query: la console la mandava nel corpo e
+    ogni clic su Sposta finiva in un 422, con la finestra rimasta aperta."""
+    destinazione = (folder_id or (req.folder_id if req else "") or "").strip()
+    if not destinazione:
+        raise HTTPException(400, "Cartella di destinazione mancante")
+    if source_folder and destinazione.lower() == source_folder.strip().lower():
+        raise HTTPException(400, "La mail e' gia' in questa cartella")
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": destinazione, "source_folder": source_folder or None}
+    return _user_action("move_message", args,
+                         lambda a: {"success": mail_router.move_to_folder(**a)})
+
+
+@router.post("/mail/{message_id}/spam")
+def mark_spam(message_id: str, folder: str = "inbox", account_id: Optional[int] = None):
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": "spam", "source_folder": folder}
+    return _user_action("move_message", args,
+                         lambda a: {"success": mail_router.move_to_folder(**a)})
+
+
+@router.post("/mail/{message_id}/not_spam")
+def not_spam(message_id: str, account_id: Optional[int] = None):
+    args = {"account_id": account_id or _active_id(), "message_id": message_id,
+            "folder_id": "inbox", "source_folder": "spam"}
+    return _user_action("move_message", args,
+                         lambda a: {"success": mail_router.move_to_folder(**a)})

@@ -1,0 +1,128 @@
+{
+  "name": "gigamail",
+  "productName": "GigaMail",
+  "version": "0.6.6",
+  "description": "GigaMail — secure agentic email console",
+  "main": "main.js",
+  "author": {
+    "name": "Adecubed",
+    "email": "info@adecubed.com"
+  },
+  "homepage": "https://adecubed.com",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "electron .",
+    "lint": "eslint .",
+    "test": "node --test \"tests/*.test.js\"",
+    "test:e2e": "node tests/e2e.mjs",
+    "test:packaged": "node tests/smoke_packaged.mjs",
+    "predist": "node sync-version.js",
+    "dist": "electron-builder --win --publish never",
+    "predist:mac": "node sync-version.js",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "electron": "^44.1.1",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "jsdom": "^24.1.3"
+  },
+  "build": {
+    "appId": "com.adecubed.gigamail",
+    "productName": "GigaMail",
+    "copyright": "Copyright © 2026 Adecubed",
+    "directories": {
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "adecubed",
+        "repo": "gigamail"
+      }
+    ],
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!python-embedded/**",
+      "!sign.js",
+      "!afterpack.js",
+      "!relocate_scripts.py",
+      "!mac/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../src",
+        "to": "gigamail/src",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc"
+        ]
+      },
+      {
+        "from": "python-embedded",
+        "to": "python",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../docs/brand/gigamail.ico",
+      "signtoolOptions": {
+        "sign": "./sign.js",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
+    },
+    "protocols": [{ "name": "GigaMail", "schemes": ["gigamail"] }],
+    "nsis": {
+      "include": "installer/installer.nsh",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "installerIcon": "../docs/brand/gigamail.ico",
+      "uninstallerIcon": "../docs/brand/gigamail.ico",
+      "installerHeaderIcon": "../docs/brand/gigamail.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GigaMail",
+      "deleteAppDataOnUninstall": false
+    },
+    "afterPack": "./afterpack.js",
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "../docs/brand/gigamail-logo-1024.png",
+      "category": "public.app-category.productivity",
+      "artifactName": "GigaMail-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "mac/entitlements.plist",
+      "entitlementsInherit": "mac/entitlements.plist"
+    },
+    "dmg": {
+      "artifactName": "GigaMail-${version}-${arch}.${ext}"
+    }
+  }
+}

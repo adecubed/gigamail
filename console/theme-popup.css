@@ -1,0 +1,101 @@
+/* theme-popup.css — stile GigaMail 0.6 per le finestre separate (risposta,
+   nuova mail, mail, calendario, domande, marketing). Si carica dopo lo
+   <style> della finestra e ne cambia solo l'aspetto. */
+:root {
+  --gm-bg: #d1d1d6; --gm-card: #ffffff; --gm-ink: #1c1c20; --gm-muted: #5f5f69;
+  --gm-line: #e6e6ec; --gm-fill: #f3f3f6; --gm-pink: #e0409a; --gm-pink-hi: #ec5aac;
+  --gm-tint: #fdf3f9; --gm-tint-line: #eeb9dd; --gm-accent-rgb: 224,64,154; --gm-amber: #b26f00; --gm-amber-bg: #fcf0dc;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+body { background: var(--gm-card) !important; color: var(--gm-ink); font-family: var(--font); }
+.titlebar { background: var(--gm-card) !important; border-bottom: 1px solid var(--gm-line) !important; }
+.tb-title { color: var(--gm-ink); font-weight: 700; font-size: 13px; }
+.tb-btn { background: transparent !important; border: none !important; box-shadow: none !important; color: var(--gm-muted) !important; }
+.tb-btn:hover { background: var(--gm-fill) !important; }
+
+/* campi */
+.reply-header, .fields { border-bottom: 1px solid var(--gm-line) !important; background: var(--gm-card) !important; }
+.reply-label, .field-label, .event-label { color: var(--gm-muted) !important; }
+.reply-field, .field-input, .event-input, .reply-textarea, .body-textarea { color: var(--gm-ink); font-family: var(--font); }
+.field-input, .event-input { border: 1.5px solid var(--gm-line) !important; border-radius: 10px !important; background: var(--gm-card) !important; }
+.field-input:focus, .event-input:focus { border-color: var(--gm-pink) !important; box-shadow: 0 0 0 3px rgba(var(--gm-accent-rgb),0.12) !important; }
+.reply-textarea, .body-textarea { font-size: 15px !important; line-height: 1.6 !important; }
+
+/* barra in basso */
+.toolbar { background: #fcfcfd !important; border-top: 1px solid var(--gm-line) !important; }
+.tool-btn { background: var(--gm-card) !important; border: 1.5px solid var(--gm-line) !important; border-radius: 10px !important;
+  box-shadow: none !important; color: var(--gm-ink); }
+.tool-btn:hover, .tool-btn.active { background: var(--gm-tint) !important; border-color: var(--gm-tint-line) !important; color: var(--gm-pink); }
+.tool-btn.ai { background: var(--gm-card) !important; border: 1.5px solid var(--gm-pink) !important; color: var(--gm-pink) !important; font-weight: 700; }
+.instruction, .ask-input, .ai-input { background: var(--gm-fill) !important; border: 1.5px solid transparent !important;
+  border-radius: 10px !important; color: var(--gm-ink); }
+.instruction:focus, .ask-input:focus, .ai-input:focus { background: var(--gm-card) !important; border-color: var(--gm-tint-line) !important; }
+
+/* azione principale: rosa pieno, testo bianco */
+.send-btn, .ask-send, .compose-btn, .gen-btn, .add-btn {
+  background: var(--gm-pink) !important; color: #fff !important; border: none !important;
+  border-radius: 10px !important; font-weight: 700 !important; box-shadow: 0 6px 14px rgba(var(--gm-accent-rgb),0.25) !important; }
+.send-btn:hover, .ask-send:hover, .compose-btn:hover, .gen-btn:hover, .add-btn:hover { background: var(--gm-pink-hi) !important; }
+.send-btn:disabled, .ask-send:disabled, .compose-btn:disabled { background: #e9b5d2 !important; box-shadow: none !important; }
+
+/* pulsanti secondari */
+.btn, .cal-nav-btn, .cal-today-btn, .filter-btn, .img-btn, .fmt-tab {
+  background: var(--gm-card) !important; border: 1.5px solid var(--gm-line) !important; border-radius: 10px !important;
+  box-shadow: none !important; color: var(--gm-ink); }
+.btn:hover, .cal-nav-btn:hover, .cal-today-btn:hover, .filter-btn:hover, .fmt-tab:hover {
+  background: var(--gm-tint) !important; border-color: var(--gm-tint-line) !important; color: var(--gm-pink); }
+.btn-danger { color: #c62828 !important; }
+.fmt-tab.active, .filter-btn.active { background: var(--gm-tint) !important; border-color: var(--gm-tint-line) !important; color: var(--gm-pink) !important; }
+
+/* allegati e citazioni */
+.attach-chip, .attendee-chip, .ask-cite-chip { background: var(--gm-card) !important; border: 1.5px solid var(--gm-line) !important;
+  border-radius: 10px !important; box-shadow: none !important; }
+.ask-cite-chip:hover { background: var(--gm-tint) !important; border-color: var(--gm-tint-line) !important; }
+.ctx-badge { background: var(--gm-tint) !important; color: var(--gm-pink) !important; }
+
+/* lettura mail in finestra */
+.mail-subject { font-size: 22px !important; font-weight: 700; letter-spacing: -0.3px; color: var(--gm-ink); }
+.mail-from { color: var(--gm-muted); }
+.mail-body, .mail-body-text { font-size: 15px; line-height: 1.65; color: #2b2b31; }
+
+/* calendario */
+.cal-cell { border-color: var(--gm-line) !important; }
+.cal-event-chip { background: var(--gm-tint) !important; color: var(--gm-pink) !important; border-radius: 6px !important; }
+.upcoming-dot { background: var(--gm-pink) !important; }
+.event-modal, .event-box, .img-picker-box { border-radius: 20px !important; border: 1.5px solid var(--gm-tint-line) !important;
+  box-shadow: 0 24px 60px rgba(40,30,55,0.22) !important; }
+
+/* domande alle mail */
+.ask-msg { border-radius: 14px !important; }
+.progress-fill { background: var(--gm-pink) !important; }
+
+/* bordo finestra: una linea leggera invece del nero */
+body { border: 1px solid var(--gm-line) !important; }
+.cal-day-header { background: var(--gm-fill) !important; color: var(--gm-muted) !important; }
+.cal-cell { background: var(--gm-card) !important; }
+.cal-cell.other-month { background: #fafafc !important; }
+.cal-cell.today { background: var(--gm-tint) !important; }
+.cal-cell.today .cal-day-num { background: var(--gm-pink) !important; color: #fff !important; border: none !important; }
+.ask-input-bar { background: var(--gm-card) !important; border-top: 1px solid var(--gm-line) !important; }
+.ask-messages { background: var(--gm-card) !important; }
+
+/* pulsanti della finestra: stesse icone e stesso grigio della console */
+.tb-btn { display: inline-flex !important; align-items: center; justify-content: center; }
+.tb-btn:hover, .tb-btn.close:hover, .tb-btn.minimize:hover, .tb-btn.maximize:hover {
+  background: var(--gm-fill) !important; color: var(--gm-ink) !important; }
+.tb-btn svg { display: block; }
+
+
+html[data-accent="blue"] {
+  --gm-pink: #3b6fd8; --gm-pink-hi: #5585e6; --gm-tint: #edf2fc; --gm-tint-line: #b8cbf0;
+  --gm-accent-rgb: 59,111,216;
+}
+
+.tb-btn { color: var(--gm-pink) !important; }
+.tb-btn:hover, .tb-btn.close:hover, .tb-btn.minimize:hover, .tb-btn.maximize:hover {
+  background: var(--gm-tint) !important; color: var(--gm-pink-dn, var(--gm-pink)) !important; }
+
+/* icone a linea al posto delle emoji (icons.js) */
+.gm-icon { vertical-align: -2px; flex-shrink: 0; }
+.tool-btn .gm-icon, .ctx-ico .gm-icon, .img-btn .gm-icon { vertical-align: middle; }
+.gm-icon, .gm-icon * { color: inherit !important; }

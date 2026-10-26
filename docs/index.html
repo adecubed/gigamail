@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fcf6fa">
+<title>GigaMail — the agentic email layer for AI agents</title>
+<meta name="description" content="Open-source agentic email for AI agents. Claude, Codex or any MCP agent reads, searches and drafts your mail; nothing is sent or deleted without your approval. Windows and macOS app, pip, AGPL-3.0.">
+<link rel="canonical" href="https://gigamail.ai/">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/it.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/">
+<link rel="icon" href="./brand/gigamail.ico?v=2" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="./brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="./brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:url" content="https://gigamail.ai/">
+<meta property="og:title" content="GigaMail — mail for your AI agent. Approved by you.">
+<meta property="og:description" content="Agentic email, open source. Your agent reads, searches and drafts; nothing is sent or deleted without your approval. Windows, macOS, pip.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GigaMail: the email layer for AI agents. Your agent reads, searches and drafts; nothing is sent without your approval.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail — mail for your AI agent. Approved by you.">
+<meta name="twitter:description" content="Agentic email, open source. Your agent reads, searches and drafts; nothing is sent or deleted without your approval. Windows, macOS, pip.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png">
+<meta name="twitter:image:alt" content="GigaMail: the email layer for AI agents.">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "SoftwareApplication", "@id": "https://gigamail.ai/#software", "name": "GigaMail", "url": "https://gigamail.ai/", "description": "Open-source agentic email for AI agents. Your agent reads, searches and drafts; nothing is sent or deleted without your approval. Microsoft Graph + IMAP, local data, AGPL-3.0.", "applicationCategory": "BusinessApplication", "applicationSubCategory": "Email client for AI agents", "operatingSystem": "Windows, macOS", "softwareVersion": "0.6.4", "downloadUrl": "https://github.com/adecubed/gigamail/releases/latest", "installUrl": "https://github.com/adecubed/gigamail/releases/latest", "license": "https://www.gnu.org/licenses/agpl-3.0.html", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "image": "https://gigamail.ai/brand/gigamail-logo-1024.png", "screenshot": "https://gigamail.ai/demo/gigamail-launch-poster.png", "featureList": ["MCP server that connects any AI agent to your inbox", "Microsoft Graph and IMAP providers", "Local search index, memory and credentials", "Human approval before any send or delete", "Autopilot rules with scope, expiry and daily cap"], "sameAs": ["https://github.com/adecubed/gigamail", "https://pypi.org/project/gigamail/"], "author": {"@type": "Organization", "name": "Adecubed", "url": "https://github.com/adecubed"}}, {"@type": "WebPage", "@id": "https://gigamail.ai/#webpage", "url": "https://gigamail.ai/", "name": "GigaMail", "inLanguage": "en", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}, "video": [{"@type": "VideoObject", "name": "GigaMail onboarding in four steps", "description": "Connect a mailbox, say who replies, connect your agent. Nothing leaves without your approval.", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-onboarding-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-onboarding.mp4", "uploadDate": "2026-10-20", "duration": "PT21S"}, {"@type": "VideoObject", "name": "GigaMail: the agent proposes, you approve", "description": "A client writes, your agent drafts the reply, it can ask to send but cannot approve. You approve, outside its reach.", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-approval-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-approval.mp4", "uploadDate": "2026-10-20", "duration": "PT15S"}]}, {"@type": "FAQPage", "@id": "https://gigamail.ai/#faq", "mainEntity": [{"@type": "Question", "name": "What is agentic email?", "acceptedAnswer": {"@type": "Answer", "text": "Email where an AI agent does the reading, searching and drafting for you, and a person keeps the decisions that matter. In GigaMail the agent prepares; sending, replying and deleting wait for your approval."}}, {"@type": "Question", "name": "Which AI agents work with GigaMail?", "acceptedAnswer": {"@type": "Answer", "text": "Claude Code and Claude Desktop, Codex, OpenClaw, Hermes and any client that speaks MCP. GigaMail has no AI of its own: the intelligence is the agent you connect."}}, {"@type": "Question", "name": "Which mailboxes can I connect?", "acceptedAnswer": {"@type": "Answer", "text": "Microsoft 365 and Outlook.com through Microsoft Graph, and any IMAP server: Gmail, Aruba, Libero and others. Several accounts side by side."}}, {"@type": "Question", "name": "Where is my data?", "acceptedAnswer": {"@type": "Answer", "text": "On your machine. Mail index, archive, credentials, memory and configuration stay local; GigaMail runs no servers and receives nothing. What your agent reads is handled by that agent under its own provider's policy, and the masker can hide sensitive fields first."}}, {"@type": "Question", "name": "What does GigaMail cost?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing. GigaMail is open source under the AGPL-3.0, on GitHub and PyPI, built by a company that uses it every day in its own business."}}]}]}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="./home.css?v=8">
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#features">What it does</a>
+      <a href="#approval">Approval</a>
+      <a href="#install">Install</a>
+      <a href="#videos">Videos</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="#install">Download</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div>
+      <p class="kicker">Open source · Windows &amp; macOS · MCP server</p>
+      <h1 id="hero-title">Mail for your AI agent.<br><em>Approved by you.</em></h1>
+      <p class="lede">GigaMail is agentic email with a human in the loop. Claude, Codex or any MCP agent reads your inbox, finds what it needs in your documents and calendar, and prepares the reply. Nothing is sent or deleted until you approve it.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" id="hero-download" href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener" data-label-win="Download for Windows" data-label-mac="Download for macOS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span>Download GigaMail</span></a>
+        <a class="btn btn-ghost" href="#install">Install with your agent</a>
+        <span class="alt">or <a href="https://pypi.org/project/gigamail/" rel="noopener"><code>pip install gigamail</code></a></span>
+      </div>
+      <div class="trust">
+        <span>AGPL-3.0, source on GitHub</span>
+        <span>Your data stays on your machine</span>
+        <span>No GigaMail servers, no account</span>
+      </div>
+    </div>
+    <div class="card hero-video">
+      <video id="hero-clip" autoplay muted loop playsinline preload="metadata" poster="./brand/gigamail-banner-poster.jpg" aria-label="GigaMail: an envelope opens and the flower mark appears">
+        <source src="./brand/gigamail-banner.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</section>
+
+<section id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">What your agent can do</p>
+      <h2 id="features-title">More than a send button.</h2>
+      <p class="lede">Reading, searching, remembering and drafting are free. Only the actions that leave a trace outside wait for you.</p>
+    </div>
+    <div class="grid grid-4">
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+        <h3>Reads and searches</h3>
+        <p>Provider search plus a local index, so "the quote we sent in March" is one question. A local archive keeps every mail and attachment, even after the server drops it.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
+        <h3>Answers from your documents</h3>
+        <p>Attach price lists, terms and product sheets to an account. The reply quotes your figures and stops where your documents stop.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h3>Knows your calendar</h3>
+        <p>Drafts propose only slots that are free, inside your office hours. Events are created after you approve. Microsoft 365 or Google Calendar.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg></div>
+        <h3>Reads attachments</h3>
+        <p>The text of PDFs and office files is available to the agent, so the answer can come from the brochure, not from a guess.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        <h3>Remembers people</h3>
+        <p>History, tone and your own notes sit next to each sender. Every draft to that person reads them first.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.8 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.8-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3.3 15H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9.9 4.3V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.8 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.8h.3a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.1z"/></svg></div>
+        <h3>Automations</h3>
+        <p>"Mail from these senders gets a draft from these documents." Semi-auto asks you each time; auto runs inside a scope you signed, with an expiry and a daily cap.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="m22 6-10 7L2 6"/></svg></div>
+        <h3>All your mailboxes</h3>
+        <p>Microsoft 365 and IMAP: Outlook, Gmail, Aruba, Libero, any server. Several accounts, one view in the console, and each reply leaves from the right address.</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="m4 4 16 16"/></svg></div>
+        <h3>Hides what is sensitive</h3>
+        <p>The masker replaces tax codes, VAT numbers, IBANs and phone numbers before the agent sees them. Deterministic, no AI involved.</p>
+      </article>
+    </div>
+    <div class="card console-note">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+      <p><strong>The desktop console adds</strong> a mail client built around the agent: ask your mail a question in plain language, dictate a command, see the requests waiting for you, manage automations, and read several accounts as one list. The same engine, without a terminal.</p>
+    </div>
+  </div>
+</section>
+
+<section id="approval" aria-labelledby="approval-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">The human checkpoint</p>
+      <h2 id="approval-title">The agent proposes. You decide.</h2>
+      <p class="lede">An agent can ask to send a message. It never receives anything it could use to approve its own request.</p>
+    </div>
+    <div class="steps">
+      <article class="card step">
+        <div class="n">01 · PREVIEW</div>
+        <h3>The agent gets a preview</h3>
+        <p>A send, reply or delete returns the preview and an inert request id. The agent can show you the proposal; it cannot turn that id into an action.</p>
+        <span class="chip chip-inert">request req_7f3a · inert</span>
+      </article>
+      <article class="card step">
+        <div class="n">02 · APPROVAL</div>
+        <h3>You approve, outside its reach</h3>
+        <p>From the console, the command line, Telegram or a Windows notification. The approval is confirmed with Windows Hello or Touch ID: a person at the machine, not a process.</p>
+        <span class="chip chip-held">Held · awaiting approval</span>
+      </article>
+      <article class="card step">
+        <div class="n">03 · EXECUTION</div>
+        <h3>Exactly what you saw runs</h3>
+        <p>Execution uses the arguments you reviewed, never a replacement supplied afterwards. Every write lands in an append-only action log.</p>
+        <span class="chip chip-ok">Approved by you · sent</span>
+      </article>
+    </div>
+    <div class="card callout">
+      <p><strong>An email is input, not authority.</strong> Message content is treated as untrusted data. Credentials never pass through the agent channel, and no MCP tool can create or change an automation rule, so an instruction hidden in a mail cannot add an account, read a secret or switch on autopilot.</p>
+      <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">Security model</a>
+    </div>
+  </div>
+</section>
+
+<section id="install" aria-labelledby="install-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">Three steps</p>
+      <h2 id="install-title">Install it with your agent.</h2>
+      <p class="lede">The desktop app walks you through all three. From a terminal, the same steps take a few minutes.</p>
+    </div>
+    <div class="install">
+      <article class="card">
+        <p class="kicker">Step 1</p>
+        <h3>Get GigaMail</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">One installer with its own Python: no prerequisites, no administrator password, updates itself.</p>
+        <div class="dl">
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" data-platform="win" rel="noopener"><span>Windows 10 / 11</span><small>GigaMail-Setup.exe</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" data-platform="mac-arm" rel="noopener"><span>macOS, Apple Silicon</span><small>GigaMail-arm64.dmg</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg" data-platform="mac-intel" rel="noopener"><span>macOS, Intel</span><small>GigaMail-x64.dmg</small></a>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">Signed and notarized. SHA-256 digests on the <a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">release page</a>. No graphical app needed? The core alone:</p>
+<pre><code>pip install "gigamail[all]"</code></pre>
+      </article>
+      <article class="card">
+        <p class="kicker">Step 2</p>
+        <h3>Connect your mailbox</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">In the app, the onboarding does it: Microsoft 365 with a login in your browser, or IMAP with an app password. From the terminal:</p>
+<pre><code>gigamail login                <span class="c"># Microsoft 365, device flow</span>
+gigamail accounts add-imap    <span class="c"># Gmail, Aruba, Libero, ...</span>
+gigamail check                <span class="c"># a search, a draft held for you</span></code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.94rem">Then say who replies: identity, tone, and the files the agent may quote.</p>
+<pre><code>gigamail identity set
+gigamail identity add-file ./pricelist.xlsx</code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">Credentials go through you, in your own shell. There is no tool an agent could use to add an account.</p>
+      </article>
+      <article class="card">
+        <p class="kicker">Step 3</p>
+        <h3>Connect your agent</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">GigaMail has no AI of its own: the intelligence is the agent you connect. The app's third step copies the exact config for you; by hand it is one of these.</p>
+        <div class="tabs" role="tablist" aria-label="Agents">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="ag-claude-code" id="tab-claude-code">Claude Code</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-claude-desktop" id="tab-claude-desktop">Claude Desktop</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-codex" id="tab-codex">Codex</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-openclaw" id="tab-openclaw">OpenClaw</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-hermes" id="tab-hermes">Hermes</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-any" id="tab-any">Any MCP client</button>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-code" aria-labelledby="tab-claude-code">
+          <p>The repository is a Claude Code plugin: it registers the server and adds a skill that teaches Claude the approval gate.</p>
+<pre><code>claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
+          <p>Add the server to <code>claude_desktop_config.json</code> under <code>mcpServers</code>, then restart Claude Desktop.</p>
+<pre><code>{
+  "mcpServers": {
+    "gigamail": { "command": "gigamail-server" }
+  }
+}</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-codex" aria-labelledby="tab-codex" hidden>
+          <p>As a Codex plugin, with the same skill:</p>
+<pre><code>codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail</code></pre>
+          <p>Or register the server alone, which is also what the <a href="https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3" rel="noopener">OpenAI Plugins Directory</a> entry expects:</p>
+<pre><code>codex mcp add gigamail -- gigamail-server</code></pre>
+          <p>Using ChatGPT rather than the terminal? <a href="https://github.com/adecubed/gigamail/blob/main/CODEX_SETUP.md" rel="noopener">The step-by-step guide</a>.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-openclaw" aria-labelledby="tab-openclaw" hidden>
+          <p>OpenClaw probes the server before saving it. Point <code>GIGAMAIL_ROOT</code> at your GigaMail data folder.</p>
+<pre><code>openclaw mcp add gigamail --command gigamail-server \
+  --env "GIGAMAIL_ROOT=&lt;your data folder&gt;"
+openclaw skills install @adecubed/gigamail   <span class="c"># the approval-gate skill</span></code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-hermes" aria-labelledby="tab-hermes" hidden>
+          <p>Hermes passes stdio servers only the environment you declare, so <code>GIGAMAIL_ROOT</code> is required. In <code>~/.hermes/config.yaml</code>:</p>
+<pre><code>mcp_servers:
+  gigamail:
+    command: "gigamail-server"
+    env:
+      GIGAMAIL_ROOT: "&lt;your data folder&gt;"</code></pre>
+          <p>Check with <code>hermes mcp test gigamail</code>.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-any" aria-labelledby="tab-any" hidden>
+          <p>Any MCP client that can start a stdio server works. Command <code>gigamail-server</code>, no network port, no API key. Declare <code>GIGAMAIL_ROOT</code> if the client filters the environment.</p>
+          <p>Verified setups, tool filters and how to get approvals on your phone: <a href="https://github.com/adecubed/gigamail/blob/main/INTEGRATIONS.md" rel="noopener">INTEGRATIONS.md</a>.</p>
+        </div>
+      </article>
+    </div>
+    <div class="card then">
+      <strong>Then just ask.</strong>
+      <span class="bubble">"Reply to the last quote request using the price list."</span>
+      <span class="muted" style="font-size:.92rem">It reads the mail, takes the numbers from your file, drafts the reply, and asks you before sending.</span>
+    </div>
+  </div>
+</section>
+
+<section id="videos" aria-labelledby="videos-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">Videos</p>
+      <h2 id="videos-title">Watch it work.</h2>
+    </div>
+    <div class="grid grid-2 videos-2">
+      <article class="card video-card">
+        <video controls preload="none" playsinline poster="./demo/gigamail-onboarding-poster.jpg"><source src="./demo/gigamail-onboarding.mp4" type="video/mp4"></video>
+        <div class="vc-body"><div class="vc-n">01 · ONBOARDING<span>21 s</span></div><h3>Four steps and you are in</h3><p>Connect a mailbox, say who replies, connect your agent. All set.</p></div>
+      </article>
+      <article class="card video-card">
+        <video controls preload="none" playsinline poster="./demo/gigamail-approval-poster.jpg"><source src="./demo/gigamail-approval.mp4" type="video/mp4"></video>
+        <div class="vc-body"><div class="vc-n">02 · APPROVAL<span>15 s</span></div><h3>It can ask to send. It can't approve.</h3><p>A client writes, your agent drafts the reply, you approve outside its reach. Then, and only then, it leaves.</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">Questions</p>
+      <h2 id="faq-title">Agentic email, in plain words.</h2>
+    </div>
+    <div class="faq">
+      <details class="card" open><summary>What is agentic email?</summary><p>Email where an AI agent does the reading, searching and drafting for you, and a person keeps the decisions that matter. In GigaMail the agent prepares; sending, replying and deleting wait for your approval.</p></details>
+      <details class="card"><summary>Which AI agents work with GigaMail?</summary><p>Claude Code and Claude Desktop, Codex, OpenClaw, Hermes and any client that speaks MCP. GigaMail has no AI of its own: the intelligence is the agent you connect, and its data policy is the one that applies to what it reads.</p></details>
+      <details class="card"><summary>Which mailboxes can I connect?</summary><p>Microsoft 365 and Outlook.com through Microsoft Graph, and any IMAP server: Gmail, Aruba, Libero and others. Several accounts side by side, each replying from its own address.</p></details>
+      <details class="card"><summary>Where is my data?</summary><p>On your machine. Mail index, archive, credentials, memory and configuration stay local; GigaMail runs no servers and receives nothing. The masker can hide sensitive fields before the agent sees a message. Details in the <a href="./privacy.html">Privacy Policy</a>.</p></details>
+      <details class="card"><summary>What does GigaMail cost?</summary><p>Nothing. GigaMail is open source under the AGPL-3.0, on <a href="https://github.com/adecubed/gigamail" rel="noopener">GitHub</a> and <a href="https://pypi.org/project/gigamail/" rel="noopener">PyPI</a>.</p></details>
+    </div>
+  </div>
+</section>
+
+<section aria-label="Open source">
+  <div class="wrap">
+    <div class="card strip">
+      <a href="https://github.com/adecubed/gigamail" rel="noopener"><span class="big">AGPL-3.0</span><small>Source, issues and releases on GitHub</small></a>
+      <a href="https://github.com/adecubed/gigamail/blob/main/MAPPA_MCP.md" rel="noopener"><span class="big">30 tools</span><small>18 reads, 3 audited writes, 9 behind approval</small></a>
+      <a href="https://pypi.org/project/gigamail/" rel="noopener"><span class="big">pip install gigamail</span><small>MCP server, CLI and watcher, version 0.6</small></a>
+      <a href="./mail-city.html"><span class="big">Mail City</span><small>The interactive 3D tour of a mail's journey</small></a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Terms of Service</a>
+    <a href="./credits.html">Code credits</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+
+<script src="./home.js?v=1" defer></script>
+</body>
+</html>

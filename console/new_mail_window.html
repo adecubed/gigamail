@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: http://127.0.0.1:* http://localhost:* https: http: data: blob:; connect-src http://127.0.0.1:* http://localhost:*; media-src 'self' file: blob: data: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<title data-i18n="new_mail">Nuova mail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent:#eeb9dd; --accent-l:#b0c7f4;
+    --font:'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  body{
+    font-family:var(--font);
+    background:rgba(255,255,255,0.97);
+    width:100vw;height:100vh;
+    overflow:hidden;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:1px solid rgba(0,0,0,0.14);
+    border-radius:8px;
+  }
+  .titlebar{
+    height:34px;flex-shrink:0;
+    display:flex;align-items:center;padding:0 14px;
+    background:#f3e6f0;
+    border-bottom:1px solid rgba(0,0,0,0.14);
+    -webkit-app-region:drag;user-select:none;
+  }
+  .tb-title{font-size:11px;color:rgba(0,0,0,0.6);font-weight:600;flex:1;}
+  .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
+  .tb-btn{
+    width:28px;height:28px;border-radius:7px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;cursor:pointer;
+    color:rgba(0,0,0,0.6);transition:all 0.15s;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tb-btn:hover{ box-shadow:0 3px 10px rgba(0,0,0,0.12); }
+  .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
+  .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
+  .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
+  .fields{
+    display:flex;flex-direction:column;
+    border-bottom:1px solid rgba(0,0,0,0.14);
+    background:rgba(255,255,255,0.95);flex-shrink:0;
+  }
+  .field-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(0,0,0,0.06);}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-size:11px;font-weight:700;color:rgba(0,0,0,0.75);width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
+  .field-input{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
+  .field-input::placeholder{color:rgba(0,0,0,0.55);}
+
+  /* ── BODY con drop zone ── */
+  .body-area{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
+  .body-textarea{
+    flex:1;background:rgba(255,255,255,0.95);border:none;outline:none;resize:none;
+    padding:14px 16px;font-size:12.5px;font-family:var(--font);
+    color:rgba(0,0,0,0.82);line-height:1.65;
+  }
+  .body-textarea::placeholder{color:rgba(0,0,0,0.55);}
+  .drop-overlay{
+    display:none;position:absolute;inset:0;
+    background:rgba(176,199,244,0.35);
+    border:2.5px dashed rgba(0,0,0,0.4);
+    border-radius:6px;z-index:10;
+    align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;color:rgba(0,0,0,0.55);
+    pointer-events:none;
+  }
+  .drop-overlay.visible{display:flex;}
+
+  .attachments{padding:0 14px 4px;display:flex;flex-wrap:wrap;gap:5px;}
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);border-radius:20px;
+    padding:3px 9px;font-size:10.5px;color:rgba(0,0,0,0.6);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
+  .attach-chip-rm:hover{color:#dc2626;}
+
+  .toolbar{
+    padding:8px 12px;flex-shrink:0;
+    border-top:1px solid rgba(0,0,0,0.14);
+    background:#f3e6f0;
+    display:flex;align-items:center;gap:6px;
+    box-shadow:0 -4px 14px rgba(0,0,0,0.15);
+  }
+  .tool-btn{
+    padding:5px 10px;border-radius:8px;
+    background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.14);
+    color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
+    cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tool-btn:hover{background:#f3e6f0;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .tool-btn.active{background:#f3e6f0;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+
+  /* ── INSTRUCTION con drop zone ── */
+  .instruction-wrap{flex:1;min-width:0;position:relative;}
+  .instruction{
+    width:100%;background:rgba(255,255,255,0.7);
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
+    padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
+    box-sizing:border-box;
+  }
+  .instruction::placeholder{color:rgba(0,0,0,0.55);}
+  .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
+  .ctx-badge{
+    display:none;position:absolute;top:-8px;right:4px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.5);border-radius:10px;
+    padding:1px 7px;font-size:9px;color:rgba(0,0,0,0.6);
+    white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+  }
+  .ctx-badge.visible{display:block;}
+
+  .status{font-size:10.5px;color:rgba(0,0,0,0.55);font-family:monospace;padding:2px 4px;}
+  .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1px solid rgba(0,0,0,0.14);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.07);max-height:160px;overflow-y:auto;}
+  .autocomplete-box.hidden{display:none;}
+  .autocomplete-item{padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .autocomplete-item:hover{background:#f3e6f0;}
+  .fu-dropdown{
+    position:absolute;bottom:42px;left:0;background:white;
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:100;overflow:hidden;min-width:90px;display:none;
+  }
+  .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .fu-opt:hover{background:#f3e6f0;}
+  .send-btn{
+    position:relative;padding:7px 18px;border-radius:20px;
+    background:#f3e6f0;
+    color:rgba(0,0,0,0.7);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;border:1px solid rgba(0,0,0,0.14);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);white-space:nowrap;overflow:hidden;
+  }
+  .send-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .send-btn .btn-label{position:relative;z-index:1;}
+  .send-btn .circle-progress{
+    position:absolute;inset:0;border-radius:20px;
+    background:conic-gradient(rgba(0,0,0,0.18) var(--pct,0%), transparent 0%);
+  }
+</style>
+<link rel="stylesheet" href="theme-popup.css"/>
+<link rel="stylesheet" href="theme-dark.css"/>
+<script src="theme_mode.js"></script>
+<script src="dialog.js"></script>
+<script src="icons.js"></script>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title" data-i18n="new_mail">Nuova mail</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    <button class="tb-btn maximize" id="btnMax"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+    <button class="tb-btn close"   id="btnClose"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+
+<div class="fields">
+  <div class="field-row" style="position:relative;">
+    <span class="field-label" data-i18n="to_label">A:</span>
+    <input type="text" id="mailTo" class="field-input" data-i18n-ph="recipient_ph" placeholder="mario.rossi@example.com" autocomplete="off"/>
+    <div id="mailToAutocomplete" class="autocomplete-box hidden"></div>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="cc_label">CC:</span>
+    <input type="text" id="mailCc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="bcc_label">BCC:</span>
+    <input type="text" id="mailBcc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-row">
+    <span class="field-label" data-i18n="subject_label">Oggetto:</span>
+    <input type="text" id="mailSubject" class="field-input" data-i18n-ph="subject_ph" placeholder="Oggetto…"/>
+  </div>
+</div>
+
+<div class="body-area" id="bodyAreaWrap">
+  <textarea id="mailBody" class="body-textarea" data-i18n-ph="new_mail_body_ph" placeholder="Scrivi la mail… (trascina file o immagini qui)"></textarea>
+  <div class="drop-overlay" id="bodyDropOverlay"><span data-icon="paperclip" data-icon-size="16"></span> <span data-i18n="cmp_drop_to_attach">Rilascia per allegare</span></div>
+  <div class="attachments" id="attachmentsBox"></div>
+</div>
+
+<div class="toolbar">
+  <button class="tool-btn" id="btnAttach"><span data-icon="paperclip" data-icon-size="16"></span></button>
+  <input type="file" id="fileInput" multiple style="display:none"/>
+  <div style="position:relative;">
+    <button class="tool-btn" id="btnFollowup" data-i18n-title="followup" title="Follow-up"><span data-icon="pin" data-icon-size="16"></span></button>
+    <div class="fu-dropdown" id="followupDropdown">
+      <div class="fu-opt" data-h="0">✕ <span data-i18n="cmp_followup_none">Nessuno</span></div>
+      <div class="fu-opt" data-h="24">24h</div>
+      <div class="fu-opt" data-h="48">48h</div>
+      <div class="fu-opt" data-h="72">72h</div>
+    </div>
+  </div>
+  <div class="instruction-wrap">
+    <span class="ctx-badge" id="ctxBadge"></span>
+    <input type="text" id="instruction" class="instruction" data-i18n-ph="ai_instruction_drag_ph" placeholder="Istruzione AI — trascina file per contesto…"/>
+  </div>
+  <button class="tool-btn" id="btnMask" data-i18n-title="mask_title" title="Maschera dati sensibili (CF, IBAN, email…)"><span data-icon="lock" data-icon-size="16"></span></button>
+  <button class="tool-btn" id="btnGenerate"><span data-icon="zap" data-icon-size="14"></span> <span data-i18n="generate">GENERA</span></button>
+  <span class="status" id="status"></span>
+  <button class="send-btn" id="btnSend">
+    <div class="circle-progress" id="sendCircle"></div>
+    <span class="btn-label" id="sendLabel" data-i18n="send">Invia ↑</span>
+  </button>
+</div>
+
+<script src="new_mail_window_page.js"></script>
+<!-- RESIZE HANDLE -->
+<div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
+<script src="window_resize.js" data-api="newMailWindowAPI" data-min-w="480" data-min-h="500"></script>
+  <script src="i18n.js"></script>
+</body>
+</html>

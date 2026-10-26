@@ -1,0 +1,394 @@
+"""La classe Watcher: orchestra i moduli del package, un tick alla volta.
+
+I metodi sono deleghe sottili: la logica vive nei moduli per
+responsabilita' (ingestion, pipeline, execution, telegram, process_state).
+I nomi con underscore restano perche' test e console li chiamano.
+"""
+import os
+from typing import Any, Dict, List, Optional
+
+from gigamail import policy
+from gigamail.core import rules as rules_mod
+from gigamail.core import telegram_channel
+
+from . import (
+    after_appointment,
+    archive,
+    execution,
+    ingestion,
+    pipeline,
+    process_state,
+    telegram,
+    tg_risposte,
+)
+from .log import _log
+
+
+class Watcher:
+    _PIN_MAX_FAILS = telegram._PIN_MAX_FAILS
+    _PIN_LOCK_SECONDS = telegram._PIN_LOCK_SECONDS
+
+    def __init__(self, interval: int = 60, verbose: bool = False,
+                 unread_days: int = 7, unread_top: int = 25):
+        # 7 giorni, non 2: il perimetro serve a non far rispondere a
+        # posta vecchia quando nasce una regola, non a perdere le
+        # richieste arrivate mentre il PC era spento. Con due giorni
+        # un fine settimana via bastava a far sparire due clienti,
+        # senza una riga di log. Il limite vero resta la data di
+        # creazione della regola, che questo non puo' scavalcare.
+        self.interval = max(int(interval), 10)
+        self.verbose = verbose
+        self.unread_days = unread_days
+        self.unread_top = unread_top
+
+    # -- fase A: eseguire le semi approvate nel frattempo ------------------
+
+    def execute_approved(self) -> int:
+        return execution.execute_approved(self)
+
+    # -- fase B: posta nuova → regole -------------------------------------
+
+    def _poll_folder(self, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return ingestion.poll_folder(rule, top=self.unread_top,
+                                     unread_days=self.unread_days,
+                                     verbose=self.verbose)
+
+    @staticmethod
+    def _matches(rule: Dict[str, Any], message: Dict[str, Any]) -> bool:
+        return ingestion.matches(rule, message)
+
+    def _folder_of(self, rule: Dict[str, Any]) -> str:
+        return ingestion.folder_of(rule)
+
+    def process_message(self, rule: Dict[str, Any], message: Dict[str, Any],
+                        retry_feedback: Optional[str] = None,
+                        previous_body: Optional[str] = None) -> str:
+        return pipeline.process_message(self, rule, message,
+                                        retry_feedback=retry_feedback,
+                                        previous_body=previous_body)
+
+    def process_retries(self) -> int:
+        return execution.process_retries(self)
+
+    def heartbeat(self) -> None:
+        process_state.heartbeat(self.interval)
+
+    def tick(self) -> Dict[str, int]:
+        stats = {"executed": 0, "processed": 0, "appointments": 0,
+                 "after": 0, "archived": 0, "salvate": 0, "spam": 0}
+        # Il battito va aggiornato DENTRO il giro, non solo all'inizio.
+        # Un giro che scrive tre bozze e spedisce tre mail dura piu' della
+        # soglia oltre la quale running_state() dichiara morto il watcher:
+        # cosi' un processo vivo e al lavoro risultava assente, e la
+        # guardia del launcher — che usa quello stesso controllo — poteva
+        # farne partire un secondo.
+        self.heartbeat()
+        stats["executed"] = self.execute_approved()
+        self.heartbeat()
+        stats["processed"] += self.process_retries()
+        self.heartbeat()
+        stats["appointments"] = self.sweep_appointments()
+        self.heartbeat()
+        stats["after"] = self.after_appointment()
+        self.heartbeat()
+        stats["processed"] += self.desktop_replies()
+        self.heartbeat()
+        # Spam filters before the rules: a mail they hide gets no draft.
+        stats["spam"] = self.apply_spam_filters()
+        self.heartbeat()
+        # One notification per tick when many drafts are born together
+        # (a night's mail after a restart), not one per draft.
+        policy.begin_notify_batch()
+        try:
+            for rule in rules_mod.store().active():
+                for message in self._poll_folder(rule):
+                    if not self._matches(rule, message):
+                        continue
+                    message_id = str(message.get("id"))
+                    if rules_mod.store().already_handled(rule["rule_id"], message_id):
+                        continue
+                    self.heartbeat()   # una bozza puo' durare minuti
+                    self.process_message(rule, message)
+                    stats["processed"] += 1
+                    self.heartbeat()
+        finally:
+            policy.end_notify_batch()
+        # Dopo le regole, non prima: una mail si sposta solo quando la sua
+        # regola l'ha gia' gestita in questo stesso giro o in uno precedente.
+        stats["archived"] = self.archive_mail()
+        self.heartbeat()
+        # Per ultima: la copia locale di tutto cio' che il server ha adesso,
+        # spostamenti di questo giro compresi.
+        stats["salvate"] = self.archivia_posta()
+        self.heartbeat()
+        return stats
+
+    # -- fase E: la copia locale di tutta la posta ------------------------
+
+    def archivia_posta(self) -> int:
+        """Salva nell'archivio di GigaMail cio' che e' arrivato sui server,
+        e al primo giro su un account lancia l'import dello storico da
+        Outlook. Un server lento o un Outlook assente non fermano il
+        watcher: si riprova al giro dopo."""
+        from gigamail.core import accounts as core_accounts
+        from gigamail.core import archivio, archivio_sync, outlook_import
+
+        # Once per watcher process: mail archived before the archive
+        # stopped keeping executables still holds them on disk.
+        if not getattr(self, "_executables_removed", False):
+            self._executables_removed = True
+            try:
+                tolti = archivio.store().remove_executables()
+                if tolti:
+                    _log(f"archive: executable attachments removed from {tolti} "
+                         "mails archived earlier", self.verbose)
+            except Exception as e:
+                _log(f"archive: executable attachments not checked: {e}", self.verbose)
+
+        nuovi = 0
+        for a in core_accounts.get_accounts():
+            aid = int(a["id"])
+            if a.get("type") == "demo":
+                continue
+            try:
+                # A time budget per account: a server that never finishes
+                # a FETCH used to freeze the whole watcher, with only its
+                # IMAP socket open, until the task was restarted.
+                esito = archivio_sync.sincronizza(
+                    aid, limite=archivio_sync.LIMITE_GIRO,
+                    battito=self.heartbeat,
+                    budget=archivio_sync.ACCOUNT_BUDGET)
+                nuovi += int(esito.get("nuovi", 0))
+                if esito.get("timed_out"):
+                    _log(f"archive {aid}: {esito['nuovi']} saved, out of "
+                         f"time after {archivio_sync.ACCOUNT_BUDGET}s, the "
+                         "rest waits for the next tick", self.verbose)
+                elif esito.get("restano"):
+                    _log(f"archivio {aid}: {esito['nuovi']} salvate, "
+                         f"ne restano {esito['restano']} per i prossimi giri",
+                         self.verbose)
+            except Exception as e:
+                _log(f"archivio {aid} non aggiornato: {e}", self.verbose)
+            try:
+                esito_import = outlook_import.avvia_se_serve(aid)
+                if esito_import == "avviato":
+                    _log(f"archivio {aid}: avviato l'import dello storico "
+                         "da Outlook", True)
+            except Exception as e:
+                _log(f"import da Outlook non avviato per {aid}: {e}",
+                     self.verbose)
+            self.heartbeat()
+        return nuovi
+
+    # -- fase D: archiviazione automatica ----------------------------------
+
+    def archive_mail(self) -> int:
+        try:
+            return archive.archivia(self)
+        except Exception as e:
+            _log(f"archivio fallito: {e}", self.verbose)
+            return 0
+
+    # -- fase C: conferme e disdette sugli appuntamenti --------------------
+
+    def sweep_appointments(self) -> int:
+        """Le risposte dei clienti sui thread in ascolto.
+
+        Una proposta NON entra in agenda: ci entra la conferma. Qui si
+        rileggono solo i thread aperti (una regola ha risposto, un orario
+        e' stato proposto o fissato) e ogni risposta nuova arriva
+        all'umano su Telegram, anche quando il calendario non cambia."""
+        from gigamail.core import appointments, extensions, mail_router
+
+        if not extensions.enabled("appointments"):
+            return 0
+        # Sent mails the MCP server could not read for the calendar: the
+        # agent starts here, outside the AI client that runs the server.
+        try:
+            totale = appointments.retry_pending_reads()
+        except Exception as e:
+            _log(f"appointments, pending reads not retried: {e}",
+                 self.verbose)
+            totale = 0
+        aperti = appointments.store().aperti()
+        if not aperti:
+            return totale
+        try:
+            tg = telegram_channel.channel()
+        except Exception:
+            tg = None
+        for account_id in sorted({int(r["account_id"]) for r in aperti}):
+            try:
+                messaggi = mail_router.get_messages(
+                    account_id=account_id, folder="inbox",
+                    top=self.unread_top) or []
+            except Exception as e:
+                _log(f"appuntamenti, poll fallito ({account_id}): {e}",
+                     self.verbose)
+                continue
+
+            def _corpo_di(m, _aid=account_id):
+                pieno = mail_router.get_message(
+                    account_id=_aid, message_id=str(m.get("id") or ""),
+                    folder="INBOX") or {}
+                return appointments._corpo(pieno)
+
+            def _avvisa(riga, m, corpo, esito, toccato, _aid=account_id):
+                testo = appointments.testo_avviso(
+                    riga, m, corpo, esito, toccato,
+                    lingua=policy.user_lang())
+                _log(f"risposta sul thread {riga['thread_key'][:80]} "
+                     f"({esito.get('stato')})", True)
+                policy.audit("appointment",
+                             {"account_id": _aid,
+                              "thread": riga["thread_key"],
+                              "message_id": str(m.get("id") or ""),
+                              "stato": esito.get("stato")},
+                             "reply_notified")
+                if tg:
+                    # Con il bottone Rispondi: da Telegram si risponde al
+                    # cliente senza tornare al PC.
+                    key = tg_risposte.registra_avviso(tg, testo, _aid, m,
+                                                      policy.user_lang())
+                else:
+                    key = tg_risposte.register_context(_aid, m)
+                # On the desktop too, with its own Reply button.
+                tg_risposte.notify_desktop(testo, key)
+                # One free time named by the client: the confirmation is
+                # drafted now and waits for approval.
+                self.heartbeat()
+                try:
+                    tg_risposte.draft_confirmation(self, tg, _aid, riga, m,
+                                                   esito, toccato)
+                except Exception as e:
+                    _log(f"confirmation not drafted: {e}", True)
+                self.heartbeat()
+
+            try:
+                totale += appointments.sweep(account_id, messaggi,
+                                             corpo_di=_corpo_di,
+                                             avvisa=_avvisa)
+            except Exception as e:
+                _log(f"appuntamenti, sweep fallito ({account_id}): {e}",
+                     self.verbose)
+        return totale
+
+    # -- phase C3: replies asked for from the desktop ---------------------
+
+    def apply_spam_filters(self) -> int:
+        """Mails matching a spam filter (subject, sender or text) go to the
+        spam folder or the bin, on every account. A failure does not stop
+        the tick."""
+        from gigamail.core import spam_filters
+        try:
+            n = spam_filters.run_all()
+        except Exception as e:
+            _log(f"spam filters: {type(e).__name__}: {e}")
+            return 0
+        if n:
+            _log(f"spam filters: {n} moved")
+        return n
+
+    def desktop_replies(self) -> int:
+        """Replies and edits queued from desktop notifications: drafted
+        here, where the agent runs. A failure does not stop the tick."""
+        try:
+            tg = telegram_channel.channel()
+        except Exception:
+            tg = None
+        try:
+            return tg_risposte.process_desktop_queue(self, tg)
+        except Exception as e:
+            _log(f"desktop replies not processed: {e}", self.verbose)
+            return 0
+
+    # -- phase C2: how the appointment went, and the follow-up -------------
+
+    def after_appointment(self) -> int:
+        """An hour after an appointment, ask how it went and write it in
+        the contact's notes; seven days later, prepare the follow-up. A
+        failure here does not stop the rest of the tick."""
+        try:
+            return after_appointment.tick(self)
+        except Exception as e:
+            _log(f"after appointment: tick failed: {e}", self.verbose)
+            return 0
+
+    # -- Telegram: tap e comandi dall'umano --------------------------------
+
+    def _tg_say(self, tg, it: str, en: str) -> None:
+        telegram.say(tg, it, en)
+
+    def _tg_approve_allowed(self, tg) -> bool:
+        return telegram.approve_allowed(tg)
+
+    def check_telegram_trust(self, tg) -> None:
+        telegram.check_trust(tg)
+
+    def handle_telegram_event(self, tg, ev: Dict[str, Any]) -> None:
+        telegram.handle_event(self, tg, ev)
+
+    def _tg_action(self, tg, action: str, rid: str, rs,
+                   message_id: int = 0) -> None:
+        telegram.action(self, tg, action, rid, rs, message_id=message_id)
+
+    def _tg_pin_locked(self, rs) -> int:
+        return telegram.pin_locked(rs)
+
+    def _tg_check_pin(self, tg, rid: str, text: str, rs,
+                      message_id: int = 0) -> None:
+        telegram.check_pin(self, tg, rid, text, rs, message_id=message_id)
+
+    def _tg_retry(self, tg, rid: str, feedback: str, rs) -> None:
+        telegram.retry(self, tg, rid, feedback, rs)
+
+    def _wait(self, seconds: int) -> None:
+        telegram.wait(self, seconds)
+
+    # -- loop ---------------------------------------------------------------
+
+    def run(self, once: bool = False) -> None:
+        tg = telegram_channel.channel()
+        # Non basta approve_enabled: l'approvazione da Telegram vale solo
+        # se la chat e' stata registrata dietro Hello. Dire "con
+        # approvazione" guardando solo il file e' dichiarare attiva una
+        # cosa spenta — e lo si scopre premendo Approva e vedendosi
+        # rispondere di no.
+        approva = bool(tg) and self._tg_approve_allowed(tg)
+        _log(f"watcher attivo, intervallo {self.interval}s"
+             + (f", Telegram {'con' if approva else 'senza'} approvazione"
+                if tg else ""), True)
+        if tg and tg.approve_enabled and not approva:
+            _log("ATTENZIONE: notify.json chiede l'approvazione da "
+                 "Telegram ma nessuna chat e' registrata dietro Hello "
+                 "(tg_trusted_chat vuoto): i tap su Approva verranno "
+                 "rifiutati. Esegui: gigamail telegram setup --approve",
+                 True)
+        if tg:
+            # Quale chat questo watcher considera "l'umano": scritto
+            # nell'audit a ogni avvio, cosi' un notify.json manomesso
+            # lascia traccia (SECURITY.md, approvazione da Telegram).
+            policy.audit("telegram", {"chat_id": tg.chat_id,
+                                      "approve": tg.approve_enabled},
+                         "telegram_trusted_chat")
+            self.check_telegram_trust(tg)
+        while True:
+            reason = process_state.should_yield(self.interval)
+            if reason:
+                _log(f"mi fermo: {reason}", True)
+                policy.audit("watch", {"pid": os.getpid()}, "watch_yielded", detail=reason)
+                return
+            try:
+                stats = self.tick()
+                if (stats["processed"] or stats["executed"]
+                        or stats["appointments"] or stats["after"]
+                        or stats["archived"]
+                        or stats["salvate"]):
+                    _log(f"tick: {stats}", True)
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                _log(f"tick fallito: {e}", True)
+            if once:
+                return
+            self._wait(self.interval)

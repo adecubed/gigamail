@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' file: data: https://fonts.gstatic.com; img-src 'self' file: http://127.0.0.1:* http://localhost:* https: http: data: blob:; connect-src http://127.0.0.1:* http://localhost:*; media-src 'self' file: blob: data: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<title data-i18n="new_reply">Nuova risposta</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700&display=swap');
+  :root {
+    --accent:#eeb9dd; --accent-l:#b0c7f4;
+    --font:'Saira','Segoe UI',-apple-system,sans-serif;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  /* scrollbar sottili come nella finestra principale */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  body{
+    font-family:var(--font);
+    background:rgba(235,242,250,0.97);
+    width:100vw;height:100vh;
+    overflow:hidden;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+    border:2px solid rgba(0,0,0,0.85);
+    border-radius:8px;
+  }
+  .titlebar{
+    height:34px;flex-shrink:0;
+    display:flex;align-items:center;padding:0 14px;
+    background:l#
+    border-bottom:1px solid rgba(0,0,0,0.14);
+    -webkit-app-region:drag;user-select:none;
+    border-radius:6px 6px 0 0;
+  }
+  .tb-title{font-size:11px;color:rgba(0,0,0,0.6);font-weight:600;flex:1;}
+  .tb-buttons{display:flex;gap:6px;align-items:center;-webkit-app-region:no-drag;}
+  .tb-btn{
+    width:28px;height:28px;border-radius:7px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:700;cursor:pointer;
+    color:rgba(0,0,0,0.6);transition:all 0.15s;flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tb-btn:hover{ box-shadow:0 3px 10px rgba(0,0,0,0.12); }
+  .tb-btn.close:hover{background:rgba(220,38,38,0.15);color:#dc2626;}
+  .tb-btn.minimize:hover{background:rgba(245,158,11,0.15);color:#d97706;}
+  .tb-btn.maximize:hover{background:rgba(34,197,94,0.15);color:#16a34a;}
+  .reply-header{
+    padding:12px 16px 10px;border-bottom:1px solid rgba(0,0,0,0.07);
+    background:rgba(255,255,255,0.95);display:flex;flex-direction:column;gap:7px;flex-shrink:0;
+  }
+  .reply-row{display:flex;align-items:center;gap:8px;}
+  .reply-label{font-size:11px;color:rgba(0,0,0,0.75);font-weight:700;width:52px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px;}
+  .reply-field{flex:1;background:transparent;border:none;outline:none;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);}
+  .reply-field::placeholder{color:rgba(0,0,0,0.55);}
+  .field-sep{height:1px;background:rgba(0,0,0,0.06);margin:0;}
+
+  /* ── BODY con drop zone ── */
+  .reply-body{flex:1;display:flex;flex-direction:column;min-height:0;position:relative;}
+  .reply-textarea{
+    flex:1;background:rgba(255,255,255,0.95);border:none;outline:none;resize:none;
+    padding:14px 16px;font-size:12.5px;font-family:var(--font);color:rgba(0,0,0,0.82);line-height:1.65;
+  }
+  .reply-textarea::placeholder{color:rgba(0,0,0,0.55);}
+  .drop-overlay{
+    display:none;position:absolute;inset:0;
+    background:rgba(176,199,244,0.35);
+    border:2.5px dashed rgba(0,0,0,0.4);
+    border-radius:6px;z-index:10;
+    align-items:center;justify-content:center;
+    font-size:13px;font-weight:600;color:rgba(0,0,0,0.55);
+    pointer-events:none;
+  }
+  .drop-overlay.visible{display:flex;}
+
+  .attachments{padding:0 14px 4px;display:flex;flex-wrap:wrap;gap:5px;}
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.14);border-radius:20px;
+    padding:3px 9px;font-size:10.5px;color:rgba(0,0,0,0.6);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .attach-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px;margin-right:2px;}
+  .attach-chip-rm{background:none;border:none;cursor:pointer;color:rgba(0,0,0,0.55);font-size:12px;}
+  .attach-chip-rm:hover{color:#dc2626;}
+  #suggestedBanner{margin:0 14px 6px;padding:9px 12px;background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.14);border-radius:10px;font-size:11px;font-family:var(--font);display:none;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  /* Mail che impartisce ordini all'assistente: nessuna bozza scritta.
+     Deve leggersi come un avviso, non come un errore dell'app. */
+  #guardBanner{margin:0 14px 6px;padding:10px 12px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.35);border-radius:10px;font-size:11px;font-family:var(--font);display:none;}
+  #guardBanner .gb-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:#b91c1c;margin-bottom:5px;}
+  #guardBanner .gb-why{color:rgba(0,0,0,0.75);margin-bottom:6px;}
+  #guardBanner .gb-quote{font-family:monospace;font-size:10px;padding:6px 8px;background:rgba(0,0,0,0.05);border-radius:6px;color:rgba(0,0,0,0.7);white-space:pre-wrap;}
+
+  .toolbar{
+    padding:8px 12px;flex-shrink:0;border-top:1px solid rgba(0,0,0,0.14);
+    background:#f3e6f0;
+    display:flex;align-items:center;gap:6px;border-radius:0 0 6px 6px;
+  }
+  .tool-btn{
+    padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.8);
+    border:1px solid rgba(0,0,0,0.14);color:rgba(0,0,0,0.7);font-size:11.5px;font-family:var(--font);
+    cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.07);
+  }
+  .tool-btn:hover{background:#f3e6f0;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .tool-btn.ai{background:#f3e6f0;border:1px solid rgba(0,0,0,0.14);box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+  .tool-btn.active{background:#f3e6f0;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+
+  /* ── INSTRUCTION con drop zone ── */
+  .instruction-wrap{flex:1;min-width:0;position:relative;}
+  .instruction{
+    width:100%;background:rgba(255,255,255,0.7);
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
+    padding:5px 9px;font-size:11px;font-family:var(--font);color:rgba(0,0,0,0.8);outline:none;
+    box-sizing:border-box;
+  }
+  .instruction::placeholder{color:rgba(0,0,0,0.55);}
+  .instruction.drag-over{border-color:rgba(43,92,230,0.7);background:rgba(176,199,244,0.25);}
+  .ctx-badge{
+    display:none;position:absolute;top:-8px;right:4px;
+    background:#f3e6f0;
+    border:1px solid rgba(0,0,0,0.5);border-radius:10px;
+    padding:1px 7px;font-size:9px;color:rgba(0,0,0,0.6);
+    white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .ctx-badge.visible{display:block;}
+
+  .fu-dropdown{
+    position:absolute;bottom:42px;left:0;background:white;
+    border:1px solid rgba(0,0,0,0.14);border-radius:8px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:100;overflow:hidden;min-width:90px;display:none;
+  }
+  .fu-opt{padding:7px 14px;font-size:11px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
+  .fu-opt:hover{background:#f3e6f0;}
+
+  .send-btn{
+    position:relative;padding:7px 18px;border-radius:20px;
+    background:#f3e6f0;
+    color:rgba(0,0,0,0.7);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;border:1px solid rgba(0,0,0,0.14);
+    box-shadow:0 2px 8px rgba(0,0,0,0.07);white-space:nowrap;overflow:hidden;
+  }
+  .send-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .send-btn .btn-label{position:relative;z-index:1;}
+  .send-btn .circle-progress{
+    position:absolute;inset:0;border-radius:20px;
+    background:conic-gradient(rgba(0,0,0,0.18) var(--pct,0%), transparent 0%);
+  }
+</style>
+<link rel="stylesheet" href="theme-popup.css"/>
+<link rel="stylesheet" href="theme-dark.css"/>
+<script src="theme_mode.js"></script>
+<script src="dialog.js"></script>
+<script src="icons.js"></script>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="tb-title" data-i18n="new_reply">Nuova risposta</div>
+  <div class="tb-buttons">
+    <button class="tb-btn minimize" id="btnMin" data-i18n-title="hide" title="Nascondi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+    <button class="tb-btn maximize" id="btnMax" data-i18n-title="fullscreen" title="Tutto schermo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+    <button class="tb-btn close"   id="btnClose" data-i18n-title="close" title="Chiudi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+  </div>
+</div>
+
+<div class="reply-header">
+  <div class="reply-row" style="position:relative;">
+    <span class="reply-label" data-i18n="to_label">A:</span>
+    <input type="text" id="replyTo" class="reply-field" data-i18n-ph="recipient_ph" placeholder="mario.rossi@example.com" autocomplete="off"/>
+    <div id="replyToAutocomplete" style="position:absolute;left:60px;right:0;top:34px;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:999;display:none;max-height:180px;overflow-y:auto;"></div>
+  </div>
+  <div class="field-sep"></div>
+  <div class="reply-row">
+    <span class="reply-label" data-i18n="cc_label">CC:</span>
+    <input type="text" id="replyCc" class="reply-field" data-i18n-ph="optional" placeholder="(opzionale)"/>
+  </div>
+  <div class="field-sep"></div>
+  <div class="reply-row">
+    <span class="reply-label" data-i18n="subject_label">Oggetto:</span>
+    <input type="text" id="replySubject" class="reply-field"/>
+  </div>
+</div>
+
+<div class="reply-body" id="replyBodyWrap">
+  <textarea id="replyText" class="reply-textarea" data-i18n-ph="reply_text_drag_ph" placeholder="Scrivi la tua risposta… (trascina file o immagini qui)"></textarea>
+  <div class="drop-overlay" id="bodyDropOverlay"><span data-icon="paperclip" data-icon-size="16"></span> <span data-i18n="cmp_drop_to_attach">Rilascia per allegare</span></div>
+  <div class="attachments" id="attachmentsBox"></div>
+  <div id="guardBanner"></div>
+  <div id="suggestedBanner"></div>
+</div>
+
+<div class="toolbar">
+  <button class="tool-btn" id="btnAttach" data-i18n-title="attach_file" title="Allega file"><span data-icon="paperclip" data-icon-size="16"></span></button>
+  <input type="file" id="fileInput" multiple style="display:none"/>
+  <div style="position:relative;">
+    <button class="tool-btn" id="btnFollowup" data-i18n-title="followup" title="Follow-up"><span data-icon="pin" data-icon-size="16"></span></button>
+    <div class="fu-dropdown" id="followupDropdown">
+      <div class="fu-opt" data-h="0">✕ <span data-i18n="cmp_followup_none">Nessuno</span></div>
+      <div class="fu-opt" data-h="24">24h</div>
+      <div class="fu-opt" data-h="48">48h</div>
+      <div class="fu-opt" data-h="72">72h</div>
+    </div>
+  </div>
+  <div class="instruction-wrap">
+    <span class="ctx-badge" id="ctxBadge"></span>
+    <input type="text" id="instruction" class="instruction" data-i18n-ph="ai_instruction_drag_ph" placeholder="Istruzione AI — trascina file per contesto…"/>
+  </div>
+  <button class="tool-btn" id="btnMask" data-i18n-title="mask_title" title="Maschera dati sensibili (CF, IBAN, email…)"><span data-icon="lock" data-icon-size="16"></span></button>
+  <button class="tool-btn ai" id="btnGenerate"><span data-icon="zap" data-icon-size="14"></span> <span data-i18n="generate">GENERA</span></button>
+  <button class="send-btn" id="btnSend">
+    <div class="circle-progress" id="sendCircle"></div>
+    <span class="btn-label" id="sendLabel" data-i18n="send">Invia ↑</span>
+  </button>
+</div>
+
+<script src="reply_window_page.js"></script>
+<!-- RESIZE HANDLE -->
+<div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
+<script src="window_resize.js" data-api="replyWindowAPI" data-min-w="420" data-min-h="400"></script>
+  <script src="i18n.js"></script>
+</body>
+</html>

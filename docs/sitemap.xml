@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://gigamail.ai/</loc>
+    <lastmod>2026-10-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/it.html</loc>
+    <lastmod>2026-10-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/mail-city.html</loc>
+    <lastmod>2026-10-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/mail-city.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/mail-city-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/mail-city.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/mail-city-it.html</loc>
+    <lastmod>2026-10-20</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/mail-city.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/mail-city-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/mail-city.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/business/</loc>
+    <lastmod>2026-10-11</lastmod>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/privacy.html</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/terms.html</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/credits.html</loc>
+    <lastmod>2026-10-20</lastmod>
+  </url>
+</urlset>

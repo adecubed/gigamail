@@ -1,0 +1,174 @@
+name: Desktop build
+
+# Builda l'installer NSIS su Windows, lo installa in silenzio e verifica che
+# l'app impacchettata abbia tutto: exe, Python embedded, codice del repo.
+# La recensione esterna aveva ragione: la CI validava il Python ma nessuno
+# provava mai l'installer — questo workflow chiude quel buco.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build.yml"
+  pull_request:
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build.yml"
+  workflow_dispatch:
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: Dipendenze console (ABI Electron, non Node)
+        working-directory: console
+        # better-sqlite3 non va compilato per Node (servirebbe Visual Studio):
+        # install-app-deps scarica il prebuilt per la ABI di Electron.
+        # --ignore-scripts salta anche il postinstall di electron, cioe' il
+        # download del binario: electron-builder non ne ha bisogno, ma
+        # l'e2e lancia `electron .` e senza binario muore subito.
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+          node node_modules/electron/install.js
+
+      - name: Python embedded
+        run: powershell -ExecutionPolicy Bypass -File console/prepare-python.ps1
+
+      # E2E nell'Electron vero, PRIMA di impacchettare: in dev main.js lancia
+      # il backend da ../.venv, quindi ne serve uno con il pacchetto dentro.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: venv per il backend di sviluppo
+        run: |
+          python -m venv .venv
+          .venv\Scripts\pip install -e ".[all]" --quiet
+      - name: E2E console (XSS, isolamento renderer, primo avvio)
+        working-directory: console
+        env:
+          E2E_FRESH_APPDATA: ${{ runner.temp }}\gigamail-e2e
+          ADE_CONSOLE_PORT: "8012"   # non la default: prova che arrivi fino ai renderer
+        run: npm run test:e2e
+      - name: Log Electron dell'E2E (solo se fallisce)
+        if: failure()
+        run: Get-Content console/e2e-electron.log -Tail 80
+        shell: pwsh
+
+      - name: Build installer
+        working-directory: console
+        shell: pwsh
+        # The tail of the output also goes into an annotation, readable from
+        # the checks API. The log lives in RUNNER_TEMP, never in console/:
+        # electron-builder packs that whole folder, and a log still open
+        # for writing ended up in app.asar and broke the installed app.
+        run: |
+          npm run dist 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/build.log"
+          $code = $LASTEXITCODE
+          Write-Host "::notice title=npm run dist (exit $code)::$((Get-Content "$env:RUNNER_TEMP/build.log" -Tail 40) -join '%0A')"
+          if ($code -ne 0) {
+            $tail = (Get-Content "$env:RUNNER_TEMP/build.log" -Tail 40) -join '%0A'
+            Write-Host "::error title=npm run dist failed::$tail"
+            exit 1
+          }
+
+      - name: La versione dell'installer segue pyproject.toml
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          $exe = "console/dist/GigaMail Setup $ver.exe"
+          if (-not (Test-Path $exe)) {
+            Get-ChildItem console/dist
+            throw "installer atteso non trovato: $exe"
+          }
+          Write-Host "OK: $exe"
+
+      - name: Installazione silenziosa e verifica contenuti
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          Start-Process -Wait -FilePath "console/dist/GigaMail Setup $ver.exe" -ArgumentList "/S"
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
+          if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
+          foreach ($p in @("GigaMail.exe", "resources\python\python.exe", "resources\gigamail\src\gigamail")) {
+            if (-not (Test-Path (Join-Path $dir $p))) {
+              Get-ChildItem $dir -Recurse -Depth 2 | Select-Object FullName
+              throw "manca $p in $dir"
+            }
+          }
+          Write-Host "install OK: $dir"
+
+      - name: L'app installata parte (profilo vergine, backend embedded, onboarding)
+        shell: pwsh
+        working-directory: console
+        # Non l'Electron di sviluppo: l'exe che arriva all'utente, con il
+        # Python di resources/ e il token generato dal main. Porta non
+        # standard per non incrociare il backend dell'e2e precedente.
+        run: |
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
+          if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
+          $env:GIGAMAIL_EXE = Join-Path $dir "GigaMail.exe"
+          $env:ADE_CONSOLE_PORT = "8022"
+          $env:GIGAMAIL_EXPECTED_VERSION = (Select-String -Path ../pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          npm run test:packaged 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/smoke.log"
+          if ($LASTEXITCODE -ne 0) {
+            $tail = (Get-Content "$env:RUNNER_TEMP/smoke.log" -Tail 80) -join '%0A'
+            Write-Host "::error title=smoke test failed::$tail"
+            throw "smoke test dell'app installata fallito"
+          }
+
+      - name: Il backend impacchettato si importa
+        shell: pwsh
+        # Stesso layout che usa main.js da packaged: codice del repo in
+        # resources\gigamail\src, dipendenze nel site-packages embedded.
+        run: |
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
+          if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
+          $env:PYTHONPATH = Join-Path $dir "resources\gigamail\src"
+          & (Join-Path $dir "resources\python\python.exe") -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
+          if ($LASTEXITCODE -ne 0) { throw "import fallito" }
+
+      - name: Disinstallazione silenziosa
+        shell: pwsh
+        run: |
+          # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
+          # Program Files is where an "all users" install would go.
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
+          if (-not (Test-Path $dir)) { $dir = Join-Path ${env:ProgramFiles(x86)} "GigaMail" }
+          $unins = Get-ChildItem $dir -Filter "Uninstall*.exe" | Select-Object -First 1
+          if (-not $unins) { throw "uninstaller non trovato in $dir" }
+          Start-Process -Wait -FilePath $unins.FullName -ArgumentList "/S"
+          # L'uninstaller NSIS si copia in temp ed esce subito: -Wait torna
+          # prima che i file spariscano davvero. Poll fino a 60s.
+          $exe = Join-Path $dir "GigaMail.exe"
+          for ($i = 0; $i -lt 60 -and (Test-Path $exe); $i++) { Start-Sleep 1 }
+          if (Test-Path $exe) { throw "GigaMail.exe ancora presente dopo l'uninstall" }
+          Write-Host "uninstall OK"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gigamail-installer
+          path: console/dist/GigaMail Setup *.exe
+          if-no-files-found: error

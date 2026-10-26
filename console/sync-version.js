@@ -1,0 +1,51 @@
+// sync-version.js — allinea la versione di package.json (e del lock) a quella
+// di pyproject.toml, la source of truth unica del progetto. npm lo esegue da
+// solo prima di ogni build ("predist"): nessuna macchina puo' piu' impacchettare
+// un installer con una versione diversa da quella del pacchetto Python.
+const fs = require('fs');
+const path = require('path');
+
+const toml = fs.readFileSync(path.join(__dirname, '..', 'pyproject.toml'), 'utf-8');
+const m = toml.match(/^version\s*=\s*"([^"]+)"/m);
+if (!m) {
+  console.error('sync-version: campo version non trovato in pyproject.toml');
+  process.exit(1);
+}
+const version = m[1];
+
+const pkgPath = path.join(__dirname, 'package.json');
+const pkg = fs.readFileSync(pkgPath, 'utf-8');
+// Sostituzione mirata per non riformattare il file: il primo "version" del
+// file e' quello top-level (le dipendenze non hanno chiavi "version").
+const updated = pkg.replace(/("version"\s*:\s*")[^"]+(")/, `$1${version}$2`);
+if (updated !== pkg) {
+  fs.writeFileSync(pkgPath, updated);
+  console.log(`sync-version: package.json -> ${version}`);
+} else {
+  console.log(`sync-version: package.json gia' a ${version}`);
+}
+
+const lockPath = path.join(__dirname, 'package-lock.json');
+if (fs.existsSync(lockPath)) {
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+  if (lock.version !== version || lock.packages?.['']?.version !== version) {
+    lock.version = version;
+    if (lock.packages && lock.packages['']) lock.packages[''].version = version;
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+    console.log(`sync-version: package-lock.json -> ${version}`);
+  }
+}
+
+// Il manifest del plugin Codex/ChatGPT dichiara la stessa versione del
+// prodotto: alla 0.3.1 era rimasto a 0.2.4 perche' nessuno lo toccava.
+// The Claude Code manifest follows the same rule.
+for (const manifest of ['.codex-plugin', 'plugins/gigamail/.claude-plugin']) {
+  const pluginPath = path.join(__dirname, '..', manifest, 'plugin.json');
+  if (!fs.existsSync(pluginPath)) continue;
+  const plugin = fs.readFileSync(pluginPath, 'utf-8');
+  const updatedPlugin = plugin.replace(/("version"\s*:\s*")[^"]+(")/, `$1${version}$2`);
+  if (updatedPlugin !== plugin) {
+    fs.writeFileSync(pluginPath, updatedPlugin);
+    console.log(`sync-version: ${manifest}/plugin.json -> ${version}`);
+  }
+}

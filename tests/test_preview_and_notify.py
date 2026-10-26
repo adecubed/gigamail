@@ -1,0 +1,529 @@
+"""B3: la preview mostra indirizzi, mai display name, e avvisa quando un
+destinatario non e' un indirizzo esplicito (gruppo/alias: puo' espandersi).
+B5: notifica pluggable alla creazione della richiesta — solo notifica,
+senza shell, best-effort, mai bloccante.
+"""
+import io
+import json
+import os
+import sys
+import time
+
+import pytest
+
+from gigamail import policy
+
+
+@pytest.fixture(autouse=True)
+def store_isolato(tmp_path, monkeypatch):
+    from gigamail.core import accounts
+    account = {"id": 1, "email": "owner@example.test"}
+    monkeypatch.setattr(accounts, "get_active_account", lambda: account)
+    monkeypatch.setattr(accounts, "get_account_by_id", lambda aid: account)
+    policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
+    yield
+    policy.set_store(None)
+
+
+# ------------------------------------------------------------------- B3
+
+def test_display_name_ridotto_a_indirizzo():
+    d = policy.describe_recipients("Mario Rossi <mario@x.it>")
+    assert d["recipients"][0]["address"] == "mario@x.it"
+    assert d["recipients"][0]["explicit"] is True
+    assert "warning" not in d
+
+
+def test_nome_nudo_o_gruppo_segnalato():
+    d = policy.describe_recipients("Team Vendite", cc=["b@x.it"])
+    r = {x["address"]: x for x in d["recipients"]}
+    assert r["Team Vendite"]["may_expand"] is True
+    assert r["b@x.it"]["explicit"] is True
+    assert d["count"] == 2
+    assert "Team Vendite" in d["warning"] and "not guaranteed" in d["warning"]
+
+
+def test_lista_separata_da_virgole_e_punto_e_virgola():
+    d = policy.describe_recipients("a@x.it, b@x.it; Gruppo")
+    assert d["count"] == 3
+    assert [x["field"] for x in d["recipients"]] == ["to", "to", "to"]
+
+
+def test_preview_send_mail_contiene_recipients():
+    """Il tool send_mail del server mette describe_recipients nella preview."""
+    from gigamail import server
+    out = server.send_mail.fn(to="Cliente <c@x.it>", subject="s", body="b",
+                              cc=["Lista Clienti"]) if hasattr(server.send_mail, "fn") \
+        else server.send_mail(to="Cliente <c@x.it>", subject="s", body="b", cc=["Lista Clienti"])
+    prev = out["preview"]
+    assert prev["count"] == 2
+    addrs = {x["address"] for x in prev["recipients"]}
+    assert addrs == {"c@x.it", "Lista Clienti"}
+    assert "Lista Clienti" in prev["warning"]
+
+
+# ------------------------------------------------------------------- B5
+
+def _phase1():
+    return policy.execute_dangerous(
+        "send_mail", {"to": "a@x.it", "subject": "s", "body": "b"}, None,
+        preview_fn=lambda: {"to": "a@x.it", "subject": "s"}, execute_fn=lambda a: None)
+
+
+def _wait_for(path, timeout=5.0):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def test_senza_config_nessuna_notifica(monkeypatch):
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    assert policy.notify_approval_requested("req_x", "send_mail", {}) is False
+
+
+def test_notifica_eseguita_con_placeholder(monkeypatch, tmp_path):
+    out = tmp_path / "notified.txt"
+    cmd = [sys.executable, "-c",
+           "import sys; open(sys.argv[1],'w',encoding='utf-8').write(' | '.join(sys.argv[2:]))",
+           str(out), "{request_id}", "{tool}", "{summary}"]
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps(cmd))
+    r = _phase1()
+    assert _wait_for(out)
+    text = out.read_text(encoding="utf-8")
+    assert r["request_id"] in text and "send_mail" in text and "to=a@x.it" in text
+
+
+def test_summary_non_e_interpretato_come_comando(monkeypatch, tmp_path):
+    """Preview ostile: il testo arriva al comando come ARGOMENTO, non viene
+    mai passato a una shell."""
+    out = tmp_path / "args.txt"
+    cmd = [sys.executable, "-c",
+           "import sys; open(sys.argv[1],'w',encoding='utf-8').write(repr(sys.argv[2]))",
+           str(out), "{summary}"]
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps(cmd))
+    hostile = "x; rm -rf / $(touch /tmp/pwned) `id` && echo pwn"
+    policy.notify_approval_requested("req_h", "send_mail", {"subject": hostile})
+    assert _wait_for(out)
+    assert hostile in out.read_text(encoding="utf-8")
+
+
+def test_comando_inesistente_non_rompe_la_fase1(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD",
+                       json.dumps(["/nonexistent/binary-xyz", "{request_id}"]))
+    r = _phase1()
+    assert r["status"] == "approval_required" and r["request_id"]
+
+
+def test_config_malformata_ignorata(monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", "not json at all")
+    assert policy._notify_command() is None
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps("una stringa"))
+    assert policy._notify_command() is None
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps([]))
+    assert policy._notify_command() is None
+
+
+def test_dedup_non_rinotifica(monkeypatch, tmp_path):
+    """La seconda richiesta identica (dedup) NON lancia una seconda
+    notifica: l'umano ne riceve una per richiesta, non una per retry."""
+    counter = tmp_path / "count.txt"
+    cmd = [sys.executable, "-c",
+           "import sys; open(sys.argv[1],'a').write('x')", str(counter)]
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps(cmd))
+    _phase1()
+    _phase1()
+    _phase1()
+    assert _wait_for(counter)
+    time.sleep(0.5)
+    assert counter.read_text() == "x"
+
+
+def test_toast_di_un_tool_ha_i_quattro_bottoni(monkeypatch):
+    """Regressione: la fase 1 di un tool MCP passava `preview` e basta,
+    quindi la toast usciva muta — l'umano vedeva l'avviso e non aveva
+    niente da premere. Deve arrivare Leggi/Approva/Modifica/Rifiuta, e ogni
+    bottone deve puntare alla request_id giusta."""
+    visti = {}
+
+    def _spia(title, body, background=True, actions=None, expires_in=None):
+        visti["actions"] = actions
+        visti["expires_in"] = expires_in
+        return True
+
+    from gigamail.core import desktop_notify
+    monkeypatch.setattr(desktop_notify, "notify", _spia)
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    monkeypatch.setenv("GIGAMAIL_LANG", "it")
+
+    rid = _phase1()["request_id"]
+    actions = visti["actions"]
+    assert [a[1] for a in actions] == [
+        f"gigamail://show/{rid}", f"gigamail://approve/{rid}",
+        f"gigamail://edit/{rid}", f"gigamail://reject/{rid}"]
+    assert [a[0].split()[-1] for a in actions] == [
+        "Leggi", "Approva", "Modifica", "Rifiuta"]
+    # la notifica dura quanto la richiesta, non un tempo suo
+    assert visti["expires_in"] == policy._APPROVAL_TTL_SECONDS
+
+
+def test_url_dei_bottoni_accettati_dal_parser():
+    """I quattro URL che la toast puo' aprire devono essere gli stessi che
+    `open-url` riconosce: un bottone che apre un URL non gestito darebbe
+    "URL non riconosciuto" invece dell'azione."""
+    import re
+
+    from gigamail import cli
+    src = io.open(cli.__file__.replace(".pyc", ".py"), encoding="utf-8").read()
+    verbi = re.search(r"gigamail://\(([a-z|]+)\)/", src).group(1).split("|")
+    for _, url in policy.toast_actions("req_deadbeef"):
+        assert url.split("//")[1].split("/")[0] in verbi
+
+
+def test_placeholder_message_porta_il_testo_completo(monkeypatch, tmp_path):
+    """{message} = testo leggibile per l'umano ("e' arrivata una mail da...,
+    propongo..., approvi?"), passato dal watcher; senza message esplicito
+    degrada al riassunto."""
+    out = tmp_path / "msg.txt"
+    cmd = [sys.executable, "-c",
+           "import sys; open(sys.argv[1],'w',encoding='utf-8').write(sys.argv[2])",
+           str(out), "{message}"]
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", json.dumps(cmd))
+    testo = "E' arrivata una mail da x@y.it. Propongo: ciao. Approvi?"
+    policy.notify_approval_requested("req_m", "reply_mail", {"subject": "s"},
+                                     message=testo)
+    assert _wait_for(out)
+    # The message as written, plus the line naming the mail's subject.
+    assert out.read_text(encoding="utf-8") == testo + "\n📧 «s»"
+
+
+def test_comando_da_notify_json_se_manca_env(monkeypatch, tmp_path):
+    """Il comando puo' vivere in notify.json accanto ad agent.json: la
+    configurazione sopravvive senza env var. L'env, se c'e', vince."""
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    cfg = policy._ade_root() / "notify.json"
+    cfg.write_text(json.dumps({"command": ["mycmd", "{message}"]}),
+                   encoding="utf-8")
+    try:
+        assert policy._notify_command() == ["mycmd", "{message}"]
+        monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD",
+                           json.dumps(["envcmd", "{summary}"]))
+        assert policy._notify_command() == ["envcmd", "{summary}"]
+        # file malformato: ignorato, nessuna eccezione
+        monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+        cfg.write_text("garbage", encoding="utf-8")
+        assert policy._notify_command() is None
+    finally:
+        cfg.unlink(missing_ok=True)
+
+
+def test_desktop_notify_spento_via_env(monkeypatch):
+    from gigamail.core import desktop_notify
+    monkeypatch.setenv("GIGAMAIL_NOTIFY_DESKTOP", "0")
+    assert desktop_notify.enabled() is False
+    assert desktop_notify.notify("t", "b", background=False) is False
+
+
+def test_the_toast_is_on_record_like_the_other_channels(monkeypatch):
+    """A toast lives as long as the request: hours later, the audit log is
+    the only place that says one was sent. Before, only Telegram and the
+    notify command left a line, so "I never saw a toast" had no answer."""
+    from gigamail.core import desktop_notify
+    monkeypatch.setattr(desktop_notify, "notify", lambda *a, **k: True)
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    seen = []
+    monkeypatch.setattr(policy, "audit",
+                        lambda tool, args, outcome, **kw: seen.append((tool, args, outcome, kw.get("detail"))))
+    policy.notify_approval_requested("req_t", "reply_mail", {"subject": "s"})
+    assert ("reply_mail", {"request_id": "req_t"}, "approval_notified", "desktop") in seen
+    # a toast that was not sent leaves no line
+    seen.clear()
+    monkeypatch.setattr(desktop_notify, "notify", lambda *a, **k: False)
+    policy.notify_approval_requested("req_u", "reply_mail", {"subject": "s"})
+    assert not [s for s in seen if s[3] == "desktop"]
+
+
+def test_a_failing_toast_is_logged_not_swallowed(monkeypatch, caplog):
+    """Best-effort towards the caller, but the watcher's log says why no
+    toast came, instead of nothing."""
+    import logging
+
+    from gigamail.core import desktop_notify
+    monkeypatch.setattr(desktop_notify.sys, "platform", "win32")
+    monkeypatch.delenv("GIGAMAIL_NOTIFY_DESKTOP", raising=False)
+
+    def broken(*a, **k):
+        raise RuntimeError("WinRT not available in this session")
+    monkeypatch.setattr(desktop_notify, "_win_toast", broken)
+    with caplog.at_level(logging.WARNING, logger="gigamail.core.desktop_notify"):
+        assert desktop_notify.notify("t", "b", background=False) is True   # still best-effort
+    assert "desktop notification failed: RuntimeError: WinRT not available" in caplog.text
+
+
+def test_notifica_non_approva_niente(monkeypatch, tmp_path):
+    """Il comando di notifica gira; la richiesta resta PENDING.
+    La notifica e' un avviso, non un canale di approvazione."""
+    monkeypatch.setenv("GIGAMAIL_APPROVAL_NOTIFY_CMD",
+                       json.dumps([sys.executable, "-c", "pass"]))
+    r = _phase1()
+    time.sleep(0.3)
+    assert policy.store().get(r["request_id"])["status"] == policy.PENDING
+
+
+def test_toast_xml_con_azioni_protocol():
+    """I bottoni della toast aprono gigamail://... (activationType=protocol):
+    la toast non approva, lancia la CLI che alza Hello."""
+    from gigamail.core import desktop_notify
+    xml = desktop_notify.build_toast_xml(
+        "GigaMail", "corpo <b>", [("Approva", "gigamail://approve/req_1"),
+                                  ("Rifiuta", "gigamail://reject/req_1")])
+    assert "launch='gigamail://approve/req_1'" in xml
+    assert xml.count("activationType='protocol'") == 3
+    assert "&lt;b&gt;" in xml  # escape
+    assert "<actions>" not in desktop_notify.build_toast_xml("t", "b")
+
+
+def test_open_url_accetta_solo_approve_reject(monkeypatch):
+    from gigamail import cli
+    calls = []
+    monkeypatch.setattr(cli, "cmd_approvals_approve", lambda a: calls.append(("a", a.request_id)) or 0)
+    monkeypatch.setattr(cli, "cmd_approvals_reject", lambda a: calls.append(("r", a.request_id)) or 0)
+    monkeypatch.setattr("builtins.input", lambda *a, **k: "")
+
+    class A:
+        url = "gigamail://approve/req_ab12"
+    assert cli.cmd_open_url(A) == 0
+    A.url = "gigamail://reject/req_ab12/"
+    assert cli.cmd_open_url(A) == 0
+    A.url = "gigamail://delete/req_ab12"
+    assert cli.cmd_open_url(A) == 1
+    assert calls == [("a", "req_ab12"), ("r", "req_ab12")]
+
+
+def test_bottoni_toast_non_legati_a_un_solo_interprete(monkeypatch):
+    """Regressione: protocol_registered() confrontava HKLM con
+    sys.executable, quindi un secondo interprete sulla macchina (il python
+    di sistema accanto a quello del venv) faceva uscire la toast MUTA, in
+    silenzio. Conta il comando registrato, non chi lo sta leggendo."""
+    from gigamail.core import desktop_notify as d
+    monkeypatch.setattr(d.os.path, "exists", lambda p: True)
+    args = d._PROTOCOL_ARGS
+
+    for exe in (r"C:\proj\.venv\Scripts\python.exe", r"C:\Python310\python.exe"):
+        assert d.registered_command_ok('"' + exe + '" ' + args)
+
+    # stretto dove serve: argomenti altrui, eseguibile mancante o assente
+    assert not d.registered_command_ok(r'"C:\x\python.exe" -m altro.cli open-url "%1"')
+    assert not d.registered_command_ok(args)
+    assert not d.registered_command_ok("")
+    monkeypatch.setattr(d.os.path, "exists", lambda p: False)
+    assert not d.registered_command_ok(r'"C:\gone\python.exe" ' + args)
+
+
+def test_toast_non_si_accorpano_e_restano():
+    """Cinque approvazioni diverse devono restare cinque notifiche.
+
+    Senza tag Windows accorpa le toast della stessa app: ne vedi una e le
+    altre spariscono. E la toast di un'approvazione non deve svanire dopo
+    pochi secondi mentre la richiesta vive 15 minuti — scenario=reminder
+    la tiene a schermo finche' l'umano decide."""
+    from gigamail.core import desktop_notify as d
+
+    tag = [d._toast_tag(policy.toast_actions(r))
+           for r in ("req_aaa111", "req_bbb222", "req_ccc333")]
+    assert tag == ["req_aaa111", "req_bbb222", "req_ccc333"]
+    assert len(set(tag)) == 3          # ognuna la sua, non si sovrascrivono
+    # rilanciare la stessa richiesta riusa il tag: sostituisce, non duplica
+    assert d._toast_tag(policy.toast_actions("req_aaa111")) == "req_aaa111"
+
+    xml = d.build_toast_xml("GigaMail", "x", policy.toast_actions("req_aaa111"))
+    assert "scenario='reminder'" in xml
+    # senza bottoni reminder non e' ammesso: resta la durata lunga
+    assert "scenario" not in d.build_toast_xml("GigaMail", "x")
+    assert "duration='long'" in d.build_toast_xml("GigaMail", "x")
+    assert d._toast_tag(None) == ""
+
+
+# ------------------------------------------- move_message: gate + preview
+
+def _call(tool, **kw):
+    fn = getattr(tool, "fn", tool)
+    return fn(**kw)
+
+
+def test_move_message_non_sposta_alla_prima_chiamata(monkeypatch):
+    """Spostare non distrugge nulla, ma basta a nascondere una mail
+    all'umano che dovrebbe sorvegliare: prima chiamata = anteprima."""
+    from gigamail import server
+
+    mosse = []
+    monkeypatch.setattr(server.mail_router, "get_message",
+                        lambda **k: {"subject": "Fattura", "from": "a@x.it"})
+    monkeypatch.setattr(server.mail_router, "list_folders",
+                        lambda **k: [{"id": "AAMkAGopaco", "displayName": "Archivio"}])
+    monkeypatch.setattr(server.mail_router, "move_to_folder",
+                        lambda **k: mosse.append(k) or True)
+
+    out = _call(server.move_message, message_id="m1", folder_id="AAMkAGopaco")
+    assert out["status"] == "approval_required"
+    assert mosse == []
+    prev = out["preview"]
+    assert prev["subject"] == "Fattura"
+    assert prev["folder_to"] == "Archivio", "l'id opaco non e' un'anteprima"
+    assert prev["folder_from"] == "Inbox"
+
+    policy.store().approve(out["request_id"], by="test")
+    ok = _call(server.move_message, message_id="m1", folder_id="AAMkAGopaco",
+               request_id=out["request_id"])
+    assert ok["success"] is True and len(mosse) == 1
+
+
+def test_preview_move_mostra_la_destinazione_su_telegram():
+    """full_preview_text componeva le intestazioni da mittente e oggetto e
+    la cartella non compariva: in uno spostamento e' l'unica cosa che
+    conta."""
+    testo = policy.full_preview_text("move_message", {
+        "action": "move", "from": "a@x.it", "subject": "Fattura",
+        "folder_from": "Inbox", "folder_to": "Archivio",
+    })
+    assert "Archivio" in testo and "Inbox" in testo
+
+
+def test_a_telegram_send_that_fails_is_on_record_with_its_reason(monkeypatch, tmp_path):
+    """A watcher draft at 01:31 expired unseen: the Telegram send had
+    failed and nothing said so. Now the audit has the outcome, and the
+    console reads it back next to the request."""
+    import threading
+
+    from gigamail.core import desktop_notify, telegram_channel
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path))
+    monkeypatch.setattr(desktop_notify, "notify", lambda *a, **k: False)
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    threads = []
+    real_thread = threading.Thread
+
+    class JoinedThread(real_thread):
+        def start(self):
+            super().start()
+            threads.append(self)
+
+    monkeypatch.setattr(threading, "Thread", JoinedThread)
+
+    class Down:
+        last_error = ""
+
+        def send(self, text, buttons=None, html=False):
+            self.last_error = "sendMessage: ConnectionError: name resolution failed"
+            return False
+
+    monkeypatch.setattr(telegram_channel, "channel", lambda: Down())
+    assert policy.notify_approval_requested("req_tg1", "reply_mail", {"subject": "s"}) is True
+    for t in threads:
+        t.join(5)
+    seen = policy.notifications_of(["req_tg1", "req_other"])
+    assert seen["req_other"] == []
+    assert seen["req_tg1"] == [{"channel": "telegram", "ok": False,
+                                "error": "sendMessage: ConnectionError: name resolution failed"}]
+
+    class Up(Down):
+        def send(self, text, buttons=None, html=False):
+            return True
+
+    monkeypatch.setattr(telegram_channel, "channel", lambda: Up())
+    policy.notify_approval_requested("req_tg2", "reply_mail", {"subject": "s"})
+    for t in threads:
+        t.join(5)
+    assert policy.notifications_of(["req_tg2"])["req_tg2"] == [
+        {"channel": "telegram", "ok": True, "error": ""}]
+
+
+def test_the_recent_list_carries_the_notifications(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from gigamail import http_api
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path))
+    policy.set_store(policy.ApprovalStore(str(tmp_path / "approvals.db")))
+    try:
+        rid = policy.store().create("reply_mail", {"body": "x"}, {"subject": "s"}, ttl=1)
+        policy.audit("reply_mail", {"request_id": rid}, "approval_notify_failed",
+                     detail="telegram: sendMessage: 401 Unauthorized")
+        with TestClient(http_api.app) as c:
+            pending = c.get("/approvals").json()
+            assert pending[0]["notified"] == [
+                {"channel": "telegram", "ok": False, "error": "sendMessage: 401 Unauthorized"}]
+    finally:
+        policy.set_store(None)
+
+
+def test_a_rule_that_paused_itself_is_told_at_once_even_inside_a_batch(monkeypatch):
+    from gigamail.core import desktop_notify
+    seen = []
+    monkeypatch.setattr(desktop_notify, "notify", lambda title, body, **k: seen.append(body) or True)
+    monkeypatch.setattr(policy, "audit", lambda *a, **k: None)
+    monkeypatch.delenv("GIGAMAIL_APPROVAL_NOTIFY_CMD", raising=False)
+    policy.begin_notify_batch()
+    policy.notify_approval_requested("req_a", "reply_mail", {"subject": "a"})
+    policy.notify_approval_requested("-", "rule_paused:r1", {"action": "rule autopaused"},
+                                     message="Rule r1 PAUSED itself", immediate=True)
+    assert seen == ["Rule r1 PAUSED itself"]
+    assert policy.end_notify_batch() == 1
+    assert len(seen) == 2 and "a" in seen[1]
+    assert policy.end_notify_batch() == 0
+
+
+def test_a_toast_button_goes_to_the_running_console_first(monkeypatch, tmp_path):
+    """The CLI, registered on gigamail:// for the toasts, hands the URL to
+    the console's bridge when the console runs (console.json says where),
+    starts the console with --open-url when it is installed but closed,
+    and only without either falls back to its own terminal flow."""
+    import json as _json
+    import urllib.request
+
+    from gigamail import cli
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path))
+    posted = []
+
+    class Resp:
+        status = 204
+
+        def __enter__(self): return self
+
+        def __exit__(self, *a): return False
+
+    def fake_urlopen(req, timeout=0):
+        posted.append((req.full_url, req.get_header("X-gigamail-bridge"), _json.loads(req.data)))
+        return Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    terminal = []
+    monkeypatch.setattr(cli, "cmd_open_url_show", lambda rid: terminal.append(rid) or 0)
+    monkeypatch.setattr(cli, "_console_utf8", lambda: None)
+
+    class A:
+        url = "gigamail://show/req_ab12"
+    # no console.json: the terminal flow
+    assert cli.cmd_open_url(A) == 0 and terminal == ["req_ab12"] and posted == []
+    # the console runs: the bridge takes it, nothing is printed here
+    (tmp_path / "console.json").write_text(_json.dumps({"port": 4321, "token": "tok", "exe": "/nope/GigaMail"}))
+    assert cli.cmd_open_url(A) == 0
+    assert posted == [("http://127.0.0.1:4321/open-url", "tok", {"url": "gigamail://show/req_ab12"})]
+    assert terminal == ["req_ab12"]
+    # the console is closed and its exe is gone: the terminal flow again
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=0: (_ for _ in ()).throw(OSError("refused")))
+    assert cli.cmd_open_url(A) == 0 and terminal == ["req_ab12", "req_ab12"]
+    # the exe exists: started with the URL
+    exe = tmp_path / "GigaMail"
+    exe.write_text("")
+    (tmp_path / "console.json").write_text(_json.dumps({"port": 4321, "token": "tok", "exe": str(exe), "args": []}))
+    started = []
+    import subprocess
+
+    class P:
+        pass
+
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **k: started.append(cmd) or P())
+    assert cli.cmd_open_url(A) == 0
+    assert started == [[str(exe), "--open-url=gigamail://show/req_ab12"]]
+    assert terminal == ["req_ab12", "req_ab12"]
