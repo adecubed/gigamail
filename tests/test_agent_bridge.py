@@ -411,3 +411,50 @@ def test_timeout_message_follows_the_user_language(monkeypatch, lang, expected):
     with pytest.raises(agent_bridge.AgentUnavailable) as exc:
         agent_bridge.run("x", timeout=2)
     assert expected in str(exc.value)
+
+
+# --- Claude Code gets this installation's GigaMail server --------------------
+
+def _capture_spawn(monkeypatch):
+    seen = {}
+
+    def fake_spawn(cmd, stdin_bytes, timeout, env, run_id, cwd=None):
+        seen["cmd"] = list(cmd)
+        return 0, b"ok", b""
+    monkeypatch.setattr(agent_bridge, "_spawn", fake_spawn)
+    return seen
+
+
+def test_claude_gets_the_gigamail_server_without_any_setup(monkeypatch, tmp_ade_root):
+    """Seen live (26/10): a PC with no GigaMail in Claude Code's own config.
+    The console relied on the user having run `claude mcp add`, so the
+    agent bar's Claude had no mail tools at all and answered that it could
+    not read the mail. Codex and Antigravity get their config written; for
+    Claude Code the server goes along with each run."""
+    monkeypatch.delenv("ADE_AGENT_CMD", raising=False)
+    with open(agent_bridge._config_path(), "w", encoding="utf-8") as f:
+        json.dump({"agent": "claude"}, f)
+    monkeypatch.setattr(agent_bridge, "_find_claude", lambda: PY)
+    seen = _capture_spawn(monkeypatch)
+    try:
+        assert agent_bridge.run("riassumi") == "ok"
+    finally:
+        os.unlink(agent_bridge._config_path())
+    cmd = seen["cmd"]
+    i = cmd.index("--mcp-config")
+    with open(cmd[i + 1], encoding="utf-8") as f:
+        server = json.load(f)["mcpServers"]["gigamail"]
+    assert server["command"] == sys.executable
+    assert server["args"] == ["-m", "gigamail.server"]
+    from gigamail.core.data_paths import app_root
+    assert server["env"]["GIGAMAIL_ROOT"] == str(app_root())
+    # the tools of that server are the ones the run may call
+    assert "mcp__gigamail" in cmd[cmd.index("--allowedTools") + 1]
+
+
+def test_a_custom_command_runs_as_the_user_wrote_it(monkeypatch):
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(["claude", "-p", "{prompt}"]))
+    monkeypatch.setattr(agent_bridge, "_found", lambda exe: True)
+    seen = _capture_spawn(monkeypatch)
+    agent_bridge.run("x")
+    assert "--mcp-config" not in seen["cmd"]

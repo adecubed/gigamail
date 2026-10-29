@@ -208,6 +208,11 @@ body { background: var(--gm-bg); color: var(--gm-ink); }
 .agent-btn.primary:hover { background: var(--gm-pink-hi); }
 .agent-btn.ghost { background: var(--gm-card); color: var(--gm-ink); border: 1.5px solid var(--gm-line); }
 .agent-btn:disabled { opacity: .5; cursor: default; }
+.agent-login { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.agent-login-manual { font-size: 12.5px; }
+.agent-login-manual a { color: inherit; text-decoration: underline; }
+.agent-login-code { display: flex; gap: 6px; margin-top: 6px; }
+.agent-login-code input { flex: 1; min-width: 0; border-radius: 8px; border: 1.5px solid var(--gm-line); padding: 5px 8px; font: inherit; background: var(--gm-card); color: var(--gm-ink); }
 .agent-msg.approval.approved { background: #e6f4ea; border-color: #b5dcc1; }
 .agent-msg.approval.approved .agent-appr-head { color: var(--gm-green); }
 .agent-msg.approval.rejected { background: var(--gm-fill); border-color: var(--gm-line); }

@@ -29,6 +29,44 @@
   - every text made from HTML for a person (previews, archive search,
     alerts) skips hidden text.
   See SECURITY.md for what it does not catch.
+
+- **The agent bar's Claude Code always has GigaMail's tools.** For Codex
+  and Antigravity the console writes their MCP config; for Claude Code it
+  relied on the user having run `claude mcp add` or installed the plugin.
+  On a PC without either, `claude -p` started with no mail tools and the
+  bar answered that it could not read the mail. Each run now passes
+  `--mcp-config` with this installation's server (its own Python,
+  `-m gigamail.server`, the console's `GIGAMAIL_ROOT`), kept in
+  `agent-claude-mcp.json` in the data folder. The user's Claude Code
+  config is not touched, and a custom agent command runs as written.
+
+- **A signed-out Claude Code is one click away from working again.** When
+  the claude.ai session expired and could not be refreshed, the agent bar
+  showed the CLI's raw error; the next request then went out on the
+  user's `ANTHROPIC_API_KEY` and failed again with "Credit balance is too
+  low", which said nothing about the real cause. GigaMail now recognises
+  a lost login (`agent_bridge.AgentLoginRequired`, sent to the console as
+  `X-GigaMail-Error: agent_login`) and the bar shows a **Sign in to
+  Claude** button: it runs `claude auth login --claudeai`, which opens the
+  browser on the consent page, and once the user authorises it the
+  request goes out again by itself. When the page cannot hand the code
+  back, the bar shows the claude.ai address and a field for the code,
+  which reaches the CLI on its stdin. No terminal is opened. New routes:
+  `GET/POST /agent/claude/login`, `POST /agent/claude/login/code`.
+
+- **Toasts always have something to press, or say why not.** Past three
+  requests in one watcher tick, the summary toast had no button: it now
+  has **Open**, which brings up *Waiting for you* in the console (a new
+  `gigamail://pending` link; without the console the CLI lists the
+  requests). A toast that loses its Approve / Reject buttons because
+  `gigamail://` is not registered for this installation (for example
+  HKLM still opening the old `ade_mail_agent` CLI) now says so, with
+  where to turn them on (Automations → Desktop notifications → Enable
+  buttons); the audit records it as `desktop, no buttons: …` and the
+  console's status names an old registration.
+- **A spam filter that moved a mail no longer stops the watcher's tick.**
+  The log line after the move raised an error, so the rules and the
+  archive of that tick were skipped until the next one.
 - **Executable attachments never reach an agent and are never opened.**
   GigaMail also runs inside harnesses whose agent holds a shell, and a
   mail saying "install the attachment" next to a program was read by that

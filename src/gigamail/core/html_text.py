@@ -156,8 +156,11 @@ def _declarations(value: str) -> Dict[str, Tuple[str, bool]]:
         if ":" not in decl:
             continue
         k, v = decl.split(":", 1)
+        prop = k.strip().lower()
         important = bool(_IMPORTANT.search(v))
-        out[k.strip().lower()] = (_IMPORTANT.sub("", v).strip().lower(), important)
+        if not important and out.get(prop, ("", False))[1]:
+            continue    # a later normal declaration does not beat !important
+        out[prop] = (_IMPORTANT.sub("", v).strip().lower(), important)
     return out
 
 

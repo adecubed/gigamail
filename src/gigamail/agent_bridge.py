@@ -53,6 +53,11 @@ class AgentCancelled(AgentUnavailable):
     """The user pressed Stop in the console: the agent's process was ended."""
 
 
+class AgentLoginRequired(AgentUnavailable):
+    """Claude Code has no valid claude.ai login: the console offers the
+    sign-in (claude_login_start) instead of showing the CLI's raw error."""
+
+
 # Runs started with a run_id, so that the console's Stop can end them. The
 # agent spawns its own children (claude.cmd -> node, MCP server): the whole
 # tree goes.
@@ -241,6 +246,30 @@ def _cmd_claude(exe: str) -> list:
     # server; DANGEROUS tools stay two-phase on the server side regardless.
     allowed = ",".join(f"mcp__{name}" for name in CLAUDE_MCP_SERVERS)
     return [exe, "-p", "{prompt}", "--allowedTools", allowed]
+
+
+def _claude_mcp_file() -> str:
+    """A --mcp-config file that starts THIS installation's server, the way
+    codex_config and antigravity_config do for the other agents. Seen live
+    (26/10): with no GigaMail in Claude Code's own config — the console
+    relied on the user having run `claude mcp add` — the agent bar's Claude
+    had no mail tools and answered that it could not read the mail. The
+    user's config is not touched: the server travels with each run."""
+    from gigamail.core.data_paths import app_root
+    root = str(app_root())
+    path = os.path.join(root, "agent-claude-mcp.json")
+    want = {"mcpServers": {"gigamail": {
+        "command": sys.executable, "args": ["-m", "gigamail.server"],
+        "env": {"GIGAMAIL_ROOT": root}}}}
+    try:
+        with open(path, encoding="utf-8") as f:
+            if json.load(f) == want:
+                return path
+    except (OSError, ValueError):
+        pass
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(want, f, ensure_ascii=False, indent=2)
+    return path
 
 
 def _cmd_codex(exe: str) -> list:
@@ -610,6 +639,8 @@ def run(prompt: str, timeout: int | None = None, run_id: str | None = None,
     """Esegue l'agente headless con il prompt e restituisce il testo prodotto."""
     cfg = get_config()
     cmd = list(cfg["command"])
+    if cfg.get("agent") == "claude":   # a custom command runs as written
+        cmd += ["--mcp-config", _claude_mcp_file()]
     da_stdin = None
     spec = AGENTS.get(cfg.get("agent"))
     if spec and spec.get("stdin"):
@@ -706,6 +737,13 @@ def run(prompt: str, timeout: int | None = None, run_id: str | None = None,
             pass
         _unlink(out_file)
     err = (stderr or b"").decode("utf-8", errors="replace").strip()
+    if (returncode != 0 or _non_collegato(out)) and _agent_of(cfg) == "claude" \
+            and _login_lost(err or out):
+        raise AgentLoginRequired(_say(
+            f"La sessione di Claude Code e' scaduta: accedi di nuovo per continuare. "
+            f"({_error_excerpt(err or out, 200)})",
+            f"The Claude Code session has expired: sign in again to continue. "
+            f"({_error_excerpt(err or out, 200)})"))
     if returncode != 0:
         # Un'uscita con errore non e' una risposta, anche se ha scritto
         # qualcosa: Claude Code scollegato stampa "Not logged in · Please
@@ -731,6 +769,137 @@ def _non_collegato(out: str) -> bool:
     una bozza vera che nomina il login non deve diventare un guasto."""
     testo = (out or "").strip().lower()
     return len(testo) < 200 and any(s in testo for s in _NON_COLLEGATO)
+
+
+_LOGIN_PERSO = re.compile(
+    r"not logged in|please run /login|failed to authenticate|"
+    r"oauth[^\n]{0,40}(expired|revoked|invalid|could not be refreshed)", re.I)
+
+
+def _login_lost(text: str) -> bool:
+    """Claude Code failed for want of a login. Seen live (26/10): first
+    "OAuth session expired and could not be refreshed", after which the
+    CLI wiped its tokens and the next run went out on the user's
+    ANTHROPIC_API_KEY, answering "Credit balance is too low". Without a
+    claude.ai login that one is a sign-in problem too: the subscription is
+    what the user meant to use. With a login the key is dropped from the
+    child (see _env_for_child), so there it means something else."""
+    if _LOGIN_PERSO.search(text or ""):
+        return True
+    return bool(re.search(r"credit balance is too low", text or "", re.I)) \
+        and not _claude_login_present()
+
+
+# --- signing Claude Code in again, from the console -------------------------
+#
+# `claude auth login --claudeai` opens the browser on the claude.ai consent
+# page and waits. When the page cannot hand the code back by itself the CLI
+# prints an address and "Paste code here if prompted >": the console shows
+# that address and a field, and the code reaches the CLI on its stdin. No
+# terminal is ever opened.
+
+_LOGIN_TIMEOUT = 600
+_LOGIN: dict = {"proc": None, "url": ""}
+_URL_LOGIN = re.compile(r"https://\S+/oauth/authorize\S+")
+
+
+def _claude_cmd(*args) -> list:
+    return [_find_claude(), *args]
+
+
+def _env_without_api_key() -> dict:
+    """The sign-in and its status concern the claude.ai login only: with
+    the key in the environment `auth status` would answer "logged in"."""
+    env = dict(os.environ)
+    env.pop("ANTHROPIC_API_KEY", None)
+    return env
+
+
+def _read_login_output(proc) -> None:
+    testo = ""
+    while True:
+        try:
+            chunk = proc.stdout.read1(4096)
+        except Exception:
+            break
+        if not chunk:
+            break
+        testo += chunk.decode("utf-8", errors="replace")
+        trovato = _URL_LOGIN.search(testo)
+        if trovato:
+            with _LOCK:
+                if _LOGIN["proc"] is proc:
+                    _LOGIN["url"] = trovato.group(0)
+
+
+def _claude_logged_in() -> bool:
+    try:
+        p = subprocess.run(_claude_cmd("auth", "status", "--json"), capture_output=True,
+                           stdin=subprocess.DEVNULL, timeout=20,
+                           env=_env_without_api_key(), **_quiet_kw())
+        return bool(json.loads(p.stdout.decode("utf-8", errors="replace")).get("loggedIn"))
+    except Exception:
+        return _claude_login_present()
+
+
+def claude_login_state() -> dict:
+    """{"pending": a sign-in is waiting, "logged_in": bool, "url": the
+    address to open by hand ("" until the CLI prints it)}. While a sign-in
+    waits the CLI is not asked again: it is the one that will finish it."""
+    with _LOCK:
+        proc, url = _LOGIN["proc"], _LOGIN["url"]
+    pending = proc is not None and proc.poll() is None
+    return {"pending": pending, "logged_in": False if pending else _claude_logged_in(),
+            "url": url if pending else ""}
+
+
+def claude_login_start() -> dict:
+    """Start the sign-in, or report the one already waiting: a second press
+    must not open a second consent page."""
+    with _LOCK:
+        proc = _LOGIN["proc"]
+        if proc is None or proc.poll() is not None:
+            cmd = _claude_cmd("auth", "login", "--claudeai")
+            if not _found(cmd[0]):
+                raise AgentUnavailable(_say("Claude Code non e' installato.",
+                                            "Claude Code is not installed."))
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, env=_env_without_api_key(),
+                                    **_quiet_kw())
+            _LOGIN.update(proc=proc, url="")
+            threading.Thread(target=_read_login_output, args=(proc,), daemon=True).start()
+            # a consent page nobody answers must not keep the CLI waiting for ever
+            timer = threading.Timer(_LOGIN_TIMEOUT, _kill_tree, args=(proc,))
+            timer.daemon = True
+            timer.start()
+    return claude_login_state()
+
+
+def claude_login_code(code: str) -> dict:
+    """The code the consent page showed, for the sign-in that waits for it."""
+    code = (code or "").strip()
+    if not code or len(code) > 512 or "\n" in code or "\r" in code:
+        raise ValueError("codice non valido")
+    with _LOCK:
+        proc = _LOGIN["proc"]
+    if proc is None or proc.poll() is not None:
+        raise AgentUnavailable(_say("Nessun accesso in attesa del codice: premi di nuovo Accedi.",
+                                    "No sign-in is waiting for a code: press Sign in again."))
+    proc.stdin.write((code + "\n").encode("utf-8"))
+    proc.stdin.flush()
+    try:
+        proc.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        pass
+    return claude_login_state()
+
+
+def claude_login_stop() -> None:
+    with _LOCK:
+        proc = _LOGIN["proc"]
+        _LOGIN.update(proc=None, url="")
+    if proc is not None and proc.poll() is None:
+        _kill_tree(proc)
 
 
 def _agent_of(cfg: dict) -> str:

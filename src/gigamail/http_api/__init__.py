@@ -33,6 +33,8 @@ app.add_middleware(
     allow_origin_regex=r"https?://(127\.0\.0\.1|localhost)(:\d+)?",
     allow_methods=["*"],
     allow_headers=["*"],
+    # the agent bar tells a lost Claude Code login from other errors by it
+    expose_headers=["X-GigaMail-Error"],
 )
 
 

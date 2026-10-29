@@ -1284,6 +1284,11 @@ def cmd_open_url(args) -> int:
                           (args.url or "").strip(), _re.I)
         if reply:
             return cmd_open_url_reply(reply.group(1).lower())
+        # Open on the summary toast, with no console to show the list in.
+        if _re.match(r"^gigamail://pending/?$", (args.url or "").strip(), _re.I):
+            rc = cmd_approvals_list(args)
+            _attendi_invio()
+            return rc
         print(f"URL non riconosciuto: {args.url}")
         _attendi_invio()
         return 1

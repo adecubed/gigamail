@@ -28,7 +28,12 @@ async function apiJson(url, options = {}) {
       payload?.message ||
       payload?.raw ||
       `HTTP ${response.status}`;
-    throw new Error(String(message));
+    const err = new Error(String(message));
+    // what kind of failure, when the backend names it (agent_login: Claude
+    // Code is signed out, the agent bar offers the sign-in)
+    const kind = response.headers.get('X-GigaMail-Error');
+    if (kind) err.code = kind;
+    throw err;
   }
 
   return payload;
@@ -51,6 +56,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agentCommand:   (body) => apiJson(`${API}/agent/command`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   agentComplete:  (body) => apiJson(`${API}/agent/command/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   agentCancel:    (body) => apiJson(`${API}/agent/command/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  // Claude Code signed out: sign in again from the bar
+  claudeLoginStatus: () => apiJson(`${API}/agent/claude/login`),
+  claudeLoginStart:  () => apiJson(`${API}/agent/claude/login`, { method: 'POST' }),
+  claudeLoginCode:   (code) => apiJson(`${API}/agent/claude/login/code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }),
   approveRequest: (id)   => apiJson(`${API}/approvals/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
   rejectRequest:  (id)   => apiJson(`${API}/approvals/${encodeURIComponent(id)}/reject`, { method: 'POST' }),
   openExternal:   (url) => ipcRenderer.invoke('open-external', url),  // whitelist nel main

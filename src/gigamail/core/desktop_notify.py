@@ -118,6 +118,8 @@ Add-Type -TypeDefinition $code
 #   - finche' non e' fatto, la toast esce SENZA bottoni (il testo dice
 #     comunque come approvare): meglio di un dialogo "Ottieni un'app".
 PROTOCOL = "gigamail"
+# The summary toast's button: the console's "Waiting for you" list.
+PENDING_URL = "gigamail://pending"
 
 
 _PROTOCOL_ARGS = '-m gigamail.cli open-url "%1"'
@@ -152,6 +154,12 @@ def protocol_registered() -> bool:
     non ci fa promettere bottoni che poi darebbero "Ottieni un'app"."""
     if sys.platform != "win32":
         return False
+    val = _machine_command()
+    return val is not None and registered_command_ok(val)
+
+
+def _machine_command() -> Optional[str]:
+    """The command HKLM runs for gigamail://, None when there is none."""
     try:
         import winreg
         k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
@@ -159,8 +167,24 @@ def protocol_registered() -> bool:
         val, _ = winreg.QueryValueEx(k, None)
         winreg.CloseKey(k)
     except Exception:
-        return False
-    return registered_command_ok(str(val))
+        return None
+    return str(val)
+
+
+def buttons_off_reason() -> str:
+    """Why a toast would go out without its buttons: "" when they work,
+    "legacy" when HKLM still runs the old ade_mail_agent CLI, "missing"
+    when HKLM has no usable command, "platform" off Windows. A toast that
+    lost its buttons said nothing about it, and the audit called it a
+    toast like any other."""
+    if sys.platform != "win32":
+        return "platform"
+    if protocol_registered():
+        return ""
+    val = (_machine_command() or "").strip()
+    if val.lower().endswith(_LEGACY_PROTOCOL_ARGS.lower()):
+        return "legacy"
+    return "missing"
 
 
 def registered_command_ok(val: str) -> bool:
@@ -323,6 +347,9 @@ def _toast_tag(actions: Optional[List[Tuple[str, str]]]) -> str:
         m = re.search(r"(req_[0-9A-Za-z]+)", url)
         if m:
             return m.group(1)[:64]
+        # The summary of a busy tick: a newer one replaces the older.
+        if url == PENDING_URL:
+            return "pending"
         # The "how did the appointment go" question: one toast per meeting.
         m = re.search(r"outcome/([0-9a-f]{8})", url)
         if m:
@@ -334,14 +361,34 @@ def _toast_tag(actions: Optional[List[Tuple[str, str]]]) -> str:
     return ""
 
 
+def _buttons_or_note(body: str, actions: Optional[List[Tuple[str, str]]],
+                     reason: str) -> Tuple[str, Optional[List[Tuple[str, str]]]]:
+    """The toast keeps its buttons when the scheme works; otherwise it goes
+    out without them (they would open "Get an app") and says why and where
+    to turn them on, instead of leaving the user with nothing to press."""
+    if not actions or not reason:
+        return body, actions
+    from gigamail import policy
+    it = policy.user_lang() == "it"
+    if reason == "legacy":
+        why = ("Bottoni spenti: lo schema gigamail:// apre ancora una vecchia installazione."
+               if it else "Buttons off: gigamail:// still opens an old installation.")
+    else:
+        why = ("Bottoni spenti: lo schema gigamail:// non è registrato."
+               if it else "Buttons off: gigamail:// is not registered.")
+    how = ("Attivali in GigaMail, Automazioni → Notifiche sul PC → Attiva bottoni (UAC)."
+           if it else "Turn them on in GigaMail, Automations → Desktop notifications → "
+                      "Enable buttons (UAC).")
+    return f"{body}\n{why} {how}", None
+
+
 def _win_toast(title: str, body: str,
                actions: Optional[List[Tuple[str, str]]] = None,
                expires_in: Optional[int] = None) -> bool:
     _win_register_aumid()
     if actions:
         _win_register_protocol()
-        if not protocol_registered():
-            actions = None  # senza HKLM il bottone darebbe "Ottieni un'app"
+        body, actions = _buttons_or_note(body, actions, buttons_off_reason())
     try:
         from winrt.windows.data.xml.dom import XmlDocument  # type: ignore
         from winrt.windows.ui.notifications import (  # type: ignore

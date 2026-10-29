@@ -331,7 +331,9 @@
       set('desktopStatus', d.buttons ? 'ok' : (d.enabled ? 'warn' : 'err'),
         !d.enabled ? T('disattivate (GIGAMAIL_NOTIFY_DESKTOP=0)', 'disabled (GIGAMAIL_NOTIFY_DESKTOP=0)', '已关闭 (GIGAMAIL_NOTIFY_DESKTOP=0)')
           : d.buttons ? T('attive, bottoni cliccabili', 'on, clickable buttons', '已开启，按钮可点击')
-                      : T('attive, senza bottoni (serve la registrazione)', 'on, no buttons (registration needed)', '已开启，无按钮（需要注册）'));
+          : d.buttons_off === 'legacy'
+            ? T('attive, senza bottoni: lo schema apre ancora una vecchia installazione', 'on, no buttons: the scheme still opens an old installation', '已开启，无按钮：协议仍指向旧安装')
+            : T('attive, senza bottoni (serve la registrazione)', 'on, no buttons (registration needed)', '已开启，无按钮（需要注册）'));
       $('btnDesktopSetup').style.display = (d.enabled && !d.buttons && d.platform === 'nt') ? '' : 'none';
       const tg = st.telegram || {};
       set('telegramStatus', tg.configured ? 'ok' : 'err',

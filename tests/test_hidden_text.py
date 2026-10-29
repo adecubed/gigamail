@@ -216,6 +216,9 @@ def test_the_provider_preview_cannot_bring_hidden_text_back(monkeypatch):
     f'<p>Hello</p><p style="display:none !IMPORTANT">{ORDER}</p>',
     # an !important rule wins over an inline style
     f'<style>.h{{display:none !important}}</style><p>Hello</p><p class="h" style="display:block">{ORDER}</p>',
+    # a later normal declaration in the same block does not beat !important
+    f'<p>Hello</p><p style="display:none !important; display:block">{ORDER}</p>',
+    f'<style>.h{{display:none !important; display:block}}</style><p>Hello</p><p class="h">{ORDER}</p>',
     # compound selector, element has both classes
     f'<style>p.a.b{{visibility:hidden}}</style><p>Hello</p><p class="b a">{ORDER}</p>',
 ])

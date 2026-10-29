@@ -296,13 +296,86 @@
     try { await window.electronAPI.agentCancel({ run_id: currentRun }); } catch (e) { /* the answer will say */ }
   }
 
-  async function send() {
+  // ── Claude Code signed out: sign in from here, no terminal ──────────────
+  // The backend says so with X-GigaMail-Error: agent_login (e.code). The
+  // CLI opens the browser on the consent page and the request goes out
+  // again once the user has authorised it. When the page cannot hand the
+  // code back, its address and a field for the code show up here.
+  const CLAUDE_URL = /^https:\/\/(claude\.com|claude\.ai|platform\.claude\.com|console\.anthropic\.com)\//;
+  const LOGIN_MAX_MS = 10 * 60 * 1000;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function loginBubble(msg, question) {
+    remember({ k: 'error', t: msg });
+    const el = addBubble('agent error', `${escHtml(msg)}
+      <div class="agent-login"><button class="agent-btn primary" data-act="claude-login">${
+        escHtml(L('agent_login_btn', 'Accedi a Claude'))}</button></div>`);
+    el.querySelector('[data-act="claude-login"]').addEventListener('click', () => claudeLogin(el, question));
+  }
+
+  function showManual(box, url) {
+    const manual = document.createElement('div');
+    manual.className = 'agent-login-manual';
+    manual.innerHTML = `${escHtml(L('agent_login_manual', 'Il browser non si è aperto? Apri'))}
+      <a class="agent-login-url" target="_blank" rel="noopener" href="${escHtml(url)}">${
+        escHtml(L('agent_login_page', 'la pagina di accesso'))}</a>
+      ${escHtml(L('agent_login_paste', 'e incolla qui il codice che ti mostra.'))}
+      <div class="agent-login-code"><input type="text" autocomplete="off" spellcheck="false"
+        placeholder="${escHtml(L('agent_login_code_ph', 'Codice'))}">
+        <button class="agent-btn ghost" data-act="claude-login-code">${escHtml(L('agent_login_code_send', 'Invia'))}</button></div>`;
+    manual.querySelector('[data-act="claude-login-code"]').addEventListener('click', async () => {
+      const code = manual.querySelector('input').value.trim();
+      if (!code) return;
+      try { await window.electronAPI.claudeLoginCode(code); } catch (e) { say('error', e.message || String(e)); }
+    });
+    box.appendChild(manual);
+  }
+
+  async function claudeLogin(el, question) {
+    const box = el.querySelector('.agent-login');
+    box.innerHTML = `<div class="agent-login-wait">${escHtml(L('agent_login_wait',
+      'Si è aperto il browser: autorizza l\'accesso a Claude. Poi la richiesta riparte da sola.'))}</div>`;
+    let st;
+    try {
+      st = await window.electronAPI.claudeLoginStart();
+    } catch (e) {
+      box.textContent = e.message || String(e);
+      return;
+    }
+    const until = Date.now() + LOGIN_MAX_MS;
+    let manual = false;
+    while (Date.now() < until) {
+      if (!el.isConnected) return;   // Clear: nobody is waiting for this any more
+      if (st && st.logged_in) {
+        box.remove();
+        say('note', L('agent_login_done', 'Accesso fatto: riprovo.'));
+        if (question) send(question);
+        return;
+      }
+      if (st && !st.pending) break;
+      if (st && st.url && !manual && CLAUDE_URL.test(st.url)) { manual = true; showManual(box, st.url); }
+      await sleep(window.AgentView.LOGIN_POLL_MS);
+      try { st = await window.electronAPI.claudeLoginStatus(); } catch (e) { /* the backend may be restarting: keep waiting */ }
+    }
+    box.innerHTML = `<div class="agent-login-wait">${escHtml(L('agent_login_failed',
+      'Accesso non completato.'))}</div><button class="agent-btn primary" data-act="claude-login">${
+      escHtml(L('agent_login_btn', 'Accedi a Claude'))}</button>`;
+    box.querySelector('[data-act="claude-login"]').addEventListener('click', () => claudeLogin(el, question));
+  }
+
+  // `again`: the question of a request that stopped on the sign-in, sent
+  // once more without touching what the user is typing now.
+  async function send(again) {
     const ta = $('agentInput');
-    const question = ta.value.trim();
+    const retry = typeof again === 'string';
+    const question = retry ? again : ta.value.trim();
     if (!question || busy) return;
-    ta.value = '';
     const mail = useMail ? openMail() : null;
-    say('user', question, mail ? (mail.subject || L('agent_this_mail', 'Questa mail')) : '');
+    // a retry: the question is on screen and in the history already
+    if (!retry) {
+      ta.value = '';
+      say('user', question, mail ? (mail.subject || L('agent_this_mail', 'Questa mail')) : '');
+    }
     const wait = addThinking();
     currentRun = newRunId();
     setBusy(true);
@@ -311,7 +384,7 @@
       account_id: (typeof activeAccountId !== 'undefined' && activeAccountId) || null,
       mail_id: mail ? mail.id : null, folder: mail ? mail.folder : null,
     };
-    history.push({ role: 'user', text: question });
+    if (!retry) history.push({ role: 'user', text: question });
     save();
     try {
       const r = await window.electronAPI.agentCommand(body);
@@ -327,6 +400,10 @@
     } catch (e) {
       wait.remove();
       const msg = String(e.message || e);
+      if (e.code === 'agent_login' && window.electronAPI.claudeLoginStart) {
+        loginBubble(msg, question);
+        return;
+      }
       say('error', /^not found$/i.test(msg)
         ? L('agent_old_backend', 'Il backend in uso non conosce ancora questa funzione: chiudi GigaMail (anche dall\'icona vicino all\'orologio) e riaprila.')
         : /agent|agente|claude|codex|antigravity/i.test(msg) && /install|trovat|found|unavailable/i.test(msg)
@@ -374,7 +451,7 @@
     autoGrow();
   }
 
-  window.AgentView = { formatAnswer, mailLinkTarget };
+  window.AgentView = { formatAnswer, mailLinkTarget, LOGIN_POLL_MS: 2000 };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

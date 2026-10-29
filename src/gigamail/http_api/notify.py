@@ -27,6 +27,8 @@ def notify_status():
         "desktop": {
             "enabled": desktop_notify.enabled(),
             "buttons": desktop_notify.actions_supported(),
+            # "legacy": HKLM still opens the old ade_mail_agent CLI
+            "buttons_off": desktop_notify.buttons_off_reason(),
             "platform": os.name,
         },
         "telegram": {
