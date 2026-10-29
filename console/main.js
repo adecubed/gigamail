@@ -503,6 +503,7 @@ function handleOpenUrl(url) {
   if (!req) return;
   if (!mainWindow) { pendingUrl = url; return; }   // handled once the window exists
   if (req.kind === 'approval') openApprovalWindow(req.id, req.action);
+  else if (req.kind === 'pending') showPendingInMain();
   else if (req.kind === 'reply') openReplyAlertWindow(req.key);
   else if (req.kind === 'mail') {
     mainWindow.webContents.send('open-mail', { id: req.id, folder: req.folder || null, account_id: req.account_id || null });
@@ -579,12 +580,15 @@ function openReplyAlertWindow(key) {
 
 ipcMain.on('approval-window-close', (event) => { BrowserWindow.fromWebContents(event.sender)?.close(); });
 ipcMain.on('approval-window-minimize', (event) => { BrowserWindow.fromWebContents(event.sender)?.minimize(); });
-ipcMain.on('approval-window-open-pending', () => {
+function showPendingInMain() {
   if (!mainWindow) return;
   mainWindow.webContents.send('show-pending-view');
   if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
   mainWindow.focus();
-});
+}
+
+ipcMain.on('approval-window-open-pending', showPendingInMain);
 
 app.whenReady().then(async () => {
   if (DEV_ICON && process.platform === 'darwin' && app.dock) {

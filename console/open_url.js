@@ -1,12 +1,15 @@
 // open_url.js — what a gigamail:// link asks of the console. The toast
-// buttons (Read, Approve, Edit, Reject on an approval; Reply on a client
-// reply alert) and the agent's mail links all come through here, from the
+// buttons (Read, Approve, Edit, Reject on an approval; Open on the summary
+// of many; Reply on a client reply alert) and the agent's mail links all
+// come through here, from the
 // protocol handler, the second-instance argv or the CLI's forward.
 (function () {
   function parse(url) {
     const u = String(url || '').trim();
     let m = u.match(/^gigamail:\/\/(show|approve|edit|reject)\/(req_[0-9A-Za-z]+)\/?$/i);
     if (m) return { kind: 'approval', action: m[1].toLowerCase(), id: m[2] };
+    // the summary toast of a busy tick: open Waiting for you
+    if (/^gigamail:\/\/pending\/?$/i.test(u)) return { kind: 'pending' };
     m = u.match(/^gigamail:\/\/reply\/([0-9a-f]{8})\/?$/i);
     if (m) return { kind: 'reply', key: m[1].toLowerCase() };
     m = u.match(/^gigamail:\/\/mail\/(\d+)\/([^/?#]+)(?:\?folder=([^&#]*))?/i);

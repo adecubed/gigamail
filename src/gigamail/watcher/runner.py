@@ -283,10 +283,10 @@ class Watcher:
         try:
             n = spam_filters.run_all()
         except Exception as e:
-            _log(f"spam filters: {type(e).__name__}: {e}")
+            _log(f"spam filters: {type(e).__name__}: {e}", self.verbose)
             return 0
         if n:
-            _log(f"spam filters: {n} moved")
+            _log(f"spam filters: {n} moved", self.verbose)
         return n
 
     def desktop_replies(self) -> int:

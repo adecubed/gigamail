@@ -19,6 +19,7 @@
       agent_old_backend: "Il backend in uso non conosce ancora questa funzione: chiudi GigaMail (anche dall'icona vicino all'orologio) e riaprila.",
       agent_not_approved: "Non approvata", agent_done: "Fatto.",
       agent_unavailable: "Nessun agente trovato. Installa Claude Code, Codex o Antigravity e riprova.",
+      agent_login_btn: "Accedi a Claude", agent_login_wait: "Si è aperto il browser: autorizza l'accesso a Claude. Poi la richiesta riparte da sola.", agent_login_manual: "Il browser non si è aperto? Apri", agent_login_page: "la pagina di accesso", agent_login_paste: "e incolla qui il codice che ti mostra.", agent_login_code_ph: "Codice", agent_login_code_send: "Invia", agent_login_done: "Accesso fatto: riprovo.", agent_login_failed: "Accesso non completato.",
       // finestra / toolbar comuni
       hide: "Nascondi", fullscreen: "Tutto schermo", close: "Chiudi",
       cancel: "Annulla", save: "Salva", create: "Crea", optional: "(opzionale)",
@@ -560,6 +561,7 @@
       agent_old_backend: "The running backend does not know this feature yet: quit GigaMail (also from the tray icon) and open it again.",
       agent_not_approved: "Not approved", agent_done: "Done.",
       agent_unavailable: "No agent found. Install Claude Code, Codex or Antigravity and try again.",
+      agent_login_btn: "Sign in to Claude", agent_login_wait: "Your browser has opened: authorise Claude there. The request then goes out again by itself.", agent_login_manual: "Browser did not open? Open", agent_login_page: "the sign-in page", agent_login_paste: "and paste here the code it shows you.", agent_login_code_ph: "Code", agent_login_code_send: "Send", agent_login_done: "Signed in: trying again.", agent_login_failed: "Sign-in not completed.",
       suggested_attachments: "SUGGESTED ATTACHMENTS", add_selected: "ADD SELECTED",
       guard_title: "NO DRAFT: THIS MAIL GIVES THE ASSISTANT ORDERS",
       guard_generic: "text addressed to the assistant",
@@ -1085,6 +1087,7 @@
       agent_old_backend: "当前运行的后端还不支持此功能：请退出 GigaMail（包括托盘图标）后重新打开。",
       agent_not_approved: "未批准", agent_done: "完成。",
       agent_unavailable: "未找到智能体。请安装 Claude Code、Codex 或 Antigravity 后重试。",
+      agent_login_btn: "登录 Claude", agent_login_wait: "浏览器已打开：请在其中授权 Claude。之后请求会自动重新发送。", agent_login_manual: "浏览器没有打开？请打开", agent_login_page: "登录页面", agent_login_paste: "并把它显示的代码粘贴到这里。", agent_login_code_ph: "代码", agent_login_code_send: "发送", agent_login_done: "已登录：正在重试。", agent_login_failed: "登录未完成。",
       // 翻译初稿（欢迎打磨：console/i18n.js，PR welcome）
       hide: "隐藏", fullscreen: "全屏", close: "关闭",
       cancel: "取消", save: "保存", create: "创建", optional: "（可选）",

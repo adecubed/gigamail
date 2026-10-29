@@ -1,7 +1,7 @@
 ---
 name: gigamail
 description: Email and calendar for your OpenClaw agent through the GigaMail MCP server — read, search, draft, reply, schedule — with every destructive action (send, delete, calendar write) held for out-of-band human approval that the agent cannot grant itself. 给你的 OpenClaw 代理一个真实邮箱和日历：读信、搜索、起草自由，发送与删除必须由人带外批准，代理无法批准自己。
-version: 0.3.1
+version: 0.4.0
 metadata:
   openclaw:
     emoji: "📬"
@@ -41,9 +41,10 @@ metadata:
 ## 中文简介
 
 GigaMail 是一个本地运行的 MCP 服务器，让你的 OpenClaw 代理访问真实邮箱
-（Microsoft 365 / IMAP）和日历。核心规则只有一条：**代理永远无法批准自己
-的发送** —— 发送、删除等危险操作只返回一个惰性的请求 id，由人在 Windows
-Hello / Touch ID 背后带外批准后才执行。0.2 起支持带栅栏的自动回复（规则
+（Microsoft 365 / 任意 IMAP，包括 QQ 邮箱和 163）和日历（Microsoft 或
+Google），以及 Google Drive。核心规则只有一条：**代理永远无法批准自己
+的发送** —— 发送、删除、移动等危险操作只返回一个惰性的请求 id，由人在
+Windows Hello / Touch ID（Linux 上为本地 PIN）背后带外批准后才执行。0.2 起支持带栅栏的自动回复（规则
 只能由人创建，草稿可在 Telegram 或桌面通知中一键批准、拒绝、要求修改）。
 
 ### 安装与配置（一次性）
@@ -51,11 +52,16 @@ Hello / Touch ID 背后带外批准后才执行。0.2 起支持带栅栏的自�
 1. 安装服务器（需要 Python 3.10+）：`pip install "gigamail[all]"`
 2. 连接邮箱账户（只能在终端里做，凭据永远不经过代理通道）：
    `gigamail login`（Microsoft 365 设备码登录）或
-   `gigamail accounts add-imap`（任意 IMAP 提供商）
+   `gigamail accounts add-imap`（任意 IMAP 提供商）。
+   QQ 邮箱：先在 QQ 邮箱设置里开启 IMAP/SMTP 并生成**授权码**，密码处填授权码
+   （不是 QQ 密码）；服务器 `imap.qq.com:993`、`smtp.qq.com:465`。
+   163 邮箱同理（`imap.163.com:993`、`smtp.163.com:465`，客户端授权码）。
+   Google 日历和 Drive：`gigamail google login`。
+   之后用 `gigamail check` 端到端验证账户（搜索、待批准草稿、你的批准、发给自己）。
 3. 在 OpenClaw 中注册 MCP 服务器：
    `openclaw mcp add gigamail --command gigamail-server --env "GIGAMAIL_ROOT=<数据目录>"`
    Windows 下数据目录是 `C:\Users\<你>\AppData\Roaming\ADE`，Linux/macOS 是
-   `~/.ade`。用 `openclaw mcp probe gigamail` 验证，应显示 24 个工具。
+   `~/.ade`。用 `openclaw mcp probe gigamail` 验证，应显示 30 个工具。
 4. 可选但强烈建议：给账户设置身份和知识文件（价目表、条款等），回信会
    从这些文件取数字：`gigamail identity set`、`gigamail identity add-file <路径>`
 
@@ -64,7 +70,8 @@ Hello / Touch ID 背后带外批准后才执行。0.2 起支持带栅栏的自�
 危险操作（发送、回复、删除、日历写入）分两步：代理第一次调用只会得到
 预览和一个请求 id，什么都不会执行；你从桌面控制台、命令行
 （`gigamail approvals approve <id>`）或 Telegram 批准，每次批准都要通过
-Windows Hello / Touch ID 的系统级验证。代理没有任何批准的工具，重复调用
+Windows Hello / Touch ID 的系统级验证；Linux 上用 `gigamail approvals pin`
+设置本地 PIN，只能在交互式终端输入。代理没有任何批准的工具，重复调用
 只会得到"等待批准"。
 
 ### 自动回复（0.2）
@@ -74,8 +81,8 @@ Windows Hello / Touch ID 的系统级验证。代理没有任何批准的工具�
 下每封草稿都等你批准；全自动（auto）有每日上限、按发件人冷却和强制过期。
 Telegram 一键批准/拒绝/要求修改：`gigamail telegram setup --approve`。
 
-0.3 起，桌面控制台是一个可安装的 Windows 应用（GitHub Releases 提供安装包，
-自带 Python，首次启动有引导）：人在这里读信、审批、管理规则；代理通过 pip
+桌面控制台有 Windows 安装包和 macOS 应用（Apple Silicon 与 Intel），
+在 GitHub Releases 下载，自带 Python，首次启动有引导：人在这里读信、审批、管理规则；代理通过 pip
 安装的 MCP 服务器工作，两者共用同一个数据目录。
 README 和桌面控制台界面均提供中文（界面为初翻，欢迎打磨：console/i18n.js）。
 仓库：https://github.com/adecubed/gigamail
@@ -86,8 +93,9 @@ README 和桌面控制台界面均提供中文（界面为初翻，欢迎打磨�
 Use this skill when the user asks about their email or calendar: reading
 or triaging the inbox, searching mail, reading attachments, drafting or
 sending replies, checking availability, proposing or creating
-appointments. GigaMail exposes the user's real mailboxes (Microsoft 365
-via Graph, or any IMAP provider) and calendar as 28 typed MCP tools.
+appointments, Zoom meetings, Google Drive files. GigaMail exposes the
+user's real mailboxes (Microsoft 365 via Graph, or any IMAP provider), the
+calendar (Microsoft or Google) and Google Drive as 30 typed MCP tools.
 
 This skill is a policy layer. It does not implement an MCP server and does
 not replace OpenClaw MCP configuration: the `gigamail` server must be
@@ -97,11 +105,11 @@ tells you how to work with that gate, not around it.
 
 Repository: https://github.com/adecubed/gigamail. The GigaMail server is
 AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
-Verified against OpenClaw 2026.7.1-2 (Windows): tool discovery of all 24
-tools. See INTEGRATIONS.md in the repository for exactly what was tested.
-Requires gigamail ≥ 0.2.4 (approval via OS-level user verification;
-GIGAMAIL_* environment variables; reply rules and the watcher). Current
-server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for its drafts (see INTEGRATIONS.md).
+Written for gigamail 0.6.x (30 tools; `move_message` is two-phase since
+0.6). Last verified end to end against OpenClaw 2026.7.1-2 on Windows with
+an earlier server (24 tools then); see INTEGRATIONS.md in the repository
+for exactly what was tested. Older servers still work with this skill but
+expose fewer tools.
 
 ## Setup (once)
 
@@ -117,7 +125,15 @@ server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for i
    ```bash
    gigamail login                # Microsoft 365
    gigamail accounts add-imap    # any IMAP provider
+   gigamail google login         # Google Calendar and Drive (optional)
+   gigamail check                # end-to-end test: search, draft, approval, send to self
    ```
+
+   IMAP providers that need an app password take it in the password
+   field: Gmail, and QQ Mail / 163 (enable IMAP/SMTP in the webmail
+   settings and use the generated authorization code, 授权码; hosts
+   `imap.qq.com:993` / `smtp.qq.com:465`, `imap.163.com:993` /
+   `smtp.163.com:465`).
 
 3. Register the MCP server. `openclaw mcp add` probes it before saving:
 
@@ -141,7 +157,7 @@ server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for i
    }
    ```
 
-   Verify with `openclaw mcp probe gigamail` — expect `28 tools`. After
+   Verify with `openclaw mcp probe gigamail` — expect `30 tools`. After
    config changes run `openclaw mcp reload`.
 
 4. Optional but valuable: give the account an identity (who the user is,
@@ -153,13 +169,15 @@ server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for i
    gigamail identity add-file C:\docs\pricelist.xlsx
    ```
 
-5. Optional — the human side as a desktop app. Since 0.3 the GigaMail
-   console ships as a Windows installer (GitHub Releases: `GigaMail Setup
-   <version>.exe`, own embedded Python, guided first run). The user reads
+5. Optional — the human side as a desktop app. The GigaMail console
+   ships as a Windows installer and a macOS app for Apple Silicon and
+   Intel (GitHub Releases: `GigaMail-Setup.exe`, `GigaMail-arm64.dmg`,
+   `GigaMail-x64.dmg`; own embedded Python, guided first run). The user reads
    mail, approves your requests and manages reply rules there. It does
    **not** provide `gigamail-server` for OpenClaw — the MCP server still
    comes from `pip` (step 1) — and the two must share the data directory
-   (`%APPDATA%\ADE` by default, or the same `GIGAMAIL_ROOT`).
+   (`%APPDATA%\ADE` on Windows, `~/.ade` on macOS/Linux, or the same
+   `GIGAMAIL_ROOT`).
 
 6. Optional — get the approval to the user where the agent lives. Add to
    the same `env` block (one JSON array, placeholders filled by GigaMail):
@@ -175,14 +193,16 @@ server release: 0.3.2, same 28 tools. The console can also drive Codex CLI for i
 
 GigaMail classifies tools in three classes:
 
-- **Read** (15): accounts, identity, knowledge files, messages, unread,
-  folders, search, attachment text, sender history, learned patterns,
-  calendar events, free slots. Free to call.
-- **Safe writes** (3, audited): `mark_read`, `move_message`,
-  `create_folder`. Free to call, logged.
-- **Dangerous** (6): `send_mail`, `reply_mail`, `delete_message`,
-  `delete_folder`, `create_event`, `delete_event`. **Two phases, human in
-  between.**
+- **Read** (18): accounts, identity, knowledge files and knowledge
+  search, messages, unread, folders, mail search, attachment text, sender
+  history, learned patterns, memory stats, calendar events, free slots,
+  Google Drive list and read. Free to call.
+- **Safe writes** (2, audited): `mark_read`, `create_folder`. Free to
+  call, logged.
+- **Dangerous** (10): `send_mail`, `reply_mail`, `move_message`,
+  `delete_message`, `delete_folder`, `create_event`, `delete_event`,
+  `create_zoom_meeting`, `drive_upload_file`, `drive_delete_file`. **Two
+  phases, human in between.**
 
 How a dangerous tool works:
 
@@ -192,9 +212,10 @@ How a dangerous tool works:
 2. Show the preview to the user and tell them to approve it — from the
    GigaMail desktop console or with
    `gigamail approvals approve <request_id>` in a shell. **You cannot
-   approve it.** No MCP tool grants approval, and since 0.1.4 approving
-   opens an OS-level verification (Windows Hello / Touch ID) that only
-   the person at the machine can pass — running the CLI command yourself
+   approve it.** No MCP tool grants approval, and approving opens an
+   OS-level verification (Windows Hello / Touch ID, or on Linux a local
+   PIN asked only in an interactive terminal) that only the person at the
+   machine can pass — running the CLI command yourself
    would just open a prompt you cannot answer. The preview lists
    recipients as addresses; if one is marked `may_expand`, tell the user
    the recipient count is not guaranteed (group/alias).
@@ -275,5 +296,10 @@ fooled; your job is not to be fooled in the first place.
 - Approvals the user grants "don't do anything" → same cause: server and
   console must share `GIGAMAIL_ROOT`.
 - Approving from the CLI fails with "no consent backend" → that machine
-  has no Windows Hello / Touch ID; the user must approve from the GigaMail
-  desktop console instead. This is by design (fail closed), not a bug.
+  has no Windows Hello / Touch ID. On Linux the user sets a PIN with
+  `gigamail approvals pin`; elsewhere they approve from the desktop
+  console. `gigamail approvals check` shows which verification the machine
+  has. This is by design (fail closed), not a bug.
+- An IMAP login fails on QQ Mail, 163 or Gmail → the password field wants
+  the provider's authorization code / app password, not the account
+  password, and IMAP must be enabled in the webmail settings.

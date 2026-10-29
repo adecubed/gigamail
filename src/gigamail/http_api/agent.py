@@ -71,11 +71,19 @@ def _identity_context(aid: Optional[int], folder: str = "") -> str:
     return "\n".join(parts)
 
 
+def _agent_error(e: Exception) -> HTTPException:
+    """503 with the agent's message. A lost Claude Code login also carries
+    X-GigaMail-Error: agent_login, so the console offers the sign-in; the
+    body stays the plain message every caller already reads."""
+    headers = {"X-GigaMail-Error": "agent_login"}         if isinstance(e, agent_bridge.AgentLoginRequired) else None
+    return HTTPException(503, str(e), headers=headers)
+
+
 def _run_agent(prompt: str) -> dict:
     try:
         return {"draft": agent_bridge.run(prompt), "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e)) from e
+        raise _agent_error(e) from e
 
 
 _APPUNTAMENTO_KW = (
@@ -156,6 +164,36 @@ _DISCIPLINA_DATI = (
 @router.get("/agent/status")
 def agent_status():
     return agent_bridge.status()
+
+
+@router.get("/agent/claude/login")
+def agent_claude_login_status():
+    return agent_bridge.claude_login_state()
+
+
+@router.post("/agent/claude/login")
+def agent_claude_login_start():
+    """Signs Claude Code in again: the browser opens on the claude.ai
+    consent page, no terminal involved."""
+    try:
+        return agent_bridge.claude_login_start()
+    except agent_bridge.AgentUnavailable as e:
+        raise HTTPException(503, str(e)) from e
+
+
+class ClaudeLoginCodeRequest(BaseModel):
+    code: str = Field(..., max_length=512)
+
+
+@router.post("/agent/claude/login/code")
+def agent_claude_login_code(req: ClaudeLoginCodeRequest):
+    """The code the consent page shows when it cannot hand it back itself."""
+    try:
+        return agent_bridge.claude_login_code(req.code)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except agent_bridge.AgentUnavailable as e:
+        raise HTTPException(409, str(e)) from e
 
 
 @router.get("/agent/codex")
@@ -443,7 +481,7 @@ def sender_summary(req: SenderSummaryRequest):
     try:
         return {"summary": agent_bridge.run(prompt), "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e)) from e
+        raise _agent_error(e) from e
 
 
 # ── OBSERVER + AUDIT ─────────────────────────────────────────────────
@@ -616,7 +654,7 @@ def agent_command(req: AgentCommandRequest, request: Request = None):
         # what the agent opened before Stop stays visible: the user decides it
         return {"answer": "", "cancelled": True, "approvals": _richieste_nuove(prima)}
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e)) from e
+        raise _agent_error(e) from e
     return {"answer": risposta, "approvals": _richieste_nuove(prima)}
 
 
@@ -655,7 +693,7 @@ def agent_command_complete(req: AgentCompleteRequest):
     except agent_bridge.AgentCancelled:
         risposta, cancelled = "", True
     except agent_bridge.AgentUnavailable as e:
-        raise HTTPException(503, str(e)) from e
+        raise _agent_error(e) from e
     dopo = policy.store().get(req.request_id) or {}
     if cancelled:
         return {"answer": "", "cancelled": True, "status": dopo.get("status"),

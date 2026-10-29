@@ -170,3 +170,95 @@ test('when the backend already executed the approved request, the agent is not c
   assert.ok(w.document.querySelector('.agent-msg.approval').classList.contains('approved'));
   assert.match(w.document.querySelector('.agent-appr-head').textContent, /eseguita/i);
 });
+
+// Claude Code lost its login: the bar offers the sign-in, and once the user
+// has authorised it in the browser the question goes out again by itself.
+function loginError() {
+  const e = new Error("La sessione di Claude Code e' scaduta: accedi di nuovo per continuare.");
+  e.code = 'agent_login';
+  return e;
+}
+
+async function ask(w, text) {
+  const ta = w.document.getElementById('agentInput');
+  ta.value = text;
+  ta.dispatchEvent(new w.Event('input'));
+  w.document.getElementById('agentSend').click();
+  await new Promise((r) => setTimeout(r, 20));
+}
+
+test('a lost Claude login offers the sign-in, then asks again by itself', async () => {
+  const { w } = load();
+  const asked = [];
+  let started = 0;
+  let polls = 0;
+  w.electronAPI.agentCommand = async (body) => {
+    asked.push(body.question);
+    if (asked.length === 1) throw loginError();
+    return { answer: 'Tre mail da Victor.' };
+  };
+  w.electronAPI.claudeLoginStart = async () => { started += 1; return { pending: true, logged_in: false, url: '' }; };
+  w.electronAPI.claudeLoginStatus = async () => {
+    polls += 1;
+    return polls < 2 ? { pending: true, logged_in: false, url: '' } : { pending: false, logged_in: true, url: '' };
+  };
+  await ready(w);
+  w.AgentView.LOGIN_POLL_MS = 5;
+  await ask(w, 'riassumi le mail di victor');
+
+  const btn = w.document.querySelector('[data-act="claude-login"]');
+  assert.ok(btn, 'the error carries a sign-in button');
+  btn.click();
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(started, 1);
+  assert.deepEqual(asked, ['riassumi le mail di victor', 'riassumi le mail di victor']);
+  assert.match(w.document.getElementById('agentThread').textContent, /Tre mail da Victor\./);
+});
+
+test('when the browser cannot hand the code back, the user pastes it in the bar', async () => {
+  const { w } = load();
+  const codes = [];
+  w.electronAPI.agentCommand = async () => { throw loginError(); };
+  w.electronAPI.claudeLoginStart = async () => ({ pending: true, logged_in: false, url: '' });
+  w.electronAPI.claudeLoginStatus = async () => ({
+    pending: true, logged_in: false, url: 'https://claude.com/cai/oauth/authorize?code=true&state=abc' });
+  w.electronAPI.claudeLoginCode = async (code) => { codes.push(code); return { pending: false, logged_in: false, url: '' }; };
+  await ready(w);
+  w.AgentView.LOGIN_POLL_MS = 5;
+  await ask(w, 'x');
+  w.document.querySelector('[data-act="claude-login"]').click();
+  await new Promise((r) => setTimeout(r, 60));
+
+  const link = w.document.querySelector('.agent-login-url');
+  assert.equal(link.getAttribute('href'), 'https://claude.com/cai/oauth/authorize?code=true&state=abc');
+  w.document.querySelector('.agent-login-code input').value = '  abc#def  ';
+  w.document.querySelector('[data-act="claude-login-code"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(codes, ['abc#def']);
+  w.document.getElementById('agentClear').click();   // ends the wait
+  await new Promise((r) => setTimeout(r, 20));
+});
+
+test('only the claude.ai address is offered as a link', async () => {
+  const { w } = load();
+  w.electronAPI.agentCommand = async () => { throw loginError(); };
+  w.electronAPI.claudeLoginStart = async () => ({ pending: true, logged_in: false, url: '' });
+  w.electronAPI.claudeLoginStatus = async () => ({ pending: true, logged_in: false, url: 'https://evil.example.com/oauth/authorize?x' });
+  await ready(w);
+  w.AgentView.LOGIN_POLL_MS = 5;
+  await ask(w, 'x');
+  w.document.querySelector('[data-act="claude-login"]').click();
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(w.document.querySelector('.agent-login-url'), null);
+  w.document.getElementById('agentClear').click();
+  await new Promise((r) => setTimeout(r, 20));
+});
+
+test('other errors keep their message and get no sign-in button', async () => {
+  const { w } = load();
+  w.electronAPI.agentCommand = async () => { throw new Error('Agente terminato con errore (1): rotto'); };
+  await ready(w);
+  await ask(w, 'x');
+  assert.equal(w.document.querySelector('[data-act="claude-login"]'), null);
+  assert.match(w.document.getElementById('agentThread').textContent, /rotto/);
+});

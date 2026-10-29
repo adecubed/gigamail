@@ -117,6 +117,19 @@ def test_a_rule_never_answers_a_mail_a_spam_filter_hides(fake_world, monkeypatch
     assert h["status"] == "skipped" and h["reason"].startswith("spam-filter:")
 
 
+def test_a_tick_goes_on_after_the_spam_filters_moved_mail(fake_world, monkeypatch):
+    """Seen live: a filter moved a mail to spam, the log line after it
+    raised TypeError (no verbose) and the tick stopped there, so the
+    rules and the archive waited for the next tick."""
+    from gigamail.core import spam_filters
+    monkeypatch.setattr(spam_filters, "run_all", lambda: 2)
+    _rule(mode="semi")
+    fake_world["unread"] = [_msg()]
+    stats = watcher_mod.Watcher().tick()
+    assert stats["spam"] == 2
+    assert len(policy.store().list_pending()) == 1
+
+
 def test_semi_draft_carries_the_account_signature(fake_world, account_signature):
     account_signature(1, "Sales office")
     _rule(mode="semi")

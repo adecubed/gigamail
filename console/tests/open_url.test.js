@@ -12,6 +12,12 @@ test('approval links carry the action and the request id', () => {
   assert.equal(OpenUrl.parse('http://evil/gigamail://approve/req_1'), null);
 });
 
+test('the summary toast opens Waiting for you', () => {
+  assert.deepEqual(OpenUrl.parse('gigamail://pending'), { kind: 'pending' });
+  assert.deepEqual(OpenUrl.parse('GIGAMAIL://pending/'), { kind: 'pending' });
+  assert.equal(OpenUrl.parse('gigamail://pending/req_1'), null);
+});
+
 test('reply and mail links', () => {
   assert.deepEqual(OpenUrl.parse('gigamail://reply/0a1b2c3d'), { kind: 'reply', key: '0a1b2c3d' });
   assert.equal(OpenUrl.parse('gigamail://reply/zz'), null);

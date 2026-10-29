@@ -511,7 +511,7 @@ def _notify_command() -> Optional[List[str]]:
     {request_id}, {tool}, {summary}, {message} ({message} = testo completo
     leggibile, es. per Telegram via curl:
       ["curl","-s","https://api.telegram.org/bot<TOKEN>/sendMessage",
-       "-d","chat_id=<ID>","-d",'link_preview_options={"is_disabled":true}',
+       "-d","chat_id=<ID>","-d","link_preview_options={\\"is_disabled\\":true}",
        "--data-urlencode","text={message}"]
     — keep link_preview_options: Telegram fetches the first link of a
     message to preview it, and a draft's link could carry data out).
@@ -602,6 +602,29 @@ def toast_actions(request_id: str) -> List[tuple]:
         ("❌ " + ("Rifiuta" if it else "Reject"),
          f"gigamail://reject/{request_id}"),
     ]
+
+
+def pending_actions() -> List[tuple]:
+    """The summary toast's only button: open Waiting for you in the console."""
+    from gigamail.core import desktop_notify
+    return [("📋 " + ("Apri" if user_lang() == "it" else "Open"),
+             desktop_notify.PENDING_URL)]
+
+
+def _desktop_detail(base: str, actions: Optional[List[tuple]]) -> str:
+    """The audit line of a toast says when it went out without the buttons
+    it should have had, and why ("I got a toast with nothing to press")."""
+    if not actions:
+        return base
+    try:
+        from gigamail.core import desktop_notify
+        reason = desktop_notify.buttons_off_reason()
+    except Exception:
+        reason = ""
+    if reason in ("", "platform"):   # only Windows toasts have buttons
+        return base
+    why = {"legacy": "legacy registration", "missing": "scheme not registered"}.get(reason, reason)
+    return f"{base}, no buttons: {why}"
 
 
 # Telegram taglia a 4096 caratteri; sotto quel tetto ci sta una mail
@@ -763,9 +786,14 @@ def _notify_summary(items: List[Dict[str, Any]]) -> None:
     ids = [it["request_id"] for it in items]
     try:
         from gigamail.core import desktop_notify
-        if desktop_notify.notify("GigaMail", text, expires_in=_APPROVAL_TTL_SECONDS):
+        # One button: the console's Waiting for you, where each request has
+        # its own Approve, Reject and Edit. The summary used to have none.
+        actions = pending_actions()
+        if desktop_notify.notify("GigaMail", text, actions=actions,
+                                 expires_in=_APPROVAL_TTL_SECONDS):
+            detail = _desktop_detail("desktop (summary)", actions)
             for rid in ids:
-                audit("watch", {"request_id": rid}, "approval_notified", detail="desktop (summary)")
+                audit("watch", {"request_id": rid}, "approval_notified", detail=detail)
     except Exception:
         pass
     try:
@@ -854,7 +882,7 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
             # lives as long as the request, so hours later only this line
             # says it existed.
             audit(tool, {"request_id": request_id}, "approval_notified",
-                  detail="desktop")
+                  detail=_desktop_detail("desktop", actions))
             fired = True
     except Exception:
         pass
