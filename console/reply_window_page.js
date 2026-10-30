@@ -336,6 +336,15 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
     }
     ta.value = data.draft || data.text || '';
     window._lastGeneratedDraft = ta.value;
+    if (data.warning === 'unchecked_markup') {
+      // The draft exists, but it was written from a mail whose HTML could
+      // not be checked for hidden text: the person reads the mail first.
+      guard.innerHTML = `<div class="gb-title">⚠ ${esc(T('guard_unchecked_title',
+        'MAIL NON VERIFICATA: LEGGILA PRIMA DI INVIARE'))}</div>
+        <div class="gb-why">${esc(T('guard_unchecked_why',
+          'La mail ha stili che GigaMail non ha potuto controllare: potrebbe contenere testo nascosto rivolto all\'assistente. Controlla la bozza.'))}</div>`;
+      guard.style.display = 'block';
+    }
     if (data.suggested_attachments?.length) {
       const banner = document.getElementById('suggestedBanner');
       const items = data.suggested_attachments.map((a,i) =>

@@ -163,11 +163,17 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         elif bool(full.get("isRead", message.get("isRead"))):
             mode = "semi"  # l'umano l'ha gia' vista: propongo, non invio
 
+    # A mail whose HTML could not be checked for hidden text: treated like
+    # an agent with a shell in auto (no draft), drafted with a warning in
+    # semi, where a person reads it before it leaves.
+    unchecked = not drafting.body_checked(full)
+
     # bozza dall'agente dell'utente, SOLO corpo
     try:
         body = drafting.draft_reply(rule, account_id, full,
                                     feedback=retry_feedback,
-                                    previous_body=previous_body)
+                                    previous_body=previous_body,
+                                    allow_unchecked=(mode == "semi"))
     except drafting.MailConOrdini as e:
         # La mail impartisce ordini all'assistente. Non si ritenta: non
         # cambierebbe niente al giro dopo, e questa e' la regola che puo'
@@ -178,15 +184,28 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         rs.set_status(rule_id, message_id, "blocked", f"injection:{e}")
         motivi = ", ".join(injection_guard.descrivi(m, policy.user_lang())
                            for m in e.reasons)
-        policy.notify_approval_requested(
-            "-", f"draft_blocked:{rule_id}", {"action": "draft blocked"},
-            message=(f"Nessuna bozza per la mail da {sender} ({rule_id}): "
+        if e.reasons == ["unchecked_markup"]:
+            # An auto rule: nobody would read the draft before it leaves.
+            testo = (f"Nessuna bozza per la mail da {sender} ({rule_id}): ha "
+                     f"stili che GigaMail non ha potuto controllare (possibile "
+                     f"testo nascosto) e la regola risponde da sola. Guardala "
+                     f"prima di rispondere."
+                     if policy.user_lang() == "it" else
+                     f"No draft for the mail from {sender} ({rule_id}): it has "
+                     f"styles GigaMail could not check (possible hidden text) "
+                     f"and the rule replies on its own. Look at it before "
+                     f"replying.")
+        else:
+            testo = (f"Nessuna bozza per la mail da {sender} ({rule_id}): "
                      f"contiene istruzioni rivolte all'assistente "
                      f"({motivi}). Guardala prima di rispondere."
                      if policy.user_lang() == "it" else
                      f"No draft for the mail from {sender} ({rule_id}): it "
                      f"carries instructions addressed to the assistant "
-                     f"({motivi}). Look at it before replying."))
+                     f"({motivi}). Look at it before replying.")
+        policy.notify_approval_requested(
+            "-", f"draft_blocked:{rule_id}", {"action": "draft blocked"},
+            message=testo)
         return "blocked"
     except agent_bridge.AgentUnavailable as e:
         # L'agente non ha risposto (timeout, assente): non e' colpa
@@ -236,7 +255,7 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
         try:
             corretta = drafting.draft_reply(
                 rule, account_id, full, feedback=esito.feedback,
-                previous_body=body)
+                previous_body=body, allow_unchecked=(mode == "semi"))
         except (drafting.MailConOrdini, agent_bridge.AgentUnavailable) as e:
             logger.info("riscrittura per %s non riuscita: %s", ext.name, e)
         secondo = _respinta(corretta) if corretta else primo
@@ -335,7 +354,7 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
              "salto", w.verbose)
         return "skipped"
     preview = _preview_for(rule, full, body, mode, to_address,
-                           allegati)
+                           allegati, unchecked=unchecked)
     request_id, created = _create_request(rule, args, preview)
     if not request_id:
         rs.set_status(rule_id, message_id, "skipped", "approval-cap")
@@ -360,7 +379,8 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
             actions = policy.toast_actions(request_id)
             policy.notify_approval_requested(
                 request_id, TOOL, preview,
-                message=notify._semi_notify_text(rule, full, body, request_id),
+                message=notify._semi_notify_text(rule, full, body, request_id,
+                                                 unchecked=unchecked),
                 buttons=buttons, actions=actions)
         _log(f"semi: {request_id} in attesa ({rule_id}, {sender})", w.verbose)
         return "awaiting_approval"
