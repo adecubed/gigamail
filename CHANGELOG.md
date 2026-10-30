@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The watcher keeps running for the archive, not only for rules.** Every
+  watcher tick also saves new mail into the local archive that search and
+  the agents read, but the backend's guard only started the watcher when
+  there was an active rule. With no rules, after a restart, a crash or an
+  update the watcher stayed stopped and the archive stopped growing
+  without a word. The guard now starts it, and restarts it on new code,
+  when there is an active rule or an account to archive (a demo account
+  does not count). Pressing Stop still holds until Start. The stopped
+  status in Automations now says that the archive is not updated either.
+  
 - **Telegram messages have no link preview.** Telegram fetches the first
   link of a message from its own servers to preview it, as soon as the
   message is sent. A draft written by an agent that read a hostile mail

@@ -97,7 +97,8 @@ def test_backend_start_brings_back_a_watcher_with_active_rules(client, monkeypat
         pid = 4242
 
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or FakeProc())
-    # no active rule: nothing to run
+    monkeypatch.setattr(rules_api, "_archive_accounts", lambda: 0)
+    # no active rule and no account to archive: nothing to run
     assert rules_api.watch_autostart() is None and spawned == []
 
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
@@ -204,3 +205,51 @@ def test_stop_and_the_guard_cannot_overlap(client, monkeypatch):
     assert client.post("/watch/stop", headers=H).status_code == 200
     slow_kill.thread.join(2)
     assert guard_result == [None] and spawned == []
+
+
+def _fake_spawn(monkeypatch, pid=4343):
+    import subprocess
+    spawned = []
+
+    class P:
+        pass
+    P.pid = pid
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or P())
+    return spawned
+
+
+def test_the_archive_alone_keeps_the_watcher_running(client, monkeypatch):
+    """The watcher also fills the local archive that search and the agents
+    read. With no rules the guard left it stopped after a restart or an
+    update, and the archive stopped growing without a word."""
+    from gigamail.core import accounts as core_accounts
+    from gigamail.http_api import rules as rules_api
+    spawned = _fake_spawn(monkeypatch)
+    monkeypatch.setattr(core_accounts, "get_accounts",
+                        lambda: [{"id": 1, "type": "imap"}, {"id": 2, "type": "demo"}])
+    assert rules_api._watch_state()["archive_accounts"] == 1
+    assert rules_api.watch_autostart() == 4343 and len(spawned) == 1
+    # an explicit Stop still wins
+    rules_mod.store().kv_set("watch_pid", "0")
+    assert client.post("/watch/stop", headers=H).status_code == 200
+    assert rules_api.watch_autostart() is None and len(spawned) == 1
+
+
+def test_a_demo_account_alone_starts_nothing(client, monkeypatch):
+    from gigamail.core import accounts as core_accounts
+    from gigamail.http_api import rules as rules_api
+    spawned = _fake_spawn(monkeypatch)
+    monkeypatch.setattr(core_accounts, "get_accounts", lambda: [{"id": 1, "type": "demo"}])
+    assert rules_api.watch_autostart() is None and spawned == []
+
+
+def test_new_code_restarts_an_archive_only_watcher(client, monkeypatch):
+    from gigamail.http_api import rules as rules_api
+    spawned = _fake_spawn(monkeypatch)
+    stopped = []
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: stopped.append(pid))
+    monkeypatch.setattr(rules_api, "_watch_state",
+                        lambda: {"running": True, "pid": 4242, "active_rules": 0,
+                                 "archive_accounts": 1, "code_stamp": "old-1"})
+    assert rules_api.watch_autostart() == 4343
+    assert stopped == [4242] and len(spawned) == 1
