@@ -372,6 +372,66 @@ written by an agent in two places, and neither fetches anything:
 A link in a draft still goes out if the person approves the draft: the
 approval preview is where to look at it.
 
+## Hidden text: the agent reads what the person sees
+
+A mail can address the agent in text the person never sees: a block with
+`display:none`, a font of size zero, white text on white, a paragraph
+pushed off screen, zero-width characters, Unicode "tag" characters that
+spell ASCII no font draws. The person approves what the console shows; an
+agent handed the HTML, or a text made by dropping its tags, reads all of
+it, and an instruction hidden there is addressed to the agent alone.
+
+- **`read_message` hands the visible text, never the HTML.** The body is
+  read the way a person sees it (`core/html_text.py`), in two passes:
+  every `<style>` block first, wherever it sits, then the body. Rules apply
+  by compound selector (tag, `#id` and every `.class`), with `!important`
+  (any case) and the inline style cascading over them; inline styles,
+  `hidden`, `<font color>` and `bgcolor` count too. Zero-width,
+  bidi-control and tag characters are dropped. Body, `body_text` and
+  `bodyPreview` all come from that one reading; when anything was left out
+  the result carries `hidden_text`.
+- **What cannot be evaluated is withheld, not guessed.** A parser error, a
+  hiding rule with a selector the reader does not support (descendant,
+  attribute, pseudo-class) or an external style sheet mark the body as not
+  checked: the agent gets no body, and `withheld` says to read it in the
+  console. There is no fallback that strips tags and hands out the rest.
+- **Previews.** Provider previews (`bodyPreview` from Graph or IMAP lists)
+  are withheld: they are text made from the HTML, where hidden text cannot
+  be told apart. Archive search previews are made from the checked text of
+  the archived mail, and local-index rows (also in `sender_history`) carry
+  no mail text.
+- **Drafts are written from the backend's own checked copy**, in the
+  watcher and in the console (the text the console sends along is no longer
+  used), while the injection check reads the visible text *and* what was
+  hidden. A body that could not be checked is drafted only where a person
+  reads the draft before it goes out: the console's reply button and
+  watcher rules in `semi` mode write it from the best-effort text, with a
+  warning in the reply window, the approval preview and the notification.
+  Rules in `auto` mode send without a person, so they treat it like an
+  agent with a shell: no draft, and a notification says why. The agent bar
+  and external harnesses go through MCP and get no body.
+- **Links.** `read_message` lists the links a person sees (`links`: text
+  and url, `http`, `https` and `mailto` only); links in hidden text are not
+  listed, and an unchecked body lists none.
+- **Every text made from HTML for a person** (console previews, the
+  archive's search text, alerts) goes through the same reader.
+
+What this does not stop, stated plainly:
+
+- **Tricks the reader does not know.** Specificity between rules is not
+  weighed (the later rule wins), text a shade off the background but not
+  close enough, text under an image, text the size of a pixel or two. It
+  narrows the gap between what the person sees and what the agent reads;
+  it does not close it.
+- **Search by stored text.** The archive's full-text index of mail saved
+  earlier still holds hidden words, so a search can match on them; the
+  preview the agent gets is rebuilt from the checked text.
+- **The user's own replies** in the local index (`reply_body`) are still
+  returned; a reply that quoted a hostile mail carries its visible text.
+- **Visible text.** An instruction a person can read is still in the
+  body. The text stays untrusted data, and the gates on sending stay where
+  they are.
+
 ## The desktop console
 
 The Windows app (0.3) renders mail written by strangers, so its renderer is

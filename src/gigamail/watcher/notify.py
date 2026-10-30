@@ -37,17 +37,22 @@ def _sender_subject(message: Dict[str, Any]) -> tuple:
 
 
 def _semi_notify_text(rule: Dict[str, Any], message: Dict[str, Any],
-                      body: str, request_id: str) -> str:
+                      body: str, request_id: str, unchecked: bool = False) -> str:
     sender, subject = _sender_subject(message)
     draft = _corpo(body)
     if policy.user_lang() == "it":
+        warn = ("\n⚠ La mail ha stili che GigaMail non ha potuto controllare "
+                "(possibile testo nascosto): leggila prima di approvare.\n"
+                if unchecked else "")
         return (
-            f"E' arrivata una mail da {sender} — «{subject}».\n"
+            f"E' arrivata una mail da {sender} — «{subject}».\n{warn}"
             f"Propongo questa risposta (regola {rule['rule_id']}):\n{draft}\n\n"
             f"Approvi? → gigamail approvals approve {request_id}"
         )
+    warn = ("\n⚠ The mail has styles GigaMail could not check (possible "
+            "hidden text): read it before approving.\n" if unchecked else "")
     return (
-        f"New email from {sender} — “{subject}”.\n"
+        f"New email from {sender} — “{subject}”.\n{warn}"
         f"I propose this reply (rule {rule['rule_id']}):\n{draft}\n\n"
         f"Approve? → gigamail approvals approve {request_id}"
     )
