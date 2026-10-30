@@ -21,7 +21,9 @@ and every .class must match) with !important and the inline style
 cascading over them. What it cannot evaluate it does not guess at: a
 hiding rule with a selector it does not support, an external style sheet
 or a parser error marks the result as not checked, and a caller handing
-text to an agent withholds it (`checked` is False). Over-hiding is the
+text to an agent withholds it (`checked` is False). The one external
+sheet it accepts is Google Fonts: it only declares fonts, and Google
+serves it, not the sender. Over-hiding is the
 safe side: text wrongly taken for hidden is only left out of what the
 agent reads, and the person still sees the mail in the console.
 """
@@ -29,6 +31,7 @@ import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlsplit
 
 _SPACES = re.compile(r"[ \t\r\f\v\u00a0]+")
 _BLANK_LINES = re.compile(r"\n\s*\n+")
@@ -64,6 +67,21 @@ _SAME_COLOUR = 24
 _MAX_LINKS = 50
 _IMPORTANT = re.compile(r"!\s*important\s*$", re.IGNORECASE)
 _SIMPLE_SELECTOR = re.compile(r"^(\*|[a-z][\w-]*)?((?:[.#][\w-]+)*)$", re.IGNORECASE)
+# `@import url("x") media;` and `@import "x";`: group 1 is the address.
+_IMPORT = re.compile(r"""@import\s+(?:url\(\s*)?["']?([^"')\s;]*)["']?\s*\)?[^;{}]*;?""",
+                     re.IGNORECASE)
+_FONT_SHEET_HOST = "fonts.googleapis.com"
+
+
+def _font_sheet(url: str) -> bool:
+    """A Google Fonts style sheet: its host exactly, no user, no port."""
+    try:
+        u = urlsplit((url or "").strip())
+        return (u.scheme.lower() in ("https", "http", "")
+                and (u.hostname or "") == _FONT_SHEET_HOST
+                and u.port is None and "@" not in u.netloc)
+    except ValueError:
+        return False
 
 
 @dataclass
@@ -249,6 +267,9 @@ def _without_at_blocks(css: str) -> str:
 def _parse_sheet(css: str) -> Tuple[List[_Rule], str]:
     """(rules with simple selectors, why it cannot be checked or '')."""
     css = re.sub(r"/\*.*?\*/", "", css or "", flags=re.S)
+    if any(not _font_sheet(m.group(1)) for m in _IMPORT.finditer(css)):
+        return [], "external style sheet (@import)"
+    css = _IMPORT.sub("", css)
     if re.search(r"@import\b", css, re.IGNORECASE):
         return [], "external style sheet (@import)"
     rules, unsupported = [], ""
@@ -321,7 +342,7 @@ class _Sheets(HTMLParser):
             self._in_style += 1
         elif tag == "link":
             a = {k.lower(): (v or "").lower() for k, v in attrs}
-            if "stylesheet" in a.get("rel", ""):
+            if "stylesheet" in a.get("rel", "") and not _font_sheet(a.get("href", "")):
                 self.external = True
 
     def handle_endtag(self, tag):

@@ -395,6 +395,10 @@ it, and an instruction hidden there is addressed to the agent alone.
   attribute, pseudo-class) or an external style sheet mark the body as not
   checked: the agent gets no body, and `withheld` says to read it in the
   console. There is no fallback that strips tags and hands out the rest.
+  The one external sheet accepted is Google Fonts (`fonts.googleapis.com`,
+  that host exactly): it only declares fonts and is served by Google, not
+  by the sender, and so many newsletters and invitations load one that
+  withholding them hid half of an ordinary inbox from the agent.
 - **Previews.** Provider previews (`bodyPreview` from Graph or IMAP lists)
   are withheld: they are text made from the HTML, where hidden text cannot
   be told apart. Archive search previews are made from the checked text of
