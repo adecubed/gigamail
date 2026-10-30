@@ -252,11 +252,44 @@ def test_legitimate_text_is_not_lost(markup, expected):
     '<style>p[data-x]{display:none}</style><p data-x="1">text</p>',
     '<style>@import url(https://evil.example/a.css);</style><p>text</p>',
     '<link rel="stylesheet" href="https://evil.example/a.css"><p>text</p>',
+    # only the Google Fonts host itself is trusted, not a look-alike
+    '<link rel="stylesheet" href="https://fonts.googleapis.com.evil.example/a.css"><p>text</p>',
+    '<link rel="stylesheet" href="https://fonts.googleapis.com@evil.example/a.css"><p>text</p>',
+    '<link rel="stylesheet" href="https://fonts.googleapis.com:8443/css"><p>text</p>',
+    '<link rel="stylesheet" href="ftp://fonts.googleapis.com/css"><p>text</p>',
+    '<link rel="stylesheet"><p>text</p>',
+    # a font sheet next to another external sheet does not vouch for it
+    '<style>@import url(https://fonts.googleapis.com/css2?family=Inter);'
+    '@import url(https://evil.example/a.css);</style><p>text</p>',
+    '<style>@import url(  );</style><p>text</p>',
 ])
 def test_styles_it_cannot_evaluate_mark_the_mail_unchecked(markup):
     vt = visible_text(markup)
     assert not vt.checked and vt.reason
     assert html_text.read_mail({"body": {"contentType": "html", "content": markup}}).visible == ""
+
+
+@pytest.mark.parametrize("markup", [
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;display=swap">'
+    '<p>text</p>',
+    '<link href="//fonts.googleapis.com/css?family=Roboto" rel="stylesheet" type="text/css"><p>text</p>',
+    "<style>@import url('https://fonts.googleapis.com/css2?family=Inter');</style><p>text</p>",
+    '<style>@import "https://fonts.googleapis.com/css?family=Lato" screen;\n'
+    'p{color:#333}</style><p>text</p>',
+    '<style>@IMPORT url(https://FONTS.GOOGLEAPIS.COM/css2?family=Inter)</style><p>text</p>',
+])
+def test_a_google_fonts_sheet_does_not_hold_the_mail_back(markup):
+    """Font sheets only declare fonts, and Google serves them, not the
+    sender. Most newsletters and invitations load one: withholding them
+    kept the agent from reading half of an ordinary inbox."""
+    vt = visible_text(markup)
+    assert vt.checked and vt.text == "text"
+
+
+def test_a_google_fonts_sheet_does_not_hide_rules_after_it():
+    vt = visible_text("<style>@import url(https://fonts.googleapis.com/css2?family=Inter);"
+                      f".h{{display:none}}</style><p>Hello</p><p class=\"h\">{ORDER}</p>")
+    assert vt.checked and vt.text == "Hello" and "curl" in vt.hidden_text
 
 
 def test_a_selector_it_cannot_evaluate_that_hides_nothing_is_fine():

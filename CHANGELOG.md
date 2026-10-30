@@ -32,8 +32,8 @@
     first wherever they sit, rules match by compound selector with
     `!important` and inline styles cascading;
   - a body that cannot be checked (parser error, a hiding rule it cannot
-    evaluate, an external style sheet) is withheld with `withheld`, never
-    read some cruder way;
+    evaluate, an external style sheet other than Google Fonts) is withheld
+    with `withheld`, never read some cruder way;
   - provider previews in `list_messages`, `list_unread` and `search_mail`
     are withheld, archive previews are rebuilt from the checked text, and
     local-index rows (also in `sender_history`) carry no mail text;
