@@ -146,7 +146,16 @@ def rule_activity(rule_id: str, limit: int = 30):
 def _watch_state() -> dict:
     """Delega al watcher: la console non tiene una sua idea di "attivo"."""
     from gigamail.watcher import running_state
-    return running_state()
+    return {**running_state(), "archive_accounts": _archive_accounts()}
+
+
+def _archive_accounts() -> int:
+    """Accounts the watcher archives on every tick: all but the demo."""
+    from gigamail.core import accounts as core_accounts
+    try:
+        return sum(1 for a in core_accounts.get_accounts() if a.get("type") != "demo")
+    except Exception:
+        return 0
 
 
 def _pid_alive(pid: int) -> bool:
@@ -222,7 +231,9 @@ def _watch_autostart_locked() -> Optional[int]:
     from gigamail.core import rules as rules_mod
     from gigamail.core.code_stamp import code_stamp
     st = _watch_state()
-    if not st["active_rules"]:
+    # Rules are not the only job: every tick also fills the local archive
+    # that search and the agents read.
+    if not st["active_rules"] and not st.get("archive_accounts"):
         return None
     if rules_mod.store().kv_get(USER_STOPPED_KEY, "0") == "1":
         return None    # stopped on purpose: Start is the user's to press

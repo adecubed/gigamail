@@ -288,7 +288,9 @@
         ? T(`attivo (pid ${st.pid}, ogni ${st.interval}s, ultimo giro ${st.last_tick_age_seconds ?? '?'}s fa)`,
             `running (pid ${st.pid}, every ${st.interval}s, last tick ${st.last_tick_age_seconds ?? '?'}s ago)`,
             `运行中 (pid ${st.pid}，每 ${st.interval} 秒，上次轮询 ${st.last_tick_age_seconds ?? '?'} 秒前)`)
-        : T('fermo — le regole non vengono applicate', 'stopped — rules are not applied', '已停止 — 规则不会生效');
+        : T('fermo — le regole non vengono applicate e l\'archivio non si aggiorna',
+            'stopped — rules are not applied and the archive is not updated',
+            '已停止 — 规则不会生效，存档也不会更新');
       $('btnWatchStart').style.display = st.running ? 'none' : '';
       $('btnWatchStop').style.display = st.running ? '' : 'none';
       $('watchRulesCount').textContent = T(`${st.active_rules} regole attive`, `${st.active_rules} active rules`, `${st.active_rules} 条启用的规则`);
