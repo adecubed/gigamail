@@ -85,8 +85,8 @@ GigaMail ships through two channels:
 
   The SHA-256 digests are next to the files on the release page.
   To build it yourself: Node 22+, `console/prepare-python.ps1`
-  (Windows) or `console/prepare-python.sh` (macOS), then `npm run dist` or
-  `npm run dist:mac`.
+  (Windows) or `console/prepare-python.sh` (macOS, Linux), then `npm run dist`,
+  `npm run dist:mac` or `npm run dist:linux`.
 - **`pip install gigamail`** — the agentic core: MCP server, CLI, watcher
   and the console's local HTTP backend. No graphical app — the right
   channel when your agent is the interface.
@@ -383,8 +383,8 @@ GigaMail si installa da due canali:
 
   I digest SHA-256 sono accanto ai file nella pagina della release. Per
   buildarla in casa: Node 22+, `console/prepare-python.ps1` (Windows) o
-  `console/prepare-python.sh` (macOS), poi `npm run dist` o
-  `npm run dist:mac`.
+  `console/prepare-python.sh` (macOS, Linux), poi `npm run dist`,
+  `npm run dist:mac` o `npm run dist:linux`.
 - **`pip install gigamail`** — il core agentico: server MCP, CLI, watcher
   e il backend HTTP locale della console. Nessuna app grafica — è il
   canale giusto quando l'interfaccia è il tuo agente.
@@ -652,8 +652,8 @@ GigaMail 通过两个渠道发布：
     Developer ID 签名并经 Apple 公证。
 
   SHA-256 摘要见发布页文件旁。自行构建：Node 22+，`console/prepare-python.ps1`
-  （Windows）或 `console/prepare-python.sh`（macOS），然后 `npm run dist` 或
-  `npm run dist:mac`。
+  （Windows）或 `console/prepare-python.sh`（macOS、Linux），然后 `npm run dist`、
+  `npm run dist:mac` 或 `npm run dist:linux`。
 - **`pip install gigamail`** — 代理核心：MCP 服务器、CLI、watcher 和
   控制台的本地 HTTP 后端。不含图形界面 — 如果你的代理就是界面，选这个渠道。
 

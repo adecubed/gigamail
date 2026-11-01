@@ -35,8 +35,15 @@ test('Python in development: the repo venv next to console/', () => {
     path.join('D', '.venv', 'bin', 'python'));
 });
 
-test('auto-update where the app is signed: Windows and macOS, not Linux', () => {
-  assert.equal(autoUpdateSupported('win32'), true);
-  assert.equal(autoUpdateSupported('darwin'), true);
-  assert.equal(autoUpdateSupported('linux'), false);
+test('auto-update: Windows and macOS, on Linux only the AppImage', () => {
+  assert.equal(autoUpdateSupported('win32', {}), true);
+  assert.equal(autoUpdateSupported('darwin', {}), true);
+  assert.equal(autoUpdateSupported('linux', { APPIMAGE: '/home/u/Apps/GigaMail-0.6.7-x86_64.AppImage' }), true);
+  // .deb, or a run from source: no APPIMAGE, nothing for electron-updater to replace
+  assert.equal(autoUpdateSupported('linux', {}), false);
+});
+
+test('Python packaged on Linux: resources/python/bin/python3', () => {
+  assert.equal(pythonPath({ packaged: true, resourcesPath: 'R', devRoot: 'D', platform: 'linux' }),
+    path.join('R', 'python', 'bin', 'python3'));
 });

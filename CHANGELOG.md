@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **The desktop app for Linux.** Until now Linux had only `pip install
+  gigamail`, with no graphical app. Each release now also carries an
+  AppImage (`GigaMail-X.Y.Z-x86_64.AppImage`, runs without installing and
+  updates itself) and a Debian/Ubuntu package (`GigaMail-X.Y.Z-amd64.deb`,
+  installs in `/opt/GigaMail`, registers `gigamail://` and an AppArmor
+  profile for Chromium's sandbox), both x64 with their own Python like the
+  Windows and macOS apps. `console/prepare-python.sh` prepares the Python
+  on Linux too, `npm run dist:linux` builds both packages, and a new
+  "Desktop build (Linux)" workflow installs the .deb and starts the app on
+  every change to the console. Approvals: a click in the console approves
+  as on the other systems; what asks for Windows Hello or Touch ID there
+  still needs the local PIN in a terminal on Linux (`gigamail approvals
+  pin`), as with the pip channel.
+
 - **The watcher keeps running for the archive, not only for rules.** Every
   watcher tick also saves new mail into the local archive that search and
   the agents read, but the backend's guard only started the watcher when

@@ -223,8 +223,8 @@ if ($NoPublish) {
   Write-Host (Say "Bozza lasciata in bozza (-NoPublish). Pubblica con: " "Left as a draft (-NoPublish). Publish with: ") "gh release edit $Tag --repo $Repo --draft=false --latest"
   exit 0
 }
-# The Mac jobs of the same Release run attach their DMGs to the draft and
-# refuse a published Release: publishing while they still run (0.6.4, the
+# The Mac and Linux jobs of the same Release run attach their packages to
+# the draft and refuse a published Release: publishing while they still run (0.6.4, the
 # x64 DMG came ten minutes after the Windows installer) leaves the Release
 # without them. Wait for the run to end first.
 $deadline = (Get-Date).AddMinutes(45)
@@ -238,15 +238,15 @@ while ($true) {
   $running = @($statuses | Where-Object { $_ -and $_ -ne 'completed' }).Count
   if ($running -eq 0) { break }
   if ((Get-Date) -gt $deadline) {
-    Write-Host (Say "I job Mac non hanno finito in 45 minuti: la Release resta in bozza. Pubblica con: " "The Mac jobs did not finish within 45 minutes: the Release stays a draft. Publish with: ") "gh release edit $Tag --repo $Repo --draft=false --latest"
+    Write-Host (Say "I job Mac e Linux non hanno finito in 45 minuti: la Release resta in bozza. Pubblica con: " "The Mac and Linux jobs did not finish within 45 minutes: the Release stays a draft. Publish with: ") "gh release edit $Tag --repo $Repo --draft=false --latest"
     exit 0
   }
-  Write-Host (Say "Aspetto i job Mac della Release run..." "Waiting for the Release run's Mac jobs...")
+  Write-Host (Say "Aspetto i job Mac e Linux della Release run..." "Waiting for the Release run's Mac and Linux jobs...")
   Start-Sleep -Seconds 30
 }
-$missing = @("GigaMail-x64.dmg", "GigaMail-arm64.dmg") | Where-Object { $_ -notin (gh release view $Tag --repo $Repo --json assets --jq ".assets[].name") }
+$missing = @("GigaMail-x64.dmg", "GigaMail-arm64.dmg", "GigaMail-x86_64.AppImage", "GigaMail-amd64.deb") | Where-Object { $_ -notin (gh release view $Tag --repo $Repo --json assets --jq ".assets[].name") }
 if ($missing) {
-  Write-Host (Say "Mancano i DMG Mac ($($missing -join ', ')): la Release resta in bozza. Rilancia i job falliti (gh run rerun --failed) e poi pubblica con: " "Mac DMGs missing ($($missing -join ', ')): the Release stays a draft. Re-run the failed jobs (gh run rerun --failed), then publish with: ") "gh release edit $Tag --repo $Repo --draft=false --latest"
+  Write-Host (Say "Mancano i pacchetti Mac/Linux ($($missing -join ', ')): la Release resta in bozza. Rilancia i job falliti (gh run rerun --failed) e poi pubblica con: " "Mac/Linux packages missing ($($missing -join ', ')): the Release stays a draft. Re-run the failed jobs (gh run rerun --failed), then publish with: ") "gh release edit $Tag --repo $Repo --draft=false --latest"
   exit 0
 }
 gh release edit $Tag --repo $Repo --draft=false --latest

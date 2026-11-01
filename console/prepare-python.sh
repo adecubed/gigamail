@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# prepare-python.sh — prepares console/python-embedded on macOS, the
-# interpreter the app bundle ships as "python" in Contents/Resources.
+# prepare-python.sh — prepares console/python-embedded on macOS and Linux,
+# the interpreter the app ships as "python" in its resources folder
+# (Contents/Resources on macOS, resources/ next to the binary on Linux).
 # The Windows counterpart is prepare-python.ps1.
 #
-# Run ONCE before `npm run dist:mac`. The folder weighs ~250 MB and is in
-# .gitignore: it is regenerated, never versioned.
+# Run ONCE before `npm run dist:mac` or `npm run dist:linux`. The folder
+# weighs ~250 MB and is in .gitignore: it is regenerated, never versioned.
 #
 #   bash console/prepare-python.sh            # the machine's own arch
 #   bash console/prepare-python.sh x86_64     # or aarch64, for the other one
 #
-# python.org has no relocatable build for macOS: the installer writes into
-# /Library. python-build-standalone (Astral) ships an "install_only" tarball
-# that runs from wherever it is unpacked, which is what an app bundle needs.
+# python.org has no relocatable build for macOS or Linux: its installers and
+# distro packages write into system folders. python-build-standalone (Astral)
+# ships an "install_only" tarball that runs from wherever it is unpacked,
+# which is what an app bundle, an AppImage or a .deb needs.
 set -euo pipefail
 
 PBS_TAG="20261003"
@@ -23,10 +25,18 @@ case "$ARCH" in
   *) echo "unknown arch: $ARCH (aarch64 or x86_64)" >&2; exit 1 ;;
 esac
 
+case "$(uname -s)" in
+  Darwin) OS="darwin"; TRIPLE="apple-darwin" ;;
+  # glibc build: it runs on every mainstream desktop distribution (Ubuntu,
+  # Debian, Fedora, Mint...); musl distributions are not a desktop target.
+  Linux)  OS="linux";  TRIPLE="unknown-linux-gnu" ;;
+  *) echo "unsupported system: $(uname -s) (macOS or Linux; Windows uses prepare-python.ps1)" >&2; exit 1 ;;
+esac
+
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HERE/python-embedded"
 REPO="$(cd "$HERE/.." && pwd)"
-TARBALL="cpython-${PY_VER}+${PBS_TAG}-${ARCH}-apple-darwin-install_only.tar.gz"
+TARBALL="cpython-${PY_VER}+${PBS_TAG}-${ARCH}-${TRIPLE}-install_only.tar.gz"
 URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/${TARBALL}"
 PY="$OUT/bin/python3"
 
@@ -34,8 +44,8 @@ PY="$OUT/bin/python3"
 # dependencies satisfied and leave the bundle without them.
 export PYTHONNOUSERSITE=1
 
-if [ -x "$PY" ] && [ "$(cat "$OUT/.arch" 2>/dev/null)" = "$ARCH" ]; then
-  echo "[1/3] python-build-standalone $PY_VER ($ARCH) already present"
+if [ -x "$PY" ] && [ "$(cat "$OUT/.arch" 2>/dev/null)" = "$OS-$ARCH" ]; then
+  echo "[1/3] python-build-standalone $PY_VER ($OS $ARCH) already present"
 else
   echo "[1/3] downloading $TARBALL ..."
   rm -rf "$OUT"
@@ -44,7 +54,7 @@ else
   # the tarball unpacks as python/{bin,lib,...}: flatten into $OUT
   tar -xzf "$OUT/py.tar.gz" -C "$OUT" --strip-components=1
   rm "$OUT/py.tar.gz"
-  echo "$ARCH" > "$OUT/.arch"
+  echo "$OS-$ARCH" > "$OUT/.arch"
 fi
 
 # From the repo's source, not PyPI: the bundle carries the code and the
@@ -63,6 +73,14 @@ echo "[2/3] installing gigamail[all] from $REPO ..."
 # a folder no user has: without this the server does not start (Codex, the
 # agent bar). See relocate_scripts.py.
 "$PY" "$HERE/relocate_scripts.py" "$OUT" || { echo "relocate_scripts failed"; exit 1; }
+
+# Linux has no code signing for the app: nothing to sign, straight to the
+# import check.
+if [ "$OS" = "linux" ]; then
+  "$PY" -c "import gigamail, fastapi, uvicorn, mcp; import importlib.metadata as m; print('  gigamail', m.version('gigamail'), '| mcp', m.version('mcp'), '| import OK')"
+  echo "Ready: now \"npm run dist:linux\""
+  exit 0
+fi
 
 # Apple Silicon refuses native code without a signature, even an ad-hoc
 # one. Wheels from PyPI are usually signed by their build tools, but not
