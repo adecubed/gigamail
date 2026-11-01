@@ -92,34 +92,40 @@ function killPort(port) {
 
 
 // Linux: is Chromium's sandbox really on? From /proc, without trusting the
-// app: the browser process has no --no-sandbox, and every renderer under it
-// runs inside its own PID namespace (namespace or setuid sandbox, NSpid with
-// two values) with a seccomp-bpf filter (Seccomp: 2).
+// app. /proc/<pid>/status is readable for every process of the user; the
+// cmdline of a sandboxed process is not (Chromium makes it non-dumpable),
+// so processes are found by status and the cmdline is read where it can be.
+// On: no process of the app carries --no-sandbox, at least one child runs
+// in its own PID namespace (namespace or setuid sandbox: NSpid with two
+// values) under a seccomp-bpf filter (Seccomp: 2), every child in a nested
+// namespace has that filter, and no readable renderer runs outside one.
 function linuxSandboxReport(rootPid) {
   const procs = [];
   for (const d of fs.readdirSync('/proc')) {
     if (!/^\d+$/.test(d)) continue;
-    try {
-      const status = fs.readFileSync(`/proc/${d}/status`, 'utf-8');
-      const ppid = Number((status.match(/^PPid:\s+(\d+)/m) || [])[1]);
-      const cmd = fs.readFileSync(`/proc/${d}/cmdline`, 'utf-8').split('\0').filter(Boolean);
-      procs.push({ pid: Number(d), ppid, status, cmd });
-    } catch (_) { /* gone, or not ours */ }
+    let status;
+    try { status = fs.readFileSync(`/proc/${d}/status`, 'utf-8'); } catch (_) { continue; }
+    let cmd = null;
+    try { cmd = fs.readFileSync(`/proc/${d}/cmdline`, 'utf-8').split('\0').filter(Boolean); } catch (_) { cmd = null; }
+    const ppid = Number((status.match(/^PPid:\s+(\d+)/m) || [])[1]);
+    procs.push({ pid: Number(d), ppid, status, cmd });
   }
   const kids = new Map();
   for (const p of procs) { if (!kids.has(p.ppid)) kids.set(p.ppid, []); kids.get(p.ppid).push(p); }
   const tree = []; const todo = [rootPid];
+  const root = procs.find((p) => p.pid === rootPid);
+  if (root) tree.push(root);
   while (todo.length) { for (const k of kids.get(todo.pop()) || []) { tree.push(k); todo.push(k.pid); } }
-  const chromium = tree.filter((p) => p.cmd.some((a) => a.startsWith('--type=')) || p.cmd.some((a) => a.includes('remote-debugging-port')));
-  const browser = chromium.filter((p) => !p.cmd.some((a) => a.startsWith('--type=')));
-  const renderers = tree.filter((p) => p.cmd.includes('--type=renderer'));
-  const nsDeep = (p) => ((p.status.match(/^NSpid:\s+(.+)$/m) || [])[1] || '').trim().split(/\s+/).length >= 2;
+  const nested = (p) => ((p.status.match(/^NSpid:\s+(.+)$/m) || [])[1] || '').trim().split(/\s+/).length >= 2;
   const seccomp = (p) => (p.status.match(/^Seccomp:\s+(\d+)/m) || [])[1] === '2';
+  const sandboxed = tree.filter(nested);
+  const openRenderers = tree.filter((p) => p.cmd && p.cmd.includes('--type=renderer') && !nested(p));
   return {
-    noSandboxFlag: chromium.some((p) => p.cmd.includes('--no-sandbox')),
-    browserFound: browser.length > 0,
-    renderers: renderers.length,
-    allIsolated: renderers.length > 0 && renderers.every((p) => nsDeep(p) && seccomp(p)),
+    processes: tree.length,
+    noSandboxFlag: tree.some((p) => p.cmd && p.cmd.includes('--no-sandbox')),
+    sandboxed: sandboxed.length,
+    allFiltered: sandboxed.length > 0 && sandboxed.every(seccomp),
+    openRenderers: openRenderers.length,
   };
 }
 
@@ -180,8 +186,9 @@ async function main() {
     check(cspOk === 'BLOCKED', 'webSecurity attivo nell app impacchettata');
     if (process.platform === 'linux') {
       const sb = linuxSandboxReport(child.pid);
-      check(sb.browserFound && !sb.noSandboxFlag, 'Linux: nessun processo avviato con --no-sandbox');
-      check(sb.renderers > 0 && sb.allIsolated, `Linux: sandbox Chromium attiva nei renderer (${sb.renderers} renderer, PID namespace + seccomp)`);
+      check(sb.processes > 1 && !sb.noSandboxFlag, `Linux: nessun processo avviato con --no-sandbox (${sb.processes} processi)`);
+      check(sb.sandboxed > 0 && sb.allFiltered && sb.openRenderers === 0,
+        `Linux: sandbox Chromium attiva (${sb.sandboxed} processi in PID namespace propri con seccomp, ${sb.openRenderers} renderer fuori)`);
     }
   } catch (e) {
     failures += 1;
