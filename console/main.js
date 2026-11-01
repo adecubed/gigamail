@@ -10,6 +10,22 @@ const { restartReason, pidFromNetstat, pidFromLsof } = require('./backend_reuse'
 const appPaths = require('./app_paths');
 const { mt, setLang } = require('./main_i18n');
 const { isExecutableName } = require('./attachment_guard');
+const linuxSandbox = require('./linux_sandbox');
+const linuxRuntime = require('./linux_runtime');
+
+// Linux, packaged: never run without Chromium's sandbox (linux_sandbox.js).
+// The AppImage launcher adds --no-sandbox by itself where user namespaces
+// are missing; here the app stops and says why, before anything starts.
+const SANDBOX_OFF = app.isPackaged && process.platform === 'linux'
+  && linuxSandbox.disabled(process.argv, process.env);
+if (SANDBOX_OFF) {
+  app.whenReady().then(() => {
+    const m = linuxSandbox.message(process.env, linuxSandbox.userNamespacesWork(execFileSync));
+    console.error(`[GIGAMAIL] sandbox off, not starting: ${m.title}\n${m.body}`);
+    dialog.showErrorBox(m.title, m.body);
+    app.exit(78);
+  });
+}
 
 let mainWindow;
 // Finestre di composizione come figlie della principale: Windows le tiene
@@ -248,6 +264,23 @@ function getResourcesPath() {
   return path.join(__dirname, '..');
 }
 
+// Where the backend's Python and sources come from. Inside an AppImage the
+// resources sit in a mount that is gone once the app quits, while the
+// backend and the agents' MCP configs outlive it: the copy under
+// ~/.local/share/gigamail/runtime/current is used instead (linux_runtime.js).
+function backendResourcesPath() {
+  const res = getResourcesPath();
+  if (!(app.isPackaged && process.platform === 'linux' && process.env.APPIMAGE)) return res;
+  try {
+    return linuxRuntime.ensure({ resourcesPath: res, version: app.getVersion() });
+  } catch (e) {
+    // Disk full, home not writable: the app still opens, from the mount,
+    // and the log says that the agents' connection will not survive it.
+    console.error('[GIGAMAIL] runtime copy failed, backend runs from the AppImage mount:', e.message);
+    return res;
+  }
+}
+
 // Come la vede Python (Path.resolve): link e giunzioni risolti, o un
 // percorso uguale sembrerebbe diverso e il backend verrebbe rifatto a
 // ogni avvio.
@@ -256,7 +289,7 @@ function realDir(dir) {
 }
 
 function startPythonServer() {
-  const resourcesPath = getResourcesPath();
+  const resourcesPath = backendResourcesPath();
   // Packaged: python embedded in resources. Dev: venv del repo gigamail
   // (console/ sta accanto a src/ e .venv/). Il percorso cambia per
   // piattaforma: app_paths.js.
@@ -485,7 +518,7 @@ let bridgeServer = null;
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
-} else {
+} else if (!SANDBOX_OFF) {
   app.on('second-instance', (_event, argv) => {
     const url = OpenUrl.fromArgv(argv);
     if (url) handleOpenUrl(url);
@@ -532,7 +565,7 @@ function startBridge() {
   bridgeServer.listen(0, '127.0.0.1', () => {
     const info = {
       port: bridgeServer.address().port, token: BRIDGE_TOKEN, pid: process.pid,
-      exe: process.execPath, args: app.isPackaged ? [] : [path.resolve(process.argv[1] || '.')],
+      exe: appPaths.launcherPath(), args: app.isPackaged ? [] : [path.resolve(process.argv[1] || '.')],
     };
     try { fs.writeFileSync(path.join(appPaths.dataRoot(), 'console.json'), JSON.stringify(info), { mode: 0o600 }); }
     catch (e) { console.error('[GIGAMAIL] console.json not written: toast buttons fall back to the terminal', e.message); }
@@ -591,6 +624,7 @@ function showPendingInMain() {
 ipcMain.on('approval-window-open-pending', showPendingInMain);
 
 app.whenReady().then(async () => {
+  if (SANDBOX_OFF) return;
   if (DEV_ICON && process.platform === 'darwin' && app.dock) {
     try { app.dock.setIcon(path.join(__dirname, '..', 'docs', 'brand', 'gigamail-logo-1024.png')); } catch {}
   }
@@ -661,7 +695,7 @@ app.on('window-all-closed', () => {
   // while the console is closed (the CLI reads this file) can open it.
   try {
     bridgeServer?.close();
-    const info = { exe: process.execPath, args: app.isPackaged ? [] : [path.resolve(process.argv[1] || '.')] };
+    const info = { exe: appPaths.launcherPath(), args: app.isPackaged ? [] : [path.resolve(process.argv[1] || '.')] };
     fs.writeFileSync(path.join(appPaths.dataRoot(), 'console.json'), JSON.stringify(info), { mode: 0o600 });
   } catch (_) { /* best effort */ }
   // Il backend NON viene killato: resta in background cosi' il prossimo

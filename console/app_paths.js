@@ -44,4 +44,13 @@ function autoUpdateSupported(platform = process.platform, env = process.env) {
   return platform === 'win32' || platform === 'darwin';
 }
 
-module.exports = { dataRoot, pythonPath, autoUpdateSupported };
+/** What starts this app again, for console.json (the CLI and the toast
+ *  buttons read it to reopen the console). Inside an AppImage
+ *  process.execPath is the binary in the temporary mount, gone once the
+ *  app quits: the AppImage file itself is what stays. */
+function launcherPath(env = process.env, execPath = process.execPath, platform = process.platform) {
+  if (platform === 'linux' && env.APPIMAGE) return env.APPIMAGE;
+  return execPath;
+}
+
+module.exports = { dataRoot, pythonPath, autoUpdateSupported, launcherPath };

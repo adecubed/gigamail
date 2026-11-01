@@ -20,6 +20,7 @@
     "test": "node --test \"tests/*.test.js\"",
     "test:e2e": "node tests/e2e.mjs",
     "test:packaged": "node tests/smoke_packaged.mjs",
+    "test:appimage": "node tests/appimage_persistence.mjs",
     "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never",
     "predist:mac": "node sync-version.js",
@@ -59,7 +60,8 @@
       "!sign.js",
       "!afterpack.js",
       "!relocate_scripts.py",
-      "!mac/**"
+      "!mac/**",
+      "!linux/**"
     ],
     "extraResources": [
       {
@@ -145,7 +147,13 @@
       ],
       "icon": "../docs/brand/gigamail-logo-1024.png",
       "category": "Network;Email",
-      "executableName": "gigamail",
+      "extraResources": [
+        {
+          "from": "linux/bin",
+          "to": "bin"
+        }
+      ],
+      "executableName": "gigamail-console",
       "syncDesktopName": true,
       "artifactName": "GigaMail-${version}-${arch}.${ext}",
       "synopsis": "Mail for your AI agent",
@@ -159,6 +167,8 @@
       }
     },
     "deb": {
+      "afterInstall": "linux/after-install.sh",
+      "afterRemove": "linux/after-remove.sh",
       "depends": [
         "libgtk-3-0 | libgtk-3-0t64",
         "libnotify4",

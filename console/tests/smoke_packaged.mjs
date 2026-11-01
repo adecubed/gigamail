@@ -90,6 +90,39 @@ function killPort(port) {
   } catch (_) { /* netstat assente */ }
 }
 
+
+// Linux: is Chromium's sandbox really on? From /proc, without trusting the
+// app: the browser process has no --no-sandbox, and every renderer under it
+// runs inside its own PID namespace (namespace or setuid sandbox, NSpid with
+// two values) with a seccomp-bpf filter (Seccomp: 2).
+function linuxSandboxReport(rootPid) {
+  const procs = [];
+  for (const d of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(d)) continue;
+    try {
+      const status = fs.readFileSync(`/proc/${d}/status`, 'utf-8');
+      const ppid = Number((status.match(/^PPid:\s+(\d+)/m) || [])[1]);
+      const cmd = fs.readFileSync(`/proc/${d}/cmdline`, 'utf-8').split('\0').filter(Boolean);
+      procs.push({ pid: Number(d), ppid, status, cmd });
+    } catch (_) { /* gone, or not ours */ }
+  }
+  const kids = new Map();
+  for (const p of procs) { if (!kids.has(p.ppid)) kids.set(p.ppid, []); kids.get(p.ppid).push(p); }
+  const tree = []; const todo = [rootPid];
+  while (todo.length) { for (const k of kids.get(todo.pop()) || []) { tree.push(k); todo.push(k.pid); } }
+  const chromium = tree.filter((p) => p.cmd.some((a) => a.startsWith('--type=')) || p.cmd.some((a) => a.includes('remote-debugging-port')));
+  const browser = chromium.filter((p) => !p.cmd.some((a) => a.startsWith('--type=')));
+  const renderers = tree.filter((p) => p.cmd.includes('--type=renderer'));
+  const nsDeep = (p) => ((p.status.match(/^NSpid:\s+(.+)$/m) || [])[1] || '').trim().split(/\s+/).length >= 2;
+  const seccomp = (p) => (p.status.match(/^Seccomp:\s+(\d+)/m) || [])[1] === '2';
+  return {
+    noSandboxFlag: chromium.some((p) => p.cmd.includes('--no-sandbox')),
+    browserFound: browser.length > 0,
+    renderers: renderers.length,
+    allIsolated: renderers.length > 0 && renderers.every((p) => nsDeep(p) && seccomp(p)),
+  };
+}
+
 async function main() {
   if (!EXE || !fs.existsSync(EXE)) {
     console.log(`  ✗ GIGAMAIL_EXE non trovato: ${EXE}`);
@@ -145,6 +178,11 @@ async function main() {
     check(await cdp.evaluate("document.getElementById('btnShowMarketing').classList.contains('hidden')"), 'gate di capability attivo anche impacchettato');
     const cspOk = await cdp.evaluate("fetch('file:///C:/Windows/win.ini').then(() => 'READ').catch(() => 'BLOCKED')");
     check(cspOk === 'BLOCKED', 'webSecurity attivo nell app impacchettata');
+    if (process.platform === 'linux') {
+      const sb = linuxSandboxReport(child.pid);
+      check(sb.browserFound && !sb.noSandboxFlag, 'Linux: nessun processo avviato con --no-sandbox');
+      check(sb.renderers > 0 && sb.allIsolated, `Linux: sandbox Chromium attiva nei renderer (${sb.renderers} renderer, PID namespace + seccomp)`);
+    }
   } catch (e) {
     failures += 1;
     console.log('  ✗ errore fatale:', e.message);

@@ -3,18 +3,33 @@
 ## Unreleased
 
 - **The desktop app for Linux.** Until now Linux had only `pip install
-  gigamail`, with no graphical app. Each release now also carries an
-  AppImage (`GigaMail-X.Y.Z-x86_64.AppImage`, runs without installing and
-  updates itself) and a Debian/Ubuntu package (`GigaMail-X.Y.Z-amd64.deb`,
-  installs in `/opt/GigaMail`, registers `gigamail://` and an AppArmor
-  profile for Chromium's sandbox), both x64 with their own Python like the
-  Windows and macOS apps. `console/prepare-python.sh` prepares the Python
-  on Linux too, `npm run dist:linux` builds both packages, and a new
-  "Desktop build (Linux)" workflow installs the .deb and starts the app on
-  every change to the console. Approvals: a click in the console approves
-  as on the other systems; what asks for Windows Hello or Touch ID there
-  still needs the local PIN in a terminal on Linux (`gigamail approvals
-  pin`), as with the pip channel.
+  gigamail`, with no graphical app. Each release now also carries, x64,
+  with their own Python like the Windows and macOS apps:
+  - a Debian/Ubuntu package (`GigaMail-X.Y.Z-amd64.deb`): installs in
+    `/opt/GigaMail`, registers `gigamail://` and the AppArmor profile
+    Chromium's sandbox needs on Ubuntu 23.10 and later. The app is
+    `gigamail-console`; `gigamail` and `gigamail-server` are the CLI and
+    the MCP server on the bundled Python, so `gigamail approvals pin` and
+    the other documented commands work without pip;
+  - an AppImage (`GigaMail-X.Y.Z-x86_64.AppImage`): runs without installing
+    and updates itself. Its launcher would start the app without Chromium's
+    sandbox where user namespaces are restricted (Ubuntu 23.10 and later):
+    GigaMail refuses to run unsandboxed instead, says why and points to the
+    .deb. Since the AppImage's files vanish when it quits, its Python is
+    copied once per version to `~/.local/share/gigamail/runtime`, and the
+    backend, the Codex / Antigravity / agent-bar MCP configs and
+    `console.json` point there or at the AppImage file, never into the
+    temporary mount.
+  `console/prepare-python.sh` prepares the Python on Linux too and
+  `npm run dist:linux` builds both. A new "Desktop build (Linux)" workflow
+  tests them with Ubuntu's default AppArmor setting: the AppImage refuses,
+  the .deb installs and starts with the sandbox checked from /proc, the CLI
+  runs on the bundled Python; where namespaces work, the AppImage starts
+  sandboxed, Codex connects, and its config still starts the MCP server
+  after the app quits and on the next start. Approvals: a click in the
+  console approves as elsewhere; what asks for Windows Hello or Touch ID
+  there needs the local PIN in a terminal on Linux (`gigamail approvals
+  pin`).
 
 - **The watcher keeps running for the archive, not only for rules.** Every
   watcher tick also saves new mail into the local archive that search and

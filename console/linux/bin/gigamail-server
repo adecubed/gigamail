@@ -1,0 +1,7 @@
+#!/bin/sh
+# GigaMail MCP server (stdio), on the Python that ships with the desktop app.
+# The .deb links /usr/bin/gigamail-server here, for MCP clients configured
+# by hand with `gigamail-server`.
+here="$(dirname "$(readlink -f "$0")")"
+res="$(dirname "$here")"
+PYTHONPATH="$res/gigamail/src" PYTHONNOUSERSITE=1 exec "$res/python/bin/python3" -s -X utf8 -m gigamail.server "$@"
