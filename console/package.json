@@ -3,7 +3,9 @@
   "productName": "GigaMail",
   "version": "0.6.6",
   "description": "GigaMail — secure agentic email console",
+  "license": "AGPL-3.0-or-later",
   "main": "main.js",
+  "desktopName": "gigamail.desktop",
   "author": {
     "name": "Adecubed",
     "email": "info@adecubed.com"
@@ -18,10 +20,14 @@
     "test": "node --test \"tests/*.test.js\"",
     "test:e2e": "node tests/e2e.mjs",
     "test:packaged": "node tests/smoke_packaged.mjs",
+    "test:appimage": "node tests/appimage_persistence.mjs",
+    "test:runtime-update": "node tests/runtime_update.mjs",
     "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never",
     "predist:mac": "node sync-version.js",
-    "dist:mac": "electron-builder --mac --publish never"
+    "dist:mac": "electron-builder --mac --publish never",
+    "predist:linux": "node sync-version.js",
+    "dist:linux": "electron-builder --linux --publish never"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -55,7 +61,8 @@
       "!sign.js",
       "!afterpack.js",
       "!relocate_scripts.py",
-      "!mac/**"
+      "!mac/**",
+      "!linux/**"
     ],
     "extraResources": [
       {
@@ -123,6 +130,61 @@
     },
     "dmg": {
       "artifactName": "GigaMail-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../docs/brand/gigamail-logo-1024.png",
+      "category": "Network;Email",
+      "extraResources": [
+        {
+          "from": "linux/bin",
+          "to": "bin"
+        }
+      ],
+      "executableName": "gigamail-console",
+      "syncDesktopName": true,
+      "artifactName": "GigaMail-${version}-${arch}.${ext}",
+      "synopsis": "Mail for your AI agent",
+      "description": "GigaMail: secure agentic email console. Your agent reads, searches and drafts; sending waits for your approval.",
+      "maintainer": "Adecubed <info@adecubed.com>",
+      "vendor": "Adecubed",
+      "desktop": {
+        "entry": {
+          "Keywords": "mail;email;agent;mcp;"
+        }
+      }
+    },
+    "deb": {
+      "afterInstall": "linux/after-install.sh",
+      "afterRemove": "linux/after-remove.sh",
+      "depends": [
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0"
+      ],
+      "recommends": [
+        "libnotify-bin",
+        "libappindicator3-1"
+      ]
     }
   }
 }

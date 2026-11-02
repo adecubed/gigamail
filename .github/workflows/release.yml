@@ -39,6 +39,10 @@ name: Release
 # the app's update check fails on macOS: console/app_paths.js assumes the
 # Release carries a notarized app with its zip and latest-mac.yml).
 #
+# Linux (job installer-linux): AppImage and .deb, x64, built here and attached
+# to the same draft with latest-linux.yml and fixed-name copies. No secrets:
+# Linux apps are not signed.
+#
 # Google calendar and Drive need the OAuth client of the Google Cloud
 # project inside the package. google_config.json is committed EMPTY (a
 # desktop client's secret is not confidential, but the scanner and git
@@ -347,6 +351,77 @@ jobs:
         with:
           name: release-dry-run-mac-${{ matrix.arch }}
           path: console/dist/GigaMail-*-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  # ── Linux app: AppImage and .deb, x64 ─────────────────────────────────
+  # Built and checked like the Desktop build (Linux) does on every push.
+  # Linux has no code signing to wait for: the packages are attached to the
+  # draft as built, with latest-linux.yml for the AppImage's self-update
+  # (the .deb is updated by installing the new one), plus copies under
+  # fixed names for the website's buttons. sign-release.ps1 waits for this
+  # job like it waits for the Mac ones, and checks the fixed names exist.
+  installer-linux:
+    needs: [build, installer]
+    if: github.event_name != 'release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write   # gh release upload
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - name: Console dependencies
+        working-directory: console
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+      - name: Google OAuth client into the package
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: python3 scripts/inject_google_client.py
+      - name: Portable Python
+        run: bash console/prepare-python.sh
+      - name: Build the AppImage and the .deb
+        working-directory: console
+        run: npm run dist:linux
+      - name: The package version must match the tag
+        run: |
+          tag="${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+          ver="${tag#v}"
+          if [ -z "$ver" ]; then ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -1); fi
+          for f in "GigaMail-$ver-x86_64.AppImage" "GigaMail-$ver-amd64.deb" "latest-linux.yml"; do
+            test -f "console/dist/$f" || { ls console/dist; echo "$f not found (tag and pyproject diverge?)"; exit 1; }
+          done
+          echo "OK: Linux packages for $ver"
+      - name: Attach to the draft Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.ref_name }}"
+          ver="${tag#v}"
+          cp "console/dist/GigaMail-$ver-x86_64.AppImage" console/dist/GigaMail-x86_64.AppImage
+          cp "console/dist/GigaMail-$ver-amd64.deb" console/dist/GigaMail-amd64.deb
+          draft=$(gh release view "$tag" --json isDraft -q .isDraft)
+          if [ "$draft" != "true" ]; then echo "Release $tag is already published: public assets are not replaced"; exit 1; fi
+          gh release upload "$tag" \
+            "console/dist/GigaMail-$ver-x86_64.AppImage" "console/dist/GigaMail-$ver-amd64.deb" \
+            console/dist/latest-linux.yml console/dist/GigaMail-x86_64.AppImage console/dist/GigaMail-amd64.deb \
+            --clobber
+      - name: Dry run — artifact instead of assets
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dry-run-linux
+          path: |
+            console/dist/GigaMail-*-x86_64.AppImage
+            console/dist/GigaMail-*-amd64.deb
+            console/dist/latest-linux.yml
           if-no-files-found: error
 
   # ── one latest-mac.yml for both architectures ─────────────────────────

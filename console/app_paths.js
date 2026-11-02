@@ -35,9 +35,22 @@ function pythonPath({ packaged, resourcesPath, devRoot, platform = process.platf
 /** electron-updater needs a signed app on macOS and refuses an unsigned
  *  one with an error at every start. Releases are signed with the Apple
  *  Developer ID and notarized in CI (release.yml, job installer-mac), so
- *  macOS checks for updates like Windows does; Linux has no package yet. */
-function autoUpdateSupported(platform = process.platform) {
+ *  macOS checks for updates like Windows does.
+ *  On Linux only the AppImage updates itself (it replaces its own file,
+ *  APPIMAGE is set by its runtime); the .deb is updated by apt or by
+ *  installing the new one, and a run from source has nothing to update. */
+function autoUpdateSupported(platform = process.platform, env = process.env) {
+  if (platform === 'linux') return Boolean(env.APPIMAGE);
   return platform === 'win32' || platform === 'darwin';
 }
 
-module.exports = { dataRoot, pythonPath, autoUpdateSupported };
+/** What starts this app again, for console.json (the CLI and the toast
+ *  buttons read it to reopen the console). Inside an AppImage
+ *  process.execPath is the binary in the temporary mount, gone once the
+ *  app quits: the AppImage file itself is what stays. */
+function launcherPath(env = process.env, execPath = process.execPath, platform = process.platform) {
+  if (platform === 'linux' && env.APPIMAGE) return env.APPIMAGE;
+  return execPath;
+}
+
+module.exports = { dataRoot, pythonPath, autoUpdateSupported, launcherPath };

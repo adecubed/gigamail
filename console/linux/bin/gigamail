@@ -1,0 +1,8 @@
+#!/bin/sh
+# GigaMail CLI, on the Python that ships with the desktop app.
+# The .deb links /usr/bin/gigamail here, so `gigamail approvals pin` and the
+# rest of the documented commands work without a second install with pip.
+# The app itself is /usr/bin/gigamail-console.
+here="$(dirname "$(readlink -f "$0")")"
+res="$(dirname "$here")"
+PYTHONPATH="$res/gigamail/src" PYTHONNOUSERSITE=1 exec "$res/python/bin/python3" -s -X utf8 -m gigamail.cli "$@"

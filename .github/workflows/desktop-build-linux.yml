@@ -1,0 +1,196 @@
+name: Desktop build (Linux)
+
+# Builds the Linux app (AppImage and .deb, x64) and proves it runs: the
+# package has the portable Python and the repo's code, the .deb installs
+# with apt, and the installed app starts from a fresh profile with its
+# embedded backend. Same checks as the Windows and macOS desktop builds.
+# The window needs a display: everything that starts Electron runs under
+# xvfb-run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build-linux.yml"
+  pull_request:
+    paths:
+      - "console/**"
+      - "pyproject.toml"
+      - ".github/workflows/desktop-build-linux.yml"
+  workflow_dispatch:
+
+jobs:
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: System packages (display, sandbox, .deb tooling)
+        # Ubuntu 24.04 forbids unprivileged user namespaces to unconfined
+        # programs, which Chromium's sandbox needs. For the E2E on the
+        # development Electron (no AppArmor profile) the restriction is
+        # lifted here; it is put back before the packages are tested, so the
+        # .deb and the AppImage are tried with the system's default too.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb lsof libnotify-bin
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Console dependencies (Electron ABI, not Node)
+        working-directory: console
+        run: |
+          npm ci --ignore-scripts
+          npx electron-builder install-app-deps
+          node node_modules/electron/install.js
+
+      - name: Unit tests of the console
+        working-directory: console
+        run: npm test
+
+      - name: Portable Python
+        run: bash console/prepare-python.sh
+
+      # E2E in the real Electron, BEFORE packing: in development main.js
+      # starts the backend from ../.venv/bin/python.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: venv for the development backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[all]" --quiet
+      - name: E2E console (XSS, renderer isolation, first start)
+        working-directory: console
+        env:
+          E2E_FRESH_APPDATA: ${{ runner.temp }}/gigamail-e2e
+          ADE_CONSOLE_PORT: "8012"
+        run: xvfb-run -a npm run test:e2e
+      - name: Electron log of the E2E (only on failure)
+        if: failure()
+        run: '[ -f console/e2e-electron.log ] && tail -n 80 console/e2e-electron.log || echo "no e2e log: the failure came before the E2E"'
+
+      - name: Build the AppImage and the .deb
+        working-directory: console
+        run: npm run dist:linux
+
+      - name: The packages follow pyproject.toml and are complete
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -1)
+          ls -la console/dist
+          for f in "GigaMail-$ver-x86_64.AppImage" "GigaMail-$ver-amd64.deb" "latest-linux.yml"; do
+            test -f "console/dist/$f" || { echo "expected file not found: $f"; exit 1; }
+          done
+          app="console/dist/linux-unpacked"
+          for p in gigamail-console resources/python/bin/python3 resources/gigamail/src/gigamail resources/apparmor-profile resources/bin/gigamail resources/bin/gigamail-server; do
+            test -e "$app/$p" || { echo "missing $p in $app"; find "$app" -maxdepth 2 | head -50; exit 1; }
+          done
+          dpkg-deb -I "console/dist/GigaMail-$ver-amd64.deb"
+          dpkg-deb -c "console/dist/GigaMail-$ver-amd64.deb" | grep -q "usr/share/applications/gigamail.desktop" \
+            || { echo "the .deb has no desktop entry"; exit 1; }
+          echo "OK: AppImage, deb and latest-linux.yml for $ver"
+
+      - name: The packed backend imports
+        run: |
+          app="console/dist/linux-unpacked"
+          PYTHONPATH="$app/resources/gigamail/src" "$app/resources/python/bin/python3" -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
+
+      - name: An update keeps the runtime of the processes still using it
+        working-directory: console
+        # The AppImage's runtime copy, switched to a new version while an MCP
+        # server and a backend-like process of the old one keep running:
+        # they keep answering and importing, from their own version.
+        run: GIGAMAIL_RESOURCES="$PWD/dist/linux-unpacked/resources" npm run test:runtime-update
+
+      # From here on the runner is put back to Ubuntu 24.04's default: user
+      # namespaces restricted by AppArmor, as on users' machines. The AppImage
+      # cannot sandbox there, and must refuse instead of starting without it.
+      - name: Ubuntu's default AppArmor restriction back on
+        run: |
+          sudo apt-get install -y -qq libfuse2t64
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+          if unshare -Ur true 2>/dev/null; then echo "::error::user namespaces still work: the refusal below would not be tested"; exit 1; fi
+          echo "user namespaces restricted, as by default"
+
+      - name: AppImage with the default restriction refuses to run without the sandbox
+        working-directory: console
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
+          log="$RUNNER_TEMP/appimage-refusal.log"
+          set +e
+          HOME="$RUNNER_TEMP/refusal-home" ADE_CONSOLE_PORT=8042 timeout 40 xvfb-run -a "./dist/GigaMail-$ver-x86_64.AppImage" > "$log" 2>&1
+          code=$?
+          set -e
+          cat "$log" | tail -20
+          echo "exit code: $code"
+          grep -q "sandbox off, not starting" "$log" || { echo "::error::no refusal in the log"; exit 1; }
+          if curl -s -o /dev/null "http://127.0.0.1:8042/health"; then echo "::error::a backend started anyway"; exit 1; fi
+          if pgrep -af -- "--type=renderer" | grep -q "mount_"; then echo "::error::a renderer started anyway"; exit 1; fi
+          echo "OK: refused, no backend, no window"
+
+      - name: Install the .deb with apt
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -1)
+          sudo apt-get install -y -qq "./console/dist/GigaMail-$ver-amd64.deb"
+          test -x /opt/GigaMail/gigamail-console || { echo "not installed in /opt/GigaMail"; exit 1; }
+          grep -q "x-scheme-handler/gigamail" /usr/share/applications/gigamail.desktop && echo "gigamail:// registered in the desktop entry"
+          test -f /etc/apparmor.d/gigamail-console && echo "AppArmor profile installed"
+
+      - name: The .deb's command line is the CLI, the app has its own command
+        run: |
+          test "$(readlink -f "$(command -v gigamail)")" = /opt/GigaMail/resources/bin/gigamail || { ls -la /usr/bin/gigamail*; exit 1; }
+          test "$(readlink -f "$(command -v gigamail-console)")" = /opt/GigaMail/gigamail-console || { ls -la /usr/bin/gigamail*; exit 1; }
+          gigamail approvals --help | grep -q "pin"
+          out=$(HOME="$RUNNER_TEMP/cli-home" gigamail approvals check 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "/opt/GigaMail/resources/python/bin/python3" || { echo "::error::the CLI does not run on the bundled Python"; exit 1; }
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | HOME="$RUNNER_TEMP/cli-home" timeout 60 gigamail-server | head -1 | grep -q '"serverInfo"' && echo "gigamail-server answers initialize"
+
+      - name: The installed app starts sandboxed with the default restriction (fresh profile, embedded backend, onboarding)
+        working-directory: console
+        env:
+          ADE_CONSOLE_PORT: "8022"
+          GIGAMAIL_EXE: /opt/GigaMail/gigamail-console
+        run: |
+          export GIGAMAIL_EXPECTED_VERSION=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
+          xvfb-run -a npm run test:packaged
+
+      # A system where user namespaces work (other distributions, or Ubuntu
+      # with the restriction lifted): there the AppImage runs, sandboxed.
+      - name: User namespaces allowed again
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: The AppImage starts sandboxed where user namespaces work
+        working-directory: console
+        env:
+          ADE_CONSOLE_PORT: "8052"
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
+          export GIGAMAIL_EXE="$PWD/dist/GigaMail-$ver-x86_64.AppImage"
+          export GIGAMAIL_EXPECTED_VERSION="$ver"
+          xvfb-run -a npm run test:packaged
+
+      - name: What the AppImage leaves behind survives it (runtime, Codex config, restart)
+        working-directory: console
+        env:
+          ADE_CONSOLE_PORT: "8032"
+        run: |
+          ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
+          GIGAMAIL_APPIMAGE="$PWD/dist/GigaMail-$ver-x86_64.AppImage" xvfb-run -a npm run test:appimage
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gigamail-linux-x64
+          path: |
+            console/dist/GigaMail-*-x86_64.AppImage
+            console/dist/GigaMail-*-amd64.deb
+          if-no-files-found: error
