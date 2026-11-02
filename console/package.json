@@ -21,6 +21,7 @@
     "test:e2e": "node tests/e2e.mjs",
     "test:packaged": "node tests/smoke_packaged.mjs",
     "test:appimage": "node tests/appimage_persistence.mjs",
+    "test:runtime-update": "node tests/runtime_update.mjs",
     "predist": "node sync-version.js",
     "dist": "electron-builder --win --publish never",
     "predist:mac": "node sync-version.js",

@@ -267,17 +267,20 @@ function getResourcesPath() {
 // Where the backend's Python and sources come from. Inside an AppImage the
 // resources sit in a mount that is gone once the app quits, while the
 // backend and the agents' MCP configs outlive it: the copy under
-// ~/.local/share/gigamail/runtime/current is used instead (linux_runtime.js).
-function backendResourcesPath() {
+// ~/.local/share/gigamail/runtime is used instead (linux_runtime.js): the
+// interpreter through runtime/current, the path the agents' configs keep;
+// the sources through the versioned folder, so this backend keeps its own
+// version's code when a later update moves `current`.
+function backendResources() {
   const res = getResourcesPath();
-  if (!(app.isPackaged && process.platform === 'linux' && process.env.APPIMAGE)) return res;
+  if (!(app.isPackaged && process.platform === 'linux' && process.env.APPIMAGE)) return { python: res, src: res };
   try {
     return linuxRuntime.ensure({ resourcesPath: res, version: app.getVersion() });
   } catch (e) {
     // Disk full, home not writable: the app still opens, from the mount,
     // and the log says that the agents' connection will not survive it.
     console.error('[GIGAMAIL] runtime copy failed, backend runs from the AppImage mount:', e.message);
-    return res;
+    return { python: res, src: res };
   }
 }
 
@@ -289,15 +292,15 @@ function realDir(dir) {
 }
 
 function startPythonServer() {
-  const resourcesPath = backendResourcesPath();
+  const backendRes = backendResources();
   // Packaged: python embedded in resources. Dev: venv del repo gigamail
   // (console/ sta accanto a src/ e .venv/). Il percorso cambia per
   // piattaforma: app_paths.js.
   const pythonPath = appPaths.pythonPath({
-    packaged: app.isPackaged, resourcesPath, devRoot: path.join(__dirname, '..'),
+    packaged: app.isPackaged, resourcesPath: backendRes.python, devRoot: path.join(__dirname, '..'),
   });
   const srcDir = app.isPackaged
-    ? path.join(resourcesPath, 'gigamail', 'src')
+    ? path.join(backendRes.src, 'gigamail', 'src')
     : path.join(__dirname, '..', 'src');
 
   // Riusa un backend sulla porta SOLO se e' davvero il nostro: 200 +

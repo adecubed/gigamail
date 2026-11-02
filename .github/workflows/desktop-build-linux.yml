@@ -103,6 +103,13 @@ jobs:
           app="console/dist/linux-unpacked"
           PYTHONPATH="$app/resources/gigamail/src" "$app/resources/python/bin/python3" -c "import gigamail, fastapi, uvicorn, mcp; print('backend import OK')"
 
+      - name: An update keeps the runtime of the processes still using it
+        working-directory: console
+        # The AppImage's runtime copy, switched to a new version while an MCP
+        # server and a backend-like process of the old one keep running:
+        # they keep answering and importing, from their own version.
+        run: GIGAMAIL_RESOURCES="$PWD/dist/linux-unpacked/resources" npm run test:runtime-update
+
       # From here on the runner is put back to Ubuntu 24.04's default: user
       # namespaces restricted by AppArmor, as on users' machines. The AppImage
       # cannot sandbox there, and must refuse instead of starting without it.

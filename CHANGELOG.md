@@ -19,14 +19,18 @@
     copied once per version to `~/.local/share/gigamail/runtime`, and the
     backend, the Codex / Antigravity / agent-bar MCP configs and
     `console.json` point there or at the AppImage file, never into the
-    temporary mount.
+    temporary mount. An update moves `runtime/current` to the new copy but
+    keeps each older one while a process runs from it (Codex holds its MCP
+    server open for a whole session); each process keeps its own version's
+    code, and an unused copy is removed at a later start.
   `console/prepare-python.sh` prepares the Python on Linux too and
   `npm run dist:linux` builds both. A new "Desktop build (Linux)" workflow
   tests them with Ubuntu's default AppArmor setting: the AppImage refuses,
   the .deb installs and starts with the sandbox checked from /proc, the CLI
   runs on the bundled Python; where namespaces work, the AppImage starts
   sandboxed, Codex connects, and its config still starts the MCP server
-  after the app quits and on the next start. Approvals: a click in the
+  after the app quits and on the next start; an MCP server held open across
+  a version switch keeps answering and importing. Approvals: a click in the
   console approves as elsewhere; what asks for Windows Hello or Touch ID
   there needs the local PIN in a terminal on Linux (`gigamail approvals
   pin`).
