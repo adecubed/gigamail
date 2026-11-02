@@ -107,8 +107,25 @@ async function stopApp(app) {
   try { process.kill(-app.child.pid, 'SIGKILL'); } catch (_) { /* gone */ }
   return 'killed';
 }
+// Who keeps a mount busy: processes with their cwd, exe, an open file or a
+// mapping under it.
+function holders(mount) {
+  const dir = '/tmp/' + mount; const out = [];
+  for (const d of fs.readdirSync('/proc').filter((x) => /^\d+$/.test(x))) {
+    const why = [];
+    try { if (fs.readlinkSync(`/proc/${d}/cwd`).startsWith(dir)) why.push('cwd'); } catch (_) { /* */ }
+    try { if (fs.readlinkSync(`/proc/${d}/exe`).startsWith(dir)) why.push('exe'); } catch (_) { /* */ }
+    try { for (const f of fs.readdirSync(`/proc/${d}/fd`)) { try { const t = fs.readlinkSync(`/proc/${d}/fd/${f}`); if (t.startsWith(dir)) why.push('fd ' + f + ' ' + t.slice(dir.length)); } catch (_) { /* */ } } } catch (_) { /* */ }
+    try { if (fs.readFileSync(`/proc/${d}/maps`, 'utf-8').includes(dir)) why.push('maps'); } catch (_) { /* */ }
+    if (why.length) { let c = ''; try { c = cmdline(d).join(' ').slice(0, 160); } catch (_) { /* */ } out.push(`${d} [${why.slice(0, 4).join(', ')}] ${c}`); }
+  }
+  return out;
+}
 function dump(n) {
-  try { console.log(`\n[app-${n}.log, last lines]\n` + fs.readFileSync(path.join(HOME, `app-${n}.log`), 'utf-8').split('\n').slice(-25).join('\n')); } catch (_) { /* none */ }
+  try {
+    const lines = fs.readFileSync(path.join(HOME, `app-${n}.log`), 'utf-8').split('\n');
+    console.log(`\n[app-${n}.log, errors]\n` + lines.filter((l) => /ERROR|FATAL|GIGAMAIL|Singleton|sandbox|Error:/.test(l) && !/AuthRequired|dbus/.test(l)).slice(-25).join('\n'));
+  } catch (_) { /* none */ }
 }
 
 async function main() {
@@ -145,6 +162,7 @@ async function main() {
   check(how === 'closed', `the app quits when its window is closed (${how})`);
   const gone = await waitUntil(() => mounts().filter((m) => mine.includes(m)).length === 0, 30000);
   check(!!gone, 'the AppImage mount is gone');
+  if (!gone) for (const m of mine) console.log(`    still using ${m}:\n      ` + (holders(m).join('\n      ') || 'nobody visible'));
   const h2 = await waitUntil(health, 10000);
   check(!!h2 && h2.pid === a.h.pid, 'the backend still answers, same process');
   const cj2 = JSON.parse(fs.readFileSync(path.join(HOME, '.ade', 'console.json'), 'utf-8'));
