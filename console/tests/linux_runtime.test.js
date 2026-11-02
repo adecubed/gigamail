@@ -99,7 +99,9 @@ test('a version a process still runs from survives the update, and goes once unu
 });
 
 test('in use: by executable, working folder or a mapped library, under the resolved root too', () => {
-  const real = tmp(); const viaLink = path.join(tmp(), 'runtime');
+  // /proc shows resolved paths: build them from the resolved folder (on
+  // macOS the temp folder itself sits behind /var -> /private/var).
+  const real = fs.realpathSync(tmp()); const viaLink = path.join(tmp(), 'runtime');
   fs.symlinkSync(real, viaLink);
   const proc = fakeProc({
     10: { exe: path.join(real, '0.6.5', 'python', 'bin', 'python3.12') },
