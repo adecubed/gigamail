@@ -91,7 +91,7 @@ Add GigaMail to curated marketplaces
 
 ```
 GigaMail is missing from the curated marketplaces. It is a local MCP server
-(Python, PyPI `gigamail`, AGPL-3.0-or-later) that gives Codex the user's
+(Python, PyPI `gigamail`, BUSL-1.1) that gives Codex the user's
 real mailbox (Microsoft 365 via Graph, or any IMAP provider) and calendar
 as 28 typed tools, with a server-side, out-of-band human approval on every
 send, reply, delete and calendar write: the agent receives an inert request

@@ -66,5 +66,5 @@ Services the server talks to, all from your machine:
 - **Telegram and Zoom, only if you turn them on**: approvals and
   notifications through your own Telegram bot; Zoom links for meetings.
 
-Source, docs and licence (AGPL-3.0-or-later):
+Source, docs and licence (Business Source License 1.1):
 https://github.com/adecubed/gigamail

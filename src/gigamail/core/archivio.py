@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """L'archivio: la copia di GigaMail di tutta la posta, allegati compresi.
 
 Prima GigaMail non teneva niente di suo. Leggeva il server e basta, e un

@@ -1,11 +1,10 @@
 <!--
 GigaMail — mail for your AI agent
-Copyright (C) 2026 Adecubed
+Copyright (C) 2026 Nerine srl
 
-This program is free software: you can redistribute it and/or modify it
-under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or (at your
-option) any later version. See the LICENSE file for details.
+Licensed under the Business Source License 1.1. Versions up to 0.6.6 were
+released under the GNU Affero General Public License v3.0 or later. See the
+LICENSE file for details.
 -->
 <!-- mcp-name: io.github.adecubed/gigamail -->
 
@@ -14,7 +13,7 @@ option) any later version. See the LICENSE file for details.
 
 **English** · [Italiano](#lang-it) · [中文](#lang-zh)
 
-[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Download](https://img.shields.io/badge/Download-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![Download](https://img.shields.io/badge/Download-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Download](https://img.shields.io/badge/Download-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License BSL 1.1](https://img.shields.io/badge/license-BSL--1.1-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 **MCP server that gives your agent — Claude, Codex, OpenClaw, Hermes, or any
@@ -299,10 +298,15 @@ the human; it is never skipped silently.
 
 ## License
 
-**AGPL-3.0-or-later.** Free to use, study, modify and share. If you
-distribute a modified version — or run one as a network service — you must
-make its source available under the same license. Commercial licenses for
-closed-source use are available from the copyright holder.
+**Business Source License 1.1**, from version 0.6.7. Free for everyone,
+individuals and companies, for their own use, in a business too: an agency
+that answers its own customers' mail with GigaMail uses it for free. What
+needs a commercial license from Nerine srl is making money from GigaMail
+itself: selling it, putting it in a product or service that is paid for or
+funded by advertising, offering it as a hosted service, or charging others
+to install or run it. Each version becomes AGPL-3.0-or-later four years
+after its release; versions up to 0.6.6 stay AGPL-3.0-or-later. The exact
+terms are in [LICENSE](LICENSE); commercial licenses: simone@nerine.io.
 
 ---
 
@@ -311,7 +315,7 @@ closed-source use are available from the copyright holder.
 
 [English](#lang-en) · **Italiano** · [中文](#lang-zh)
 
-[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Scarica](https://img.shields.io/badge/Scarica-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![Scarica](https://img.shields.io/badge/Scarica-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![Scarica](https://img.shields.io/badge/Scarica-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License BSL 1.1](https://img.shields.io/badge/license-BSL--1.1-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 
@@ -587,11 +591,16 @@ avvisa l'umano: non viene mai saltata in silenzio.
 
 ## Licenza
 
-**AGPL-3.0-or-later.** Libero di usarlo, studiarlo, modificarlo e
-condividerlo. Se distribuisci una versione modificata — o la offri come
-servizio in rete — devi rendere disponibile il sorgente con la stessa
-licenza. Licenze commerciali per usi closed-source sono disponibili dal
-titolare del copyright.
+**Business Source License 1.1**, dalla versione 0.6.7. Gratis per tutti,
+privati e aziende, per il proprio uso, anche nel lavoro: un'agenzia che
+risponde con GigaMail alle mail dei propri clienti lo usa gratis. Serve una
+licenza commerciale di Nerine srl per guadagnare con GigaMail stesso:
+venderlo, metterlo in un prodotto o servizio a pagamento o finanziato dalla
+pubblicità, offrirlo come servizio in hosting, o farsi pagare da altri per
+installarlo o gestirlo. Ogni versione diventa AGPL-3.0-or-later quattro anni
+dopo l'uscita; le versioni fino alla 0.6.6 restano AGPL-3.0-or-later. I
+termini esatti sono in [LICENSE](LICENSE); licenze commerciali:
+simone@nerine.io.
 
 
 ---
@@ -601,7 +610,7 @@ titolare del copyright.
 
 [English](#lang-en) · [Italiano](#lang-it) · **中文**
 
-[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![下载](https://img.shields.io/badge/下载-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-555)](LICENSE)
+[![下载](https://img.shields.io/badge/下载-Windows%20installer-e0409a?logo=windows&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe) [![下载](https://img.shields.io/badge/下载-macOS%20app-e0409a?logo=apple&logoColor=white)](https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg) [![gigamail.ai](https://img.shields.io/badge/site-gigamail.ai-0B2B5C)](https://gigamail.ai) [![PyPI](https://img.shields.io/pypi/v/gigamail?label=pip%20install%20gigamail&color=5b6bff)](https://pypi.org/project/gigamail/) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/gigamail?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/gigamail) [![License BSL 1.1](https://img.shields.io/badge/license-BSL--1.1-555)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/adecubed/gigamail?style=flat&color=ffb000)](https://github.com/adecubed/gigamail) [![Python](https://img.shields.io/pypi/pyversions/gigamail?color=3776ab)](https://pypi.org/project/gigamail/) [![MCP server](https://img.shields.io/badge/MCP-server-orange)](https://modelcontextprotocol.io) [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-9ACD32)](plugins/gigamail/README.md) [![Codex](https://img.shields.io/badge/Codex-plugin-9ACD32)](https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3) [![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-9ACD32)](https://clawhub.ai/adecubed/skills/gigamail) [![Hermes](https://img.shields.io/badge/Hermes_Agent-plugin-9ACD32)](https://github.com/adecubed/hermes-plugin-gigamail)
 
 **一个 MCP 服务器，让你的代理 —— Claude、Codex、OpenClaw、Hermes 或任何
@@ -805,6 +814,9 @@ gigamail extensions enable real_estate
 
 ## 许可证
 
-**AGPL-3.0-or-later.** 自由使用、研究、修改与分享。若你分发修改版 —— 或将
-其作为网络服务运行 —— 必须以相同许可证提供其源代码。闭源商用许可可向版权
-持有人洽询。
+**Business Source License 1.1**，自 0.6.7 版起。个人和企业均可免费自用，
+包括用于工作：用 GigaMail 回复自家客户邮件的公司无需付费。若要靠 GigaMail
+本身获利——出售它、将其放入收费或靠广告盈利的产品或服务、作为托管服务提供，
+或向他人收费代为安装或运维——须向 Nerine srl 购买商业许可。每个版本在发布
+四年后转为 AGPL-3.0-or-later；0.6.6 及之前的版本仍为 AGPL-3.0-or-later。
+确切条款见 [LICENSE](LICENSE)；商业许可：simone@nerine.io。

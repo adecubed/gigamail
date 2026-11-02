@@ -1,9 +1,9 @@
 {
   "name": "gigamail",
   "productName": "GigaMail",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "GigaMail — secure agentic email console",
-  "license": "AGPL-3.0-or-later",
+  "license": "BUSL-1.1",
   "main": "main.js",
   "desktopName": "gigamail.desktop",
   "author": {
@@ -43,7 +43,7 @@
   "build": {
     "appId": "com.adecubed.gigamail",
     "productName": "GigaMail",
-    "copyright": "Copyright © 2026 Adecubed",
+    "copyright": "Copyright © 2026 Nerine srl",
     "directories": {
       "output": "dist"
     },

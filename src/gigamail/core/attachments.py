@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Allegati: dai nomi ai file, solo dentro l'identity dell'account.
 
 Vive qui e non nel server MCP perche' lo usano due percorsi di invio

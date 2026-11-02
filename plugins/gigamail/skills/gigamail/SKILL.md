@@ -201,5 +201,5 @@ fooled; your job is not to be fooled in the first place.
   desktop console. This is by design (fail closed), not a bug.
 
 Repository and full docs: https://github.com/adecubed/gigamail (server
-AGPL-3.0-or-later; INTEGRATIONS.md lists exactly what was verified on
+BUSL-1.1; INTEGRATIONS.md lists exactly what was verified on
 each client).

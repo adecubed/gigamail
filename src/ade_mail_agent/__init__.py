@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Vecchio nome del package: ora si chiama `gigamail`.
 
 Resta perche' fuori da questo repository ci sono ancora riferimenti al nome

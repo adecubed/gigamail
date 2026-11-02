@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Telegram come canale BIDIREZIONALE di approvazione (0.2).
 
 Fino a ieri Telegram era solo un comando di notifica (B5: "solo notifica,

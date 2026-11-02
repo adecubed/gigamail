@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Regole di risposta (0.2): semi-auto e auto reply.
 
 Una regola dice: per le mail che arrivano DA questi mittenti (o IN questa

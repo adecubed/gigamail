@@ -7,6 +7,7 @@ name: Release
 # Come si rilascia:
 #   1. aggiorna version in pyproject.toml (console e __version__ la seguono
 #      da soli), aggiorna CHANGELOG con la sezione "## vX.Y.Z — data"
+#      and turn every "Unreleased" in SECURITY.md into the version number
 #   2. git tag vX.Y.Z && git push origin vX.Y.Z (immutabile: un numero
 #      bruciato non si ricicla)
 #      -> questo workflow testa, costruisce l'installer Windows e crea una
@@ -71,6 +72,17 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+
+      # SECURITY.md once said "Unreleased" for a fix that had shipped
+      # weeks before, and a reader evaluating the release took the fix for
+      # missing: a tag cannot leave one behind.
+      - name: SECURITY.md names the release, not "Unreleased"
+        if: github.event_name == 'push'
+        run: |
+          if grep -n "Unreleased" SECURITY.md; then
+            echo "::error file=SECURITY.md::replace Unreleased with ${GITHUB_REF_NAME}"
+            exit 1
+          fi
 
       - name: Test suite (non pubblichiamo codice non verificato)
         run: |

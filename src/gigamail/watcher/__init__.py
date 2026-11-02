@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """`gigamail watch` — il processo che innesca le regole di risposta (0.2).
 
 Il server MCP resta passivo: e' questo processo (CLI, avviabile anche dalla

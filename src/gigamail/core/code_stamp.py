@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Fingerprint of the package's sources on disk: how many .py files and
 the newest modification time. It changes when an update, or an edit,
 replaces the code a running process loaded: the backend reports itself

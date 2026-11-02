@@ -1,7 +1,25 @@
 # Changelog
 
-## Unreleased
+## v0.6.7 — 2026-11-02
 
+- **GigaMail is now under the Business Source License 1.1.** Individuals
+  and companies keep using it for free for their own purposes, in a
+  business too: an agency that answers its own customers' mail with
+  GigaMail pays nothing. What needs a commercial license from Nerine srl
+  is making money from GigaMail itself: selling it, putting it in a
+  product or service that is paid for or funded by advertising, offering
+  it as a hosted service, or charging others to install or run it. Each
+  version becomes AGPL-3.0-or-later four years after its release, and
+  versions up to 0.6.6 stay under the AGPL-3.0-or-later. The exact terms
+  are in LICENSE; README, website, terms and plugin manifests say the
+  same.
+- **SECURITY.md matches the releases.** It listed the IMAP certificate
+  fix as "Unreleased" although it shipped in v0.4.1, so a reader
+  evaluating a release took the fix for missing; it also called the apps
+  unsigned (Windows is signed since v0.5.0, macOS since v0.5.1) and left
+  `move_message` and the two Drive tools out of the approval gate. The
+  release workflow now refuses a tag while SECURITY.md still says
+  "Unreleased".
 - **The desktop app for Linux.** Until now Linux had only `pip install
   gigamail`, with no graphical app. Each release now also carries, x64,
   with their own Python like the Windows and macOS apps:

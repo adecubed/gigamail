@@ -27,8 +27,8 @@ clawhub skill publish integrations/clawhub/gigamail --slug gigamail --name GigaM
 **License.** ClawHub publishes every skill under MIT-0 (the CLI accepts
 those terms on publish; the registry schema admits no other value). This
 skill text — `gigamail/SKILL.md` — is therefore MIT-0. That does not extend
-to GigaMail itself: the server, CLI and console remain AGPL-3.0-or-later
-under the repository LICENSE.
+to GigaMail itself: the server, CLI and console are under the Business
+Source License 1.1 (the repository LICENSE; AGPL-3.0-or-later up to 0.6.6).
 
 The skill version follows its own semver (it is text, it changes at a
 different pace than the server). Keep `version:` in the SKILL.md

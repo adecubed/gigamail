@@ -104,7 +104,7 @@ security gate is enforced server-side regardless of this skill; the skill
 tells you how to work with that gate, not around it.
 
 Repository: https://github.com/adecubed/gigamail. The GigaMail server is
-AGPL-3.0-or-later; this skill text is MIT-0 as required by ClawHub.
+BUSL-1.1 (AGPL-3.0-or-later up to 0.6.6); this skill text is MIT-0 as required by ClawHub.
 Written for gigamail 0.6.x (30 tools; `move_message` is two-phase since
 0.6). Last verified end to end against OpenClaw 2026.7.1-2 on Windows with
 an earlier server (24 tools then); see INTEGRATIONS.md in the repository

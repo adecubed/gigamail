@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Import una tantum dello storico che Outlook ha gia' tolto dal server.
 
 Outlook, nella configurazione piu' comune, scarica la posta e dopo un paio

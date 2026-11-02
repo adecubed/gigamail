@@ -41,4 +41,4 @@ The text of a mail you ask about is sent to OpenAI to produce the answer,
 under your ChatGPT plan's terms. Your password never is.
 
 Problems? [github.com/adecubed/gigamail/issues](https://github.com/adecubed/gigamail/issues)
-or Founder@adecubed.com. GigaMail is free and open source.
+or Founder@adecubed.com. GigaMail is free to use (Business Source License 1.1).

@@ -1,6 +1,6 @@
 # GigaMail — mail for your AI agent
-# Copyright (C) 2026 Adecubed
-# Licensed under the GNU AGPL v3 or later. See LICENSE.
+# Copyright (C) 2026 Nerine srl
+# Licensed under the Business Source License 1.1. See LICENSE.
 """Indirizzi: da quello che l'umano scrive a quello che va in busta.
 
 Vive da solo, senza dipendenze, per un motivo preciso: lo usano sia

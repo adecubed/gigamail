@@ -3,7 +3,7 @@ name = "gigamail-real-estate"
 version = "0.1.0"
 description = "GigaMail extension for real-estate agencies: flat-type check and unit codes"
 requires-python = ">=3.10"
-license = "AGPL-3.0-or-later"
+license = "BUSL-1.1"
 dependencies = ["gigamail"]
 
 [project.entry-points."gigamail.extensions"]
