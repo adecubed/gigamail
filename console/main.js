@@ -317,9 +317,18 @@ function startPythonServer() {
         + `  python -m venv .venv\n  ${pip} install -e ".[console,all]"\n\nthen run npm start again.`);
       return;
     }
+    // On Linux the backend first closes every descriptor it inherited
+    // beyond stdio. Chromium leaves some open across exec (app.asar,
+    // icudtl.dat, the .pak files, the DevTools socket): inside an AppImage
+    // they kept the temporary mount busy after the app quit, and the socket
+    // kept the next start's debugging port taken. The backend needs none
+    // of them. close_range makes it one system call.
+    const entry = process.platform === 'linux'
+      ? 'import os; os.closerange(3, os.sysconf("SC_OPEN_MAX")); from gigamail.http_api import main; main()'
+      : 'from gigamail.http_api import main; main()';
     serverProcess = spawn(pythonPath, [
       '-s',   // mai il site-packages utente: solo cio' che l'installer porta
-      '-X', 'utf8', '-c', 'from gigamail.http_api import main; main()',
+      '-X', 'utf8', '-c', entry,
     ], {
       windowsHide: true,
       detached: true,   // il backend sopravvive alla chiusura dell'app
@@ -470,7 +479,10 @@ function createWindow() {
   // Only where the app is signed (app_paths.autoUpdateSupported):
   // electron-updater refuses an unsigned app on macOS.
   if (app.isPackaged && appPaths.autoUpdateSupported()) {
-    setTimeout(() => autoUpdater.checkForUpdatesAndNotify(), 3000);
+    // A Release without this platform's manifest (latest-linux.yml before the
+    // first release with Linux packages) rejects: logged, not left unhandled.
+    setTimeout(() => autoUpdater.checkForUpdatesAndNotify()
+      .catch((e) => console.error('[UPDATER]', e && e.message)), 3000);
   }
 }
 
