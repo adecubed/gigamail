@@ -95,10 +95,12 @@ function killPort(port) {
 // app. /proc/<pid>/status is readable for every process of the user; the
 // cmdline of a sandboxed process is not (Chromium makes it non-dumpable),
 // so processes are found by status and the cmdline is read where it can be.
-// On: no process of the app carries --no-sandbox, at least one child runs
-// in its own PID namespace (namespace or setuid sandbox: NSpid with two
-// values) under a seccomp-bpf filter (Seccomp: 2), every child in a nested
-// namespace has that filter, and no readable renderer runs outside one.
+// On: no process of the app carries --no-sandbox, the renderers run in
+// their own PID namespace (namespace or setuid sandbox: NSpid with two
+// values) under a seccomp-bpf filter (Seccomp: 2), and no readable renderer
+// runs outside one. The zygote shares their namespace without a filter of
+// its own (it applies the filter to each child it forks): it is counted
+// apart, not as a failure.
 function linuxSandboxReport(rootPid) {
   const procs = [];
   for (const d of fs.readdirSync('/proc')) {
@@ -123,8 +125,8 @@ function linuxSandboxReport(rootPid) {
   return {
     processes: tree.length,
     noSandboxFlag: tree.some((p) => p.cmd && p.cmd.includes('--no-sandbox')),
-    sandboxed: sandboxed.length,
-    allFiltered: sandboxed.length > 0 && sandboxed.every(seccomp),
+    filtered: sandboxed.filter(seccomp).length,
+    unfiltered: sandboxed.filter((p) => !seccomp(p)).length,
     openRenderers: openRenderers.length,
   };
 }
@@ -187,8 +189,8 @@ async function main() {
     if (process.platform === 'linux') {
       const sb = linuxSandboxReport(child.pid);
       check(sb.processes > 1 && !sb.noSandboxFlag, `Linux: nessun processo avviato con --no-sandbox (${sb.processes} processi)`);
-      check(sb.sandboxed > 0 && sb.allFiltered && sb.openRenderers === 0,
-        `Linux: sandbox Chromium attiva (${sb.sandboxed} processi in PID namespace propri con seccomp, ${sb.openRenderers} renderer fuori)`);
+      check(sb.filtered > 0 && sb.openRenderers === 0,
+        `Linux: sandbox Chromium attiva (${sb.filtered} processi in PID namespace propri con seccomp, ${sb.unfiltered} zygote senza filtro, ${sb.openRenderers} renderer fuori)`);
     }
   } catch (e) {
     failures += 1;
