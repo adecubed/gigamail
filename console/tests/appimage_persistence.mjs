@@ -70,7 +70,11 @@ const env = { ...process.env, HOME, ADE_CONSOLE_PORT: API_PORT, GIGAMAIL_NOTIFY_
 delete env.XDG_DATA_HOME; delete env.XDG_CONFIG_HOME; delete env.ADE_ROOT; delete env.GIGAMAIL_ROOT; delete env.APPDATA;
 const token = () => fs.readFileSync(path.join(HOME, '.ade', '.console_token'), 'utf-8').trim();
 const health = async () => { const r = await getJson(`http://127.0.0.1:${API_PORT}/health`, { 'X-ADE-Token': token() }); return r.status === 200 ? r.body : null; };
-const mounts = () => fs.readdirSync('/tmp').filter((n) => n.startsWith('.mount_'));
+// Mounted AppImages, from /proc/mounts: a folder left behind by a runtime
+// that was killed is not a mount.
+const mounts = () => fs.readFileSync('/proc/mounts', 'utf-8').split('\n')
+  .map((l) => l.split(' ')[1] || '').filter((m) => m.startsWith('/tmp/.mount_')).map((m) => path.basename(m));
+const exited = (child) => child.exitCode !== null || child.signalCode !== null;
 const cmdline = (pid) => fs.readFileSync(`/proc/${pid}/cmdline`, 'utf-8').split('\0').filter(Boolean);
 
 async function startApp(n) {
@@ -82,14 +86,29 @@ async function startApp(n) {
   const h = await waitUntil(health, 90000);
   return { child, page, h };
 }
+// Quit the way a user does (close the window), so the AppImage runtime
+// unmounts by itself. Killing the runtime would leave its mount behind and
+// prove nothing. Only if the app does not go: SIGTERM to Electron's main
+// process, and as a last resort the whole process group.
 async function stopApp(app) {
   try {
     const v = (await getJson(`http://127.0.0.1:${DEBUG_PORT}/json/version`)).body;
     const b = new Cdp(v.webSocketDebuggerUrl); await b.open();
     await Promise.race([b.call('Browser.close'), sleep(5000)]); b.close();
   } catch (_) { /* already closed */ }
-  await sleep(2000);
-  try { process.kill(-app.child.pid, 'SIGTERM'); } catch (_) { /* gone */ }
+  if (await waitUntil(() => exited(app.child), 20000)) return 'closed';
+  for (const d of fs.readdirSync('/proc').filter((x) => /^\d+$/.test(x))) {
+    try {
+      const c = cmdline(d);
+      if (c[0] && c[0].startsWith('/tmp/.mount_') && !c.some((a) => a.startsWith('--type='))) process.kill(Number(d), 'SIGTERM');
+    } catch (_) { /* not ours */ }
+  }
+  if (await waitUntil(() => exited(app.child), 20000)) return 'sigterm';
+  try { process.kill(-app.child.pid, 'SIGKILL'); } catch (_) { /* gone */ }
+  return 'killed';
+}
+function dump(n) {
+  try { console.log(`\n[app-${n}.log, last lines]\n` + fs.readFileSync(path.join(HOME, `app-${n}.log`), 'utf-8').split('\n').slice(-25).join('\n')); } catch (_) { /* none */ }
 }
 
 async function main() {
@@ -122,7 +141,8 @@ async function main() {
   check(cj.exe === APPIMAGE, `console.json exe = the AppImage file (${cj.exe})`);
 
   console.log('\n[4. after the app quits]');
-  await stopApp(a);
+  const how = await stopApp(a);
+  check(how === 'closed', `the app quits when its window is closed (${how})`);
   const gone = await waitUntil(() => mounts().filter((m) => mine.includes(m)).length === 0, 30000);
   check(!!gone, 'the AppImage mount is gone');
   const h2 = await waitUntil(health, 10000);
@@ -143,6 +163,7 @@ async function main() {
   console.log('\n[5. second start]');
   const b = await startApp(2);
   check(!!b.page && !!b.h, 'window open and backend healthy again');
+  if (!b.page || !b.h) dump(2);
   if (b.h) check(cmdline(b.h.pid)[0] === RT_PY, 'backend again from runtime/current');
   const st = await getJson(`http://127.0.0.1:${API_PORT}/agent/codex`, { 'X-ADE-Token': token() });
   check(st.status === 200 && st.body.connected === true, 'Codex still connected to this installation');
@@ -151,6 +172,7 @@ async function main() {
   if (last?.pid) { try { process.kill(last.pid); } catch (_) { /* gone */ } }
   try { fs.rmSync(HOME, { recursive: true, force: true }); } catch (_) { /* in use */ }
 
+  if (failures) dump(1);
   console.log(failures ? `\n${failures} checks failed` : '\nall checks passed');
   process.exit(failures ? 1 : 0);
 }
