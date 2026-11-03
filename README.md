@@ -170,16 +170,17 @@ reply, and asks you before sending.
 
 ## Tools
 
-30 typed tools, generated from the server itself:
+31 typed tools, generated from the server itself:
 
 - **Read (18)** — accounts, identity, knowledge files and search inside them, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
   their text
 - **Safe writes (2, audited)** — mark read, create folder
-- **Dangerous (10, human approval out of band)** — move message, send,
+- **Dangerous (11, human approval out of band)** — move message, send,
   reply, delete message, delete folder, create/delete calendar event, create a Zoom
-  meeting, upload a file to Drive, move a Drive file to the trash
+  meeting, upload a file to Drive, move a Drive file to the trash, open a
+  link from a mail in the user's browser
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the
@@ -456,17 +457,18 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-30 tool tipizzati, generati dal server stesso:
+31 tool tipizzati, generati dal server stesso:
 
 - **Lettura (18)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi, file di Drive e il
   loro testo
 - **Scritture sicure (2, con audit)** — segna letto, crea cartella
-- **Pericolose (10, approvazione umana fuori banda)** — spostamento,
+- **Pericolose (11, approvazione umana fuori banda)** — spostamento,
   invio, risposta, cancellazione messaggio, cancellazione cartella, creazione/cancellazione
   evento, creazione di una riunione Zoom, caricamento di un file su Drive,
-  cestinamento di un file di Drive
+  cestinamento di un file di Drive, apertura di un link di una mail nel
+  browser dell'utente
 
 Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
 quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo

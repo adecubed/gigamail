@@ -38,7 +38,7 @@ to know:
 - **The approval gate.** A destructive tool (`send_mail`, `reply_mail`,
   `move_message`, `delete_message`, `delete_folder`, `create_event`,
   `delete_event`, `create_zoom_meeting`, `drive_upload_file`,
-  `drive_delete_file`)
+  `drive_delete_file`, `open_link`)
   executing without a human approval given out of band — or executing with
   arguments other than the ones the human saw. In particular: **any path by
   which the agent can approve its own request**, or any secret reaching the
@@ -54,6 +54,11 @@ to know:
   when a token is configured, or the token leaking.
 - **Prompt injection that defeats the above** — email content that causes
   any of these outcomes rather than merely persuading the agent to *ask*.
+- **A URL from a mail reaching the agent.** Any MCP result that hands the
+  agent the address of a link found in a mail or its attachments, instead
+  of `[link N: domain]`.
+- **The read budget.** Any way for the agent to read more than the budget
+  in a window without a person approving, or to raise the budget itself.
 - **The desktop console's renderer.** HTML from a message running script
   in the console, a link inside a message opening anything other than
   `http`, `https` or `mailto`, a renderer window reaching Node, the
@@ -353,12 +358,91 @@ What this does not stop, stated plainly:
 - **The words still reach the model.** The body of the mail is returned as
   it is; the warning is advice to the model, not a barrier. An agent can
   still be talked into something that does not go through GigaMail.
-- **A link in the mail.** An agent with a shell and network access can
-  download a file from the web by itself.
+- **A link the agent finds elsewhere.** Links in mail no longer reach the
+  agent as URLs (see "Links reach the agent as a number" below), but an
+  agent with a shell and network access can still download a file from an
+  address it got some other way.
 - **Everything else on the machine.** See "An agent with shell access using
   something other than GigaMail" above. If you connect GigaMail to an agent
   that runs commands, keep its command approvals on, or run its commands in
   a container that cannot see GigaMail's data folder.
+
+## Agents that read mail through MCP: three barriers before the model
+
+*Unreleased: on `main`, not in a release yet.*
+
+The console's own agent writes drafts and runs no commands. A harness that
+mounts GigaMail as an MCP server (Claude Code, Cowork, Codex, Hermes,
+OpenClaw) is different: the model reading the mail also holds a shell, a
+fetch tool, a browser. The send gate stops a mail from sending anything
+through GigaMail; it does not stop the same model from carrying mail out
+through those other tools. Three things now happen on the read path,
+before the text reaches the model.
+
+### Links reach the agent as a number
+
+A URL in a mail is an exit: an agent that holds
+`https://attacker.example/?d=...` can be talked into fetching it with
+whatever it just read in the query string. So no MCP result hands over an
+address from a mail (`core/link_guard.py`):
+
+- Every link, behind a word or written out in the text, becomes
+  `[link N: domain]` in the body, and `{n, text, domain}` in `links`. The
+  same for URLs in an attachment's text (`read_attachment`), and
+  `[link: domain]` in subjects, archive previews and local-index rows.
+  A link written as its own address keeps only the host in its text.
+  `mailto:` links keep their address: opening one fetches nothing.
+- `text_points_elsewhere: true` marks a link whose text names another host
+  (`www.bank.example` over a link to `evil.example`).
+- To open one, the agent calls **`open_link(message_id, n)`**, two-phase
+  like a send. GigaMail numbers the mail's links again from the mail
+  itself (nothing is stored between the read and the request), and the
+  approval preview shows the person the full address, the link text and
+  the mail it comes from; the agent's copy of the preview has the domain,
+  never the address. After approval, from any channel, the link opens in
+  the person's default browser, not in a tool of the agent; only `http`
+  and `https`. Links of a mail that was withheld or could not be checked
+  are refused.
+
+### A mail that gives an assistant orders is withheld
+
+The deterministic check that stops a console draft (`core/injection_guard.py`:
+patterns, no model) now also runs inside `read_message`,
+`read_attachment` and the archive previews of `search_mail`, on the
+visible text and on what was hidden. When it fires the agent gets no body,
+no subject and no links, and a `withheld` note telling it to send the user
+to the console; the audit log records `injection_withheld`. Subjects in
+lists that give orders are replaced as well.
+
+### A burst of reads waits for a person
+
+Exfiltration needs volume. Each MCP server process is one agent session
+and counts the reads that hand it mail content (`read_message`,
+`read_attachment`, `search_mail`). Past `GIGAMAIL_READ_BURST_MAX` reads
+(default 15) within `GIGAMAIL_READ_BURST_WINDOW` seconds (default 600),
+the next read executes nothing: it raises a `continue_reading` request on
+the same channels as a send (console, Telegram, the OS prompt) and returns
+`approval_required`. Approve and the agent repeats the read with a fresh
+budget; reject and that session reads no more mail. No tool raises the
+budget (`core/read_budget.py`).
+
+What these do not stop, stated plainly:
+
+- **Visible orders the check does not know.** The injection check
+  recognises known phrasings; a new one passes, as text. The text stays
+  untrusted data, and the gates stay where they are.
+- **False positives.** A mail that quotes an injection (a security
+  newsletter, a forwarded phishing report) is withheld too; it is read in
+  the console.
+- **Slow exfiltration.** Reads spread over time stay under the budget. The
+  budget makes bulk reading visible; it does not cap what a session can
+  read in a day.
+- **A new session.** The budget is per server process: a harness that
+  restarts its MCP servers starts from zero. The request still lands on
+  the person's channels each time it trips.
+- **What the agent already knows.** A domain is information; an address
+  the agent rebuilds from it, or gets from somewhere else, is outside
+  GigaMail.
 
 ## Links that fetch themselves
 
@@ -424,9 +508,9 @@ it, and an instruction hidden there is addressed to the agent alone.
   Rules in `auto` mode send without a person, so they treat it like an
   agent with a shell: no draft, and a notification says why. The agent bar
   and external harnesses go through MCP and get no body.
-- **Links.** `read_message` lists the links a person sees (`links`: text
-  and url, `http`, `https` and `mailto` only); links in hidden text are not
-  listed, and an unchecked body lists none.
+- **Links.** `read_message` lists the links a person sees, by number and
+  host (see "Links reach the agent as a number" below); links in hidden
+  text are not listed, and an unchecked body lists none.
 - **Every text made from HTML for a person** (console previews, the
   archive's search text, alerts) goes through the same reader.
 

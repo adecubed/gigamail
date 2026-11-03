@@ -87,12 +87,12 @@ def test_skill_frontmatter_e_metadata():
 
 
 def test_skill_nomina_i_tool_veri():
-    """La skill elenca i 30 tool per classe: ogni nome citato deve esistere
+    """La skill elenca i 31 tool per classe: ogni nome citato deve esistere
     sul server e ogni tool del server deve comparire. Una rinomina non puo'
     lasciare la skill a raccontare tool che non ci sono."""
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     tools = _server_tools()
-    assert len(tools) == 30
+    assert len(tools) == 31
     backticked = set(re.findall(r"`([a-z_]+)`", text))
     verbs = r"(?:list|get|read|search|send|reply|delete|create|move|mark|find|drive)_[a-z_]+"
     mentioned = {t for t in backticked if re.fullmatch(verbs, t)}

@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **Agents that read mail through MCP meet three barriers before the
+  model.** Aimed at harnesses whose model also holds a shell or a fetch
+  tool (Claude Code, Cowork, Codex, Hermes, OpenClaw):
+  - *No URLs.* `read_message` and `read_attachment` hand every link as
+    `[link N: domain]`, with `links` listing `{n, text, domain}` and
+    `text_points_elsewhere` when the link text names another site;
+    subjects and previews show `[link: domain]`. The new two-phase tool
+    `open_link(message_id, n)` shows the person the full address and opens
+    it in their browser after approval, from any channel. 31 tools.
+  - *Orders are withheld.* The deterministic injection check that stops
+    console drafts now runs on `read_message`, `read_attachment` and the
+    archive previews of `search_mail`: a mail or attachment that gives an
+    assistant orders comes back with no body, no subject and no links, and
+    a `withheld` note; list subjects that give orders are replaced.
+  - *Bulk reading pauses.* More than 15 content reads in 10 minutes in one
+    session (`GIGAMAIL_READ_BURST_MAX`, `GIGAMAIL_READ_BURST_WINDOW`) stop
+    the next read and ask the person, out of band, whether the agent may
+    go on; rejecting ends reading for that session.
+  The skills and SECURITY.md say how an agent should
+  handle each.
 - **SECURITY.md matches the releases.** It listed the IMAP certificate
   fix as "Unreleased" although it shipped in v0.4.1, so a reader
   evaluating a release took the fix for missing; it also called the apps

@@ -51,6 +51,16 @@ def _estensioni_pulite(monkeypatch):
     extensions.reset()
 
 
+@pytest.fixture(autouse=True)
+def _fresh_read_budget():
+    """Every test starts a new agent session: reads counted by one test
+    must not pause another."""
+    from gigamail.core import read_budget
+    read_budget.reset()
+    yield
+    read_budget.reset()
+
+
 @pytest.fixture()
 def appointments_on(monkeypatch):
     """Gli appuntamenti (mail -> calendario) accesi."""
