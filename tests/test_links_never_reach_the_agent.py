@@ -98,7 +98,7 @@ def test_read_message_hands_no_url(mailbox):
         {"n": 3, "text": "", "domain": "files.example"},
         {"n": 4, "text": "", "domain": "www.bank.example"},
     ]
-    assert {"text": "Mario", "mailto": "mario.rossi@example.com"} in r["links"]
+    assert {"mailto": "mario.rossi@example.com"} in r["links"]
 
 
 def test_read_attachment_hands_no_url(monkeypatch):

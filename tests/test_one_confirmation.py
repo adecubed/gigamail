@@ -175,7 +175,10 @@ def test_the_agent_asking_through_mcp_gets_the_pending_request_back(world, sweep
     assert out["status"] == "approval_required"
     assert out["request_id"] == first["request_id"]
     assert out["deduplicated"] is True
-    assert "https://zoom.example.com/j/1" in out["preview"]["body"]
+    # the person's copy has the link whole, the agent's copy its host only
+    assert "https://zoom.example.com/j/1" in first["preview"]["body"]
+    assert "[link: zoom.example.com]" in out["preview"]["body"]
+    assert "zoom.example.com/j/1" not in str(out)
     assert len(_pending()) == 1
 
 

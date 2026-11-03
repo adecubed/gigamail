@@ -391,7 +391,8 @@ address from a mail (`core/link_guard.py`):
   same for URLs in an attachment's text (`read_attachment`), and
   `[link: domain]` in subjects, archive previews and local-index rows.
   A link written as its own address keeps only the host in its text.
-  `mailto:` links keep their address: opening one fetches nothing.
+  `mailto:` links keep the address and nothing else: their text and their
+  `?subject=&body=` query are the sender's text.
 - `text_points_elsewhere: true` marks a link whose text names another host
   (`www.bank.example` over a link to `evil.example`).
 - To open one, the agent calls **`open_link(message_id, n)`**, two-phase
@@ -414,16 +415,36 @@ no subject and no links, and a `withheld` note telling it to send the user
 to the console; the audit log records `injection_withheld`. Subjects in
 lists that give orders are replaced as well.
 
+### Every field, every answer — not only the body
+
+A mail reaches the agent through more than its body: the sender's display
+name, the recipients' names, attachment names, and the subject and sender
+inside the preview of an action (`delete_message`, `move_message`,
+`reply_mail` show them before anyone approves). Every MCP answer that
+carries mail data now goes through one last pass (`core/agent_view.py`):
+every string in it, at any depth, loses invisible characters and URLs, and
+a string that gives an assistant orders is replaced whole. For dangerous
+tools this is the agent's copy only: the preview stored for the person, and
+shown in the console, on Telegram and in the toast, stays whole.
+Found in review of the first version of these barriers, where a subject
+withheld by `read_message` came back through `delete_message`'s preview.
+
 ### A burst of reads waits for a person
 
 Exfiltration needs volume. Each MCP server process is one agent session
-and counts the reads that hand it mail content (`read_message`,
-`read_attachment`, `search_mail`). Past `GIGAMAIL_READ_BURST_MAX` reads
-(default 15) within `GIGAMAIL_READ_BURST_WINDOW` seconds (default 600),
-the next read executes nothing: it raises a `continue_reading` request on
+and counts the mails whose content reaches it: one per `read_message` or
+`read_attachment`, one per archive hit with a preview in `search_mail` —
+a search is cut to what is left of the budget, so `top=100` cannot carry
+100 previews out for the price of one read. Summaries without a body
+(`list_messages`, `list_unread`, provider hits) are not counted. Past
+`GIGAMAIL_READ_BURST_MAX` mails (default 15) within
+`GIGAMAIL_READ_BURST_WINDOW` seconds (default 600), the next read executes
+nothing: it raises a `continue_reading` request on
 the same channels as a send (console, Telegram, the OS prompt) and returns
 `approval_required`. Approve and the agent repeats the read with a fresh
-budget; reject and that session reads no more mail. No tool raises the
+budget; reject and that session reads no more mail. Only an approval that
+is consumed renews the budget: one that expired before the agent came
+back, or a request that ended in an error, asks again. No tool raises the
 budget (`core/read_budget.py`).
 
 What these do not stop, stated plainly:
@@ -440,6 +461,11 @@ What these do not stop, stated plainly:
 - **A new session.** The budget is per server process: a harness that
   restarts its MCP servers starts from zero. The request still lands on
   the person's channels each time it trips.
+- **Subjects and names in a list.** Summaries are not counted by the
+  budget: a session can list many subjects and senders without a pause.
+  They are cleaned like everything else, but they are content.
+- **The calendar.** Events, including invitations written by strangers,
+  are not yet read through these barriers.
 - **What the agent already knows.** A domain is information; an address
   the agent rebuilds from it, or gets from somewhere else, is outside
   GigaMail.

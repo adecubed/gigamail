@@ -20,8 +20,13 @@
     session (`GIGAMAIL_READ_BURST_MAX`, `GIGAMAIL_READ_BURST_WINDOW`) stop
     the next read and ask the person, out of band, whether the agent may
     go on; rejecting ends reading for that session.
-  The skills and SECURITY.md say how an agent should
-  handle each.
+  - *Every field, every answer.* Display names, recipients' names,
+    attachment names, mailto: links (address only) and the agent's copy of
+    every action preview go through the same cleaning; the person's copy
+    of a preview stays whole.
+  The budget counts mails, not calls (a search is cut to what is left),
+  and only an approval actually consumed renews it. The skills and
+  SECURITY.md say how an agent should handle each.
 - **SECURITY.md matches the releases.** It listed the IMAP certificate
   fix as "Unreleased" although it shipped in v0.4.1, so a reader
   evaluating a release took the fix for missing; it also called the apps

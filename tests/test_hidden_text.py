@@ -417,7 +417,7 @@ def test_read_message_lists_the_links_a_person_sees(monkeypatch):
             '<a href="mailto:mario.rossi@example.com">Mario</a>'}})
     r = srv.read_message(message_id="42")
     assert r["links"] == [{"n": 1, "text": "the call", "domain": "meet.example"},
-                          {"text": "Mario", "mailto": "mario.rossi@example.com"}]
+                          {"mailto": "mario.rossi@example.com"}]
     assert "attacker" not in str(r) and "/j/123" not in str(r)
 
 

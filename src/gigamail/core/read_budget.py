@@ -10,9 +10,12 @@ them, and the harness's own tools (a shell, a fetch) carry them out.
 Reading in bulk is rare in honest work and is what that attack needs, so
 it is the thing to supervise.
 
-Each MCP server process is one agent session. It counts the reads that
-hand mail content to the agent (read_message, read_attachment,
-search_mail). From the first mail read, when more than MAX of them land
+Each MCP server process is one agent session. It counts the mails whose
+content reaches the agent: one per read_message or read_attachment, one per
+archive hit with a preview in search_mail (a search is cut to what is left
+of the budget, so `top=100` cannot carry 100 previews out at the cost of
+one read). Summaries without a body (list_messages, list_unread, provider
+search hits) are not counted. From the first mail read, when more than MAX of them land
 inside WINDOW seconds, the next read executes nothing: it raises an
 approval request ("continue_reading") on the same out-of-band channels as
 a send — console, Telegram, the OS prompt — and returns
@@ -26,7 +29,7 @@ import secrets
 import threading
 import time
 from collections import deque
-from typing import Any, Callable, Deque, Dict, Optional
+from typing import Any, Callable, Deque, Dict, Optional, Tuple
 
 from gigamail import policy
 
@@ -65,23 +68,35 @@ class ReadBudget:
 
     # ── what the tools call ──────────────────────────────────────────
     def gate(self, tool: str) -> Optional[Dict[str, Any]]:
-        """None when the read may go ahead (and it is counted); otherwise
-        the answer to hand the agent instead of the mail."""
+        """For a read that hands over one mail: None when it may go ahead
+        (and it is counted); otherwise the answer to hand the agent
+        instead of the mail."""
+        _allowed, answer = self.take(tool, 1)
+        return answer
+
+    def take(self, tool: str, wanted: int) -> Tuple[int, Optional[Dict[str, Any]]]:
+        """For a read that hands over `wanted` mails (a search with
+        previews): how many of them the budget lets through, counted, and
+        the answer to hand the agent when it lets none through. With
+        wanted=0 nothing is counted: the call only says whether reading is
+        paused, so a search can be refused before it runs."""
         with self._lock:
             if self._refused:
-                return self._refused_answer()
+                return 0, self._refused_answer()
             if self._pending:
                 answer = self._check_pending()
                 if answer is not None:
-                    return answer
+                    return 0, answer
             now = self._clock()
             horizon = now - window_seconds()
             while self._reads and self._reads[0] < horizon:
                 self._reads.popleft()
-            if len(self._reads) >= max_reads():
-                return self._ask(tool, len(self._reads))
-            self._reads.append(now)
-            return None
+            remaining = max_reads() - len(self._reads)
+            if remaining <= 0:
+                return 0, self._ask(tool, len(self._reads))
+            allowed = min(max(0, wanted), remaining)
+            self._reads.extend([now] * allowed)
+            return allowed, None
 
     # ── internals ────────────────────────────────────────────────────
     def _check_pending(self) -> Optional[Dict[str, Any]]:
@@ -90,11 +105,12 @@ class ReadBudget:
             rec = policy.store().get(rid)
         except Exception as e:
             return policy._deny_store_unavailable(TOOL, e)
-        if rec is None or rec.get("expired") and rec["status"] == policy.PENDING:
-            # Expired without an answer: a new burst check asks again.
+        status = rec["status"] if rec else None
+        if rec is None or (rec.get("expired") and status != policy.EXECUTED):
+            # Expired (answered or not) or gone: no renewal. The reads stay
+            # counted, so the next read asks again.
             self._pending = None
             return None
-        status = rec["status"]
         if status == policy.PENDING:
             return {
                 "status": "awaiting_approval",
@@ -111,11 +127,20 @@ class ReadBudget:
             return self._refused_answer()
         if status == policy.APPROVED:
             try:
-                policy.store().consume_approved(rid, TOOL)
-                policy.store().record_outcome(rid, "ok")
+                consumed = policy.store().consume_approved(rid, TOOL)
+                if consumed is not None:
+                    policy.store().record_outcome(rid, "ok")
             except Exception as e:
                 return policy._deny_store_unavailable(TOOL, e)
-        # Approved now, or approved and already completed by the console.
+            if consumed is None:
+                # Not consumable any more (expired between the check and
+                # now, or used): no renewal, the next read asks again.
+                self._pending = None
+                return None
+        elif status != policy.EXECUTED or rec.get("execution_outcome") not in ("ok", "dryrun"):
+            self._pending = None
+            return None
+        # Approved and consumed now, or approved and completed by the console.
         policy.audit(TOOL, {"request_id": rid}, "read_budget_renewed")
         self._pending = None
         self._reads.clear()
