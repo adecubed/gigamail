@@ -36,8 +36,9 @@ The guarantees this project actually makes — break any of these and we want
 to know:
 
 - **The approval gate.** A destructive tool (`send_mail`, `reply_mail`,
-  `delete_message`, `delete_folder`, `create_event`, `delete_event`,
-  `create_zoom_meeting`)
+  `move_message`, `delete_message`, `delete_folder`, `create_event`,
+  `delete_event`, `create_zoom_meeting`, `drive_upload_file`,
+  `drive_delete_file`)
   executing without a human approval given out of band — or executing with
   arguments other than the ones the human saw. In particular: **any path by
   which the agent can approve its own request**, or any secret reaching the
@@ -282,13 +283,16 @@ and neither survives in a deleted database.
 
 ## Fixed
 
-- **Unreleased — the IMAP server certificate was not verified.** The IMAP
-  client connected with certificate checks off, so on a hostile network
-  anyone in the middle could receive the account password (SMTP was
-  already verified). The certificate is now verified by default; a server
-  with a self-signed certificate is accepted only for the account that
-  declares it (`gigamail accounts tls <id> --insecure`, behind Windows
-  Hello / Touch ID), and a rejected certificate is not retried.
+- **v0.4.1 — the IMAP server certificate was not verified.** Up to v0.4.0
+  the IMAP client connected with certificate checks off, so on a hostile
+  network anyone in the middle could receive the account password (SMTP
+  was already verified, since v0.4.0). Since v0.4.1 the certificate chain
+  and the host name are verified by default; a server with a self-signed
+  certificate is accepted only for the account that declares it
+  (`gigamail accounts tls <id> --insecure`, behind Windows Hello / Touch
+  ID), and a rejected certificate stops the connection: it is not retried,
+  so the password is not sent again, and there is no fallback to an
+  unverified connection. Tests: `tests/test_imap_tls.py`.
 - **v0.4.0 — an approved attachment could be swapped before sending
   (Loopjacking).** Requests bound the attachment's path, not its content:
   replacing the file on disk between approval and execution sent different
@@ -305,6 +309,8 @@ and neither survives in a deleted database.
   exact operation shown. Thank you both.
 
 ## Executable attachments, and agents that hold a shell
+
+*Unreleased: on `main`, not in a release yet.*
 
 GigaMail is also used as an MCP server from harnesses (Hermes, OpenClaw,
 Claude Code, Codex) whose agent can run commands. A mail that says
@@ -356,6 +362,8 @@ What this does not stop, stated plainly:
 
 ## Links that fetch themselves
 
+*Unreleased: on `main`, not in a release yet.*
+
 An assistant can be talked into writing a link that carries data
 (`https://attacker.example/?d=...`), and some places open such a link with
 no click: an image loaded on display, or a chat app that previews the first
@@ -373,6 +381,8 @@ A link in a draft still goes out if the person approves the draft: the
 approval preview is where to look at it.
 
 ## Hidden text: the agent reads what the person sees
+
+*Unreleased: on `main`, not in a release yet.*
 
 A mail can address the agent in text the person never sees: a block with
 `display:none`, a font of size zero, white text on white, a paragraph
@@ -438,8 +448,8 @@ What this does not stop, stated plainly:
 
 ## The desktop console
 
-The Windows app (0.3) renders mail written by strangers, so its renderer is
-treated as hostile ground:
+The desktop app (Windows since 0.3, macOS since 0.5.1) renders mail written
+by strangers, so its renderer is treated as hostile ground:
 
 - **One rendering pipeline.** Every message body — main window, detached
   mail window, forward/quote — passes through the same sanitizer
@@ -459,10 +469,12 @@ treated as hostile ground:
 - **Features follow the backend.** Buttons whose endpoint the running
   backend does not expose are hidden (`data-requires`), so a console paired
   with a smaller backend cannot call into a void.
-- **Not yet code-signed.** Installers are built in CI from the tagged
-  commit and attached to the GitHub Release together with `latest.yml`, the
-  auto-update feed. Until they are signed, verify the SHA-256 digest shown
-  on the Release page before running one.
+- **Signed releases.** Apps are built in CI from the tagged commit and
+  attached to the GitHub Release with their auto-update feed. On Windows
+  the installer, `GigaMail.exe` and the uninstaller carry a code signing
+  certificate (since v0.5.0); the macOS app is signed with an Apple
+  Developer ID and notarized (since v0.5.1). Linux packages are not
+  signed. The SHA-256 digests are next to the files on the Release page.
 
 ## How we test this ourselves
 

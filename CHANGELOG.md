@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **SECURITY.md matches the releases.** It listed the IMAP certificate
+  fix as "Unreleased" although it shipped in v0.4.1, so a reader
+  evaluating a release took the fix for missing; it also called the apps
+  unsigned (Windows is signed since v0.5.0, macOS since v0.5.1), described
+  three protections that are only on `main` as if they had shipped, and
+  left `move_message` and the two Drive tools out of the approval gate.
+  The release workflow now refuses a tag while SECURITY.md still says
+  "Unreleased".
 - **The desktop app for Linux.** Until now Linux had only `pip install
   gigamail`, with no graphical app. Each release now also carries, x64,
   with their own Python like the Windows and macOS apps:
