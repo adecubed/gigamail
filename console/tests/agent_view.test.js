@@ -209,7 +209,11 @@ test('a lost Claude login offers the sign-in, then asks again by itself', async 
   const btn = w.document.querySelector('[data-act="claude-login"]');
   assert.ok(btn, 'the error carries a sign-in button');
   btn.click();
-  await new Promise((r) => setTimeout(r, 100));
+  // Wait for the second request instead of a fixed delay: the sign-in polls
+  // and the retry take longer on the slower CI runners (macOS Intel).
+  for (let i = 0; i < 250 && !(asked.length === 2 && /Tre mail da Victor\./.test(w.document.getElementById('agentThread').textContent)); i++) {
+    await new Promise((r) => setTimeout(r, 20));
+  }
   assert.equal(started, 1);
   assert.deepEqual(asked, ['riassumi le mail di victor', 'riassumi le mail di victor']);
   assert.match(w.document.getElementById('agentThread').textContent, /Tre mail da Victor\./);
