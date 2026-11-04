@@ -195,20 +195,50 @@ def _length(value: str) -> Optional[float]:
     return n * {"em": 16, "rem": 16, "pt": 1.33, "cm": 37.8, "mm": 3.78, "in": 96}.get(unit, 1)
 
 
+def _font_size(value: str, inherited: float) -> float:
+    """The font size in px an element gets: em and % are relative to the
+    inherited size (zero stays zero), other units replace it, a keyword or
+    an unreadable value inherits."""
+    m = re.match(r"^(-?[\d.]+)\s*(px|pt|em|rem|%|cm|mm|in|vh|vw)?$", (value or "").strip())
+    if not m:
+        return inherited
+    try:
+        n = float(m.group(1))
+    except ValueError:
+        return inherited
+    unit = m.group(2) or "px"
+    if unit == "em":
+        return n * inherited
+    if unit == "%":
+        return n / 100 * inherited
+    size = _length(value)
+    return inherited if size is None else size
+
+
 def _hides(props: Dict[str, str]) -> bool:
     """True when these declarations make an element's text unreadable."""
-    if props.get("display") == "none":
-        return True
     if props.get("visibility") in ("hidden", "collapse"):
+        return True
+    size = _length(props.get("font-size", ""))
+    if size is not None and size <= 1:
+        return True
+    if _colour(props.get("color", "")) == ():
+        return True
+    return _hides_box(props)
+
+
+def _hides_box(props: Dict[str, str]) -> bool:
+    """The part of _hides() that no descendant can undo. A font size, a
+    visibility or a colour are inherited and a child may set its own: the
+    reader tracks those per element instead (columns laid out with inline
+    blocks sit in a cell with font-size:0, and each sets its size back)."""
+    if props.get("display") == "none":
         return True
     try:
         if float(props.get("opacity", "1")) < 0.1:
             return True
     except ValueError:
         pass
-    size = _length(props.get("font-size", ""))
-    if size is not None and size <= 1:
-        return True
     # A box shrunk to nothing hides its text only when overflow is clipped
     # (the newsletter "preheader" trick: max-height:0; overflow:hidden).
     if props.get("overflow") == "hidden":
@@ -223,8 +253,6 @@ def _hides(props: Dict[str, str]) -> bool:
     if re.match(r"rect\(\s*0", props.get("clip", "")):
         return True
     if re.search(r"scale\(\s*0(\.0+)?\s*[,)]", props.get("transform", "")):
-        return True
-    if _colour(props.get("color", "")) == ():
         return True
     return False
 
@@ -354,12 +382,32 @@ class _Sheets(HTMLParser):
             self.css.append(data)
 
 
+@dataclass(frozen=True)
+class _Box:
+    """An open element as the reader sees it. `boxed` is what no
+    descendant can undo (display:none, a clipped box, ...); size, shown
+    and the colours are inherited and a descendant may set its own."""
+    tag: str
+    boxed: bool
+    size: float
+    shown: bool
+    fg: Tuple[int, ...]
+    bg: Tuple[int, ...]
+
+    @property
+    def hidden(self) -> bool:
+        return self.boxed or self.size <= 1 or not self.shown or self.fg == ()
+
+
+_ROOT = _Box("", False, 16.0, True, _DEFAULT_FG, _DEFAULT_BG)
+
+
 class _Extractor(HTMLParser):
     def __init__(self, rules: List[_Rule]):
         super().__init__(convert_charrefs=True)
         self.rules = rules
-        # each open element: (tag, hidden, foreground, background)
-        self.stack: List[Tuple[str, bool, Tuple[int, ...], Tuple[int, ...]]] = []
+        # each open element: _Box
+        self.stack: List[_Box] = []
         self.skip_depth = 0
         self.visible: List[str] = []
         self.hidden: List[str] = []
@@ -367,11 +415,8 @@ class _Extractor(HTMLParser):
         self.anchor: Optional[list] = None
         self.links: List[Tuple[str, str]] = []
 
-    def _state(self):
-        if self.stack:
-            _t, hidden, fg, bg = self.stack[-1]
-            return hidden, fg, bg
-        return False, _DEFAULT_FG, _DEFAULT_BG
+    def _state(self) -> "_Box":
+        return self.stack[-1] if self.stack else _ROOT
 
     def _out(self, piece: str, hidden: bool) -> None:
         (self.hidden if hidden else self.visible).append(piece)
@@ -383,20 +428,30 @@ class _Extractor(HTMLParser):
             return
         if self.skip_depth:
             return
-        hidden, fg, bg = self._state()
+        parent = self._state()
         a = {k.lower(): (v or "") for k, v in attrs}
         props = _cascade(self.rules, tag, a.get("id", ""), set(a.get("class", "").split()),
                          _declarations(a.get("style", "")))
-        if ("hidden" in a or _hides(props)
-                or (tag == "input" and a.get("type", "").lower() == "hidden")):
-            hidden = True
+        boxed = (parent.boxed or "hidden" in a or _hides_box(props)
+                 or (tag == "input" and a.get("type", "").lower() == "hidden"))
+        shown = parent.shown
+        if props.get("visibility") in ("hidden", "collapse"):
+            shown = False
+        elif props.get("visibility") == "visible":
+            shown = True
+        bg = parent.bg
         new_bg = (_first_colour(props.get("background-color", ""))
                   or _first_colour(props.get("background", "")) or _colour(a.get("bgcolor", "")))
         if new_bg:
             bg = new_bg
-        new_fg = _colour(props.get("color", "")) or (_colour(a.get("color", "")) if tag == "font" else None)
-        if new_fg:
-            fg = new_fg
+        fg = parent.fg
+        new_fg = _colour(props.get("color", ""))
+        if new_fg is None and tag == "font":
+            new_fg = _colour(a.get("color", ""))
+        if new_fg is not None:
+            fg = new_fg     # () is transparent: hidden until a child sets a colour
+        box = _Box(tag, boxed, _font_size(props.get("font-size", ""), parent.size), shown, fg, bg)
+        hidden = box.hidden
         # The colour test runs on the text itself (handle_data): a dark
         # cell is not hidden, only text the colour of its background is.
         if tag == "a" and not hidden:
@@ -408,7 +463,7 @@ class _Extractor(HTMLParser):
         if tag == "br":
             self._out("\n", hidden)
         elif tag not in _VOID:
-            self.stack.append((tag, hidden, fg, bg))
+            self.stack.append(box)
         self._out(" ", hidden)
 
     def handle_startendtag(self, tag, attrs):
@@ -435,8 +490,8 @@ class _Extractor(HTMLParser):
                 self.links.append((text, href))
             self.anchor = None
         for i in range(len(self.stack) - 1, -1, -1):
-            if self.stack[i][0] == tag:
-                hidden = self.stack[i][1]
+            if self.stack[i].tag == tag:
+                hidden = self.stack[i].hidden
                 del self.stack[i:]
                 self._out("\n" if tag in _BREAK_AFTER else " ", hidden)
                 return
@@ -444,8 +499,8 @@ class _Extractor(HTMLParser):
     def handle_data(self, data):
         if self.skip_depth:
             return
-        hidden, fg, bg = self._state()
-        hidden = hidden or (data.strip() != "" and _close(fg, bg))
+        box = self._state()
+        hidden = box.hidden or (data.strip() != "" and _close(box.fg, box.bg))
         if self.anchor is not None and not hidden:
             self.anchor[1].append(data)
         self._out(data, hidden)

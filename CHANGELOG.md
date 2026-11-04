@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Mail laid out in columns is no longer withheld from the agent as
+  hidden text.** Many newsletters and portal notifications put their
+  columns in a cell with `font-size:0`, to remove the gaps between them,
+  and each column sets its own size back. GigaMail took everything inside
+  that cell for hidden: the agent got only the footer and a warning that
+  the rest was hidden. A font size, `visibility` and a transparent colour
+  are now inherited the way a mail client inherits them, so a child that
+  sets them back is read; `display:none`, a clipped box or `opacity:0`
+  still hide everything inside, whatever a child says.
+
 ## v0.6.7 — 2026-11-04
 
 - **An action approved from the console no longer looks like an error to

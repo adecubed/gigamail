@@ -66,6 +66,40 @@ def test_text_on_a_dark_cell_in_a_light_colour_is_visible():
     assert vt.hidden_chars == 0
 
 
+@pytest.mark.parametrize("markup", [
+    # Columns laid out with inline blocks: the cell sets font-size:0 to
+    # remove the gaps between them, each column sets its own size back.
+    '<table><tr><td style="font-size:0;line-height:0">'
+    '<div style="display:inline-block;font-size:14px">Hello</div></td></tr></table>',
+    '<style>.cols {font-size:0} .col {font-size:16px}</style>'
+    '<div class="cols"><div class="col">Hello</div></div>',
+    '<div style="font-size:0"><p style="font-size:1rem">Hello</p></div>',
+    '<div style="visibility:hidden"><p style="visibility:visible">Hello</p></div>',
+    '<div style="color:transparent"><p style="color:#333333">Hello</p></div>',
+])
+def test_a_child_can_undo_what_it_inherits(markup):
+    vt = visible_text(markup)
+    assert vt.text == "Hello"
+    assert vt.hidden_chars == 0
+
+
+@pytest.mark.parametrize("markup", [
+    # a size relative to zero is still zero
+    f'<p>Hello</p><div style="font-size:0"><p style="font-size:1.5em">{ORDER}</p></div>',
+    f'<p>Hello</p><div style="font-size:0"><p style="font-size:200%">{ORDER}</p></div>',
+    f'<p>Hello</p><div style="font-size:0"><p>{ORDER}</p></div>',
+    # nothing a child says brings these back
+    f'<p>Hello</p><div style="opacity:0"><p style="opacity:1">{ORDER}</p></div>',
+    f'<p>Hello</p><div style="max-height:0;overflow:hidden">'
+    f'<p style="font-size:14px">{ORDER}</p></div>',
+    f'<p>Hello</p><div style="visibility:hidden"><p style="font-size:14px">{ORDER}</p></div>',
+])
+def test_what_a_child_cannot_undo_stays_hidden(markup):
+    vt = visible_text(markup)
+    assert vt.text == "Hello"
+    assert "curl" in vt.hidden_text
+
+
 def test_rules_inside_media_queries_do_not_hide_text():
     vt = visible_text("<style>@media (max-width:480px) { .desk {display:none} }</style>"
                       '<p class="desk">Desktop text</p>')
