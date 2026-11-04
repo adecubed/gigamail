@@ -44,4 +44,32 @@
     <loc>https://gigamail.ai/credits.html</loc>
     <lastmod>2026-10-20</lastmod>
   </url>
+  <url>
+    <loc>https://gigamail.ai/mcp-map.html</loc>
+    <lastmod>2026-11-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/mcp-map.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/mcp-map-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/mcp-map.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/mcp-map-it.html</loc>
+    <lastmod>2026-11-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/mcp-map.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/mcp-map-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/mcp-map.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/gigamail-vs-agentmail.html</loc>
+    <lastmod>2026-11-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/gigamail-vs-agentmail.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/gigamail-vs-agentmail-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/gigamail-vs-agentmail.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/gigamail-vs-agentmail-it.html</loc>
+    <lastmod>2026-11-04</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/gigamail-vs-agentmail.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/gigamail-vs-agentmail-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/gigamail-vs-agentmail.html"/>
+  </url>
 </urlset>
