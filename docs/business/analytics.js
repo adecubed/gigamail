@@ -33,5 +33,30 @@ export function installAnalytics(config, win=window, doc=document){
  const script=doc.createElement('script');script.src='https://static.cloudflareinsights.com/beacon.min.js';script.defer=true;
  script.setAttribute('data-cf-beacon',JSON.stringify({token}));doc.head.append(script);return true;
 }
+// Download clicks: which installer, nothing about who. Each link to a
+// release file of the repo sends one 'download' event with the file's kind
+// (the backend accepts only these names); the release page itself counts as
+// 'release-page'. One listener on the document covers every page and the
+// hero button, whose href home.js swaps for the visitor's platform. The
+// browser follows the link as usual: keepalive lets the event finish.
+const RELEASES = /^https:\/\/github\.com\/adecubed\/gigamail\/releases\b/;
+export function downloadKind(href){
+ if(!RELEASES.test(href||''))return '';
+ const file=(href.split('?')[0].split('/').pop()||'');
+ if(/\.exe$/i.test(file))return 'win';
+ if(/arm64\.dmg$/i.test(file))return 'mac-arm';
+ if(/x64\.dmg$/i.test(file))return 'mac-intel';
+ if(/\.deb$/i.test(file))return 'linux-deb';
+ if(/\.AppImage$/i.test(file))return 'linux-appimage';
+ return 'release-page';
+}
+export function trackDownloads(config=analyticsConfig, win=window, doc=document){
+ doc.addEventListener('click',(e)=>{
+  const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
+  const kind=a?downloadKind(a.href):'';
+  if(kind)track('download',{text:kind},config,win);
+ },true);
+}
 trackVisit();
+trackDownloads();
 installAnalytics(analyticsConfig);
