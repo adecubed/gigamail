@@ -4,9 +4,12 @@
 (function () {
   // Download: mark the installer for the visitor's platform. Apple Silicon
   // cannot be told from Intel in a browser, so macOS gets the arm64 build as
-  // the primary with the Intel one next to it.
+  // the primary with the Intel one next to it. Linux gets the .deb, which
+  // also runs where the AppImage cannot use Chromium's sandbox; Android
+  // says Linux too and has no build.
   var ua = navigator.userAgent || '';
-  var platform = /Windows/i.test(ua) ? 'win' : /Macintosh|Mac OS X/i.test(ua) ? 'mac-arm' : '';
+  var platform = /Windows/i.test(ua) ? 'win' : /Macintosh|Mac OS X/i.test(ua) ? 'mac-arm'
+    : /Linux/i.test(ua) && !/Android/i.test(ua) ? 'linux' : '';
   if (platform) {
     var mine = document.querySelector('.dl a[data-platform="' + platform + '"]');
     if (mine) mine.classList.add('is-mine');
@@ -14,7 +17,7 @@
     if (primary && mine) {
       primary.href = mine.href;
       var label = primary.querySelector('span');
-      if (label) label.textContent = primary.getAttribute(platform === 'win' ? 'data-label-win' : 'data-label-mac');
+      if (label) label.textContent = primary.getAttribute('data-label-' + platform.split('-')[0]);
     }
   }
 

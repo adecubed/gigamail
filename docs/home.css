@@ -148,6 +148,8 @@ section { padding: 44px 0; }
   border: 1.5px solid var(--gm-line); background: var(--gm-card2); color: var(--gm-ink); font-weight: 600; font-size: 0.92rem; }
 .dl a:hover { border-color: var(--gm-tint-line); background: var(--gm-tint); color: var(--gm-pink); }
 .dl a small { color: var(--gm-muted); font-weight: 500; }
+.dl a .beta { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gm-tint); color: var(--gm-pink);
+  font-style: normal; font-weight: 600; font-size: 0.72rem; vertical-align: 1px; }
 .dl a.is-mine { border-color: var(--gm-pink); box-shadow: 0 0 0 3px rgba(var(--gm-accent-rgb),0.12); }
 pre { margin: 12px 0 0; padding: 14px 16px; border-radius: 12px; background: var(--gm-code); color: var(--gm-code-ink);
   font-size: 0.82rem; line-height: 1.55; overflow-x: auto; white-space: pre; max-width: 100%; }
