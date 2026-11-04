@@ -53,14 +53,18 @@ class _FakeSMTP:
 
     def sendmail(self, from_addr, to_addrs, msg):
         self.sent = list(to_addrs)
-        return {r: (550, b"5.1.1 User unknown") for r in to_addrs
-                if r in _FakeSMTP.refused}
+        refused = {r: _FakeSMTP.reply for r in to_addrs if r in _FakeSMTP.refused}
+        # as smtplib does: when no recipient is left it raises, it does not return
+        if refused and len(refused) == len(to_addrs):
+            raise imap_client.smtplib.SMTPRecipientsRefused(refused)
+        return refused
 
 
 @pytest.fixture
 def fake_smtp(monkeypatch):
     _FakeSMTP.instances = []
     _FakeSMTP.refused = set()
+    _FakeSMTP.reply = (550, b"5.1.1 User unknown")
     monkeypatch.setattr(imap_client.smtplib, "SMTP_SSL", _FakeSMTP)
     monkeypatch.setattr(imap_client.smtplib, "SMTP", _FakeSMTP)
     monkeypatch.setattr(imap_client, "_append_to_sent_folder", lambda *a, **k: True)
@@ -102,6 +106,35 @@ def test_tutti_rifiutati_e_un_fallimento(fake_smtp):
     r = _send()
     assert r["success"] is False
     assert r["provider_result"]["accepted"] == 0
+    assert set(r["provider_result"]["refused"]) == {"a@x.it", "b@x.it", "c@x.it"}
+
+
+def test_a_domain_that_takes_no_mail_is_said_in_words(fake_smtp):
+    """Seen live (26/10): a typo in the domain of the address and the
+    console showed Python's own repr of the refusal:
+    {'mario.rossi@...': (556, b'5.1.10 ...')}. Now the person reads
+    who was refused, the server's reason, and what to check."""
+    fake_smtp.refused = {"mario.rossi@example.com"}
+    fake_smtp.reply = (556, b"5.1.10 example.com dominio non valido / invalid destination domain")
+    r = imap_client.send_message("smtp.example.it", 465, "me@example.it", "pw",
+                                 "mario.rossi@example.com", "s", "b")
+    assert r["success"] is False
+    err = r["error"]
+    assert "mario.rossi@example.com" in err and "556" in err
+    assert "dominio non valido" in err
+    assert "example.com" in err and "indirizzo" in err   # what to check
+    assert "b'" not in err and "{'" not in err
+    pr = r["provider_result"]
+    assert pr["accepted"] == 0
+    assert pr["refused"]["mario.rossi@example.com"]["code"] == 556
+    assert pr["refused"]["mario.rossi@example.com"]["message"].startswith("5.1.10")
+
+
+def test_the_refusal_follows_the_user_language(fake_smtp, monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_LANG", "en")
+    fake_smtp.refused = {"a@x.it"}
+    r = imap_client.send_message("smtp.example.it", 465, "me@example.it", "pw", "a@x.it", "s", "b")
+    assert r["error"].startswith("The server refused")
 
 
 # ---------------------------------------------------------------- TLS (B4)

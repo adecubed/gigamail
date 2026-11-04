@@ -81,3 +81,36 @@ def test_delete_pulisce_anche_handled(store):
     assert store.delete(rid)
     assert store.get(rid) is None
     assert not store.already_handled(rid, "m1")
+
+
+def test_first_start_builds_one_store_however_many_threads_ask(tmp_path, monkeypatch):
+    """On a fresh profile the watcher guard thread and GET /onboarding
+    reach store() together, and each built a RuleStore on the same new
+    rules.db: the likely cause of the 500 that kept the first-run guide
+    shut in the desktop build (26/10). One store, built once."""
+    import threading
+
+    built = []
+    real_init = rules_mod.RuleStore.__init__
+
+    def slow_init(self, path=None):
+        built.append(self)
+        time.sleep(0.05)          # widen the window two threads raced through
+        real_init(self, tmp_path / "rules.db")
+
+    monkeypatch.setattr(rules_mod.RuleStore, "__init__", slow_init)
+    monkeypatch.setattr(rules_mod, "_store", None)
+    go = threading.Barrier(8)
+    got = []
+
+    def ask():
+        go.wait()
+        got.append(rules_mod.store())
+
+    threads = [threading.Thread(target=ask) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(built) == 1
+    assert all(s is got[0] for s in got)

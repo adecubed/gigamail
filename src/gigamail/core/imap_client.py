@@ -1537,6 +1537,35 @@ def set_read_status(
         return False
     finally:
         _close_conn_safely(conn)
+
+
+def _refused_text(refused: Dict) -> str:
+    """The recipients the server refused, its reason for each, in words.
+    A domain that takes no mail at all (556 / 5.1.10: a null MX, RFC 7505;
+    5.1.2: no such destination) is almost always a typo in the address,
+    and the line says so."""
+    from gigamail import policy
+    it = policy.user_lang() == "it"
+    righe = []
+    for rcpt, reply in refused.items():
+        code, text = (reply if isinstance(reply, (tuple, list)) and len(reply) == 2 else ("", reply))
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", errors="replace")
+        riga = f"{rcpt}: {code} {text}".strip()
+        if code == 556 or re.search(r"\b5\.1\.(10|2)\b", str(text)):
+            dominio = str(rcpt).rsplit("@", 1)[-1]
+            riga += (f" (il dominio {dominio} non riceve posta: controlla l'indirizzo)" if it
+                     else f" (the domain {dominio} does not receive mail: check the address)")
+        righe.append(riga)
+    if it:
+        testa = ("Il server ha rifiutato il destinatario" if len(righe) == 1
+                 else "Il server ha rifiutato i destinatari")
+    else:
+        testa = ("The server refused the recipient" if len(righe) == 1
+                 else "The server refused the recipients")
+    return f"{testa}: " + "; ".join(righe)
+
+
 def send_message(
     smtp_host: str,
     smtp_port: int,
@@ -1606,16 +1635,24 @@ def send_message(
         if insecure_tls:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
+        def _deliver(server):
+            # sendmail: {} = tutti accettati; altrimenti {rcpt: (code, msg)}
+            # per i rifiutati. Se non ne resta nessuno pero' non ritorna:
+            # solleva SMTPRecipientsRefused, con la stessa mappa dentro.
+            try:
+                return server.sendmail(email_addr, all_recipients, msg.as_string())
+            except smtplib.SMTPRecipientsRefused as e:
+                return e.recipients
+
         if smtp_port == 465:
             with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as server:
                 server.login(email_addr, password)
-                refused = server.sendmail(email_addr, all_recipients, msg.as_string())
+                refused = _deliver(server)
         else:
             with smtplib.SMTP(smtp_host, smtp_port) as server:
                 server.starttls(context=ctx)
                 server.login(email_addr, password)
-                refused = server.sendmail(email_addr, all_recipients, msg.as_string())
-        # sendmail: {} = tutti accettati; altrimenti {rcpt: (code, msg)} per i rifiutati
+                refused = _deliver(server)
         refused = refused or {}
         accepted = [r for r in all_recipients if r not in refused]
         provider_result = {
@@ -1628,6 +1665,20 @@ def send_message(
                         for k, v in refused.items()},
             "tls_verified": not insecure_tls,
         }
+        if not accepted:
+            # Nessuno l'ha ricevuta: niente copia in Inviate, e un errore
+            # che una persona legge. Prima arrivava a video il repr Python
+            # dell'eccezione: {'mario.rossi@...': (556, b'5.1.10 ...')}.
+            error = _refused_text(refused)
+            print(f"[IMAP] Send refused: {error}")
+            return {
+                "success": False,
+                "provider": "imap",
+                "sent_copy_saved": False,
+                "warning": None,
+                "error": error,
+                "provider_result": provider_result,
+            }
 
         saved = None
         if imap_host and imap_port and imap_password:

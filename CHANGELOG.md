@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## v0.6.7 — 2026-11-04
+
+- **An action approved from the console no longer looks like an error to
+  the agent.** Approving from the console runs the action at once; the
+  agent that then called the tool again with the `request_id`, as it is
+  told to, got an error although the event or mail had gone through. It
+  now gets `status: "already_executed"` with the recorded outcome (`ok`,
+  `failed` with the provider's error, `dryrun`), and is told not to call
+  again.
+
+- **A refused send says who and why, in words.** When the server refused
+  every recipient, smtplib raised instead of returning, the error was
+  Python's repr of the exception (`{'mario.rossi@example.com': (556, b'5.1.10 ...')}`)
+  and the audit recorded no refused recipient. Now the console shows each
+  refused address with the server's code and reason, a domain that takes
+  no mail (556, 5.1.10, 5.1.2) adds "check the address" — almost always a
+  typo — `provider_result.refused` lists them, and no copy is saved to
+  Sent for a mail nobody received.
+
+- **The first-run guide opens on a fresh profile every time.** The
+  backend's watcher guard and the console's first requests asked for the
+  rules store at the same moment, each built its own on the new
+  `rules.db`, and `GET /onboarding` could answer 500, so the guide did not
+  open (seen once in the desktop build's smoke test). `rules.store()` is
+  now built once, under a lock.
 
 - **SECURITY.md matches the releases.** It listed the IMAP certificate
   fix as "Unreleased" although it shipped in v0.4.1, so a reader
@@ -10,6 +34,7 @@
   left `move_message` and the two Drive tools out of the approval gate.
   The release workflow now refuses a tag while SECURITY.md still says
   "Unreleased".
+
 - **The desktop app for Linux.** Until now Linux had only `pip install
   gigamail`, with no graphical app. Each release now also carries, x64,
   with their own Python like the Windows and macOS apps:

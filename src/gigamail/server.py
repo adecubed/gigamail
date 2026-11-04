@@ -802,8 +802,9 @@ APPROVED_EXECUTORS = {
 def execute_approved(request_id: str):
     """Completes an APPROVED request with the arguments stored with it,
     exactly as the tool called again with the request_id would. Returns
-    the tool result; raises ValueError when the request is unknown, not
-    approved any more, or of a tool that cannot be run here."""
+    the tool result ({status: already_executed, ...} when it has already
+    run); raises ValueError when the request is unknown, not approved any
+    more, or of a tool that cannot be run here."""
     rec = policy.store().get(request_id)
     if not rec:
         raise ValueError(f"request {request_id} not found")

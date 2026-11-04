@@ -23,6 +23,7 @@ processi diversi (watcher, CLI, console) condividono SQLite, non memoria.
 import json
 import secrets
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -497,12 +498,20 @@ class RuleStore:
 
 
 _store: Optional[RuleStore] = None
+_store_lock = threading.Lock()
 
 
 def store() -> RuleStore:
+    """The shared store, built once. On a fresh profile the backend's
+    watcher guard and the console's first requests ask for it at the same
+    moment: without the lock each built its own RuleStore on the same new
+    rules.db. The likely cause of a GET /onboarding that answered 500 in
+    the desktop build (26/10), when the first-run guide did not open."""
     global _store
     if _store is None:
-        _store = RuleStore()
+        with _store_lock:
+            if _store is None:
+                _store = RuleStore()
     return _store
 
 

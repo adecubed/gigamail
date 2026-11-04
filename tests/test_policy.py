@@ -83,9 +83,43 @@ def test_esegue_gli_args_canonici_non_quelli_ripassati():
 def test_approvazione_monouso():
     r = _fase1()
     policy.store().approve(r["request_id"])
-    policy.execute_dangerous("send_mail", {}, r["request_id"], _preview, lambda a: "ok")
-    with pytest.raises(ValueError):
-        policy.execute_dangerous("send_mail", {}, r["request_id"], _preview, lambda a: "ok")
+    executed = []
+    policy.execute_dangerous("send_mail", {}, r["request_id"], _preview,
+                             lambda a: executed.append(a) or {"success": True})
+    out = policy.execute_dangerous("send_mail", {}, r["request_id"], _preview,
+                                   lambda a: executed.append(a) or {"success": True})
+    assert len(executed) == 1
+    assert out["status"] == "already_executed"
+
+
+def test_already_executed_by_the_console_is_a_status_not_an_error():
+    """Approving from the console runs the action at once; the agent that
+    then calls back with the request_id is told it is done, with the
+    outcome, instead of getting an error for an action that succeeded."""
+    r = _fase1(tool="create_event", args={"subject": "Follow-up"})
+    policy.store().approve(r["request_id"])
+    policy.execute_dangerous("create_event", {}, r["request_id"], _preview,
+                             lambda a: {"id": "evt-1"})
+    out = policy.execute_dangerous("create_event", {}, r["request_id"], _preview,
+                                   lambda a: pytest.fail("executed twice"))
+    assert out["status"] == "already_executed"
+    assert out["request_id"] == r["request_id"]
+    assert out["execution_outcome"] == "ok"
+    assert "Do not call again" in out["instructions"]
+
+
+def test_already_executed_reports_a_failed_attempt():
+    r = _fase1()
+    policy.store().approve(r["request_id"])
+    with pytest.raises(RuntimeError):
+        policy.execute_dangerous("send_mail", {}, r["request_id"], _preview,
+                                 lambda a: (_ for _ in ()).throw(RuntimeError("smtp down")))
+    out = policy.execute_dangerous("send_mail", {}, r["request_id"], _preview,
+                                   lambda a: pytest.fail("executed twice"))
+    assert out["status"] == "already_executed"
+    assert out["execution_outcome"] == "failed"
+    assert out["provider_result"] == {"error": "smtp down"}
+    assert "without request_id" in out["instructions"]
 
 
 def test_consume_concorrente_esegue_una_volta_sola():
