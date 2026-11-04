@@ -127,7 +127,9 @@ def test_dalla_ricerca_all_invio_approvato(account):
         "la risposta approvata non e' arrivata al cliente"
 
     # 6. la stessa approvazione non vale due volte
-    with pytest.raises(ValueError):
-        srv.reply_mail(message_id=mail["id"], body=corpo,
-                       account_id=account, request_id=rid)
+    # (it says it already ran, and sends nothing)
+    ancora = srv.reply_mail(message_id=mail["id"], body=corpo,
+                            account_id=account, request_id=rid)
+    assert ancora["status"] == "already_executed", ancora
+    assert ancora["execution_outcome"] == "ok", ancora
     assert sum(segno in o for o in _oggetti(CLIENTE)) == 1
