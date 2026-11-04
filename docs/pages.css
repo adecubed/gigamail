@@ -1,0 +1,49 @@
+/* pages.css — sub-pages of gigamail.ai (MCP map, comparisons), on top of home.css */
+.subpage section { padding: 22px 0; }
+.subpage .wrap.narrow { max-width: 1040px; }
+.subpage .hero.sub { padding: 52px 0 18px; }
+.subpage .hero.sub .wrap { display: block; }
+.subpage .hero.sub h1 { font-size: clamp(2rem, 4.4vw, 3.1rem); line-height: 1.08; letter-spacing: -0.03em; max-width: 22ch; }
+.subpage .hero.sub h1 em { font-style: normal; color: var(--gm-pink); }
+.subpage .hero.sub .lede { max-width: 62ch; margin-top: 14px; }
+.subpage h2 { font-size: 1.45rem; letter-spacing: -0.02em; margin: 0 0 14px; }
+.subpage .card.pad { padding: 18px 20px; }
+.subpage .card h3 { font-size: 1.02rem; margin: 0 0 6px; }
+.subpage .card p, .subpage .card li { color: var(--gm-muted); font-size: 0.93rem; }
+.subpage .note { margin-top: 12px; font-size: 0.9rem; }
+.subpage code { font-family: var(--mono); font-size: 0.86em; background: var(--gm-fill); border-radius: 6px; padding: 1px 5px; }
+.chip-c { display: inline-block; font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; border-radius: 999px; padding: 4px 10px; margin-right: 10px; vertical-align: middle; }
+.c-read { background: var(--gm-fill); color: var(--gm-ink); }
+.c-safe { background: var(--gm-green-bg); color: var(--gm-green); }
+.c-danger { background: var(--gm-amber-bg); color: var(--gm-amber); }
+.c-admin { background: var(--gm-ink); color: var(--gm-bg); }
+.cls .num { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; margin: 10px 0 2px; }
+.flow { list-style: none; padding: 0; margin: 0; counter-reset: none; }
+.flow .n { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; background: var(--gm-pink); color: #fff; font-weight: 700; align-items: center; justify-content: center; margin-bottom: 10px; }
+.tbl { padding: 6px 0 4px; margin-bottom: 14px; overflow-x: auto; }
+.tbl h3 { padding: 14px 20px 4px; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.tbl th, .tbl td { text-align: left; vertical-align: top; padding: 10px 20px; border-top: 1px solid var(--gm-line); }
+.tbl thead th { color: var(--gm-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; border-top: 0; }
+.tbl td { color: var(--gm-muted); }
+.tbl td:first-child code { white-space: nowrap; }
+.cmp table { table-layout: fixed; }
+.cmp th[scope="row"] { color: var(--gm-ink); font-weight: 600; }
+.cmp .gm { background: var(--gm-tint); color: var(--gm-ink); }
+.cmp thead .gm { color: var(--gm-pink); }
+.cmp thead th:first-child { width: 20%; }
+.cmp thead th { width: 40%; }
+.when .mine { border: 1.5px solid var(--gm-tint-line); background: var(--gm-tint); }
+.when ul { margin: 6px 0 0; padding-left: 1.1rem; }
+.when li { margin: 6px 0; }
+.callout-admin { display: flex; gap: 6px; align-items: flex-start; }
+.callout-admin p { margin: 0; }
+@media (max-width: 700px) {
+  .cmp table, .cmp thead, .cmp tbody, .cmp tr, .cmp th, .cmp td { display: block; width: auto !important; }
+  .cmp thead { display: none; }
+  .cmp tr { border-top: 1px solid var(--gm-line); padding: 8px 0; }
+  .cmp th[scope="row"] { border: 0; padding-bottom: 2px; }
+  .cmp td { border: 0; padding-top: 4px; }
+  .cmp td.gm::before { content: "GigaMail"; display: block; font-weight: 700; color: var(--gm-pink); font-size: 0.78rem; }
+  .cmp td:not(.gm)::before { content: "AgentMail"; display: block; font-weight: 700; color: var(--gm-ink); font-size: 0.78rem; }
+}
