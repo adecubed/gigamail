@@ -213,8 +213,52 @@
     return `${api}/mail/${encodeURIComponent(target.id)}/read${params.length ? '?' + params.join('&') : ''}`;
   }
 
+  /** The document the PRINT button sends to the printer: the mail's
+   *  subject, sender, recipients and date on top, then the body through
+   *  the same sanitizer as the iframe. Every header value goes in as text.
+   *  @param {{subject?: string, from?: string, to?: string, cc?: string, date?: string}} meta
+   *  @param {string} body HTML when opts.isHtml, plain text otherwise
+   *  @param {{isHtml?: boolean, resolveCid?: (cid: string) => string|null,
+   *           labels?: {from?: string, to?: string, cc?: string, date?: string}}} [opts] */
+  function printableHtml(meta, body, opts) {
+    const o = opts || {};
+    const m = meta || {};
+    const L = Object.assign({ from: 'From', to: 'To', cc: 'Cc', date: 'Date' }, o.labels || {});
+    let src = String(body || '');
+    if (!o.isHtml) {
+      const scratch = new DOMParser().parseFromString('', 'text/html');
+      const pre = scratch.createElement('div');
+      pre.setAttribute('style', 'white-space:pre-wrap;font-family:sans-serif;font-size:13px;line-height:1.5');
+      pre.textContent = src;
+      src = pre.outerHTML;
+    }
+    const doc = new DOMParser().parseFromString(sanitizeHtml(src, { resolveCid: o.resolveCid }), 'text/html');
+    const title = doc.createElement('title');
+    title.textContent = m.subject || '';
+    doc.head.appendChild(title);
+
+    const box = doc.createElement('div');
+    box.setAttribute('style', 'font-family:sans-serif;font-size:12px;color:#000;'
+      + 'border-bottom:1px solid #999;padding:0 0 8px;margin:0 0 12px');
+    const subject = doc.createElement('div');
+    subject.setAttribute('style', 'font-size:16px;font-weight:bold;margin:0 0 6px');
+    subject.textContent = m.subject || '';
+    box.appendChild(subject);
+    for (const [key, value] of [['from', m.from], ['to', m.to], ['cc', m.cc], ['date', m.date]]) {
+      if (!value) continue;
+      const row = doc.createElement('div');
+      const label = doc.createElement('b');
+      label.textContent = `${L[key]}: `;
+      row.appendChild(label);
+      row.appendChild(doc.createTextNode(String(value)));
+      box.appendChild(row);
+    }
+    doc.body.insertBefore(box, doc.body.firstChild);
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  }
+
   const MailRender = { sanitizeHtml, renderMailHtml, matchAttachment, htmlToText, BLANK_GIF, IFRAME_CSP,
-    shouldMarkRead, markReadTarget, markReadUrl };
+    shouldMarkRead, markReadTarget, markReadUrl, printableHtml };
   if (typeof window !== 'undefined') window.MailRender = MailRender;
   if (typeof module !== 'undefined' && module.exports) module.exports = MailRender;
 })();

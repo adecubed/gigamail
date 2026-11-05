@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Mails can be printed from the console.** A PRINT button after UNREAD
+  opens the system print dialog with the mail's subject, sender,
+  recipients and date on top, then its body, images included; "Save as
+  PDF" works from the same dialog.
+- **A file dropped on the AI instruction now reaches the draft.** The reply
+  and new-mail windows say "drop a file for context", but they sent the
+  file to an endpoint GigaMail never had: the file's name appeared, as if
+  it had been read, and the draft was written without it. The file's text
+  (PDF, Word, Excel, TXT, CSV, MD; 20 MB at most) now goes to the draft as
+  reference material, up to 20,000 characters instead of the 3,000 the
+  windows used to cut it to, and the badge shows how many characters were
+  read. A file with no text to use (an image, a scanned PDF, an unknown
+  format) is refused with the reason, and no badge appears.
+
 - **A reply rule no longer expires in silence, and can be renewed.** A
   rule expires after its period (30 days by default) by design: it is an
   approval given in advance. But when it did, it stopped answering and
