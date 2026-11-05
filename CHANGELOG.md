@@ -18,6 +18,12 @@
   saved and counts the days left. It is approved, edited or rejected
   later as usual, with the same verification. Only a click in the
   console can save a request.
+- **The website asks nothing of Google.** Poppins was loaded from Google
+  Fonts on every page, so each visitor's address reached Google. The font
+  is now served from gigamail.ai (`docs/fonts/`, SIL Open Font License),
+  and the Privacy Policy says where the site is hosted (GitHub Pages) and
+  that it uses no cookies or local storage. The home's menu links What's
+  new.
 - **What's new on the website.** A page in English and Italian
   (`changelog.html`, `changelog-it.html`) tells what every release
   brought, from 0.1.0 to 0.6.7: the highlights of each minor version, then
