@@ -393,22 +393,44 @@ it, and an instruction hidden there is addressed to the agent alone.
 
 - **`read_message` hands the visible text, never the HTML.** The body is
   read the way a person sees it (`core/html_text.py`), in two passes:
-  every `<style>` block first, wherever it sits, then the body. Rules apply
-  by compound selector (tag, `#id` and every `.class`), with `!important`
-  (any case) and the inline style cascading over them; inline styles,
-  `hidden`, `<font color>` and `bgcolor` count too. Zero-width,
-  bidi-control and tag characters are dropped. Body, `body_text` and
-  `bodyPreview` all come from that one reading; when anything was left out
-  the result carries `hidden_text`.
+  every `<style>` block first, wherever it sits, then the body. Rules with
+  a compound selector (tag, `#id` and every `.class`) cascade with
+  `!important` (any case) and the inline style over them; inline styles,
+  `hidden`, `<font color>`, `<font size>` and `bgcolor` (with or without
+  `#`) count too. A font size, `visibility` and a colour are inherited and
+  a child may set them back, as in a mail client; `display:none`, a
+  clipped box or `opacity:0` hide everything inside. Where the CSS
+  background and `bgcolor` differ, text close to either is hidden.
+  Zero-width, bidi-control, grapheme-joiner and tag characters are
+  dropped. Body, `body_text` and `bodyPreview` all come from that one
+  reading; when anything was left out the result carries `hidden_text`.
+  *Inheritance, colour forms and font sizes — Unreleased: on `main`, not
+  in a release yet.*
+- **Other selectors only ever hide** (`core/css_select.py`; *Unreleased:
+  on `main`, not in a release yet*). A rule with combinators, attribute or pseudo-class selectors
+  is matched leaning towards matching too much: the rightmost compound
+  exactly, any pseudo-class it does not evaluate dropped, a compound that
+  may name what a client wraps around the message (`u`, `body`,
+  attribute selectors, `ExternalClass`, `x_`, `ogs`...) taken as present,
+  and Gmail's `<div>` after every `<img>` seen by `+` and `~`. Such a rule
+  can hide the element or give its text one more colour or background it
+  may be drawn with; it never shows text another rule hides. A colour
+  counts only from a rule matched exactly and, unless `!important`, on an
+  element without an inline colour. Rules that cannot hide document text
+  (`:hover`, `:focus`, `:visited`, `::before`, `:empty`) are dropped.
 - **What cannot be evaluated is withheld, not guessed.** A parser error, a
-  hiding rule with a selector the reader does not support (descendant,
-  attribute, pseudo-class) or an external style sheet mark the body as not
-  checked: the agent gets no body, and `withheld` says to read it in the
-  console. There is no fallback that strips tags and hands out the rest.
-  The one external sheet accepted is Google Fonts (`fonts.googleapis.com`,
-  that host exactly): it only declares fonts and is served by Google, not
-  by the sender, and so many newsletters and invitations load one that
-  withholding them hid half of an ordinary inbox from the agent.
+  hiding rule with a selector the reader cannot read at all, more than 500
+  rules with combinators (a mail could make the reading slow on purpose)
+  or an external style sheet mark the body as not checked: the agent gets
+  no body, and `withheld` says to read it in the console. There is no
+  fallback that strips tags and hands out the rest. The external sheets
+  accepted are those of font services that write the CSS themselves: Google
+  Fonts, Adobe Fonts (`use.typekit.net`, `p.typekit.net`), Bunny Fonts,
+  `fonts.cdnfonts.com/css/` and `rsms.me/inter/`, each host exactly. Not
+  hosts where the sender uploads the file, and not CSS libraries (Font
+  Awesome carries a `.sr-only` rule that does hide text). So many
+  newsletters and invitations load a font sheet that withholding them hid
+  half of an ordinary inbox from the agent.
 - **Previews.** Provider previews (`bodyPreview` from Graph or IMAP lists)
   are withheld: they are text made from the HTML, where hidden text cannot
   be told apart. Archive search previews are made from the checked text of

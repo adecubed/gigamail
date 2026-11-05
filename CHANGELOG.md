@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **A reply rule no longer expires in silence, and can be renewed.** A
+  rule expires after its period (30 days by default) by design: it is an
+  approval given in advance. But when it did, it stopped answering and
+  said nothing, and the console offered only to delete it. Now the
+  watcher tells you on every notification channel three days before and
+  on the day it expires; the console shows a banner and a mark on the
+  Automations icon; and **Renew (Hello)** in the console, or
+  `gigamail rules renew <id>`, gives the rule another period of its own
+  length from now, behind Windows Hello / Touch ID as when it was
+  created. A paused rule stays paused when renewed.
+
 - **Mail laid out in columns is no longer withheld from the agent as
   hidden text.** Many newsletters and portal notifications put their
   columns in a cell with `font-size:0`, to remove the gaps between them,
@@ -11,6 +22,31 @@
   are now inherited the way a mail client inherits them, so a child that
   sets them back is read; `display:none`, a clipped box or `opacity:0`
   still hide everything inside, whatever a child says.
+
+- **Far fewer mails reach the agent empty.** A mail whose style sheet the
+  reader could not evaluate was withheld from the agent entirely: on a
+  real mailbox, more than one HTML mail in four, mostly newsletters and
+  notifications built from common templates. Rules with combinators and
+  attribute or pseudo-class selectors (`.image_block img+div`,
+  `u + .body .x`, `[data-ogsc] .x`) are now evaluated, leaning towards
+  hiding too much: what a mail client wraps around the message counts as
+  there, Gmail's `<div>` after every image is taken into account, and
+  such a rule can only hide text, never show it. Font sheets from Adobe
+  Fonts (Typekit), Bunny Fonts, cdnfonts and Inter's own site are
+  accepted like Google Fonts. On that mailbox the share withheld fell
+  from 28% to 6%; a mail with more than 500 such rules is still
+  withheld, so that none can make the reading slow on purpose.
+
+- **Colours and sizes written in other ways are read as a mail client
+  reads them**: `#rrggbbaa` and `#rgba` colours, a `bgcolor` without `#`
+  (`bgcolor="26aeea"`), the size in the `font` shorthand
+  (`font:700 17px/1.5 Arial`), size keywords (`medium`) and
+  `<font size>`. Text a reader sees was hidden from the agent, and some
+  text a reader does not see was handed to it (`font:0/0 a`, a colour
+  with zero alpha). Where the CSS background and the `bgcolor` attribute
+  differ, text close to either is treated as hidden. The combining
+  grapheme joiner that pads preheaders is now removed like the other
+  invisible characters.
 
 ## v0.6.7 — 2026-11-04
 

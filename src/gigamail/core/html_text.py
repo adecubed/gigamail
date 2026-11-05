@@ -33,15 +33,18 @@ from html.parser import HTMLParser
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlsplit
 
+from gigamail.core import css_select
+
 _SPACES = re.compile(r"[ \t\r\f\v\u00a0]+")
 _BLANK_LINES = re.compile(r"\n\s*\n+")
 
 # Characters that take no room on screen: zero-width spaces and joiners,
+# the combining grapheme joiner (newsletters pad their preheader with it),
 # bidirectional controls, the soft hyphen, the BOM and the Unicode "tag"
 # block (U+E0000-U+E007F), which encodes ASCII that models read and fonts
 # do not draw.
 _INVISIBLE = re.compile(
-    "[\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff"
+    "[\u00ad\u034f\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff"
     "\U000e0000-\U000e007f]"
 )
 
@@ -65,20 +68,36 @@ _DEFAULT_FG = (0, 0, 0)
 # Text this close to its background (Euclidean RGB distance) is not read.
 _SAME_COLOUR = 24
 _MAX_LINKS = 50
+# Rules with combinators are matched against every element: past this many
+# a mail could make reading it slow on purpose, and it is not checked.
+_MAX_COMPLEX_RULES = 500
 _IMPORTANT = re.compile(r"!\s*important\s*$", re.IGNORECASE)
 _SIMPLE_SELECTOR = re.compile(r"^(\*|[a-z][\w-]*)?((?:[.#][\w-]+)*)$", re.IGNORECASE)
 # `@import url("x") media;` and `@import "x";`: group 1 is the address.
 _IMPORT = re.compile(r"""@import\s+(?:url\(\s*)?["']?([^"')\s;]*)["']?\s*\)?[^;{}]*;?""",
                      re.IGNORECASE)
-_FONT_SHEET_HOST = "fonts.googleapis.com"
+# Font services that write the CSS themselves, host -> path prefix: the
+# sender only picks a font. Not hosts where the sender uploads the file
+# (a marketing tool's custom fonts, a bucket), and not CSS libraries
+# (Font Awesome carries a .sr-only rule that does hide text).
+_FONT_SHEET_HOSTS = {
+    "fonts.googleapis.com": "/",
+    "use.typekit.net": "/",
+    "p.typekit.net": "/",
+    "fonts.bunny.net": "/",
+    "fonts.cdnfonts.com": "/css/",
+    "rsms.me": "/inter/",
+}
 
 
 def _font_sheet(url: str) -> bool:
-    """A Google Fonts style sheet: its host exactly, no user, no port."""
+    """A font service's style sheet: its host exactly, no user, no port,
+    under the path where the service serves its font sheets."""
     try:
         u = urlsplit((url or "").strip())
+        prefix = _FONT_SHEET_HOSTS.get((u.hostname or "").lower())
         return (u.scheme.lower() in ("https", "http", "")
-                and (u.hostname or "") == _FONT_SHEET_HOST
+                and prefix is not None and (u.path or "/").startswith(prefix)
                 and u.port is None and "@" not in u.netloc)
     except ValueError:
         return False
@@ -133,11 +152,13 @@ def _colour(value: str) -> Optional[Tuple[int, ...]]:
         return ()
     if v in _NAMED_COLOURS:
         return _NAMED_COLOURS[v]
-    m = re.fullmatch(r"#([0-9a-f]{3}|[0-9a-f]{6})", v)
+    m = re.fullmatch(r"#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})", v)
     if m:
         h = m.group(1)
-        if len(h) == 3:
+        if len(h) <= 4:
             h = "".join(c * 2 for c in h)
+        if len(h) == 8 and int(h[6:8], 16) / 255 < 0.1:
+            return ()      # #rrggbbaa almost fully transparent
         return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
     m = re.fullmatch(r"rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([^)]*?)\s*)?\)", v)
     if m:
@@ -152,9 +173,18 @@ def _colour(value: str) -> Optional[Tuple[int, ...]]:
     return None
 
 
+def _attr_colour(value: str) -> Optional[Tuple[int, ...]]:
+    """A colour attribute (bgcolor, <font color>) as HTML reads it: the
+    "#" is optional there, "26aeea" is a colour."""
+    v = (value or "").strip()
+    if re.fullmatch(r"[0-9a-fA-F]{3}|[0-9a-fA-F]{6}", v):
+        v = "#" + v
+    return _colour(v)
+
+
 def _first_colour(value: str) -> Optional[Tuple[int, ...]]:
     """The colour in a `background` shorthand ("#fff url(x) no-repeat")."""
-    for token in re.findall(r"rgba?\([^)]*\)|#[0-9a-fA-F]{3,6}\b|[a-zA-Z]+", value or ""):
+    for token in re.findall(r"rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b|[a-zA-Z]+", value or ""):
         c = _colour(token)
         if c is not None:
             return c
@@ -195,10 +225,47 @@ def _length(value: str) -> Optional[float]:
     return n * {"em": 16, "rem": 16, "pt": 1.33, "cm": 37.8, "mm": 3.78, "in": 96}.get(unit, 1)
 
 
+_SIZE_KEYWORDS = {"xx-small": 9, "x-small": 10, "small": 13, "medium": 16,
+                  "large": 18, "x-large": 24, "xx-large": 32, "xxx-large": 48}
+# <font size=1..7>, in px
+_FONT_TAG_SIZES = {1: 10, 2: 13, 3: 16, 4: 18, 5: 24, 6: 32, 7: 48}
+_LENGTH = r"-?(?:\d+\.?\d*|\.\d+)\s*(?:px|pt|em|rem|%|cm|mm|in|vh|vw)"
+
+
+def _shorthand_size(value: str) -> str:
+    """The size in a `font` shorthand ("700 17px/1.5 Arial", "0/0 a"): the
+    first length, or the number before "/", or a size keyword; '' if none."""
+    v = (value or "").strip().lower()
+    m = re.search(r"(?:^|\s)(" + _LENGTH + r"|-?[\d.]+(?=\s*/))", v)
+    if m:
+        return m.group(1).replace(" ", "")
+    for word in v.replace("/", " ").split():
+        if word in _SIZE_KEYWORDS:
+            return word
+    return ""
+
+
+def _font_tag_size(value: str, inherited: float) -> float:
+    """<font size="3">, or "+1" / "-2" from the default 3."""
+    v = (value or "").strip()
+    try:
+        n = int(v) if v[:1] not in "+-" else 3 + int(v)
+    except ValueError:
+        return inherited
+    return float(_FONT_TAG_SIZES[min(7, max(1, n))])
+
+
 def _font_size(value: str, inherited: float) -> float:
     """The font size in px an element gets: em and % are relative to the
-    inherited size (zero stays zero), other units replace it, a keyword or
-    an unreadable value inherits."""
+    inherited size (zero stays zero), other units and the absolute
+    keywords replace it, an unreadable value inherits."""
+    v = (value or "").strip().lower()
+    if v in _SIZE_KEYWORDS:
+        return float(_SIZE_KEYWORDS[v])
+    if v == "smaller":
+        return inherited / 1.2
+    if v == "larger":
+        return inherited * 1.2
     m = re.match(r"^(-?[\d.]+)\s*(px|pt|em|rem|%|cm|mm|in|vh|vw)?$", (value or "").strip())
     if not m:
         return inherited
@@ -219,7 +286,7 @@ def _hides(props: Dict[str, str]) -> bool:
     """True when these declarations make an element's text unreadable."""
     if props.get("visibility") in ("hidden", "collapse"):
         return True
-    size = _length(props.get("font-size", ""))
+    size = _length(props.get("font-size", "") or _shorthand_size(props.get("font", "")))
     if size is not None and size <= 1:
         return True
     if _colour(props.get("color", "")) == ():
@@ -292,15 +359,29 @@ def _without_at_blocks(css: str) -> str:
     return "".join(out)
 
 
-def _parse_sheet(css: str) -> Tuple[List[_Rule], str]:
-    """(rules with simple selectors, why it cannot be checked or '')."""
+@dataclass
+class _Complex:
+    """A rule with a selector css_select evaluates, reduced to what can
+    hide text: it may close the box, or give the element one more colour
+    or background it might be drawn with. It never shows text."""
+    selector: css_select.Selector
+    hides: bool
+    fg: Optional[Tuple[int, ...]]
+    bg: Optional[Tuple[int, ...]]
+    fg_important: bool = False
+    bg_important: bool = False
+
+
+def _parse_sheet(css: str) -> Tuple[List[_Rule], List["_Complex"], str]:
+    """(rules with simple selectors, rules with other selectors that may
+    hide text, why it cannot be checked or '')."""
     css = re.sub(r"/\*.*?\*/", "", css or "", flags=re.S)
     if any(not _font_sheet(m.group(1)) for m in _IMPORT.finditer(css)):
-        return [], "external style sheet (@import)"
+        return [], [], "external style sheet (@import)"
     css = _IMPORT.sub("", css)
     if re.search(r"@import\b", css, re.IGNORECASE):
-        return [], "external style sheet (@import)"
-    rules, unsupported = [], ""
+        return [], [], "external style sheet (@import)"
+    rules, complex_rules, unsupported = [], [], ""
     for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", _without_at_blocks(css)):
         decls = _declarations(body)
         if not decls:
@@ -311,10 +392,31 @@ def _parse_sheet(css: str) -> Tuple[List[_Rule], str]:
                 continue
             m = _SIMPLE_SELECTOR.match(sel)
             if not m:
-                # Descendant, attribute or pseudo selectors are not
-                # evaluated. Harmless unless the rule hides something.
-                if _hides({k: v for k, (v, _imp) in decls.items()}):
-                    unsupported = f"hiding rule with an unsupported selector: {sel[:60]}"
+                # Combinators, attributes, pseudo-classes: css_select
+                # matches them, for what can hide text only.
+                props = {k: v for k, (v, _imp) in decls.items()}
+                hides = _hides(props)
+                fg = _colour(props.get("color", ""))
+                bg = (_first_colour(props.get("background-color", ""))
+                      or _first_colour(props.get("background", "")))
+                if not (hides or fg or bg):
+                    continue
+                try:
+                    selector = css_select.parse(sel)
+                except ValueError:
+                    if hides:
+                        unsupported = f"hiding rule with an unsupported selector: {sel[:60]}"
+                    continue
+                if selector is None:
+                    continue
+                if not selector.exact:
+                    fg = bg = None      # see Selector.exact
+                if hides or fg or bg:
+                    complex_rules.append(_Complex(
+                        selector, hides, fg or None, bg or None,
+                        fg_important=decls.get("color", ("", False))[1],
+                        bg_important=any(decls.get(k, ("", False))[1]
+                                         for k in ("background", "background-color"))))
                 continue
             rest = m.group(2) or ""
             rules.append(_Rule(
@@ -322,7 +424,9 @@ def _parse_sheet(css: str) -> Tuple[List[_Rule], str]:
                 ids=frozenset(re.findall(r"#([\w-]+)", rest)),
                 classes=frozenset(re.findall(r"\.([\w-]+)", rest)),
                 decls=decls))
-    return rules, unsupported
+    if len(complex_rules) > _MAX_COMPLEX_RULES:
+        return rules, [], f"too many rules with combinators ({len(complex_rules)})"
+    return rules, complex_rules, unsupported
 
 
 def _cascade(rules: List[_Rule], tag: str, el_id: str, classes: set,
@@ -391,23 +495,27 @@ class _Box:
     boxed: bool
     size: float
     shown: bool
-    fg: Tuple[int, ...]
-    bg: Tuple[int, ...]
+    fg: Tuple[Tuple[int, ...], ...]     # every colour its text may have
+    bg: Tuple[Tuple[int, ...], ...]     # every background it may have
 
     @property
     def hidden(self) -> bool:
-        return self.boxed or self.size <= 1 or not self.shown or self.fg == ()
+        return self.boxed or self.size <= 1 or not self.shown or () in self.fg
 
 
-_ROOT = _Box("", False, 16.0, True, _DEFAULT_FG, _DEFAULT_BG)
+_ROOT = _Box("", False, 16.0, True, (_DEFAULT_FG,), (_DEFAULT_BG,))
 
 
 class _Extractor(HTMLParser):
-    def __init__(self, rules: List[_Rule]):
+    def __init__(self, rules: List[_Rule], complex_rules: Optional[List[_Complex]] = None):
         super().__init__(convert_charrefs=True)
         self.rules = rules
-        # each open element: _Box
+        self.complex = complex_rules or []
+        # each open element: _Box, and the same element for css_select
         self.stack: List[_Box] = []
+        self.els: List[css_select.El] = []
+        # the children met so far at each open level, the document first
+        self.kids: List[List[css_select.El]] = [[]]
         self.skip_depth = 0
         self.visible: List[str] = []
         self.hidden: List[str] = []
@@ -430,27 +538,53 @@ class _Extractor(HTMLParser):
             return
         parent = self._state()
         a = {k.lower(): (v or "") for k, v in attrs}
-        props = _cascade(self.rules, tag, a.get("id", ""), set(a.get("class", "").split()),
+        classes = set(a.get("class", "").split())
+        props = _cascade(self.rules, tag, a.get("id", ""), classes,
                          _declarations(a.get("style", "")))
         boxed = (parent.boxed or "hidden" in a or _hides_box(props)
                  or (tag == "input" and a.get("type", "").lower() == "hidden"))
+        el = css_select.El(tag, a.get("id", ""), frozenset(classes), a,
+                           parent=self.els[-1] if self.els else None,
+                           prev=tuple(self.kids[-1]))
+        self.kids[-1].append(el)
+        extra_fg, extra_bg = [], []
+        inline = _declarations(a.get("style", ""))
+        for rule in self.complex:
+            if (rule.hides or rule.fg or rule.bg) and rule.selector.matches(el):
+                boxed = boxed or rule.hides
+                # an inline style beats a rule that is not !important
+                if rule.fg and (rule.fg_important or "color" not in inline):
+                    extra_fg.append(rule.fg)
+                if rule.bg and (rule.bg_important or not (
+                        "background" in inline or "background-color" in inline)):
+                    extra_bg.append(rule.bg)
         shown = parent.shown
         if props.get("visibility") in ("hidden", "collapse"):
             shown = False
         elif props.get("visibility") == "visible":
             shown = True
-        bg = parent.bg
-        new_bg = (_first_colour(props.get("background-color", ""))
-                  or _first_colour(props.get("background", "")) or _colour(a.get("bgcolor", "")))
-        if new_bg:
-            bg = new_bg
+        # The backgrounds this element may have: CSS and the bgcolor
+        # attribute, when they differ, both (a client may draw either one),
+        # and text close to any of them is not read.
+        bgs = tuple(c for c in (_first_colour(props.get("background-color", ""))
+                                or _first_colour(props.get("background", "")),
+                                _attr_colour(a.get("bgcolor", ""))) if c)
+        bg = tuple(dict.fromkeys(bgs + tuple(extra_bg))) or parent.bg
         fg = parent.fg
         new_fg = _colour(props.get("color", ""))
         if new_fg is None and tag == "font":
-            new_fg = _colour(a.get("color", ""))
+            new_fg = _attr_colour(a.get("color", ""))
         if new_fg is not None:
-            fg = new_fg     # () is transparent: hidden until a child sets a colour
-        box = _Box(tag, boxed, _font_size(props.get("font-size", ""), parent.size), shown, fg, bg)
+            fg = (new_fg,)  # () is transparent: hidden until a child sets a colour
+        # a colour from a rule css_select matched is one more the text may
+        # be drawn in: added, never in place of the others
+        fg = tuple(dict.fromkeys(fg + tuple(extra_fg)))
+        size = parent.size
+        if tag == "font" and a.get("size"):
+            size = _font_tag_size(a["size"], size)
+        size = _font_size(_shorthand_size(props.get("font", "")), size)
+        size = _font_size(props.get("font-size", ""), size)
+        box = _Box(tag, boxed, size, shown, fg, bg)
         hidden = box.hidden
         # The colour test runs on the text itself (handle_data): a dark
         # cell is not hidden, only text the colour of its background is.
@@ -464,6 +598,8 @@ class _Extractor(HTMLParser):
             self._out("\n", hidden)
         elif tag not in _VOID:
             self.stack.append(box)
+            self.els.append(el)
+            self.kids.append([])
         self._out(" ", hidden)
 
     def handle_startendtag(self, tag, attrs):
@@ -493,6 +629,8 @@ class _Extractor(HTMLParser):
             if self.stack[i].tag == tag:
                 hidden = self.stack[i].hidden
                 del self.stack[i:]
+                del self.els[i:]
+                del self.kids[i + 1:]
                 self._out("\n" if tag in _BREAK_AFTER else " ", hidden)
                 return
 
@@ -500,7 +638,8 @@ class _Extractor(HTMLParser):
         if self.skip_depth:
             return
         box = self._state()
-        hidden = box.hidden or (data.strip() != "" and _close(box.fg, box.bg))
+        hidden = box.hidden or (data.strip() != ""
+                                and any(_close(f, b) for f in box.fg for b in box.bg))
         if self.anchor is not None and not hidden:
             self.anchor[1].append(data)
         self._out(data, hidden)
@@ -531,10 +670,10 @@ def visible_text(markup: str, keep_lines: bool = False) -> VisibleText:
         sheets = _Sheets()
         sheets.feed(re.sub(r"<!--.*?-->", " ", markup, flags=re.S))
         sheets.close()
-        rules, reason = _parse_sheet("\n".join(sheets.css))
+        rules, complex_rules, reason = _parse_sheet("\n".join(sheets.css))
         if sheets.external:
             reason = reason or "external style sheet (<link rel=stylesheet>)"
-        parser = _Extractor(rules)
+        parser = _Extractor(rules, complex_rules)
         parser.feed(markup)
         parser.close()
         visible, hidden = "".join(parser.visible), "".join(parser.hidden)
