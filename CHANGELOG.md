@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+- **What's new on the website.** A page in English and Italian
+  (`changelog.html`, `changelog-it.html`) tells what every release
+  brought, from 0.1.0 to 0.6.7: the highlights of each minor version, then
+  each release with its date and one line.
+- **The home's install section is one button.** Step 1 is a download
+  button that picks the installer for the visitor's system, steps 2 and 3
+  say what the app does for you, and each links to a new install page
+  (`install.html`, `install-it.html`) with every installer, `pip install`,
+  the terminal commands and the setup for each agent. The hero no longer
+  shows `pip install` either.
+- **GigaMail vs Composio.** A comparison page in English and Italian
+  (`gigamail-vs-composio.html`, `gigamail-vs-composio-it.html`), from
+  Composio's own pages read on 5 November 2026, with a question about it in
+  the home's FAQ.
+- **Release updates by email.** The home and What's new pages have a
+  subscribe card for one email per release, sent through Buttondown, plus
+  the releases RSS feed and GitHub's "Watch → Releases". The list name
+  lives in `docs/home.js` (the form stays hidden if it is empty); the
+  Privacy Policy says where the address goes.
+- **The hero says Linux too**: "Windows, macOS & Linux".
+
 ## v0.6.7 — 2026-11-04
 
 - **An action approved from the console no longer looks like an error to

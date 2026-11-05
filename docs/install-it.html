@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installare GigaMail: tutti gli installer, pip e configurazione a mano</title>
+<meta name="description" content="Tutti gli installer di GigaMail (Windows, macOS, Linux), solo il motore con pip, e i comandi per collegare a mano una casella e un agente AI: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes o qualsiasi client MCP.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/install-it.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/install.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/install-it.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/install.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="it_IT">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/install-it.html">
+<meta property="og:title" content="Installare GigaMail: tutti gli installer, pip e configurazione a mano">
+<meta property="og:description" content="Tutti gli installer di GigaMail (Windows, macOS, Linux), solo il motore con pip, e i comandi per collegare a mano una casella e un agente AI: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes o qualsiasi client MCP.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Installare GigaMail: tutti gli installer, pip e configurazione a mano">
+<meta name="twitter:description" content="Tutti gli installer di GigaMail (Windows, macOS, Linux), solo il motore con pip, e i comandi per collegare a mano una casella e un agente AI: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes o qualsiasi client MCP.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/install-it.html#webpage", "url": "https://gigamail.ai/install-it.html", "name": "Installare GigaMail: tutti gli installer, pip e configurazione a mano", "description": "Tutti gli installer di GigaMail (Windows, macOS, Linux), solo il motore con pip, e i comandi per collegare a mano una casella e un agente AI: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes o qualsiasi client MCP.", "inLanguage": "it", "dateModified": "2026-11-05", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="./home.css?v=9">
+<link rel="stylesheet" href="./pages.css?v=2">
+<style>.subpage .install { grid-template-columns: 1fr; max-width: 1040px; margin: 0 auto; } .install .card { scroll-margin-top: 80px; } .subpage .install .card { padding: 26px 28px; }</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./it.html" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sezioni">
+      <a href="./it.html#features">Cosa fa</a>
+      <a href="./it.html#approval">Approvazione</a>
+      <a href="./it.html#install">Installa</a>
+      <a href="./mcp-map-it.html">Mappa MCP</a>
+      <a href="./gigamail-vs-agentmail-it.html">vs AgentMail</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./install.html" hreflang="en" lang="en">EN</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="#step-get">Scarica</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">Installazione</p>
+    <h1 id="t">Tutti gli installer, e la via del <em>terminale</em>.</h1>
+    <p class="lede">L’app desktop ti accompagna in tutti e tre i passi. Qui c’è tutto il resto: l’installer per ogni sistema, solo il motore con pip, e i comandi per collegare a mano casella e agente.</p>
+  </div>
+</section>
+<section aria-label="Installazione"><div class="wrap">
+    <div class="install">
+      <article class="card" id="step-get">
+        <p class="kicker">Passo 1</p>
+        <h3>Prendi GigaMail</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">Un installer con il suo Python: nessun prerequisito, nessuna password di amministratore, si aggiorna da solo.</p>
+        <div class="dl">
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" data-platform="win" rel="noopener"><span>Windows 10 / 11</span><small>GigaMail-Setup.exe</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" data-platform="mac-arm" rel="noopener"><span>macOS, Apple Silicon</span><small>GigaMail-arm64.dmg</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg" data-platform="mac-intel" rel="noopener"><span>macOS, Intel</span><small>GigaMail-x64.dmg</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-amd64.deb" data-platform="linux" rel="noopener"><span>Linux, Debian / Ubuntu <em class="beta">beta</em></span><small>GigaMail-amd64.deb</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x86_64.AppImage" data-platform="linux-appimage" rel="noopener"><span>Linux, AppImage <em class="beta">beta</em></span><small>GigaMail-x86_64.AppImage</small></a>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">Windows firmato, macOS firmato e notarizzato; i pacchetti Linux sono in beta e non firmati (da Ubuntu 23.10 in poi usa il .deb). Le impronte SHA-256 sono nella <a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">pagina della release</a>. Non ti serve l’app grafica? Solo il motore:</p>
+<pre><code>pip install "gigamail[all]"</code></pre>
+      </article>
+      <article class="card" id="step-mailbox">
+        <p class="kicker">Passo 2</p>
+        <h3>Collega la tua casella</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">Nell’app ci pensa la configurazione guidata: Microsoft 365 con il login nel browser, oppure IMAP con una password per le app. Da terminale:</p>
+<pre><code>gigamail login                <span class="c"># Microsoft 365, device flow</span>
+gigamail accounts add-imap    <span class="c"># Gmail, Aruba, Libero, ...</span>
+gigamail check                <span class="c"># una ricerca, una bozza in attesa di te</span></code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.94rem">Poi di’ chi risponde: identità, tono e i file che l’agente può citare.</p>
+<pre><code>gigamail identity set
+gigamail identity add-file ./listino.xlsx</code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">Le credenziali passano da te, nella tua shell. Non esiste uno strumento con cui un agente possa aggiungere un account.</p>
+      </article>
+      <article class="card" id="step-agent">
+        <p class="kicker">Passo 3</p>
+        <h3>Collega il tuo agente</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">GigaMail non ha un’intelligenza propria: l’intelligenza è l’agente che colleghi. Il terzo passo dell’app copia la configurazione esatta per te; a mano è una di queste.</p>
+        <div class="tabs" role="tablist" aria-label="Agenti">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="ag-claude-code" id="tab-claude-code">Claude Code</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-claude-desktop" id="tab-claude-desktop">Claude Desktop</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-codex" id="tab-codex">Codex</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-openclaw" id="tab-openclaw">OpenClaw</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-hermes" id="tab-hermes">Hermes</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-any" id="tab-any">Qualsiasi client MCP</button>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-code" aria-labelledby="tab-claude-code">
+          <p>Il repository è un plugin di Claude Code: registra il server e aggiunge una skill che insegna a Claude il passaggio di approvazione.</p>
+<pre><code>claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
+          <p>Aggiungi il server a <code>claude_desktop_config.json</code> sotto <code>mcpServers</code>, poi riavvia Claude Desktop.</p>
+<pre><code>{
+  "mcpServers": {
+    "gigamail": { "command": "gigamail-server" }
+  }
+}</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-codex" aria-labelledby="tab-codex" hidden>
+          <p>Come plugin di Codex, con la stessa skill:</p>
+<pre><code>codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail</code></pre>
+          <p>Oppure registra solo il server, che è anche ciò che si aspetta la voce nella <a href="https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3" rel="noopener">OpenAI Plugins Directory</a>:</p>
+<pre><code>codex mcp add gigamail -- gigamail-server</code></pre>
+          <p>Usi ChatGPT invece del terminale? <a href="https://github.com/adecubed/gigamail/blob/main/CODEX_SETUP.md" rel="noopener">La guida passo passo</a>.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-openclaw" aria-labelledby="tab-openclaw" hidden>
+          <p>OpenClaw prova il server prima di salvarlo. Indica in <code>GIGAMAIL_ROOT</code> la cartella dati di GigaMail.</p>
+<pre><code>openclaw mcp add gigamail --command gigamail-server \
+  --env "GIGAMAIL_ROOT=&lt;la tua cartella dati&gt;"
+openclaw skills install @adecubed/gigamail   <span class="c"># la skill del passaggio di approvazione</span></code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-hermes" aria-labelledby="tab-hermes" hidden>
+          <p>Hermes passa ai server stdio solo l’ambiente che dichiari, quindi <code>GIGAMAIL_ROOT</code> è obbligatoria. In <code>~/.hermes/config.yaml</code>:</p>
+<pre><code>mcp_servers:
+  gigamail:
+    command: "gigamail-server"
+    env:
+      GIGAMAIL_ROOT: "&lt;la tua cartella dati&gt;"</code></pre>
+          <p>Verifica con <code>hermes mcp test gigamail</code>.</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-any" aria-labelledby="tab-any" hidden>
+          <p>Funziona qualsiasi client MCP che sappia avviare un server stdio. Comando <code>gigamail-server</code>, nessuna porta di rete, nessuna chiave API. Dichiara <code>GIGAMAIL_ROOT</code> se il client filtra l’ambiente.</p>
+          <p>Configurazioni verificate, filtri sugli strumenti e come ricevere le approvazioni sul telefono: <a href="https://github.com/adecubed/gigamail/blob/main/INTEGRATIONS.md" rel="noopener">INTEGRATIONS.md</a>.</p>
+        </div>
+      </article>
+    </div>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Termini di servizio</a>
+    <a href="./credits.html">Crediti del codice</a>
+    <a href="./mcp-map-it.html">Mappa MCP</a>
+    <a href="./gigamail-vs-agentmail-it.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio-it.html">GigaMail vs Composio</a>
+    <a href="./install-it.html">Installazione</a>
+    <a href="./changelog-it.html">Novità</a>
+    <a href="./mail-city-it.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./install.html" hreflang="en" lang="en">English</a>
+  </div>
+</footer>
+<script src="./home.js?v=4" defer></script>
+</body>
+</html>

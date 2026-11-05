@@ -12,6 +12,7 @@
 .subpage .card p, .subpage .card li { color: var(--gm-muted); font-size: 0.93rem; }
 .subpage .note { margin-top: 12px; font-size: 0.9rem; }
 .subpage code { font-family: var(--mono); font-size: 0.86em; background: var(--gm-fill); border-radius: 6px; padding: 1px 5px; }
+.subpage pre code { font-size: inherit; background: none; border-radius: 0; padding: 0; }
 .chip-c { display: inline-block; font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; border-radius: 999px; padding: 4px 10px; margin-right: 10px; vertical-align: middle; }
 .c-read { background: var(--gm-fill); color: var(--gm-ink); }
 .c-safe { background: var(--gm-green-bg); color: var(--gm-green); }
