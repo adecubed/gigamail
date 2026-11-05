@@ -5,7 +5,7 @@ description: "Email and calendar on the user's real mailbox (Microsoft 365 or IM
 
 # GigaMail
 
-GigaMail gives you the user's real mailboxes and calendar as 30 typed MCP
+GigaMail gives you the user's real mailboxes and calendar as 31 typed MCP
 tools on the `gigamail` server. Reading, searching, attachment text, sender
 history, free-slot computation and drafting are free. Sending, replying,
 deleting and calendar writes are **two-phase**: the first call returns an
@@ -84,7 +84,7 @@ bypassed. Both are meant to be there.
 
 Start a new session after installing: MCP tools load at startup.
 
-## The 30 tools, by class
+## The 31 tools, by class
 
 - **Read** (18), free to call: `list_accounts`, `get_identity`,
   `list_knowledge_files`, `read_knowledge_file`, `search_knowledge`,
@@ -92,7 +92,8 @@ Start a new session after installing: MCP tools load at startup.
   `list_unread`, `read_message`, `read_attachment`, `list_folders`,
   `search_mail`, `sender_history`, `observer_context`, `memory_stats`,
   `list_events`, `find_free_slots`, `drive_list_files`, `drive_read_file`.
-- **Safe writes** (2), free to call, audited: `mark_read`, `create_folder`.
+- **Safe writes** (3), free to call, audited: `mark_read`, `create_folder`,
+  `save_draft` (a draft in the Drafts folder, nothing is sent).
 - **Dangerous** (10), two-phase with a human in between: `send_mail`,
   `reply_mail`, `delete_message`, `delete_folder`, `move_message`,
   `create_event`, `delete_event`, `create_zoom_meeting`,

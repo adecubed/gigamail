@@ -90,6 +90,34 @@ test('Edit closes the request with a note; Reject from the toast rejects at once
   assert.ok(second.calls.includes('close'));
 });
 
+test('Save keeps the request waiting: it says for how long and the window closes', async () => {
+  let rec = REQ;
+  const { w, calls, load, tick } = open((p) => {
+    if (p === '/approvals/req_1') return { status: 200, body: rec };
+    if (p === '/approvals/req_1/save') { rec = { ...rec, saved_at: NOW, expires_at: NOW + 7 * 86400 }; return { status: 200, body: { status: 'pending' } }; }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnSave').disabled, false);
+  d.getElementById('btnSave').click();
+  await tick();
+  assert.ok(calls.includes('POST /approvals/req_1/save'));
+  assert.ok(!calls.some((c) => c.includes('/approve') || c.includes('/reject')), 'saving decides nothing');
+  assert.match(d.getElementById('status').textContent, /7 giorni/);
+  assert.match(d.getElementById('state').textContent, /salvata · scade tra 7 giorni/);
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'still approvable');
+  await tick();
+  assert.ok(calls.includes('close'));
+});
+
+test('Save is off for a request that is no longer waiting', async () => {
+  const { w, load } = open((p) => (p === '/approvals/req_1'
+    ? { status: 200, body: { ...REQ, status: 'rejected' } } : { status: 404, body: {} }));
+  await load({ request_id: 'req_1', action: 'show' });
+  assert.equal(w.document.getElementById('btnSave').disabled, true);
+});
+
 test('a request that is gone stays on screen: nothing was decided', async () => {
   const { w, calls, load, tick } = open(() => ({ status: 404, body: { detail: 'Richiesta inesistente' } }));
   await load({ request_id: 'req_9', action: 'approve' });

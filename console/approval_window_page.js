@@ -39,6 +39,9 @@ function stateOf(rec) {
   if (rec.status === 'pending' && expired) return { cls: 'err', text: T('st_expired', 'scaduta senza decisione') };
   if (rec.status === 'pending') {
     const left = Math.max(0, Math.round((rec.expires_at || now) - now));
+    if (rec.saved_at && left >= 86400) {
+      return { cls: '', text: `${T('pending_saved', 'salvata')} · ${T('pending_expires_in', 'scade tra')} ${Math.round(left / 86400)} ${T('pending_days', 'giorni')}` };
+    }
     const m = Math.floor(left / 60);
     return { cls: 'warn', text: `${T('aw_waiting', 'in attesa')} · ${T('pending_expires_in', 'scade tra')} ${m}m${String(left % 60).padStart(2, '0')}s` };
   }
@@ -67,6 +70,7 @@ function render(rec) {
   $('body').textContent = body || summaryOf(p);
   const open = rec.status === 'pending' && st.cls !== 'err';
   $('btnApprove').disabled = !open;
+  $('btnSave').disabled = !open;
   $('btnReject').disabled = !open && rec.status !== 'approved';
   $('btnEdit').disabled = !open && rec.status !== 'approved';
 }
@@ -135,6 +139,23 @@ async function doReject() {
   await reload();
 }
 
+// "Save": decide later. The request stays pending, for days instead of
+// minutes, and comes back from the "waiting for you" page.
+async function doSave() {
+  if (!current) return;
+  $('btnSave').disabled = true;
+  try {
+    await api(`/approvals/${encodeURIComponent(current.request_id)}/save`, { method: 'POST' });
+    say(T('aw_saved', 'Salvata: la ritrovi in “Richieste in attesa” per 7 giorni.'), 'ok');
+    await reload();
+    closeSoon();
+    return;
+  } catch (e) {
+    say(e.message || String(e), 'err');
+  }
+  await reload();
+}
+
 async function doEdit() {
   const box = $('editBox');
   if (!box.classList.contains('visible')) {
@@ -168,7 +189,7 @@ async function load(data) {
     $('state').textContent = T('aw_missing', 'Richiesta non trovata: questa notifica è vecchia.');
     $('state').className = 'field-value state err';
     $('body').textContent = '';
-    ['btnApprove', 'btnReject', 'btnEdit'].forEach((id) => { $(id).disabled = true; });
+    ['btnApprove', 'btnSave', 'btnReject', 'btnEdit'].forEach((id) => { $(id).disabled = true; });
     return;
   }
   if (action === 'reject' && current.status === 'pending') await doReject();
@@ -178,6 +199,7 @@ async function load(data) {
 
 $('btnApprove').addEventListener('click', doApprove);
 $('btnReject').addEventListener('click', doReject);
+$('btnSave').addEventListener('click', doSave);
 $('btnEdit').addEventListener('click', doEdit);
 $('note').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doEdit(); });
 $('btnClose').addEventListener('click', () => window.approvalWindowAPI.close());

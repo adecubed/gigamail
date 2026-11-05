@@ -125,6 +125,22 @@ def reject_request(request_id: str):
     return {"success": True, "request_id": request_id, "status": "rejected"}
 
 
+@router.post("/approvals/{request_id}/save")
+def save_request(request_id: str, request: Request = None):
+    """"Save" from the console: decide later. The request stays in
+    "waiting for you" for days instead of minutes. Only a click in the
+    console: the agent, holding the token file, cannot keep its own
+    requests open."""
+    from . import console_click
+    if not console_click.is_console_click(request.headers if request else {}):
+        raise HTTPException(403, "only from the console")
+    if not policy.store().save_for_later(request_id, by=f"{_who()} (console click)"):
+        raise HTTPException(409, "Richiesta non salvabile (già decisa o scaduta)")
+    rec = policy.store().get(request_id) or {}
+    return {"success": True, "request_id": request_id, "status": "pending",
+            "saved_at": rec.get("saved_at"), "expires_at": rec.get("expires_at")}
+
+
 class EditRequest(BaseModel):
     note: str = ""
 

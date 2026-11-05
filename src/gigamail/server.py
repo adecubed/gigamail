@@ -691,6 +691,97 @@ def create_folder(
     return result
 
 
+# Saving a draft sends nothing and can be deleted, so it is WRITE_SAFE like
+# the two above; unlike them every call writes a new draft, so it is not
+# idempotent.
+DRAFT_WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False,
+                              idempotent_hint=False, open_world_hint=True)
+
+
+def _address_of(value) -> str:
+    """The address in a From value as providers return it: a string, a
+    Graph {emailAddress: {address}} or an {address/email} object."""
+    if isinstance(value, dict):
+        inner = value.get("emailAddress") if isinstance(value.get("emailAddress"), dict) else value
+        return str(inner.get("address") or inner.get("email") or "")
+    if isinstance(value, list):
+        return ", ".join(a for a in (_address_of(v) for v in value) if a)
+    return str(value or "")
+
+
+@mcp.tool(annotations=DRAFT_WRITE)
+def save_draft(
+    body: Annotated[str, Field(
+        description="Plain-text body. The account signature, if the user set "
+                    "one, is appended: do not write it yourself.")],
+    to: Annotated[str, Field(
+        description="Recipient address(es), comma-separated. Ignored with "
+                    "reply_to_message_id: a reply draft goes to the From "
+                    "address of the original message.")] = "",
+    subject: Annotated[str, Field(
+        description="Subject line. With reply_to_message_id it is set from "
+                    "the original ('Re: ...') when left empty.")] = "",
+    cc: Annotated[Optional[list[str]], Field(description="CC addresses.")] = None,
+    bcc: Annotated[Optional[list[str]], Field(description="BCC addresses.")] = None,
+    reply_to_message_id: Annotated[Optional[str], Field(
+        description="Message id (as returned by list_messages / search_mail) "
+                    "when the draft answers that message. Same fixed "
+                    "addressing as reply_mail: never Reply-To, never an "
+                    "address written in the body.")] = None,
+    folder: Annotated[str, Field(
+        description="Folder of the message in reply_to_message_id (IMAP "
+                    "only; default inbox).")] = "inbox",
+    account_id: AccountId = None,
+) -> dict:
+    """Save an email as a draft instead of sending it: it is saved on the
+    mail provider's server, in the mailbox's Drafts folder, where it stays
+    until the user sends or deletes it. Use it when the user wants to read,
+    change and send the mail themselves (from their mail app, webmail or
+    the GigaMail console), or asks for a draft. On IMAP accounts a mail app
+    set up with POP does not show it, since POP reads only the inbox. Sends
+    nothing, so it runs at once without approval and is written to the
+    audit log. Attachments are
+    not saved with drafts: name them in the body or use send_mail /
+    reply_mail. Returns {success, draft_id, in_mailbox, folder, error}:
+    in_mailbox false means the draft is kept in GigaMail (visible in the
+    console) but the copy to the mailbox failed, with the reason in error."""
+    from gigamail.core import drafts
+
+    account_id = _freeze_mail_account(account_id)
+    reply_to = None
+    if reply_to_message_id:
+        original = mail_router.get_message(
+            account_id=account_id, message_id=reply_to_message_id,
+            folder=folder) or {}
+        to = _address_of(original.get("from") or original.get("sender"))
+        if not to:
+            return {"success": False, "draft_id": None, "in_mailbox": False,
+                    "folder": None,
+                    "error": "The original message was not found or has no "
+                             "sender: nothing was saved."}
+        if not subject:
+            original_subject = str(original.get("subject") or "")
+            subject = (original_subject if original_subject.lower().startswith("re:")
+                       else f"Re: {original_subject}".strip())
+        reply_to = reply_to_message_id
+    body = signature.apply(account_id, body)
+    saved = drafts.store().save(
+        account_id=account_id, to=to, cc=", ".join(cc or []),
+        bcc=", ".join(bcc or []), subject=subject, body=body,
+        reply_to_id=reply_to)
+    synced = drafts.sync(saved["draft_id"]) or saved
+    in_mailbox = bool(synced.get("in_mailbox"))
+    audit("save_draft", {"draft_id": saved["draft_id"], "to": to,
+                         "subject": subject, "account_id": account_id,
+                         "reply_to_message_id": reply_to},
+          "executed" if in_mailbox else "saved_locally",
+          detail=synced.get("sync_error") or "")
+    return {"success": True, "draft_id": saved["draft_id"],
+            "in_mailbox": in_mailbox,
+            "folder": synced.get("remote_folder"),
+            "error": None if in_mailbox else synced.get("sync_error")}
+
+
 # ----------------------------------------------------------- DANGEROUS
 
 def _freeze_mail_account(account_id: Optional[int]) -> int:

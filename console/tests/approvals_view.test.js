@@ -95,6 +95,16 @@ test('badge and expiry formatting', () => {
   assert.equal(V.badgeText(12), '9+');
   assert.equal(V.fmtEta(0, t), 'scaduta');
   assert.equal(V.fmtEta(45, t), 'scade tra 45s');
+  // a saved request waits days: the countdown says so instead of 10079m
+  assert.equal(V.fmtEta(2 * 3600 + 5 * 60, t), 'scade tra 2h05m');
+  assert.equal(V.fmtEta(7 * 86400, t), 'scade tra 7 giorni');
+});
+
+test('a saved request is tagged as saved in the waiting list', () => {
+  const html = V.pendingCard({ ...AGENT_SEND, saved_at: NOW, expires_at: NOW + 7 * 86400 }, t, NOW);
+  assert.ok(html.includes('salvata'));
+  assert.ok(html.includes('scade tra 7 giorni'));
+  assert.ok(!V.pendingCard(AGENT_SEND, t, NOW).includes('salvata'));
 });
 
 // The Automations view wired for real: renderer_automations.js in JSDOM with a

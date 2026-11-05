@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The agent can save a mail as a draft.** A new MCP tool, `save_draft`,
+  saves the mail on the provider's server, in the mailbox's Drafts folder
+  (Microsoft 365 and IMAP), instead of sending it, so the user changes and
+  sends it from their mail app, webmail or the console. On IMAP accounts a
+  mail app set up with POP does not show it. It sends nothing, so it runs
+  at once and is written to the audit log, like `mark_read`; a reply draft
+  goes to the original sender, with the same fixed addressing as
+  `reply_mail`.
+  Attachments are not saved with drafts. If the copy to the mailbox
+  fails the draft stays in GigaMail and the tool says why. 31 tools now.
+- **"Save" in the approval window: decide later.** Next to Approve, Edit
+  and Reject, Save keeps the request in "Waiting for you" for 7 days
+  instead of letting it expire after 15 minutes; the list marks it as
+  saved and counts the days left. It is approved, edited or rejected
+  later as usual, with the same verification. Only a click in the
+  console can save a request.
 - **What's new on the website.** A page in English and Italian
   (`changelog.html`, `changelog-it.html`) tells what every release
   brought, from 0.1.0 to 0.6.7: the highlights of each minor version, then
