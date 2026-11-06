@@ -51,6 +51,26 @@
     select(fromHash && fromHash.getAttribute('role') === 'tabpanel' ? fromHash.id : tabs[0].getAttribute('aria-controls'));
   }
 
+  // Feature cards rise in as they scroll into view (home.css, .js-reveal).
+  // Only with IntersectionObserver and without reduced motion; otherwise the
+  // class is never added and the cards are simply there.
+  var cards = document.querySelectorAll('#features .feature');
+  var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (cards.length && 'IntersectionObserver' in window && !calm) {
+    document.documentElement.classList.add('js-reveal');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var i = Array.prototype.indexOf.call(cards, e.target);
+        e.target.style.transitionDelay = ((i % 4) * 70) + 'ms';
+        e.target.classList.add('in-view');
+        e.target.addEventListener('transitionend', function () { e.target.style.transitionDelay = ''; }, { once: true });
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.15 });
+    cards.forEach(function (c) { io.observe(c); });
+  }
+
   // Hero clip: do not autoplay for people who asked for less motion.
   var hero = document.getElementById('hero-clip');
   if (hero && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
