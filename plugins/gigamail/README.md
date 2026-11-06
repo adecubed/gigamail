@@ -3,7 +3,7 @@
 Your real inbox and calendar for Claude, with a human on the send button.
 
 GigaMail exposes your mailboxes (Microsoft 365 via Graph, or any IMAP
-provider) and your calendar to Claude as 30 typed MCP tools. Reading,
+provider) and your calendar to Claude as 31 typed MCP tools. Reading,
 searching, attachment text, sender history, free-slot computation and
 drafting are free. Send, reply, delete and calendar writes return an inert
 request id and run only after you approve them out of band, from the

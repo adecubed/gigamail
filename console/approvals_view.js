@@ -37,6 +37,7 @@
       subject: String(p.subject || (replying && replying.subject) || ''),
       body: String(p.body || a.body || ''),
       expiresIn: Math.max(0, Math.round((rec.expires_at || 0) - now)),
+      saved: Boolean(rec.saved_at),
       expired: !!rec.expired || (!!rec.expires_at && rec.expires_at <= now),
       ruleMode: String(p.rule_mode || ''),
       toSource: String(p.to_source || ''),
@@ -59,6 +60,9 @@
 
   function fmtEta(sec, t) {
     if (sec <= 0) return t('pending_expired', 'scaduta');
+    // a saved request waits days, not minutes
+    if (sec >= 86400) return `${t('pending_expires_in', 'scade tra')} ${Math.round(sec / 86400)} ${t('pending_days', 'giorni')}`;
+    if (sec >= 3600) return `${t('pending_expires_in', 'scade tra')} ${Math.floor(sec / 3600)}h${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}m`;
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     const when = m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`;
@@ -127,6 +131,7 @@
         ${head(s, t)}
         ${bodyBlock(s, t)}
         <div class="ai-card-row" style="margin-top:8px">
+          ${s.saved ? `<span class="ai-card-status">${esc(t('pending_saved', 'salvata'))}</span>` : ''}
           <span class="ai-card-status ${s.expiresIn < 120 ? 'warn' : ''}">${fmtEta(s.expiresIn, t)}</span>
           ${notifyFailed(s) ? `<span class="ai-card-status warn">${esc(t('notify_failed_tag', 'notifica non arrivata'))}</span>` : ''}
           <span style="flex:1"></span>

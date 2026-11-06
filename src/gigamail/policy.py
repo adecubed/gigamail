@@ -53,6 +53,12 @@ def _env_int(name: str, default: int) -> int:
 # ore dopo l'anteprima approva un contesto che puo' non esistere piu'.
 _APPROVAL_TTL_SECONDS = _env_int("GIGAMAIL_APPROVAL_TTL", 900)
 
+# "Save" in the console: the person decides to keep a request waiting
+# instead of deciding now. The long window above is a risk when nobody
+# chose it; here the person did, looking at the preview, so the request
+# waits a week. Approving it still needs the same verification.
+_SAVED_TTL_SECONDS = _env_int("GIGAMAIL_SAVED_APPROVAL_TTL", 7 * 86400)
+
 # Cap sulle richieste (promessa fatta su r/mcp): senza, un agente che
 # insiste produce una raffica di approvazioni identiche finche' una non
 # trova un umano distratto — esattamente l'autopilota che il gate evita.
@@ -238,6 +244,9 @@ class ApprovalStore:
                 conn.execute("ALTER TABLE approvals ADD COLUMN execution_outcome TEXT")
             if "provider_result_json" not in cols:
                 conn.execute("ALTER TABLE approvals ADD COLUMN provider_result_json TEXT")
+            # when a person chose "Save" (keep it waiting), see save_for_later
+            if "saved_at" not in cols:
+                conn.execute("ALTER TABLE approvals ADD COLUMN saved_at REAL")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS ix_approvals_fp"
                 " ON approvals (tool, fingerprint, status)")
@@ -381,6 +390,74 @@ class ApprovalStore:
               "approved" if ok else "approve_failed")
         if ok:
             _ritira_notifica(request_id)
+        return ok
+
+    def save_for_later(self, request_id: str, by: str = "unknown") -> bool:
+        """Keep a pending request waiting for _SAVED_TTL_SECONDS instead of
+        letting it expire after the usual minutes. It stays pending: it is
+        approved, edited or rejected later exactly as now. Only a request
+        still pending and not expired can be saved; saving again does not
+        shorten it."""
+        now = time.time()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE approvals SET expires_at=MAX(expires_at, ?), saved_at=?"
+                " WHERE request_id=? AND status=? AND expires_at > ?",
+                (now + _SAVED_TTL_SECONDS, now, request_id, PENDING, now),
+            )
+            ok = cur.rowcount == 1
+        rec = self.get(request_id)
+        audit("approval", {"request_id": request_id, "by": by,
+                           "for_tool": (rec or {}).get("tool")},
+              "saved" if ok else "save_failed")
+        return ok
+
+    # Fields a person may rewrite in the approval window before approving.
+    # Never the addressing: a request stays bound to the recipients the
+    # agent asked for, so an edit cannot redirect a mail.
+    AMENDABLE = ("body", "subject")
+
+    def amend(self, request_id: str, changes: Dict[str, Any],
+              by: str = "unknown") -> bool:
+        """Rewrite the text of a PENDING request before it is approved: the
+        person corrects the mail in place instead of asking the agent for a
+        new draft. Only AMENDABLE fields the request already has can change
+        (a move has no body to edit); the preview follows the arguments, so
+        what is shown is what will run. The fingerprint is recomputed: the
+        amended request no longer stands in for the agent's original
+        payload. Returns False when nothing valid was given or the request
+        is no longer pending."""
+        rec = self.get(request_id)
+        if not rec:
+            return False
+        args = dict(rec["args"])
+        preview = dict(rec["preview"])
+        touched = []
+        for key, value in (changes or {}).items():
+            if key not in self.AMENDABLE or key not in args or value is None:
+                continue
+            value = str(value)
+            if value == args.get(key):
+                continue
+            args[key] = value
+            if key in preview:
+                preview[key] = value
+            touched.append(key)
+        if not touched:
+            return False
+        now = time.time()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE approvals SET args_json=?, preview_json=?, fingerprint=?"
+                " WHERE request_id=? AND status=? AND expires_at > ?",
+                (json.dumps(args, ensure_ascii=False, default=str),
+                 json.dumps(preview, ensure_ascii=False, default=str),
+                 self.fingerprint(rec["tool"], args), request_id, PENDING, now),
+            )
+            ok = cur.rowcount == 1
+        audit("approval", {"request_id": request_id, "by": by,
+                           "fields": touched, "for_tool": rec.get("tool")},
+              "amended" if ok else "amend_failed")
         return ok
 
     def reject(self, request_id: str, by: str = "unknown") -> bool:

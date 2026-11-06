@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaMail MCP map: 31 tools and their risk classes</title>
+<meta name="description" content="Every tool GigaMail gives an AI agent over MCP, with its risk class: 18 reads, 3 audited writes, 10 actions behind human approval, and what the agent can never touch.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/mcp-map.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/mcp-map.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/mcp-map-it.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/mcp-map.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/mcp-map.html">
+<meta property="og:title" content="GigaMail MCP map: 31 tools and their risk classes">
+<meta property="og:description" content="Every tool GigaMail gives an AI agent over MCP, with its risk class: 18 reads, 3 audited writes, 10 actions behind human approval, and what the agent can never touch.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail MCP map: 31 tools and their risk classes">
+<meta name="twitter:description" content="Every tool GigaMail gives an AI agent over MCP, with its risk class: 18 reads, 3 audited writes, 10 actions behind human approval, and what the agent can never touch.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/mcp-map.html#webpage", "url": "https://gigamail.ai/mcp-map.html", "name": "GigaMail MCP map: 31 tools and their risk classes", "description": "Every tool GigaMail gives an AI agent over MCP, with its risk class: 18 reads, 3 audited writes, 10 actions behind human approval, and what the agent can never touch.", "inLanguage": "en", "dateModified": "2026-11-05", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=9">
+<link rel="stylesheet" href="./pages.css?v=1">
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="./#features">What it does</a>
+      <a href="./#approval">Approval</a>
+      <a href="./#install">Install</a>
+      <a href="./mcp-map.html">MCP map</a>
+      <a href="./gigamail-vs-agentmail.html">vs AgentMail</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./mcp-map-it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">MCP map</p>
+    <h1 id="t">31 tools. Each one with a <em>risk class</em>.</h1>
+    <p class="lede">This is everything an agent can call when it connects to GigaMail over MCP, and the rule each call follows. The list is generated from the server, so it matches the version you install.</p>
+  </div>
+</section>
+<section aria-labelledby="s1"><div class="wrap narrow">
+  <h2 id="s1">Two surfaces, one core</h2>
+  <div class="grid grid-2"><article class="card pad"><h3>MCP server</h3><p>For your agent. Runs over <strong>stdio</strong>: no network port to reach or protect.</p></article><article class="card pad"><h3>Console</h3><p>For you. A local HTTP API on <code>127.0.0.1</code> with a session token. Optional.</p></article></div>
+  <p class="muted note">Neither has an AI of its own: the reasoning is always your agent’s.</p>
+</div></section>
+<section aria-labelledby="s2"><div class="wrap narrow">
+  <h2 id="s2">Four risk classes</h2>
+  <div class="grid grid-4"><article class="card pad cls"><span class="chip-c c-read">READ</span><div class="num">18</div><h3>Free</h3><p>Reading, search, listings. Mail content is treated as untrusted data.</p></article><article class="card pad cls"><span class="chip-c c-safe">WRITE_SAFE</span><div class="num">3</div><h3>Free, logged</h3><p>Small reversible changes, written to the audit log.</p></article><article class="card pad cls"><span class="chip-c c-danger">DANGEROUS</span><div class="num">10</div><h3>Two-phase approval</h3><p>Anything that sends, deletes or invites. It waits for a person.</p></article><article class="card pad cls"><span class="chip-c c-admin">ADMIN</span><div class="num">0</div><h3>CLI only</h3><p>Logins, credentials, accounts. Never exposed to the agent.</p></article></div>
+</div></section>
+<section aria-labelledby="s3"><div class="wrap narrow">
+  <h2 id="s3">How two-phase approval works</h2>
+  <ol class="flow grid grid-4"><li class="card pad"><span class="n">1</span><h3>The agent asks</h3><p>It calls <code>send_mail</code> as usual. Nothing runs.</p></li><li class="card pad"><span class="n">2</span><h3>GigaMail answers with a preview</h3><p>Recipients, subject, body, attachments, plus an inert <code>request_id</code> valid for 15 minutes.</p></li><li class="card pad"><span class="n">3</span><h3>You approve, outside the agent</h3><p>From the console, the CLI, Telegram or a Windows notification, confirmed with Windows Hello or Touch ID.</p></li><li class="card pad"><span class="n">4</span><h3>Then it runs</h3><p>The agent calls again with the <code>request_id</code>. What runs is the payload you approved, not one the agent passes back. Until then you can revoke it.</p></li></ol>
+</div></section>
+<section aria-labelledby="s4"><div class="wrap narrow">
+  <h2 id="s4">The tools</h2>
+  <div class="card tbl"><h3><span class="chip-c c-read">READ</span>18 · free</h3><table><thead><tr><th>Tool</th><th>What it does</th></tr></thead><tbody><tr><td><code>list_accounts</code></td><td>Configured accounts, never credentials.</td></tr><tr><td><code>get_identity</code></td><td>Who you are, what you do, your tone: context for drafts in your voice.</td></tr><tr><td><code>list_knowledge_files</code></td><td>The files you registered: price lists, terms, product sheets.</td></tr><tr><td><code>read_knowledge_file</code></td><td>Text of one registered file. Only paths you registered, nothing else on disk.</td></tr><tr><td><code>search_knowledge</code></td><td>Best passages from your files, from a local full-text index.</td></tr><tr><td><code>list_messages</code></td><td>Messages of a folder, as summaries without bodies.</td></tr><tr><td><code>list_unread</code></td><td>Unread mail of the last days.</td></tr><tr><td><code>read_message</code></td><td>One message as visible text only: hidden text is left out and flagged, links come as a list.</td></tr><tr><td><code>read_attachment</code></td><td>Text of an attachment (pdf, docx, xlsx…). The binary never reaches the agent.</td></tr><tr><td><code>list_folders</code></td><td>The folders of an account.</td></tr><tr><td><code>search_mail</code></td><td>Search across GigaMail’s archive, the provider and the local index.</td></tr><tr><td><code>sender_history</code></td><td>What the local index knows about a sender: tone, topics, last exchanges.</td></tr><tr><td><code>observer_context</code></td><td>Patterns from the corrections you made to past drafts.</td></tr><tr><td><code>memory_stats</code></td><td>Health of the local mail index.</td></tr><tr><td><code>list_events</code></td><td>Calendar events, from Microsoft or Google.</td></tr><tr><td><code>find_free_slots</code></td><td>Free slots to propose in a reply.</td></tr><tr><td><code>drive_list_files</code></td><td>Files on your Google Drive.</td></tr><tr><td><code>drive_read_file</code></td><td>Text of a Drive file.</td></tr></tbody></table></div><div class="card tbl"><h3><span class="chip-c c-safe">WRITE_SAFE</span>3 · free, logged</h3><table><thead><tr><th>Tool</th><th>What it does</th></tr></thead><tbody><tr><td><code>mark_read</code></td><td>Read or unread. Reversible, runs at once, written to the audit log.</td></tr><tr><td><code>create_folder</code></td><td>A new empty folder. Runs at once, written to the audit log.</td></tr><tr><td><code>save_draft</code></td><td>A draft in your Drafts folder, to change and send yourself. Sends nothing, written to the audit log.</td></tr></tbody></table></div><div class="card tbl"><h3><span class="chip-c c-danger">DANGEROUS</span>10 · two-phase approval</h3><table><thead><tr><th>Tool</th><th>What it does</th></tr></thead><tbody><tr><td><code>send_mail</code></td><td>Send a new email.</td></tr><tr><td><code>reply_mail</code></td><td>Reply in a thread.</td></tr><tr><td><code>move_message</code></td><td>Move a message to another folder.</td></tr><tr><td><code>delete_message</code></td><td>Delete a message.</td></tr><tr><td><code>delete_folder</code></td><td>Delete a folder and what it holds.</td></tr><tr><td><code>create_event</code></td><td>Create a calendar event (it can invite people).</td></tr><tr><td><code>delete_event</code></td><td>Delete a calendar event.</td></tr><tr><td><code>create_zoom_meeting</code></td><td>Create a Zoom meeting and get its link.</td></tr><tr><td><code>drive_upload_file</code></td><td>Upload a file to Google Drive.</td></tr><tr><td><code>drive_delete_file</code></td><td>Move a Drive file to the trash.</td></tr></tbody></table></div>
+</div></section>
+<section aria-labelledby="s5"><div class="wrap narrow">
+  <h2 id="s5">What the agent can never do</h2>
+  <div class="card pad callout-admin"><span class="chip-c c-admin">ADMIN</span><p>Sign in or out, add or remove accounts, set up CalDAV, run the indexer, configure masking, delete data. These live in the <code>gigamail</code> CLI only. Credentials never travel through the agent’s channel, so a prompt injection hidden in a mail cannot add an account, read a token or change the setup.</p></div>
+</div></section>
+<section aria-labelledby="s6"><div class="wrap narrow">
+  <h2 id="s6">Design choices</h2>
+  <div class="grid grid-2"><article class="card pad"><h3>stdio, not HTTP</h3><p>There is no local port for another program to call.</p></article><article class="card pad"><h3><code>account_id</code> on every tool</h3><p>No “active account” state that the agent could switch behind your back.</p></article><article class="card pad"><h3>Append-only action log</h3><p>Every WRITE_SAFE and DANGEROUS call is written with time, tool, parameters and outcome. Append-only means GigaMail never rewrites past entries; it does not make the file tamper-proof against someone with access to your disk.</p></article><article class="card pad"><h3>Mail is data, not instructions</h3><p>A DANGEROUS tool can never confirm itself: the approval comes from a person, outside the agent.</p></article></div>
+  <p class="muted note">The full map, with every endpoint of the console and the tools still being designed, is in <a href="https://github.com/adecubed/gigamail/blob/main/MAPPA_MCP.md" rel="noopener">MAPPA_MCP.md</a> on GitHub.</p>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Terms of Service</a>
+    <a href="./credits.html">Code credits</a>
+    <a href="./mcp-map.html">MCP map</a>
+    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="./changelog.html">What's new</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./mcp-map-it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+</body>
+</html>

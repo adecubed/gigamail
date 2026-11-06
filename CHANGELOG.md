@@ -62,6 +62,60 @@
   grapheme joiner that pads preheaders is now removed like the other
   invisible characters.
 
+- **Edit in the approval window: correct the text in place.** Edit now
+  opens the mail's text for editing, and Approve becomes "Send edited" and
+  sends the corrected version (`POST /approvals/{id}/amend`, body and
+  subject only, from a console click; the recipients stay what the agent
+  asked for). The note for the agent is still there, under the text, with
+  its own button. Before, Edit only opened the note box and left Approve
+  live: a click there sent the old text, which is what happened to a
+  user who had just typed what to change. With the box open, Approve
+  stays off while the text is untouched or a note is being written, and
+  after the note is sent, until the new draft arrives.
+
+- **The agent can save a mail as a draft.** A new MCP tool, `save_draft`,
+  saves the mail on the provider's server, in the mailbox's Drafts folder
+  (Microsoft 365 and IMAP), instead of sending it, so the user changes and
+  sends it from their mail app, webmail or the console. On IMAP accounts a
+  mail app set up with POP does not show it. It sends nothing, so it runs
+  at once and is written to the audit log, like `mark_read`; a reply draft
+  goes to the original sender, with the same fixed addressing as
+  `reply_mail`.
+  Attachments are not saved with drafts. If the copy to the mailbox
+  fails the draft stays in GigaMail and the tool says why. 31 tools now.
+- **"Save" in the approval window: decide later.** Next to Approve, Edit
+  and Reject, Save keeps the request in "Waiting for you" for 7 days
+  instead of letting it expire after 15 minutes; the list marks it as
+  saved and counts the days left. It is approved, edited or rejected
+  later as usual, with the same verification. Only a click in the
+  console can save a request.
+- **The website asks nothing of Google.** Poppins was loaded from Google
+  Fonts on every page, so each visitor's address reached Google. The font
+  is now served from gigamail.ai (`docs/fonts/`, SIL Open Font License),
+  and the Privacy Policy says where the site is hosted (GitHub Pages) and
+  that it uses no cookies or local storage. The home's menu links What's
+  new.
+- **What's new on the website.** A page in English and Italian
+  (`changelog.html`, `changelog-it.html`) tells what every release
+  brought, from 0.1.0 to 0.6.7: the highlights of each minor version, then
+  each release with its date and one line.
+- **The home's install section is one button.** Step 1 is a download
+  button that picks the installer for the visitor's system, steps 2 and 3
+  say what the app does for you, and each links to a new install page
+  (`install.html`, `install-it.html`) with every installer, `pip install`,
+  the terminal commands and the setup for each agent. The hero no longer
+  shows `pip install` either.
+- **GigaMail vs Composio.** A comparison page in English and Italian
+  (`gigamail-vs-composio.html`, `gigamail-vs-composio-it.html`), from
+  Composio's own pages read on 5 November 2026, with a question about it in
+  the home's FAQ.
+- **Release updates by email.** The home and What's new pages have a
+  subscribe card for one email per release, sent through Buttondown, plus
+  the releases RSS feed and GitHub's "Watch → Releases". The list name
+  lives in `docs/home.js` (the form stays hidden if it is empty); the
+  Privacy Policy says where the address goes.
+- **The hero says Linux too**: "Windows, macOS & Linux".
+
 ## v0.6.7 — 2026-11-04
 
 - **An action approved from the console no longer looks like an error to

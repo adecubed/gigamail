@@ -72,10 +72,12 @@ test('Edit closes the request with a note; Reject from the toast rejects at once
   const d = w.document;
   assert.ok(d.getElementById('editBox').classList.contains('visible'));
   d.getElementById('note').value = 'più breve';
-  d.getElementById('btnEdit').click();
+  d.getElementById('note').dispatchEvent(new w.Event('input'));
+  d.getElementById('btnNote').click();
   await tick();
   assert.ok(calls.some((c) => c.startsWith('POST /approvals/req_1/edit') && c.includes('più breve')));
   assert.match(d.getElementById('status').textContent, /rimessa in coda/);
+  assert.equal(d.getElementById('btnApprove').disabled, true, 'the old text cannot be sent any more');
 
   rec = REQ;
   const second = open((p) => {
@@ -88,6 +90,124 @@ test('Edit closes the request with a note; Reject from the toast rejects at once
   assert.match(second.w.document.getElementById('state').textContent, /rifiutata/);
   await second.tick();
   assert.ok(second.calls.includes('close'));
+});
+
+test('Edit opens the text in place: Approve is off until it changes, then sends the corrected version', async () => {
+  let rec = REQ;
+  const { w, calls, load, tick } = open((p, opts) => {
+    if (p === '/approvals/req_1') return { status: 200, body: rec };
+    if (p === '/approvals/req_1/amend') {
+      const body = JSON.parse(opts.body).body;
+      rec = { ...rec, args: { ...rec.args, body }, preview: { ...rec.preview, body } };
+      return { status: 200, body: { success: true, status: 'pending', preview: rec.preview } };
+    }
+    if (p === '/approvals/req_1/approve') { rec = { ...rec, status: 'executed', execution_outcome: 'ok' }; return { status: 200, body: { status: 'executed', outcome: 'ok' } }; }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnApprove').disabled, false);
+  d.getElementById('btnEdit').click();
+  await tick();
+  assert.ok(d.getElementById('editBox').classList.contains('visible'));
+  assert.equal(d.getElementById('bodyEdit').style.display, '', 'the text is there to correct');
+  assert.match(d.getElementById('bodyEdit').value, /2028/);
+  assert.equal(d.getElementById('btnEdit').textContent, 'Annulla modifica');
+  assert.equal(d.getElementById('btnApprove').disabled, true, 'untouched text: nothing to send from here');
+  assert.equal(d.getElementById('btnSave').disabled, true);
+  // Approve clicked anyway sends nothing
+  d.getElementById('btnApprove').click();
+  await tick();
+  assert.ok(!calls.some((c) => c.includes('/approve')));
+  d.getElementById('bodyEdit').value = 'Gentile Bruna,\nla consegna è prevista nel 2027.';
+  d.getElementById('bodyEdit').dispatchEvent(new w.Event('input'));
+  assert.equal(d.getElementById('btnApprove').disabled, false);
+  assert.equal(d.getElementById('btnApprove').textContent, 'Invia modificata');
+  d.getElementById('btnApprove').click();
+  await tick();
+  const amend = calls.findIndex((c) => c.startsWith('POST /approvals/req_1/amend') && c.includes('2027'));
+  const approve = calls.indexOf('POST /approvals/req_1/approve');
+  assert.ok(amend >= 0 && approve > amend, `the text goes first, then the approval: ${calls.join(' | ')}`);
+  assert.match(d.getElementById('status').textContent, /eseguita/);
+  assert.match(d.getElementById('state').textContent, /inviata/);
+  await tick();
+  assert.ok(calls.includes('close'));
+});
+
+test('a note for the agent keeps Approve off, even with the text changed; Escape and Edit again leave the box', async () => {
+  let rec = REQ;
+  const { w, calls, load, tick } = open((p) => {
+    if (p === '/approvals/req_1') return { status: 200, body: rec };
+    if (p === '/approvals/req_1/edit') { rec = { ...rec, status: 'rejected' }; return { status: 200, body: { requeued: false } }; }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  d.getElementById('btnEdit').click();
+  d.getElementById('bodyEdit').value = 'altro testo';
+  d.getElementById('bodyEdit').dispatchEvent(new w.Event('input'));
+  assert.equal(d.getElementById('btnApprove').disabled, false);
+  d.getElementById('note').value = 'metti il prezzo';
+  d.getElementById('note').dispatchEvent(new w.Event('input'));
+  assert.equal(d.getElementById('btnApprove').disabled, true, 'a note is being written: the agent rewrites it');
+  assert.equal(d.getElementById('btnNote').disabled, false);
+  // Escape closes the box, not the window; Edit again reopens it clean
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape' }));
+  assert.ok(!d.getElementById('editBox').classList.contains('visible'));
+  assert.ok(!calls.includes('close'));
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'out of the box the request is approvable as it is');
+  d.getElementById('btnEdit').click();
+  assert.equal(d.getElementById('note').value, '');
+  d.getElementById('note').value = 'metti il prezzo';
+  d.getElementById('note').dispatchEvent(new w.Event('input'));
+  d.getElementById('btnNote').click();
+  await tick();
+  assert.ok(calls.some((c) => c.startsWith('POST /approvals/req_1/edit') && c.includes('metti il prezzo')));
+  assert.ok(!calls.some((c) => c.includes('/amend') || c.includes('/approve')), 'nothing was sent');
+  assert.match(d.getElementById('status').textContent, /nuova bozza/);
+  assert.equal(d.getElementById('btnApprove').disabled, true);
+  await tick();
+  assert.ok(calls.includes('close'));
+});
+
+test('Edit on a request without a body takes only the note', async () => {
+  const moveReq = { request_id: 'req_2', tool: 'move_message', status: 'pending', expires_at: NOW + 600,
+    args: { message_id: 'm1', folder_id: 'Archive' }, preview: { from: 'bruna@example.com', folder: 'Archive' } };
+  const { w, load } = open((p) => (p === '/approvals/req_2' ? { status: 200, body: moveReq } : { status: 404, body: {} }));
+  await load({ request_id: 'req_2', action: 'edit' });
+  const d = w.document;
+  assert.ok(d.getElementById('editBox').classList.contains('visible'));
+  assert.equal(d.getElementById('bodyEdit').style.display, 'none');
+  assert.equal(d.getElementById('body').style.display, '');
+  assert.equal(d.getElementById('btnApprove').disabled, true);
+});
+
+test('Save keeps the request waiting: it says for how long and the window closes', async () => {
+  let rec = REQ;
+  const { w, calls, load, tick } = open((p) => {
+    if (p === '/approvals/req_1') return { status: 200, body: rec };
+    if (p === '/approvals/req_1/save') { rec = { ...rec, saved_at: NOW, expires_at: NOW + 7 * 86400 }; return { status: 200, body: { status: 'pending' } }; }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnSave').disabled, false);
+  d.getElementById('btnSave').click();
+  await tick();
+  assert.ok(calls.includes('POST /approvals/req_1/save'));
+  assert.ok(!calls.some((c) => c.includes('/approve') || c.includes('/reject')), 'saving decides nothing');
+  assert.match(d.getElementById('status').textContent, /7 giorni/);
+  assert.match(d.getElementById('state').textContent, /salvata · scade tra 7 giorni/);
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'still approvable');
+  await tick();
+  assert.ok(calls.includes('close'));
+});
+
+test('Save is off for a request that is no longer waiting', async () => {
+  const { w, load } = open((p) => (p === '/approvals/req_1'
+    ? { status: 200, body: { ...REQ, status: 'rejected' } } : { status: 404, body: {} }));
+  await load({ request_id: 'req_1', action: 'show' });
+  assert.equal(w.document.getElementById('btnSave').disabled, true);
 });
 
 test('a request that is gone stays on screen: nothing was decided', async () => {

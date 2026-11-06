@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's new in GigaMail: every release, from 0.1 to 0.6</title>
+<meta name="description" content="What each GigaMail release brought, from the first public version on 15 August 2026 to today: the approval gate, rules, the console, calendar and Google, the archive, the desktop apps.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/changelog.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/changelog.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/changelog-it.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/changelog.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/changelog.html">
+<meta property="og:title" content="What's new in GigaMail: every release, from 0.1 to 0.6">
+<meta property="og:description" content="What each GigaMail release brought, from the first public version on 15 August 2026 to today: the approval gate, rules, the console, calendar and Google, the archive, the desktop apps.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What's new in GigaMail: every release, from 0.1 to 0.6">
+<meta name="twitter:description" content="What each GigaMail release brought, from the first public version on 15 August 2026 to today: the approval gate, rules, the console, calendar and Google, the archive, the desktop apps.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/changelog.html#webpage", "url": "https://gigamail.ai/changelog.html", "name": "What's new in GigaMail: every release, from 0.1 to 0.6", "description": "What each GigaMail release brought, from the first public version on 15 August 2026 to today: the approval gate, rules, the console, calendar and Google, the archive, the desktop apps.", "inLanguage": "en", "dateModified": "2026-11-05", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=9">
+<link rel="stylesheet" href="./pages.css?v=1">
+<style>
+  .jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .jump a { text-decoration: none; font-family: var(--mono); font-size: 0.82rem; font-weight: 700; border-radius: 999px; padding: 6px 12px; background: var(--gm-fill); color: var(--gm-ink); }
+  .jump a:hover { background: var(--gm-tint); color: var(--gm-pink); }
+  .rel { scroll-margin-top: 80px; }
+  .rel h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 0; margin-bottom: 4px; }
+  .rel .when-line { margin: 0 0 14px; font-size: 0.9rem; }
+  .rel .hl { margin-bottom: 14px; }
+  .rel .hl ul { margin: 0; padding-left: 1.1rem; }
+  .rel .hl li { margin: 7px 0; }
+  .rel .hl li strong { color: var(--gm-ink); }
+  .rel .tbl td:first-child, .rel .tbl td:nth-child(2) { white-space: nowrap; }
+  .rel .tbl td:first-child { font-family: var(--mono); font-weight: 700; color: var(--gm-ink); }
+  .rel.latest .hl { border: 1.5px solid var(--gm-tint-line); background: var(--gm-tint); }
+  @media (max-width: 700px) {
+    .rel .tbl thead { display: none; }
+    .rel .tbl tr { display: block; border-top: 1px solid var(--gm-line); padding: 8px 0; }
+    .rel .tbl td { display: inline-block; border: 0; padding: 2px 20px 2px 0; }
+    .rel .tbl td:first-child { padding-left: 20px; }
+    .rel .tbl td:last-child { display: block; padding: 2px 20px 6px; white-space: normal; }
+  }
+</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="./#features">What it does</a>
+      <a href="./#approval">Approval</a>
+      <a href="./#install">Install</a>
+      <a href="./mcp-map.html">MCP map</a>
+      <a href="./gigamail-vs-agentmail.html">vs AgentMail</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./changelog-it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">What's new</p>
+    <h1 id="t">Every release, <em>in plain words</em>.</h1>
+    <p class="lede">GigaMail went public on 15 August 2026. Since then, 28 releases. Here is what each one brought, grouped by version: the highlights first, then every release with its date.</p>
+    <nav class="jump" aria-label="Versions">
+      <a href="#v0-6">0.6</a><a href="#v0-5">0.5</a><a href="#v0-4">0.4</a><a href="#v0-3">0.3</a><a href="#v0-2">0.2</a><a href="#v0-1">0.1</a>
+    </nav>
+  </div>
+</section>
+
+<section class="rel latest" id="v0-6" aria-labelledby="h06"><div class="wrap narrow">
+  <h2 id="h06"><span class="chip-c c-safe">0.6</span>Your agent moves into the app</h2>
+  <p class="muted when-line">20 October – 4 November 2026 · 8 releases · latest: 0.6.7</p>
+  <div class="card pad hl"><ul>
+    <li><strong>Ask the agent from the console.</strong> The agent bar runs Claude Code, Codex or Google Antigravity inside GigaMail, shows what you are about to approve, remembers the conversation and can be stopped.</li>
+    <li><strong>ChatGPT and Codex in one click</strong>, and Codex works without installing its CLI.</li>
+    <li><strong>“Waiting for you”</strong> has its own icon with counters. Approving means sending, from every channel, and a request approved but never sent is picked up again.</li>
+    <li><strong>A new look</strong>: dark theme, a blue option for those who prefer it, line icons, a new logo.</li>
+    <li><strong>Spam filters that block a kind of mail</strong>, not only a sender; marking SPAM blocks the sender.</li>
+    <li><strong>The agent reads what you see, and nothing hidden.</strong> Invisible text in a mail is left out and flagged; executable attachments never reach the agent.</li>
+    <li><strong>A desktop app for Linux</strong>, as a Debian/Ubuntu package and an AppImage.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.6.7</td><td>4 Nov</td><td>Desktop app for Linux. The agent reads visible text only. Executable attachments blocked. Knowledge files searched by what they say, old <code>.xls</code> files read. A refused send says who and why.</td></tr>
+      <tr><td>0.6.6</td><td>22 Oct</td><td>Approve means send, from every channel. Approved requests never sent are resumed. Spam filters on the text. Updates install even while ChatGPT, Codex or Claude Desktop run.</td></tr>
+      <tr><td>0.6.5</td><td>22 Oct</td><td>One watcher, never three. One notification per check, not one per draft. Counters on “Waiting for you”. A rule follows the conversations it opened. Fast search on IMAP accounts. Agent errors in your language.</td></tr>
+      <tr><td>0.6.4</td><td>21 Oct</td><td>The agent bar shows what you are approving. A softer dark theme. The installer closes a backend left running.</td></tr>
+      <tr><td>0.6.3</td><td>21 Oct</td><td>Updates install completely. The “new mail” toast is readable in the dark theme.</td></tr>
+      <tr><td>0.6.2</td><td>21 Oct</td><td>The backend stops before an update installs. The “new mail” toast follows the theme.</td></tr>
+      <tr><td>0.6.1</td><td>21 Oct</td><td>Google Antigravity as the console’s agent. Codex picks a model your account can use. Spam filters by kind of mail. Line icons and a new logo.</td></tr>
+      <tr><td>0.6.0</td><td>20 Oct</td><td>The agent in the console. ChatGPT and Codex in one click. “Waiting for you”. New look and dark theme. Your personal Zoom link. All-day events in the calendar.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="rel" id="v0-5" aria-labelledby="h05"><div class="wrap narrow">
+  <h2 id="h05"><span class="chip-c c-read">0.5</span>On the Mac, and signed</h2>
+  <p class="muted when-line">7 – 19 October 2026 · 4 releases</p>
+  <div class="card pad hl"><ul>
+    <li><strong>A macOS app</strong>, for Apple Silicon and, from 0.5.2, for Intel too.</li>
+    <li><strong>A Windows installer that does not ask for an administrator</strong>, with the installed app signed as well, not only the installer.</li>
+    <li><strong>A signature per account</strong>, added to every mail sent from that account.</li>
+    <li><strong>A slow mail server no longer freezes the watcher</strong>, and the archive of a Microsoft account reaches every folder.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.5.3</td><td>19 Oct</td><td>A slow mail server no longer freezes the watcher. The Microsoft archive reaches every folder again. The Google client ships in the package.</td></tr>
+      <tr><td>0.5.2</td><td>14 Oct</td><td>The Mac app for Intel is back. A video call already set up no longer gets a second Zoom meeting. The Claude Code bundled with the app is found again.</td></tr>
+      <tr><td>0.5.1</td><td>9 Oct</td><td>The macOS app. A Windows installer without administrator rights. The website’s Download button downloads at once. One confirmation per appointment.</td></tr>
+      <tr><td>0.5.0</td><td>7 Oct</td><td>A signature per account. The installed app is signed. An edited follow-up is rewritten on the next check.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="rel" id="v0-4" aria-labelledby="h04"><div class="wrap narrow">
+  <h2 id="h04"><span class="chip-c c-read">0.4</span>An archive of its own, a lighter core</h2>
+  <p class="muted when-line">30 September – 6 October 2026 · 2 releases</p>
+  <div class="card pad hl"><ul>
+    <li><strong>Every mail, in full, forever.</strong> GigaMail keeps its own archive with attachments and full-text search, synced continuously, and imports Outlook’s history once. Mail that the server already deleted is still found.</li>
+    <li><strong>The core does not carry a trade.</strong> What was specific to one business became optional extensions; appointments are off unless you switch them on.</li>
+    <li><strong>What you approve is what goes out</strong>: same recipients, same account, the same attachment byte for byte.</li>
+    <li><strong>A Claude Code plugin</strong>, a code-signed Windows installer, and approvals on Linux with a local PIN.</li>
+    <li><strong>After an appointment GigaMail asks how it went</strong> and drafts a follow-up seven days later.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.4.1</td><td>6 Oct</td><td>Several accounts in one view. Notifications name the mail. Claude Code plugin. Signed Windows installer. Linux approves with a PIN. Follow-ups after meetings. IMAP certificates verified. <code>gigamail check</code> tests a setup end to end.</td></tr>
+      <tr><td>0.4.0</td><td>30 Sep</td><td>The package is called gigamail. Extensions out of the core. The archive and continuous sync. Drafts answer the question in this mail. The approved payload is the one sent. Reply to a client from Telegram.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="rel" id="v0-3" aria-labelledby="h03"><div class="wrap narrow">
+  <h2 id="h03"><span class="chip-c c-read">0.3</span>Console, calendar and Google</h2>
+  <p class="muted when-line">4 – 15 September 2026 · 5 releases</p>
+  <div class="card pad hl"><ul>
+    <li><strong>A guided first launch</strong>, IMAP accounts checked before they are saved, and an installer that ships with each release and updates itself.</li>
+    <li><strong>Mail and calendar talk to each other.</strong> The agent sees the calendar before proposing a time, and the time a client picks goes into the calendar, with a Zoom link if it is a video call.</li>
+    <li><strong>Google Calendar and Google Drive</strong>, with Drive limited to the files GigaMail itself creates or opens.</li>
+    <li><strong>Codex</strong> as a first-class agent, and a Codex plugin.</li>
+    <li><strong>A guard against mails that give orders to the assistant</strong>, and moving a mail now asks for approval.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.3.4</td><td>15 Sep</td><td>Mail from a chosen domain is filed by itself. Zoom connected. Every outgoing mail puts its thread on watch. A disconnected agent no longer writes drafts.</td></tr>
+      <tr><td>0.3.3</td><td>11 Sep</td><td>Mail and calendar, both ways. Google Calendar and Drive. Codex plugin. Drafts in the sender’s language. The anti-injection guard. Moving a mail needs approval.</td></tr>
+      <tr><td>0.3.2</td><td>8 Sep</td><td>Codex CLI as a first-class agent. Attachments open again from the console.</td></tr>
+      <tr><td>0.3.1</td><td>4 Sep</td><td>A calmer look with readable grey text. Dates follow the interface language. A 90-second demo video.</td></tr>
+      <tr><td>0.3.0</td><td>4 Sep</td><td>Onboarding on first launch. IMAP accounts verified before saving. A hardened console. The app updates itself.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="rel" id="v0-2" aria-labelledby="h02"><div class="wrap narrow">
+  <h2 id="h02"><span class="chip-c c-read">0.2</span>Rules, and approvals from your phone</h2>
+  <p class="muted when-line">26 August – 1 September 2026 · 4 releases</p>
+  <div class="card pad hl"><ul>
+    <li><strong>Reply rules with a fence around them.</strong> Mail from senders or folders you choose gets a draft by itself: proposed for your approval, or sent within strict limits. Creating a rule needs Windows Hello or Touch ID.</li>
+    <li><strong>Approve, reject or ask for changes from Telegram</strong>, with an optional PIN, and from clickable Windows notifications.</li>
+    <li><strong>Anti-spam barriers in front of the rules</strong>, and an Automations view in the console.</li>
+    <li><strong>The console speaks Chinese</strong>, beside Italian and English.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.2.4</td><td>1 Sep</td><td>Rules can answer the person instead of the portal, with cc and attachments. The watcher survives logout. Optional PIN for Telegram approvals.</td></tr>
+      <tr><td>0.2.3</td><td>31 Aug</td><td>Notification buttons fixed. Sends to several recipients fixed. Identity files as attachments. Chinese. Changing the Telegram chat revokes trust.</td></tr>
+      <tr><td>0.2.1</td><td>26 Aug</td><td>The Automations view in the console. An unreachable approval store denies, explicitly.</td></tr>
+      <tr><td>0.2.0</td><td>26 Aug</td><td>Semi-automatic and automatic replies. <code>gigamail watch</code>. Approvals from Telegram and Windows notifications.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="rel" id="v0-1" aria-labelledby="h01"><div class="wrap narrow">
+  <h2 id="h01"><span class="chip-c c-read">0.1</span>The gate</h2>
+  <p class="muted when-line">15 – 19 August 2026 · 5 releases</p>
+  <div class="card pad hl"><ul>
+    <li><strong>An MCP server for your agent</strong>, over stdio with no network port: 24 tools for Microsoft 365 and any IMAP/SMTP mailbox, plus the calendar.</li>
+    <li><strong>Nothing destructive on the agent’s word alone.</strong> Sending, replying and deleting return a preview; a person approves, then the exact arguments shown are executed. Every write goes to an append-only log.</li>
+    <li><strong>Approval moved out of the agent’s reach</strong> (0.1.1), one approval can no longer run twice (0.1.2), and approving needs the person at the machine, with Windows Hello or Touch ID (0.1.4).</li>
+    <li><strong>On PyPI as <code>gigamail</code></strong>, and verified with OpenClaw and Hermes.</li>
+  </ul></div>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Date</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.1.4</td><td>19 Aug</td><td>Approving needs Windows Hello or Touch ID. A cap on requests. Previews show addresses, never display names. SMTP TLS verified.</td></tr>
+      <tr><td>0.1.3</td><td>16 Aug</td><td>Data paths resolved in one place, so the gate cannot fail silently under a client that filters the environment. OpenClaw and Hermes verified.</td></tr>
+      <tr><td>0.1.2</td><td>15 Aug</td><td>One approval can no longer execute twice. Published on PyPI.</td></tr>
+      <tr><td>0.1.1</td><td>15 Aug</td><td>The agent can no longer approve its own actions: approval happens out of band.</td></tr>
+      <tr><td>0.1.0</td><td>15 Aug</td><td>First public release.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">Every change, with the reasons behind it, is in <a href="https://github.com/adecubed/gigamail/blob/main/CHANGELOG.md" rel="noopener">CHANGELOG.md</a>; downloads are on <a href="https://github.com/adecubed/gigamail/releases" rel="noopener">GitHub Releases</a>.</p>
+</div></section>
+<section id="updates" aria-labelledby="updates-title">
+  <div class="wrap narrow">
+    <div class="card subscribe">
+      <div>
+        <p class="kicker">Release updates</p>
+        <h2 id="updates-title">Stay up to date on new releases.</h2>
+        <p class="muted">One email when a new version of GigaMail comes out, with what it brings. Nothing else, and one click to unsubscribe.</p>
+      </div>
+      <div>
+        <form class="sub-form" method="post" target="_blank" data-newsletter hidden>
+          <div class="row">
+            <label class="sr-only" for="sub-email">Your email</label>
+            <input id="sub-email" type="email" name="email" required autocomplete="email" placeholder="you@example.com">
+            <input type="hidden" name="embed" value="1">
+            <button class="btn btn-primary" type="submit">Subscribe</button>
+          </div>
+          <p class="fine">Sent by Buttondown; you confirm from the first email. <a href="./privacy.html#newsletter">Privacy</a></p>
+        </form>
+        <p class="alt-follow">No email? Follow the <a href="https://github.com/adecubed/gigamail/releases.atom" rel="noopener">releases feed (RSS)</a>, or on GitHub choose <a href="https://github.com/adecubed/gigamail" rel="noopener">Watch → Custom → Releases</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Terms of Service</a>
+    <a href="./credits.html">Code credits</a>
+    <a href="./mcp-map.html">MCP map</a>
+    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="./changelog.html">What's new</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./changelog-it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+<script src="./home.js?v=4" defer></script>
+</body>
+</html>

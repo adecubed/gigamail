@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fcf6fa">
+<title>AgentMail alternative: open-source, local-first email for AI agents | GigaMail</title>
+<meta name="description" content="GigaMail vs AgentMail: your agent works on the mailbox you already have, every send approved with Windows Hello or Touch ID, everything stored on your machine. Free, AGPL-3.0.">
+<link rel="canonical" href="https://gigamail.ai/vs/agentmail">
+<link rel="icon" href="/brand/gigamail.ico?v=2" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="/brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="/brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://gigamail.ai/vs/agentmail">
+<meta property="og:title" content="GigaMail vs AgentMail: two ways to give AI agents email">
+<meta property="og:description" content="AgentMail creates new inboxes for agents in its cloud. GigaMail connects your agent to the mailboxes you already have, on your machine, with you approving every send.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail vs AgentMail: two ways to give AI agents email">
+<meta name="twitter:description" content="AgentMail creates new inboxes for agents in its cloud. GigaMail connects your agent to the mailboxes you already have, on your machine, with you approving every send.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "https://gigamail.ai/vs/agentmail#webpage", "url": "https://gigamail.ai/vs/agentmail", "name": "GigaMail vs AgentMail", "description": "GigaMail vs AgentMail: your agent works on the mailbox you already have, every send approved with Windows Hello or Touch ID, everything stored on your machine. Free, AGPL-3.0.", "inLanguage": "en", "datePublished": "2026-11-02", "dateModified": "2026-11-02", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}, {"@type": "FAQPage", "@id": "https://gigamail.ai/vs/agentmail#faq", "mainEntity": [{"@type": "Question", "name": "Is GigaMail an open-source AgentMail alternative?", "acceptedAnswer": {"@type": "Answer", "text": "For agents that work on your own mailboxes, yes: GigaMail is AGPL-3.0 and free. If each agent needs its own new address created by API, that is what AgentMail does and GigaMail does not."}}, {"@type": "Question", "name": "Can my agent send or delete email without me?", "acceptedAnswer": {"@type": "Answer", "text": "No. Send, reply, move and delete return only an inert request id. They run after you approve with Windows Hello or Touch ID (a local PIN on Linux), with the exact arguments you saw. An agent with a shell can open that prompt but cannot pass it."}}, {"@type": "Question", "name": "Where is my email stored?", "acceptedAnswer": {"@type": "Answer", "text": "On your machine: archive, search index, credentials, sender memory and configuration. GigaMail runs no service and receives nothing. The mail your agent reads goes to that agent's model provider, so choose your agent accordingly; the masker can hide tax codes, IBANs, emails and phone numbers first."}}, {"@type": "Question", "name": "Which mailboxes and agents does it work with?", "acceptedAnswer": {"@type": "Answer", "text": "Microsoft 365 and Outlook through Microsoft Graph, and any IMAP account, Gmail included. Plugins for Claude Code, Codex, OpenClaw and Hermes; any other MCP client through gigamail-server."}}]}]}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/home.css?v=9">
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="GigaMail home"><img src="/brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="/#features">What it does</a>
+      <a href="/#approval">Approval</a>
+      <a href="/#install">Install</a>
+      <a href="/#videos">Videos</a>
+      <a href="/#faq">FAQ</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="/#install">Download</a>
+  </div>
+</header>
+
+<main class="article">
+
+<section class="hero hero-text" aria-labelledby="page-title">
+  <div class="wrap">
+    <p class="kicker">Comparison</p>
+    <h1 id="page-title">GigaMail vs AgentMail</h1>
+    <p class="lede">Looking for an AgentMail alternative? Both give AI agents email, in two different ways. AgentMail is a hosted API that creates new inboxes for your agents. GigaMail is an open-source MCP server that connects your agent to the mailboxes you already have, keeps everything on your machine, and lets nothing be sent or deleted until you approve it.</p>
+  </div>
+</section>
+
+<section aria-labelledby="short-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="short-title">The short answer</h2></div>
+    <div class="grid grid-2">
+      <article class="card feature">
+        <h3>Choose AgentMail</h3>
+        <p>if you are building a product where each agent needs its own email address, created by API, at scale.</p>
+      </article>
+      <article class="card feature pick">
+        <h3>Choose GigaMail</h3>
+        <p>if you want Claude, Codex, OpenClaw, Hermes or any MCP client to read, search and draft replies in your own Outlook, Gmail or IMAP mailbox, with you approving every send.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="table-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="table-title">Side by side</h2></div>
+    <div class="card cmp">
+      <table>
+        <thead><tr><th scope="col"><span class="sr-only">Aspect</span></th><th scope="col">GigaMail</th><th scope="col">AgentMail</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">What it is</th><td>MCP server + desktop console for the mailboxes you already have</td><td>Hosted email API that creates inboxes for agents</td></tr>
+          <tr><th scope="row">Mailboxes</th><td>Microsoft 365 / Outlook (Graph) and any IMAP: Gmail, Aruba, Libero and others</td><td>New inboxes on agentmail.to or your custom domain</td></tr>
+          <tr><th scope="row">Where data lives</th><td>On your machine: archive, index, credentials, memory. No GigaMail service</td><td>AgentMail cloud</td></tr>
+          <tr><th scope="row">Sending and deleting</th><td>Out-of-band human approval: Windows Hello or Touch ID; local PIN on Linux; Telegram opt-in</td><td>The agent acts on its own through the API</td></tr>
+          <tr><th scope="row">Auto-reply</th><td>Opt-in rules with expiry, daily cap and per-sender cooldown; no MCP tool can create them</td><td>Your agent replies via API, triggered by webhooks or websockets</td></tr>
+          <tr><th scope="row">LLM</th><td>None built in: the intelligence is your agent's</td><td>None: you bring the agent</td></tr>
+          <tr><th scope="row">Calendar and files</th><td>Microsoft or Google Calendar, Google Drive, Zoom meetings</td><td>Not listed on agentmail.to</td></tr>
+          <tr><th scope="row">Prompt-injection defences</th><td>Hidden text stripped before the agent reads a mail; sensitive fields maskable; red-team tests in CI</td><td>Allowlists and per-inbox permissions</td></tr>
+          <tr><th scope="row">Clients</th><td>Plugins for Claude Code, Codex, OpenClaw, Hermes; any MCP client</td><td>Python and TypeScript SDKs, MCP</td></tr>
+          <tr><th scope="row">Install</th><td>Desktop app for Windows and macOS; <code>pip install gigamail</code></td><td>Sign up and API key</td></tr>
+          <tr><th scope="row">License and price</th><td>AGPL-3.0, free; commercial license available</td><td>Proprietary. Free 3 inboxes and 3,000 emails/month; Developer $20/month; Startup $200/month; Enterprise custom</td></tr>
+          <tr><th scope="row">Agent-owned addresses</th><td>No: works on your mailboxes</td><td>Yes, its core feature</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted sources-line">GigaMail details from the <a href="https://github.com/adecubed/gigamail" rel="noopener">repository</a>, version 0.6.6. AgentMail details from <a href="https://www.agentmail.to/" rel="noopener nofollow">agentmail.to</a> and its <a href="https://www.agentmail.to/pricing.md" rel="noopener nofollow">pricing page</a>, checked November 2, 2026.</p>
+  </div>
+</section>
+
+<section aria-labelledby="fit-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="fit-title">When each one fits</h2></div>
+    <div class="grid grid-2">
+      <article class="card feature">
+        <h3>AgentMail is the better fit when:</h3>
+        <ul class="plain">
+          <li>You ship agents to customers and need to provision many inboxes programmatically.</li>
+          <li>Agents must sign up for services or receive verification codes under their own address.</li>
+          <li>You want a managed service, with dedicated IPs and a SOC 2 report on the Startup plan.</li>
+        </ul>
+      </article>
+      <article class="card feature pick">
+        <h3>GigaMail is the better fit when:</h3>
+        <ul class="plain">
+          <li>You want your agent on the email you already get: search, triage, replies drafted from your price lists and documents, appointments in your calendar.</li>
+          <li>You do not want your mail, credentials or index on someone else's server.</li>
+          <li>You want a human in the loop that the agent cannot bypass: it gets an inert request id, you approve with Hello or Touch ID.</li>
+          <li>You want something free and open source you can read, audit and modify.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="faq-title">FAQ</h2></div>
+    <div class="faq">
+      <details class="card" open><summary>Is GigaMail an open-source AgentMail alternative?</summary><p>For agents that work on your own mailboxes, yes: GigaMail is AGPL-3.0 and free. If each agent needs its own new address created by API, that is what AgentMail does and GigaMail does not.</p></details>
+      <details class="card"><summary>Can my agent send or delete email without me?</summary><p>No. Send, reply, move and delete return only an inert request id. They run after you approve with Windows Hello or Touch ID (a local PIN on Linux), with the exact arguments you saw. An agent with a shell can open that prompt but cannot pass it.</p></details>
+      <details class="card"><summary>Where is my email stored?</summary><p>On your machine: archive, search index, credentials, sender memory and configuration. GigaMail runs no service and receives nothing. The mail your agent reads goes to that agent's model provider, so choose your agent accordingly; the masker can hide tax codes, IBANs, emails and phone numbers first.</p></details>
+      <details class="card"><summary>Which mailboxes and agents does it work with?</summary><p>Microsoft 365 and Outlook through Microsoft Graph, and any IMAP account, Gmail included. Plugins for Claude Code, Codex, OpenClaw and Hermes; any other MCP client through <code>gigamail-server</code>.</p></details>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="try-title">
+  <div class="wrap">
+    <div class="card then">
+      <strong id="try-title">Try GigaMail.</strong>
+      <span class="muted" style="font-size:.95rem">Download the desktop app for Windows or macOS, or <code>pip install "gigamail[all]"</code>. Source on <a href="https://github.com/adecubed/gigamail" rel="noopener">GitHub</a>.</span>
+      <a class="btn btn-primary" href="/#install">Download GigaMail</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="/privacy.html">Privacy Policy</a>
+    <a href="/terms.html">Terms of Service</a>
+    <a href="/credits.html">Code credits</a>
+    <a href="/mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="/">Home</a>
+  </div>
+</footer>
+
+</body>
+</html>

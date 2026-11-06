@@ -202,6 +202,54 @@ def test_edit_closes_the_request_with_a_note_and_requeues_a_rule_draft(client, m
         console_click.set_secret("")
 
 
+def test_amend_rewrites_the_text_and_the_approval_sends_the_corrected_version(client, monkeypatch):
+    """The window's in-place edit: the person corrects the body (and the
+    subject) of a pending request, then approves it; GigaMail sends the
+    corrected text, not what the agent asked. The addressing cannot be
+    touched, a request without a body has nothing to amend, and only a
+    console click can do it."""
+    from gigamail import consent, server
+    from gigamail.http_api import console_click
+    # the real consent backend would open the OS prompt (and wait for it)
+    monkeypatch.setattr(consent, "require_human", lambda reason: True)
+    monkeypatch.delenv("ADE_MAIL_DRYRUN", raising=False)
+    sent = []
+    monkeypatch.setitem(server.APPROVED_EXECUTORS, "send_mail",
+                        lambda a: sent.append(a) or {"success": True})
+    original = {"to": "mario.rossi@example.com", "subject": "Visit", "body": "at 5pm"}
+    rid = policy.store().create("send_mail", dict(original),
+                                {"to": original["to"], "subject": "Visit", "body": "at 5pm"})
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        H = {console_click.HEADER: secret}
+        assert client.post(f"/approvals/{rid}/amend", json={"body": "at 6pm"}).status_code == 403
+        assert client.post(f"/approvals/{rid}/amend", json={}, headers=H).status_code == 400
+        bare = _request()   # {"to": ...} only: nothing to rewrite
+        r = client.post(f"/approvals/{bare}/amend", json={"body": "x"}, headers=H)
+        assert r.status_code == 400 and "no body" in r.json()["detail"]
+        r = client.post(f"/approvals/{rid}/amend",
+                        json={"body": "at 6pm", "subject": "Visit, new time",
+                              "to": "someone.else@example.com"}, headers=H)
+        assert r.status_code == 200, r.text
+        assert r.json()["preview"]["body"] == "at 6pm"
+        rec = policy.store().get(rid)
+        assert rec["status"] == policy.PENDING
+        assert rec["args"] == {"to": original["to"], "subject": "Visit, new time", "body": "at 6pm"}
+        assert rec["preview"]["subject"] == "Visit, new time"
+        # the amended request no longer answers for the agent's original payload
+        assert policy.store().find_pending("send_mail", original) is None
+        assert policy.store().find_pending("send_mail", rec["args"]) == rid
+        # the same text again changes nothing
+        assert client.post(f"/approvals/{rid}/amend", json={"body": "at 6pm"}, headers=H).status_code == 409
+        assert client.post(f"/approvals/{rid}/approve").status_code == 200
+        assert sent == [{"to": original["to"], "subject": "Visit, new time", "body": "at 6pm"}]
+        # once decided, the text is frozen
+        assert client.post(f"/approvals/{rid}/amend", json={"body": "at 7pm"}, headers=H).status_code == 409
+    finally:
+        console_click.set_secret("")
+
+
 def test_the_reply_alert_popup_reads_the_context_and_queues_the_instruction(client, monkeypatch):
     from gigamail.core import mail_router
     from gigamail.http_api import console_click
