@@ -135,6 +135,7 @@
           <span class="ai-card-status ${s.expiresIn < 120 ? 'warn' : ''}">${fmtEta(s.expiresIn, t)}</span>
           ${notifyFailed(s) ? `<span class="ai-card-status warn">${esc(t('notify_failed_tag', 'notifica non arrivata'))}</span>` : ''}
           <span style="flex:1"></span>
+          <button class="chip-btn" data-act="edit" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pencil', 12) : '')} ${esc(t('aw_edit', 'Modifica'))}</button>
           <button class="chip-btn" data-act="approve" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('check', 12) : '')} ${esc(t('pending_approve', 'Approva'))}</button>
           <button class="chip-btn danger" data-act="reject" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('x', 12) : '')} ${esc(t('pending_reject', 'Rifiuta'))}</button>
         </div>

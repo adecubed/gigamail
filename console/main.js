@@ -637,6 +637,12 @@ function showPendingInMain() {
 }
 
 ipcMain.on('approval-window-open-pending', showPendingInMain);
+// The "waiting for you" list opens a request's own window (Edit, Save, the
+// note for the agent), the same one the toast's buttons open.
+ipcMain.on('open-approval-window', (_event, data) => {
+  const id = data && data.request_id ? String(data.request_id) : '';
+  if (id) openApprovalWindow(id, data.action === 'edit' ? 'edit' : 'show');
+});
 
 app.whenReady().then(async () => {
   if (SANDBOX_OFF) return;

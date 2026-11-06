@@ -488,6 +488,12 @@
     const btn = e.target.closest('button[data-act]');
     if (!btn) return;
     const id = btn.dataset.id;
+    if (btn.dataset.act === 'edit') {
+      // The request's own window: the text to correct, a note for the
+      // agent, Save. The same window the toast's buttons open.
+      if (window.electronAPI?.openApprovalWindow) window.electronAPI.openApprovalWindow(id, 'edit');
+      return;
+    }
     btn.disabled = true;
     try {
       if (btn.dataset.act === 'approve') {

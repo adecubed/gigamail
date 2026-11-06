@@ -52,6 +52,7 @@ test('the pending card has approve and reject for that request and escapes the s
   const html = V.pendingCard(AGENT_SEND, t, NOW);
   assert.match(html, /data-act="approve" data-id="req_def"/);
   assert.match(html, /data-act="reject" data-id="req_def"/);
+  assert.match(html, /data-act="edit" data-id="req_def"/, 'Edit opens the request window from the list too');
   assert.ok(html.includes('Visit &lt;b&gt;tomorrow&lt;/b&gt;'));
   assert.ok(!html.includes('<b>tomorrow</b>'));
   assert.ok(html.includes('scade tra 1m00s'));
@@ -140,6 +141,7 @@ test('opening Automations lists what waits, counts it on the badge, and Reject r
     if (p === '/approvals/req_abc/reject') { pending = []; return { ok: true, status: 200, json: async () => ({ success: true }) }; }
     return { ok: false, status: 404, json: async () => ({ detail: 'not in this test' }) };
   };
+  w.electronAPI = { openApprovalWindow: (id, action) => calls.push(`open-window ${id} ${action}`) };
   const ctx = dom.getInternalVMContext();
   for (const f of ['approvals_view.js', 'renderer_automations.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf-8'), ctx);
@@ -159,6 +161,14 @@ test('opening Automations lists what waits, counts it on the badge, and Reject r
   assert.equal(badge.textContent, '1');
   assert.equal(badge.hidden, false);
   assert.ok(w.document.getElementById('recentList').textContent.includes('rifiutata'));
+
+  // Edit on the card opens the request's window (the popup with the text to
+  // correct and Save) and decides nothing by itself
+  list.querySelector('button[data-act="edit"]').click();
+  await tick();
+  assert.ok(calls.includes('open-window req_abc edit'), calls.join(', '));
+  assert.ok(!calls.some((c) => /\/(approve|reject|edit)$/.test(c)));
+  assert.equal(list.querySelector('button[data-act="edit"]').disabled, false);
 
   list.querySelector('button[data-act="reject"]').click();
   await tick();

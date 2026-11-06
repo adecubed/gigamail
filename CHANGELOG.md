@@ -72,6 +72,9 @@
   user who had just typed what to change. With the box open, Approve
   stays off while the text is untouched or a note is being written, and
   after the note is sent, until the new draft arrives.
+  The cards of "Waiting for you" get an Edit button that opens the
+  request's window: before, Edit and Save were reachable only from the
+  toast's buttons.
 
 - **The agent can save a mail as a draft.** A new MCP tool, `save_draft`,
   saves the mail on the provider's server, in the mailbox's Drafts folder
