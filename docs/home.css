@@ -119,6 +119,49 @@ section { padding: 44px 0; }
   display: grid; place-items: center; border: 1px solid var(--gm-tint-line); }
 .feature .ico svg { width: 20px; height: 20px; }
 .feature p { color: var(--gm-muted); font-size: 0.94rem; }
+
+/* Feature cards in colour: one pastel per card, title and text in a deeper
+   shade of it. --fc is the card's colour as r,g,b; --fc-ink mixes it toward
+   the page's ink (dark on light, light on dark) so the text stays readable. */
+#features .grid-4 > .feature:nth-child(1) { --fc: 224,64,154; }
+#features .grid-4 > .feature:nth-child(2) { --fc: 139,92,246; }
+#features .grid-4 > .feature:nth-child(3) { --fc: 59,130,246; }
+#features .grid-4 > .feature:nth-child(4) { --fc: 14,165,164; }
+#features .grid-4 > .feature:nth-child(5) { --fc: 34,163,90; }
+#features .grid-4 > .feature:nth-child(6) { --fc: 217,138,0; }
+#features .grid-4 > .feature:nth-child(7) { --fc: 240,90,79; }
+#features .grid-4 > .feature:nth-child(8) { --fc: 91,91,214; }
+#features .feature {
+  --fc-mix: black; --fc-text: #3a3a44;
+  background: rgba(var(--fc), 0.08); border-color: rgba(var(--fc), 0.25);
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s, border-color .22s;
+}
+#features .feature .ico { background: rgba(var(--fc), 0.16); border-color: rgba(var(--fc), 0.35); color: rgb(var(--fc));
+  transition: background .22s, color .22s, transform .22s; }
+#features .feature h3 { color: color-mix(in srgb, rgb(var(--fc)) 78%, var(--fc-mix)); }
+#features .feature p { color: color-mix(in srgb, rgb(var(--fc)) 45%, var(--fc-text)); }
+:root[data-theme="dark"] #features .feature { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #features .feature { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
+}
+/* With a mouse: the card lifts and its icon fills in. */
+@media (hover: hover) {
+  #features .feature:hover { transform: translateY(-6px) scale(1.02); border-color: rgb(var(--fc));
+    box-shadow: 0 18px 40px rgba(var(--fc), 0.22); }
+  #features .feature:hover .ico { background: rgb(var(--fc)); color: #fff; transform: rotate(-6deg) scale(1.08); }
+}
+/* On a phone there is no hover: the cards rise in one after the other as
+   they scroll into view (home.js adds .in-view). The rise uses `translate`,
+   separate from the hover's `transform`, so the two never fight. Without JavaScript, or with
+   reduced motion, nothing is hidden. */
+.js-reveal #features .feature { opacity: 0; translate: 0 18px; }
+.js-reveal #features .feature.in-view { opacity: 1; translate: none;
+  transition: opacity .5s ease, translate .5s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s, border-color .22s; }
+@media (prefers-reduced-motion: reduce) {
+  #features .feature, #features .feature .ico { transition: none; }
+  #features .feature:hover, #features .feature:hover .ico { transform: none; }
+  .js-reveal #features .feature { opacity: 1; translate: none; }
+}
 .console-note { margin-top: 14px; padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start; font-size: 0.94rem; color: var(--gm-muted); }
 .console-note strong { color: var(--gm-ink); }
 
