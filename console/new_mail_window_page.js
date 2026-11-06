@@ -8,6 +8,7 @@ let followupHours = 0;
 let sendTimer = null;
 let sendRafId = null;
 let instructionContext = '';
+let instructionContextName = '';
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function T(key, it){ return (window.i18n && window.i18n.t) ? window.i18n.t(key, it) : it; }
@@ -191,21 +192,29 @@ instrEl.addEventListener('drop', async (e) => {
   const file = e.dataTransfer.files?.[0];
   if (!file) return;
   instrEl.placeholder = T('cmp_extracting_text', 'Estrazione testo…');
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    const r = await fetch(`${API}/office/upload`, { method: 'POST', body: formData });
-    const data = await r.json();
-    instructionContext = data.text || '';
-    ctxBadge.innerHTML = `${(typeof GMIcons !== 'undefined' ? GMIcons.svg('file-text', 12) : '')} ${esc(file.name)}`;
+  const ctx = await GMFileContext.extract(API, file);
+  if (ctx.ok) {
+    instructionContext = ctx.text;
+    instructionContextName = ctx.name;
+    ctxBadge.innerHTML = `${(typeof GMIcons !== 'undefined' ? GMIcons.svg('file-text', 12) : '')} ${esc(GMFileContext.badgeText(ctx, T))}`;
+    ctxBadge.title = T('cmp_ctx_remove', 'Clic per togliere il file dal contesto');
     ctxBadge.classList.add('visible');
     instrEl.placeholder = T('ai_instruction_drag_ph', 'Istruzione AI — trascina file per contesto…');
-  } catch(err) {
-    instrEl.placeholder = T('cmp_extract_error_retry', 'Errore estrazione — riprova');
+  } else {
+    // The file did not become context: say so, and show no badge that
+    // would look as if it had.
+    instructionContext = '';
+    instructionContextName = '';
+    ctxBadge.classList.remove('visible');
+    ctxBadge.textContent = '';
+    instrEl.placeholder = T('ai_instruction_drag_ph', 'Istruzione AI — trascina file per contesto…');
+    const msg = `${T('cmp_extract_error', 'File non usato')}: ${ctx.error}`;
+    if (typeof GMDialog !== 'undefined') GMDialog.alert(msg); else instrEl.placeholder = msg;
   }
 });
 ctxBadge.addEventListener('click', () => {
   instructionContext = '';
+  instructionContextName = '';
   ctxBadge.classList.remove('visible');
   ctxBadge.textContent = '';
 });
@@ -227,9 +236,8 @@ document.querySelectorAll('.fu-opt').forEach(opt => {
 });
 document.addEventListener('click', () => { followupDropdown.style.display = 'none'; });
 
-// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
-const mailToInput = document.getElementById('mailTo');
-const mailToBox   = document.getElementById('mailToAutocomplete');
+// ── AUTOCOMPLETE A:, CC:, BCC: ───────────────────────────────────────────────
+// Known addresses are offered on every recipient field, not only on To.
 async function fetchAddresses(q) {
   try { return await (await fetch(`${API}/addresses?q=${encodeURIComponent(q)}`)).json(); } catch { return []; }
 }
@@ -237,29 +245,35 @@ function currentToken(input) {
   const parts = (input.value||'').split(/[;,]/);
   return (parts[parts.length-1]||'').trim();
 }
-function applyAddress(email) {
-  const parts = (mailToInput.value||'').split(/[;,]/);
-  parts[parts.length-1] = ' '+email;
-  mailToInput.value = parts.map(p=>p.trim()).filter(Boolean).join('; ');
-  mailToBox.classList.add('hidden'); mailToBox.innerHTML = ''; mailToInput.focus();
-}
-mailToInput.addEventListener('input', async () => {
-  const q = currentToken(mailToInput);
-  if (!q.length) { mailToBox.classList.add('hidden'); return; }
-  const results = await fetchAddresses(q);
-  if (!results.length) { mailToBox.classList.add('hidden'); return; }
-  mailToBox.innerHTML = results.map(r =>
-    `<div class="autocomplete-item" data-email="${esc(r.email)}">${esc(r.name?r.name+' — ':'')}${esc(r.email)}</div>`
-  ).join('');
-  mailToBox.classList.remove('hidden');
-  mailToBox.querySelectorAll('.autocomplete-item').forEach(item => {
-    item.addEventListener('mousedown', (e) => { e.preventDefault(); applyAddress(item.dataset.email); });
+function addressSuggestions(input, box) {
+  if (!input || !box) return;
+  function applyAddress(email) {
+    const parts = (input.value||'').split(/[;,]/);
+    parts[parts.length-1] = ' '+email;
+    input.value = parts.map(p=>p.trim()).filter(Boolean).join('; ');
+    box.classList.add('hidden'); box.innerHTML = ''; input.focus();
+  }
+  input.addEventListener('input', async () => {
+    const q = currentToken(input);
+    if (!q.length) { box.classList.add('hidden'); return; }
+    const results = await fetchAddresses(q);
+    if (!results.length) { box.classList.add('hidden'); return; }
+    box.innerHTML = results.map(r =>
+      `<div class="autocomplete-item" data-email="${esc(r.email)}">${esc(r.name?r.name+' — ':'')}${esc(r.email)}</div>`
+    ).join('');
+    box.classList.remove('hidden');
+    box.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('mousedown', (e) => { e.preventDefault(); applyAddress(item.dataset.email); });
+    });
   });
-});
-mailToInput.addEventListener('focus', () => { if (currentToken(mailToInput).length) mailToInput.dispatchEvent(new Event('input')); });
-document.addEventListener('click', (e) => {
-  if (!mailToBox.contains(e.target) && e.target !== mailToInput) mailToBox.classList.add('hidden');
-});
+  input.addEventListener('focus', () => { if (currentToken(input).length) input.dispatchEvent(new Event('input')); });
+  document.addEventListener('click', (e) => {
+    if (!box.contains(e.target) && e.target !== input) box.classList.add('hidden');
+  });
+}
+addressSuggestions(document.getElementById('mailTo'),  document.getElementById('mailToAutocomplete'));
+addressSuggestions(document.getElementById('mailCc'),  document.getElementById('mailCcAutocomplete'));
+addressSuggestions(document.getElementById('mailBcc'), document.getElementById('mailBccAutocomplete'));
 
 // ── GENERA ────────────────────────────────────────────────────────────────────
 document.getElementById('btnGenerate').addEventListener('click', async () => {
@@ -269,14 +283,15 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
   btn.disabled = true; btn.textContent = '…'; ta.value = T('cmp_generating', 'Generazione…'); st.textContent = '';
   try {
     const baseInstruction = instrEl.value.trim();
-    const instruction = instructionContext
-      ? `${baseInstruction}\n\n[CONTESTO FILE]\n${instructionContext.slice(0, 3000)}`
-      : baseInstruction;
+    // The dropped file goes apart, whole: the backend puts it in the
+    // prompt as reference material (it used to be cut at 3000 characters).
+    const instruction = baseInstruction;
     const to      = document.getElementById('mailTo').value.trim();
     const subject = document.getElementById('mailSubject').value.trim();
     let url = `${API}/mail/generate_draft`;
     if (accountId) url += `?account_id=${accountId}`;
-    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject}) });
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject,
+      context_name: instructionContextName, context_text: instructionContext}) });
     const data = await r.json();
     if (!r.ok) throw (data.detail || `HTTP ${r.status}`);
     ta.value = data.draft || data.text || '';

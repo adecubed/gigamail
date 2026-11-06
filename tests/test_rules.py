@@ -114,3 +114,43 @@ def test_first_start_builds_one_store_however_many_threads_ask(tmp_path, monkeyp
         t.join()
     assert len(built) == 1
     assert all(s is got[0] for s in got)
+
+
+# ── expiry: renewing, and knowing it is near ───────────────────────
+
+def test_renew_gives_another_period_of_the_rule_own_length(store):
+    rid = _mk(store, expiry_days=10)
+    store.pause(rid, "manual")
+    with pytest.raises(ValueError):
+        store.renew(rid, 0.0)
+    before = time.time()
+    expires_at = store.renew(rid, time.time())
+    assert before + 10 * 86400 - 5 <= expires_at <= time.time() + 10 * 86400
+    rule = store.get(rid)
+    assert rule["expires_at"] == expires_at and rule["expiry_days"] == 10
+    assert rule["paused"], "renewing is not resuming"
+    assert store.renew("rule_missing", time.time()) is None
+
+
+def test_an_expired_rule_can_be_renewed(store):
+    rid = _mk(store, expiry_days=-1)
+    assert store.get(rid)["expired"]
+    store.renew(rid, time.time())
+    rule = store.get(rid)
+    assert not rule["expired"] and rid in {r["rule_id"] for r in store.active()}
+
+
+def test_a_rule_made_before_its_length_was_kept_renews_for_that_length(store):
+    rid = _mk(store, expiry_days=20)
+    with store._conn() as conn:
+        conn.execute("UPDATE rules SET expiry_days=NULL WHERE rule_id=?", (rid,))
+    assert store.get(rid)["expiry_days"] == 20
+
+
+def test_expiring_marks_the_last_days(store):
+    soon = _mk(store, expiry_days=rules_mod.EXPIRY_WARNING_DAYS - 1)
+    later = _mk(store, expiry_days=rules_mod.EXPIRY_WARNING_DAYS + 5)
+    gone = _mk(store, expiry_days=-1)
+    assert store.get(soon)["expiring"]
+    assert not store.get(later)["expiring"]
+    assert not store.get(gone)["expiring"] and store.get(gone)["expired"]

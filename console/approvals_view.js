@@ -135,6 +135,7 @@
           <span class="ai-card-status ${s.expiresIn < 120 ? 'warn' : ''}">${fmtEta(s.expiresIn, t)}</span>
           ${notifyFailed(s) ? `<span class="ai-card-status warn">${esc(t('notify_failed_tag', 'notifica non arrivata'))}</span>` : ''}
           <span style="flex:1"></span>
+          <button class="chip-btn" data-act="edit" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pencil', 12) : '')} ${esc(t('aw_edit', 'Modifica'))}</button>
           <button class="chip-btn" data-act="approve" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('check', 12) : '')} ${esc(t('pending_approve', 'Approva'))}</button>
           <button class="chip-btn danger" data-act="reject" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('x', 12) : '')} ${esc(t('pending_reject', 'Rifiuta'))}</button>
         </div>
@@ -236,7 +237,14 @@
       && /^(raffica|burst)\b/i.test(String(r.pause_reason || '')));
   }
 
-  const ApprovalsView = { summarize, pendingCard, recentCard, detailHtml, outcomeOf, fmtEta, badgeText, badgeCounts, addressOf, notifiedText, notifyFailed, autoPaused };
+  // Rules to renew: expired, or expiring within the warning window (the
+  // backend marks them). A rule expires by design, but silently: these
+  // get the same banner and badge as a rule that paused itself.
+  function toRenew(rules) {
+    return (rules || []).filter((r) => r && !r.paused && (r.expired || r.expiring));
+  }
+
+  const ApprovalsView = { summarize, pendingCard, recentCard, detailHtml, outcomeOf, fmtEta, badgeText, badgeCounts, addressOf, notifiedText, notifyFailed, autoPaused, toRenew };
   if (typeof window !== 'undefined') window.ApprovalsView = ApprovalsView;
   if (typeof module !== 'undefined' && module.exports) module.exports = ApprovalsView;
 })();

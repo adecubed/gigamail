@@ -112,9 +112,10 @@ test('detailHeaderHtml: header, destinatari e allegati escapati; bottoni giusti'
   assert.ok(html.includes('id="btnSpam"') && !html.includes('id="btnNotSpam"'), 'fuori dallo spam: bottone SPAM');
   const inSpam = w.MailView.detailHeaderHtml(msg, { sender: 'a', senderName: 'b', ttsUrl: '', inSpam: true });
   assert.ok(inSpam.includes('id="btnNotSpam"') && !inSpam.includes('id="btnSpam"'), 'nello spam: bottone NON E SPAM');
-  for (const id of ['btnAscolta', 'btnShowReply', 'btnShowReplyAll', 'btnForward', 'btnRiassumi', 'btnMove', 'btnDelete', 'btnMarkUnread', 'mailAudio', 'mailSummaryBox', 'mailSuggestionBox']) {
+  for (const id of ['btnAscolta', 'btnShowReply', 'btnShowReplyAll', 'btnForward', 'btnRiassumi', 'btnMove', 'btnDelete', 'btnMarkUnread', 'btnPrint', 'mailAudio', 'mailSummaryBox', 'mailSuggestionBox']) {
     assert.ok(html.includes(`id="${id}"`), `manca #${id}`);
   }
+  assert.ok(html.indexOf('id="btnPrint"') > html.indexOf('id="btnMarkUnread"'), 'PRINT comes right after UNREAD');
   const host = w.document.getElementById('host');
   host.innerHTML = html;
   assert.equal(host.querySelectorAll('img, script').length, 0);

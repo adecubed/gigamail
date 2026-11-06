@@ -113,6 +113,7 @@ const MailView = (() => {
             }
             <button class="btn btn-danger" id="btnDelete">${GMIcons.svg('trash')} ${T('delete_upper','ELIMINA')}</button>
             <button class="btn" id="btnMarkUnread">● ${T('unread_upper','NON LETTA')}</button>
+            <button class="btn" id="btnPrint">${GMIcons.svg('printer')} ${T('print_upper','STAMPA')}</button>
           </div>
         </div>
         <div class="mail-summary-box" id="mailSummaryBox" data-requires="/mail/{message_id}/summary" style="background:#f3e6f0;border:1px solid rgba(0,0,0,0.14);border-radius:10px;margin:10px 15px 0;padding:9px 12px;font-size:11px;color:rgba(0,0,0,0.75);box-shadow:0 2px 8px rgba(0,0,0,0.07);">${GMIcons.svg('clipboard', 12)} ${T('press_summarize','Premi RIASSUMI per generare il riassunto.')}</div>
@@ -604,6 +605,29 @@ async function openMail(id, overrideFolder = null) {
         });
         showToast(T('mv_marked_unread','Marcata come non letta'));
       } catch(e) { showToast(T('error','Errore') + ': ' + e); }
+    });
+
+    // STAMPA: system print dialog, with the mail's header on top
+    byId('btnPrint')?.addEventListener('click', async () => {
+      if (!window.electronAPI?.printMail) return;
+      const doc = window.MailRender.printableHtml({
+        subject: msg.subject || T('no_subject', '(nessun oggetto)'),
+        from: senderName && senderName !== sender ? `${senderName} <${sender}>` : sender,
+        to: (msg.toRecipients || []).map(r => r?.emailAddress?.address || '').filter(Boolean).join(', '),
+        cc: (msg.ccRecipients || []).map(r => r?.emailAddress?.address || '').filter(Boolean).join(', '),
+        date: fmtDate(msg.receivedDateTime || msg.sentDateTime),
+      }, isHtmlBody ? (effectiveHtml || rawHtml) : bodyText, {
+        isHtml: isHtmlBody,
+        resolveCid: (cid) => {
+          const att = window.MailRender.matchAttachment(cid, msg.attachments || []);
+          return att ? api.getAttachmentUrl(id, att.name, activeAccountId, folderValue) : null;
+        },
+        labels: { from: T('from_label', 'Da'), to: T('print_to', 'A'), cc: T('print_cc', 'Cc'), date: T('print_date', 'Data') },
+      });
+      try {
+        const res = await window.electronAPI.printMail(doc);
+        if (res && !res.ok && !res.canceled) showToast(T('print_error', 'Stampa non riuscita') + (res.error ? `: ${res.error}` : ''));
+      } catch (e) { showToast(T('print_error', 'Stampa non riuscita') + `: ${e.message || e}`); }
     });
 
     byId('btnShowReply')?.addEventListener('click', () => {

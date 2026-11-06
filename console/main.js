@@ -637,6 +637,12 @@ function showPendingInMain() {
 }
 
 ipcMain.on('approval-window-open-pending', showPendingInMain);
+// The "waiting for you" list opens a request's own window (Edit, Save, the
+// note for the agent), the same one the toast's buttons open.
+ipcMain.on('open-approval-window', (_event, data) => {
+  const id = data && data.request_id ? String(data.request_id) : '';
+  if (id) openApprovalWindow(id, data.action === 'edit' ? 'edit' : 'show');
+});
 
 app.whenReady().then(async () => {
   if (SANDBOX_OFF) return;
@@ -998,6 +1004,40 @@ ipcMain.handle('mail-attachment-save-as', async (_evt, { name, bytes }) => {
     return { ok: true, path: filePath };
   } catch (e) {
     return { ok: false, error: String(e) };
+  }
+});
+
+// ── PRINT button: the mail goes to the system print dialog ──
+// The mail's own iframe cannot print (sandboxed, no scripts), so the page
+// sends a document already sanitized (MailRender.printableHtml) and it is
+// written into a hidden window. That window stays on about:blank: a file://
+// page would get the click secret on its requests to the backend, and the
+// mail's images may point there. No preload, sandboxed, and the document's
+// own CSP (default-src 'none') forbids any script in it.
+ipcMain.handle('print-mail', async (event, { html } = {}) => {
+  const win = new BrowserWindow({
+    show: false,
+    parent: BrowserWindow.fromWebContents(event.sender) || undefined,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+  hardenWindow(win);
+  try {
+    await win.loadURL('about:blank');
+    // resolves when the images have arrived, or after 5 s whatever is missing
+    await win.webContents.executeJavaScript(`new Promise((done) => {
+      document.open(); document.write(${JSON.stringify(String(html || ''))}); document.close();
+      if (document.readyState === 'complete') done();
+      else { window.addEventListener('load', () => done()); setTimeout(done, 5000); }
+    })`);
+    return await new Promise((resolve) => {
+      win.webContents.print({ printBackground: true }, (ok, reason) => {
+        resolve(ok ? { ok: true } : { ok: false, canceled: reason === 'cancelled', error: reason || null });
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
   }
 });
 

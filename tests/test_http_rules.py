@@ -63,6 +63,60 @@ def test_pause_libera_resume_con_hello(client, monkeypatch):
     assert client.get("/rules", headers=H).json() == []
 
 
+def test_renew_needs_hello_and_moves_the_expiry(client, monkeypatch):
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    rid = client.post("/rules", json=dict(BODY, expiry_days=30), headers=H).json()["rule_id"]
+    with rules_mod.store()._conn() as conn:
+        conn.execute("UPDATE rules SET expires_at=1 WHERE rule_id=?", (rid,))
+    assert client.get("/rules", headers=H).json()[0]["state"] == "expired"
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    assert client.post(f"/rules/{rid}/renew", headers=H).status_code == 403
+    assert client.get("/rules", headers=H).json()[0]["state"] == "expired"
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    renewed = client.post(f"/rules/{rid}/renew", headers=H).json()
+    assert renewed["state"] == "active" and not renewed["expiring"]
+    assert client.post("/rules/rule_missing/renew", headers=H).status_code == 404
+
+
+def test_update_needs_hello_and_changes_the_rule_in_place(client, monkeypatch, tmp_path):
+    """Edit on a rule card: the instruction (and the rest) change in
+    place behind Hello; the rule keeps its id, state and expiry. A rule
+    whose prompt hard-coded the wrong floor plans is corrected without
+    deleting it."""
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    rule = client.post("/rules", json=BODY, headers=H).json()
+    rid = rule["rule_id"]
+    doc = tmp_path / "listino.txt"
+    doc.write_text("prezzi")
+    change = {"reply_style": "attach the plans the customer asks for",
+              "daily_cap": 3, "doc_paths": [str(doc)], "cc": ["ufficio@example.com "],
+              "trigger_values": ["Cliente@Fidato.it", "Nuovo@Cliente.it"]}
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    assert client.put(f"/rules/{rid}", json=change, headers=H).status_code == 403
+    assert client.get("/rules", headers=H).json()[0]["reply_style"] == "cordiale"
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    updated = client.put(f"/rules/{rid}", json=change, headers=H).json()
+    assert updated["rule_id"] == rid and updated["state"] == "active"
+    assert updated["reply_style"] == change["reply_style"]
+    assert updated["daily_cap"] == 3
+    assert updated["doc_paths"] == [str(doc)]
+    assert updated["cc"] == ["ufficio@example.com"]
+    assert updated["trigger_values"] == ["cliente@fidato.it", "nuovo@cliente.it"]
+    assert updated["expires_at"] == rule["expires_at"]
+    # only what is sent changes
+    again = client.put(f"/rules/{rid}", json={"cooldown_hours": 1}, headers=H).json()
+    assert again["reply_style"] == change["reply_style"] and again["cooldown_hours"] == 1
+    # refusals: nothing, a missing document, an attachment the identity
+    # does not know, an unknown rule
+    assert client.put(f"/rules/{rid}", json={}, headers=H).status_code == 400
+    assert client.put(f"/rules/{rid}", json={"doc_paths": ["C:/nonexistent/x.pdf"]}, headers=H).status_code == 400
+    assert client.put(f"/rules/{rid}", json={"attachments": ["plan-that-does-not-exist.pdf"]}, headers=H).status_code == 400
+    assert client.put(f"/rules/{rid}", json={"trigger_values": [" "]}, headers=H).status_code == 400
+    assert client.put("/rules/rule_missing", json={"daily_cap": 1}, headers=H).status_code == 404
+
+
 def test_validazioni(client, monkeypatch):
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")

@@ -100,6 +100,7 @@ from . import (  # noqa: E402 — dopo app, per l'ordine di lettura
     agent,
     approvals,
     calendar,
+    files,
     google,
     mail,
     mask,
@@ -109,7 +110,8 @@ from . import (  # noqa: E402 — dopo app, per l'ordine di lettura
     zoom,
 )
 
-for _r in (accounts, addresses, mail, calendar, google, mask, agent, approvals, rules, notify, zoom, spam):
+for _r in (accounts, addresses, mail, calendar, google, mask, agent, approvals, rules, notify, zoom, spam,
+           files):
     app.include_router(_r.router)
 
 # Nomi che restano raggiungibili dalla facciata (compatibilita').
@@ -139,6 +141,8 @@ def main() -> None:
     # gone, or running old code, while its rules are still active. A guard
     # brings it back, now and every minute, not a button someone has to
     # remember.
+    from gigamail import completion
+    completion.warm_up()
     from .rules import start_watch_guard
     start_watch_guard()
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")

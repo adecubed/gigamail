@@ -143,7 +143,7 @@
             </div>
 
             <div class="ai-card" id="ruleForm">
-              <div class="ai-card-title" data-i18n="rule_new">Nuova regola</div>
+              <div class="ai-card-title" id="ruleFormTitle" data-i18n="rule_new">Nuova regola</div>
               <div class="field-row"><label class="field-label" data-i18n="rule_account">Account</label>
                 <select id="ruleAccount" class="field-input"></select></div>
               <div class="field-row"><label class="field-label" data-i18n="rule_trigger">Trigger</label>
@@ -155,10 +155,14 @@
                 <div class="hint" id="ruleFolderWarn" style="display:none" data-i18n="rule_folder_warn">Cartella = mittente arbitrario: restano le barriere anti-spam e il primo contatto passa sempre da te.</div>
               </div>
               <div class="field-row"><label class="field-label" data-i18n="rule_style">Stile / istruzioni</label>
-                <input type="text" id="ruleStyle" class="field-input" data-i18n-ph="rule_style_ph" placeholder="es. cordiale e breve; rispondi nella lingua del mittente"/></div>
+                <textarea id="ruleStyle" class="field-input" rows="4" style="resize:vertical;min-height:60px" data-i18n-ph="rule_style_ph" placeholder="es. cordiale e breve; rispondi nella lingua del mittente"></textarea></div>
               <div class="field-row"><label class="field-label" data-i18n="rule_docs">Documenti (uniche fonti della bozza)</label>
                 <div id="ruleDocsList"></div>
                 <button class="chip-btn" id="btnPickDocs"><span data-icon="paperclip" data-icon-size="14"></span> <span data-i18n="rule_docs_pick">Aggiungi documento…</span></button></div>
+              <div class="field-row"><label class="field-label" data-i18n="rule_attachments">Allegati fissi</label>
+                <input type="text" id="ruleAttachments" class="field-input" data-i18n-ph="rule_attachments_ph" placeholder="nomi dei file registrati nell'identità, separati da virgola"/></div>
+              <div class="field-row"><label class="field-label" data-i18n="rule_cc">Copia (CC) fissa</label>
+                <input type="text" id="ruleCc" class="field-input" data-i18n-ph="rule_cc_ph" placeholder="indirizzi in copia su ogni risposta, separati da virgola"/></div>
               <div class="field-row" style="flex-direction:row;gap:10px;flex-wrap:wrap">
                 <div style="flex:1;min-width:120px"><label class="field-label" data-i18n="rule_mode">Modalità</label>
                   <select id="ruleMode" class="field-input">
@@ -178,6 +182,7 @@
               </div>
               <div class="ai-card-row" style="margin-top:8px">
                 <span class="hint" id="ruleFormStatus" data-i18n="rule_hello_hint">La conferma finale è Windows Hello: una regola è una pre-approvazione.</span>
+                <button class="chip-btn" id="btnCancelEdit" style="display:none" data-i18n="rule_cancel_edit">Annulla modifica</button>
                 <button class="compose-btn" style="margin:0;width:auto;padding:8px 18px" id="btnCreateRule" data-i18n="rule_create">Crea regola</button>
               </div>
             </div>

@@ -116,3 +116,39 @@ test('sanitizeHtml regge input degeneri', () => {
     assert.ok(!/<script[\s>]/i.test(out));
   }
 });
+
+test('printableHtml: header on top as text, body sanitized like the iframe', () => {
+  const w = load();
+  const out = w.MailRender.printableHtml({
+    subject: 'Offerta <img src=x onerror="parent.__xss=1">',
+    from: 'Mario Rossi <mario.rossi@example.com>',
+    to: 'anna.bianchi@example.com',
+    cc: '',
+    date: '05/11/2026 10:00',
+  }, '<p>Ciao</p><script>parent.__xss=1</script><img src="cid:logo@example.com">', {
+    isHtml: true,
+    resolveCid: () => 'http://127.0.0.1:8002/att/logo.png',
+    labels: { from: 'Da', to: 'A', cc: 'Cc', date: 'Data' },
+  });
+  const doc = new w.DOMParser().parseFromString(out, 'text/html');
+  assert.equal(doc.querySelectorAll('script').length, 0);
+  assert.equal(doc.querySelectorAll('[onerror]').length, 0);
+  assert.equal(doc.title, 'Offerta <img src=x onerror="parent.__xss=1">');
+  const text = doc.body.textContent;
+  assert.ok(text.indexOf('Offerta') < text.indexOf('Ciao'), 'header before the body');
+  assert.ok(text.includes('Da: Mario Rossi <mario.rossi@example.com>'));
+  assert.ok(text.includes('A: anna.bianchi@example.com'));
+  assert.ok(!text.includes('Cc:'), 'an empty cc is left out');
+  assert.equal(doc.querySelectorAll('img').length, 1, 'only the body image, the subject stays text');
+  assert.equal(doc.querySelector('img').getAttribute('src'), 'http://127.0.0.1:8002/att/logo.png');
+  assert.ok(out.includes("default-src 'none'"), 'the iframe CSP');
+});
+
+test('printableHtml: a plain-text mail keeps its lines and stays text', () => {
+  const w = load();
+  const out = w.MailRender.printableHtml({ subject: 'Ciao' }, 'riga 1\nriga 2 <b>non grassetto</b>', {});
+  const doc = new w.DOMParser().parseFromString(out, 'text/html');
+  assert.ok(!Array.from(doc.querySelectorAll('b')).some((b) => b.textContent === 'non grassetto'), 'no tag from the text');
+  const pre = Array.from(doc.querySelectorAll('div')).find((d) => /pre-wrap/.test(d.getAttribute('style') || ''));
+  assert.equal(pre.textContent, 'riga 1\nriga 2 <b>non grassetto</b>');
+});

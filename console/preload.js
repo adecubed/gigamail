@@ -77,10 +77,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onOpenReplyFor:     (cb)  => ipcRenderer.on('open-reply-for', (_, data) => cb(data)),
   openNewMailWindow:  (data) => ipcRenderer.send('open-new-mail-window', data),
   openReplyWindow:    (data) => ipcRenderer.send('open-reply-window', data),
+  openApprovalWindow: (requestId, action) => ipcRenderer.send('open-approval-window', { request_id: requestId, action }),
   toggleCompact: () => ipcRenderer.invoke('toggle-compact'),
   pickFiles: () => ipcRenderer.invoke('pick-files'),
   openAttachment:   (name, bytes) => ipcRenderer.invoke('mail-attachment-open',    { name, bytes }),
   saveAttachmentAs: (name, bytes) => ipcRenderer.invoke('mail-attachment-save-as', { name, bytes }),
+  printMail:        (html) => ipcRenderer.invoke('print-mail', { html }),
 });
 
 
@@ -362,7 +364,7 @@ contextBridge.exposeInMainWorld('ademail', {
   uploadFile: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API}/office/upload`, { method: 'POST', body: formData });
+    const res = await fetch(`${API}/files/extract_text`, { method: 'POST', body: formData });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

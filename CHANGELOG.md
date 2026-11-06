@@ -2,15 +2,88 @@
 
 ## Unreleased
 
-- **New homepage layout (gigamail.ai, English and Italian).** A complete
-  use case (a quote request, from the mail arriving to your approval) and
-  the videos now come right after the hero, before the features; the
-  setup splits into two paths, the desktop app and the MCP server; three
-  download buttons, one per system, replace the button that guessed the
-  visitor's system; a trust row links the source, security model, signed
-  releases and changelog. The masker is now described as what it is
-  today, a desktop-app filter (MCP side planned), and the page says that
-  a signed automation rule is the one way a mail leaves without a click.
+- **A rule can be edited.** Edit on a rule card loads the rule into the
+  form: instruction, trigger, documents, fixed attachments, copies and
+  limits change in place and the rule keeps its id, its expiry and what it
+  already handled. Before, a wrong detail in a rule's instruction (a
+  phone number, the floor plans it always attached) meant deleting the
+  rule and creating it again. Saving a change is approving another rule:
+  Windows Hello, as for creating it. The instruction field is now a text
+  area, long instructions included; fixed attachments and copies, which
+  only the command line could set, are in the form too.
+- **Known addresses are suggested on CC and BCC too.** The reply, forward
+  and new-mail windows offered the address book only on To; typing in CC
+  or BCC got nothing. Every recipient field now suggests, and a chosen
+  address replaces only the one being typed, the others stay.
+- **"Send failed" on a mail that had gone.** The first approval after the
+  backend started loaded the sending module inside the click, which took
+  up to twenty seconds on a slow disk; the backend's once-a-minute sweep
+  of approved requests found the request still waiting and sent it (once:
+  the hand-over is atomic), and the click's own completion then read
+  "approval no longer valid" and the window said the send had failed.
+  The sending module is now loaded when the backend starts, the sweep
+  leaves a request approved less than two minutes ago to the channel that
+  approved it, and a completion that finds the request already sent
+  reports the send, not a failure.
+- **Mails can be printed from the console.** A PRINT button after UNREAD
+  opens the system print dialog with the mail's subject, sender,
+  recipients and date on top, then its body, images included; "Save as
+  PDF" works from the same dialog.
+- **A file dropped on the AI instruction now reaches the draft.** The reply
+  and new-mail windows say "drop a file for context", but they sent the
+  file to an endpoint GigaMail never had: the file's name appeared, as if
+  it had been read, and the draft was written without it. The file's text
+  (PDF, Word, Excel, TXT, CSV, MD; 20 MB at most) now goes to the draft as
+  reference material, up to 20,000 characters instead of the 3,000 the
+  windows used to cut it to, and the badge shows how many characters were
+  read. A file with no text to use (an image, a scanned PDF, an unknown
+  format) is refused with the reason, and no badge appears.
+
+- **A reply rule no longer expires in silence, and can be renewed.** A
+  rule expires after its period (30 days by default) by design: it is an
+  approval given in advance. But when it did, it stopped answering and
+  said nothing, and the console offered only to delete it. Now the
+  watcher tells you on every notification channel three days before and
+  on the day it expires; the console shows a banner and a mark on the
+  Automations icon; and **Renew (Hello)** in the console, or
+  `gigamail rules renew <id>`, gives the rule another period of its own
+  length from now, behind Windows Hello / Touch ID as when it was
+  created. A paused rule stays paused when renewed.
+
+- **Mail laid out in columns is no longer withheld from the agent as
+  hidden text.** Many newsletters and portal notifications put their
+  columns in a cell with `font-size:0`, to remove the gaps between them,
+  and each column sets its own size back. GigaMail took everything inside
+  that cell for hidden: the agent got only the footer and a warning that
+  the rest was hidden. A font size, `visibility` and a transparent colour
+  are now inherited the way a mail client inherits them, so a child that
+  sets them back is read; `display:none`, a clipped box or `opacity:0`
+  still hide everything inside, whatever a child says.
+
+- **Far fewer mails reach the agent empty.** A mail whose style sheet the
+  reader could not evaluate was withheld from the agent entirely: on a
+  real mailbox, more than one HTML mail in four, mostly newsletters and
+  notifications built from common templates. Rules with combinators and
+  attribute or pseudo-class selectors (`.image_block img+div`,
+  `u + .body .x`, `[data-ogsc] .x`) are now evaluated, leaning towards
+  hiding too much: what a mail client wraps around the message counts as
+  there, Gmail's `<div>` after every image is taken into account, and
+  such a rule can only hide text, never show it. Font sheets from Adobe
+  Fonts (Typekit), Bunny Fonts, cdnfonts and Inter's own site are
+  accepted like Google Fonts. On that mailbox the share withheld fell
+  from 28% to 6%; a mail with more than 500 such rules is still
+  withheld, so that none can make the reading slow on purpose.
+
+- **Colours and sizes written in other ways are read as a mail client
+  reads them**: `#rrggbbaa` and `#rgba` colours, a `bgcolor` without `#`
+  (`bgcolor="26aeea"`), the size in the `font` shorthand
+  (`font:700 17px/1.5 Arial`), size keywords (`medium`) and
+  `<font size>`. Text a reader sees was hidden from the agent, and some
+  text a reader does not see was handed to it (`font:0/0 a`, a colour
+  with zero alpha). Where the CSS background and the `bgcolor` attribute
+  differ, text close to either is treated as hidden. The combining
+  grapheme joiner that pads preheaders is now removed like the other
+  invisible characters.
 
 - **Edit in the approval window: correct the text in place.** Edit now
   opens the mail's text for editing, and Approve becomes "Send edited" and
@@ -22,6 +95,9 @@
   user who had just typed what to change. With the box open, Approve
   stays off while the text is untouched or a note is being written, and
   after the note is sent, until the new draft arrives.
+  The cards of "Waiting for you" get an Edit button that opens the
+  request's window: before, Edit and Save were reachable only from the
+  toast's buttons.
 
 - **The agent can save a mail as a draft.** A new MCP tool, `save_draft`,
   saves the mail on the provider's server, in the mailbox's Drafts folder

@@ -38,6 +38,10 @@ MODES = ("semi", "auto")
 # Default prudenti. La scadenza e' OBBLIGATORIA: una regola eterna e' una
 # pre-approvazione eterna, e nessuna approvazione dovrebbe esserlo.
 DEFAULT_EXPIRY_DAYS = 30
+# A rule this close to its expiry is "expiring": the console shows a
+# Renew button and the watcher tells the user once, so an office does not
+# find out from the mail that went unanswered.
+EXPIRY_WARNING_DAYS = 3
 DEFAULT_DAILY_CAP = 10
 DEFAULT_COOLDOWN_HOURS = 4
 # Raffica: piu' di BURST_MAX match sulla stessa regola in BURST_WINDOW
@@ -175,6 +179,11 @@ class RuleStore:
             if "attachments" not in cols:
                 conn.execute("ALTER TABLE rules ADD COLUMN attachments"
                              " TEXT NOT NULL DEFAULT '[]'")
+            # How long the rule lasts, for a renewal: NULL on rules made
+            # before it was kept (they were never renewed, so expires_at -
+            # created_at is still their length).
+            if "expiry_days" not in cols:
+                conn.execute("ALTER TABLE rules ADD COLUMN expiry_days REAL")
             # stato piccolo del watcher (es. offset di getUpdates Telegram)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS kv (
@@ -222,8 +231,8 @@ class RuleStore:
                 " trigger_values, reply_style, doc_paths, mode, first_contact,"
                 " daily_cap, cooldown_hours, expires_at, created_at,"
                 " created_by, hello_verified_at, reply_to_body_address,"
-                " cc, attachments)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " cc, attachments, expiry_days)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (rule_id, int(account_id), trigger_kind,
                  json.dumps(trigger_values, ensure_ascii=False),
                  reply_style, json.dumps(doc_paths, ensure_ascii=False),
@@ -231,7 +240,8 @@ class RuleStore:
                  now + expiry_days * 86400, now, created_by,
                  float(hello_verified_at), 1 if reply_to_body_address else 0,
                  json.dumps(cc or [], ensure_ascii=False),
-                 json.dumps(attachments or [], ensure_ascii=False)),
+                 json.dumps(attachments or [], ensure_ascii=False),
+                 float(expiry_days)),
             )
         return rule_id
 
@@ -244,7 +254,12 @@ class RuleStore:
         d["reply_to_body_address"] = bool(d.get("reply_to_body_address", 0))
         d["cc"] = json.loads(d.get("cc") or "[]")
         d["attachments"] = json.loads(d.get("attachments") or "[]")
-        d["expired"] = time.time() > d["expires_at"]
+        now = time.time()
+        days = d.get("expiry_days") or round((d["expires_at"] - d["created_at"]) / 86400)
+        d["expiry_days"] = max(1, days)
+        d["expired"] = now > d["expires_at"]
+        d["expiring"] = (not d["expired"]
+                         and d["expires_at"] - now <= EXPIRY_WARNING_DAYS * 86400)
         return d
 
     def get(self, rule_id: str) -> Optional[Dict[str, Any]]:
@@ -303,6 +318,66 @@ class RuleStore:
                 "UPDATE rules SET paused=0, pause_reason=NULL,"
                 " hello_verified_at=? WHERE rule_id=?",
                 (float(hello_verified_at), rule_id))
+            return cur.rowcount == 1
+
+    def renew(self, rule_id: str, hello_verified_at: float) -> Optional[float]:
+        """Another period of the rule's own length from now, behind the
+        same human check as its creation: renewing is approving again.
+        Returns the new expiry, None when the rule does not exist. A
+        paused rule stays paused: renewing is not resuming."""
+        if not hello_verified_at:
+            raise ValueError("hello_verified_at missing")
+        rule = self.get(rule_id)
+        if not rule:
+            return None
+        expires_at = time.time() + float(rule["expiry_days"]) * 86400
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE rules SET expires_at=?, expiry_days=?, hello_verified_at=?"
+                " WHERE rule_id=?",
+                (expires_at, float(rule["expiry_days"]), float(hello_verified_at), rule_id))
+        return expires_at
+
+    EDITABLE = ("trigger_kind", "trigger_values", "reply_style", "doc_paths",
+                "mode", "first_contact", "daily_cap", "cooldown_hours",
+                "attachments", "cc", "reply_to_body_address")
+
+    def update(self, rule_id: str, hello_verified_at: float, **fields) -> bool:
+        """Changes what a rule does, behind the same human check as its
+        creation: another instruction, trigger, document or limit is
+        another pre-approval. The rule keeps its id, its expiry and its
+        state (active, paused, expired); the mails it handled stay
+        handled. Returns False for an unknown rule."""
+        if not hello_verified_at:
+            raise ValueError("hello_verified_at missing")
+        unknown = [k for k in fields if k not in self.EDITABLE]
+        if unknown:
+            raise ValueError(f"not editable: {', '.join(unknown)}")
+        if fields.get("trigger_kind", TRIGGER_KINDS[0]) not in TRIGGER_KINDS:
+            raise ValueError(f"trigger_kind '{fields['trigger_kind']}' non valido")
+        for key in ("mode", "first_contact"):
+            if fields.get(key, MODES[0]) not in MODES:
+                raise ValueError(f"{key} '{fields[key]}' non valido")
+        if "trigger_values" in fields and not fields["trigger_values"]:
+            raise ValueError("trigger_values vuoto")
+        sets, vals = [], []
+        for key, value in fields.items():
+            if key in ("trigger_values", "doc_paths", "attachments", "cc"):
+                value = json.dumps(list(value or []), ensure_ascii=False)
+            elif key == "daily_cap":
+                value = int(value)
+            elif key == "cooldown_hours":
+                value = float(value)
+            elif key == "reply_to_body_address":
+                value = 1 if value else 0
+            sets.append(f"{key}=?")
+            vals.append(value)
+        sets.append("hello_verified_at=?")
+        vals.append(float(hello_verified_at))
+        vals.append(rule_id)
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE rules SET " + ", ".join(sets) + " WHERE rule_id=?", vals)
             return cur.rowcount == 1
 
     def delete(self, rule_id: str) -> bool:
