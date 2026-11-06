@@ -103,6 +103,7 @@
         <div class="ai-card-row">
           <span class="ai-card-status ${cls}">${state}</span>
           <span style="flex:1"></span>
+          <button class="chip-btn" data-act="edit" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pencil', 12) : '')} ${T('Modifica', 'Edit', '编辑')}</button>
           <button class="chip-btn" data-act="activity" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('clipboard', 12) : '')} ${T('Attività', 'Activity', '活动')}</button>
           ${actBtn}
           ${renewBtn}
@@ -123,11 +124,15 @@
     }[c]));
   }
 
+  let lastRules = [];
+  let editingRuleId = null;
+
   async function refreshRules() {
     const box = $('rulesList');
     if (!box) return;
     try {
       const rules = await api('/rules');
+      lastRules = rules;
       setRulesBadge(rules);
       box.innerHTML = pausedBanner(rules) + (rules.length
         ? rules.map(ruleCard).join('')
@@ -194,6 +199,10 @@
     const id = btn.dataset.id;
     const act = btn.dataset.act;
     try {
+      if (act === 'edit') {
+        startEditRule(id);
+        return;
+      }
       if (act === 'pause') {
         await api(`/rules/${id}/pause`, { method: 'POST' });
       } else if (act === 'resume') {
@@ -221,23 +230,70 @@
     }
   }
 
+  function splitList(value) {
+    return String(value || '').split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  // Edit on a card: the rule goes into the form, Create becomes Save.
+  // Saving changes the rule in place (same id, same expiry, the mails it
+  // handled stay handled) behind Hello, as creating it.
+  function startEditRule(id) {
+    const r = lastRules.find((x) => x.rule_id === id);
+    if (!r) return;
+    editingRuleId = id;
+    if ($('ruleAccount')) $('ruleAccount').value = String(r.account_id);
+    $('ruleTriggerKind').value = r.trigger_kind;
+    $('ruleTriggerValues').value = (r.trigger_values || []).join(', ');
+    $('ruleStyle').value = r.reply_style || '';
+    pickedDocs = (r.doc_paths || []).slice();
+    renderDocs();
+    if ($('ruleAttachments')) $('ruleAttachments').value = (r.attachments || []).join(', ');
+    if ($('ruleCc')) $('ruleCc').value = (r.cc || []).join(', ');
+    $('ruleMode').value = r.mode;
+    if ($('ruleFirstContact')) $('ruleFirstContact').value = r.first_contact || 'semi';
+    if ($('ruleCap')) $('ruleCap').value = r.daily_cap;
+    if ($('ruleCooldown')) $('ruleCooldown').value = r.cooldown_hours;
+    if ($('ruleExpiry')) $('ruleExpiry').value = Math.round(r.expiry_days || 30);
+    onTriggerKindChange();
+    onModeChange();
+    if ($('ruleFormTitle')) $('ruleFormTitle').textContent = T('Modifica regola', 'Edit rule', '编辑规则') + ': ' + (r.trigger_values || []).join(', ');
+    $('btnCreateRule').textContent = T('Salva modifiche (Hello)', 'Save changes (Hello)', '保存更改 (Hello)');
+    if ($('btnCancelEdit')) $('btnCancelEdit').style.display = '';
+    if ($('ruleFormStatus')) $('ruleFormStatus').textContent = T('La regola resta attiva con le stesse scadenze: cambia solo quello che modifichi qui.', 'The rule stays as it is, same expiry: only what you change here changes.', '规则保持不变，到期时间相同：只更改你在这里修改的内容。');
+    $('ruleForm')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cancelEditRule() {
+    editingRuleId = null;
+    $('ruleTriggerValues').value = '';
+    $('ruleStyle').value = '';
+    pickedDocs = [];
+    renderDocs();
+    if ($('ruleAttachments')) $('ruleAttachments').value = '';
+    if ($('ruleCc')) $('ruleCc').value = '';
+    if ($('ruleFormTitle')) $('ruleFormTitle').textContent = T('Nuova regola', 'New rule', '新规则');
+    $('btnCreateRule').textContent = T('Crea regola', 'Create rule', '创建规则');
+    if ($('btnCancelEdit')) $('btnCancelEdit').style.display = 'none';
+    if ($('ruleFormStatus')) $('ruleFormStatus').textContent = T('La conferma finale è Windows Hello: una regola è una pre-approvazione.', 'The final confirmation is Windows Hello: a rule is a pre-approval.', '最终确认由 Windows Hello 完成：规则是一种预先批准。');
+  }
+
   async function onCreateRule() {
     const kind = $('ruleTriggerKind').value;
     const raw = $('ruleTriggerValues').value;
-    const values = kind === 'senders'
-      ? raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean)
-      : [raw.trim()];
+    const values = kind === 'senders' ? splitList(raw) : [raw.trim()];
     const body = {
-      account_id: parseInt($('ruleAccount').value, 10) || null,
+      account_id: parseInt($('ruleAccount')?.value, 10) || null,
       trigger_kind: kind,
       trigger_values: values,
       reply_style: $('ruleStyle').value.trim(),
       doc_paths: pickedDocs.slice(),
       mode: $('ruleMode').value,
-      first_contact: $('ruleFirstContact').value,
-      daily_cap: parseInt($('ruleCap').value, 10) || 10,
-      cooldown_hours: parseFloat($('ruleCooldown').value) || 0,
-      expiry_days: parseFloat($('ruleExpiry').value) || 30,
+      first_contact: $('ruleFirstContact')?.value || 'semi',
+      daily_cap: parseInt($('ruleCap')?.value, 10) || 10,
+      cooldown_hours: parseFloat($('ruleCooldown')?.value) || 0,
+      expiry_days: parseFloat($('ruleExpiry')?.value) || 30,
+      attachments: splitList($('ruleAttachments')?.value),
+      cc: splitList($('ruleCc')?.value),
     };
     if (!values.length || !values[0]) {
       toast(T('Indica almeno un mittente o una cartella.', 'Enter at least one sender or a folder.', '请至少填写一个发件人或一个文件夹。'), 'error');
@@ -246,15 +302,26 @@
     const btn = $('btnCreateRule');
     btn.disabled = true;
     $('ruleFormStatus').textContent = T('Conferma con Windows Hello…', 'Confirm with Windows Hello…', '请用 Windows Hello 确认…');
+    const editing = editingRuleId;
     try {
-      const r = await api('/rules', { method: 'POST', body: JSON.stringify(body) });
-      $('ruleFormStatus').textContent = T(`Regola creata: ${r.rule_id}`, `Rule created: ${r.rule_id}`, `规则已创建：${r.rule_id}`);
-      pickedDocs = [];
-      renderDocs();
-      $('ruleTriggerValues').value = '';
+      if (editing) {
+        delete body.account_id;
+        delete body.expiry_days;
+        const r = await api(`/rules/${editing}`, { method: 'PUT', body: JSON.stringify(body) });
+        cancelEditRule();
+        $('ruleFormStatus').textContent = T(`Regola aggiornata: ${r.rule_id}`, `Rule updated: ${r.rule_id}`, `规则已更新：${r.rule_id}`);
+      } else {
+        const r = await api('/rules', { method: 'POST', body: JSON.stringify(body) });
+        $('ruleFormStatus').textContent = T(`Regola creata: ${r.rule_id}`, `Rule created: ${r.rule_id}`, `规则已创建：${r.rule_id}`);
+        pickedDocs = [];
+        renderDocs();
+        $('ruleTriggerValues').value = '';
+      }
       await refreshRules();
     } catch (e) {
-      $('ruleFormStatus').textContent = T('Non creata: ', 'Not created: ', '未创建：') + e.message;
+      $('ruleFormStatus').textContent = (editing
+        ? T('Non modificata: ', 'Not changed: ', '未更改：')
+        : T('Non creata: ', 'Not created: ', '未创建：')) + e.message;
     } finally {
       btn.disabled = false;
     }
@@ -553,6 +620,7 @@
       else pollBadge();
     }, 30000);
     $('btnCreateRule')?.addEventListener('click', onCreateRule);
+    $('btnCancelEdit')?.addEventListener('click', cancelEditRule);
     $('btnPickDocs')?.addEventListener('click', onPickDocs);
     $('ruleTriggerKind')?.addEventListener('change', onTriggerKindChange);
     $('ruleMode')?.addEventListener('change', onModeChange);

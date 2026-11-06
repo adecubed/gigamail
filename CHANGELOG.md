@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A rule can be edited.** Edit on a rule card loads the rule into the
+  form: instruction, trigger, documents, fixed attachments, copies and
+  limits change in place and the rule keeps its id, its expiry and what it
+  already handled. Before, a wrong detail in a rule's instruction (a
+  phone number, the floor plans it always attached) meant deleting the
+  rule and creating it again. Saving a change is approving another rule:
+  Windows Hello, as for creating it. The instruction field is now a text
+  area, long instructions included; fixed attachments and copies, which
+  only the command line could set, are in the form too.
 - **Known addresses are suggested on CC and BCC too.** The reply, forward
   and new-mail windows offered the address book only on To; typing in CC
   or BCC got nothing. Every recipient field now suggests, and a chosen

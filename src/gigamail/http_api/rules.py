@@ -32,6 +32,53 @@ class RuleCreate(BaseModel):
     daily_cap: int = 10
     cooldown_hours: float = 4.0
     expiry_days: float = 30.0
+    cc: List[str] = []
+    attachments: List[str] = []   # names of files registered in the identity
+
+
+class RuleUpdate(BaseModel):
+    """What Edit on a rule card can change. Every field is optional: only
+    the ones sent are changed."""
+    trigger_kind: Optional[str] = None
+    trigger_values: Optional[List[str]] = None
+    reply_style: Optional[str] = None
+    doc_paths: Optional[List[str]] = None
+    mode: Optional[str] = None
+    first_contact: Optional[str] = None
+    daily_cap: Optional[int] = None
+    cooldown_hours: Optional[float] = None
+    cc: Optional[List[str]] = None
+    attachments: Optional[List[str]] = None
+
+
+def _clean_trigger(kind: str, values: List[str]) -> List[str]:
+    return [v.strip().lower() if kind == "senders" else v.strip()
+            for v in values if v and v.strip()]
+
+
+def _clean_docs(paths: List[str]) -> List[str]:
+    docs = []
+    for pth in paths or []:
+        pth = os.path.abspath(pth)
+        if not os.path.exists(pth):
+            raise HTTPException(400, f"Documento inesistente: {pth}")
+        docs.append(pth)
+    return docs
+
+
+def _clean_attachments(account_id: int, names: List[str]) -> List[str]:
+    """Fixed attachments are names of files registered in the identity:
+    a name that resolves to nothing is refused now, not discovered in a
+    month when the rule fires and the mail goes without it."""
+    names = [n.strip() for n in names or [] if n and n.strip()]
+    if not names:
+        return []
+    from gigamail.core import attachments as attachments_mod
+    _resolved, missing = attachments_mod.resolve(account_id, names)
+    if missing:
+        raise HTTPException(400, "Allegati non registrati nell'identity: "
+                            + ", ".join(missing))
+    return names
 
 
 def _require_human_or_http(reason: str) -> None:
@@ -73,16 +120,12 @@ def create_rule(body: RuleCreate):
         raise HTTPException(400, "trigger_kind non valido")
     if body.mode not in rules_mod.MODES or body.first_contact not in rules_mod.MODES:
         raise HTTPException(400, "mode/first_contact non validi")
-    values = [v.strip().lower() if body.trigger_kind == "senders" else v.strip()
-              for v in body.trigger_values if v and v.strip()]
+    values = _clean_trigger(body.trigger_kind, body.trigger_values)
     if not values:
         raise HTTPException(400, "trigger vuoto")
-    docs = []
-    for pth in body.doc_paths or []:
-        pth = os.path.abspath(pth)
-        if not os.path.exists(pth):
-            raise HTTPException(400, f"Documento inesistente: {pth}")
-        docs.append(pth)
+    docs = _clean_docs(body.doc_paths)
+    attachments = _clean_attachments(aid, body.attachments)
+    cc = [v.strip() for v in body.cc or [] if v and v.strip()]
     _require_human_or_http(
         f"GigaMail: creare la regola {body.mode.upper()} per {', '.join(values)}?")
     rule_id = rules_mod.store().create(
@@ -90,9 +133,58 @@ def create_rule(body: RuleCreate):
         reply_style=body.reply_style, doc_paths=docs, mode=body.mode,
         first_contact=body.first_contact, daily_cap=body.daily_cap,
         cooldown_hours=body.cooldown_hours, expiry_days=body.expiry_days,
-        created_by=_who(), hello_verified_at=_t.time())
+        created_by=_who(), hello_verified_at=_t.time(),
+        cc=cc, attachments=attachments)
     policy.audit("rule", {"rule_id": rule_id, "mode": body.mode, "trigger": values},
                  "rule_created", detail=_who())
+    return _rule_view(rules_mod.store().get(rule_id))
+
+
+@router.put("/rules/{rule_id}")
+def update_rule(rule_id: str, body: RuleUpdate):
+    """Edit on a rule card: the instruction, trigger, documents, fixed
+    attachments or limits change in place, so a wrong detail in a rule
+    (a phone number, the floor plans it always attaches) is corrected
+    without deleting the rule and losing what it handled. Changing a rule
+    is approving another one: Hello, as for creating it. The rule keeps
+    its state and expiry."""
+    import time as _t
+
+    from gigamail.core import rules as rules_mod
+    rule = rules_mod.store().get(rule_id)
+    if not rule:
+        raise HTTPException(404, "Regola inesistente")
+    fields = body.model_dump(exclude_none=True)
+    if not fields:
+        raise HTTPException(400, "nothing to change")
+    kind = fields.get("trigger_kind", rule["trigger_kind"])
+    if kind not in rules_mod.TRIGGER_KINDS:
+        raise HTTPException(400, "trigger_kind non valido")
+    if "trigger_values" in fields or "trigger_kind" in fields:
+        fields["trigger_kind"] = kind
+        fields["trigger_values"] = _clean_trigger(
+            kind, fields.get("trigger_values", rule["trigger_values"]))
+        if not fields["trigger_values"]:
+            raise HTTPException(400, "trigger vuoto")
+    for key in ("mode", "first_contact"):
+        if fields.get(key, "semi") not in rules_mod.MODES:
+            raise HTTPException(400, "mode/first_contact non validi")
+    if "doc_paths" in fields:
+        fields["doc_paths"] = _clean_docs(fields["doc_paths"])
+    if "attachments" in fields:
+        fields["attachments"] = _clean_attachments(rule["account_id"], fields["attachments"])
+    if "cc" in fields:
+        fields["cc"] = [v.strip() for v in fields["cc"] if v and v.strip()]
+    _require_human_or_http(
+        f"GigaMail: modificare la regola {rule_id} ({', '.join(sorted(fields))})?"
+        if policy.user_lang() == "it" else
+        f"GigaMail: change rule {rule_id} ({', '.join(sorted(fields))})?")
+    try:
+        rules_mod.store().update(rule_id, _t.time(), **fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    policy.audit("rule", {"rule_id": rule_id, "fields": sorted(fields)},
+                 "rule_updated", detail=_who())
     return _rule_view(rules_mod.store().get(rule_id))
 
 

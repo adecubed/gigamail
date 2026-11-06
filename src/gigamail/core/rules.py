@@ -338,6 +338,48 @@ class RuleStore:
                 (expires_at, float(rule["expiry_days"]), float(hello_verified_at), rule_id))
         return expires_at
 
+    EDITABLE = ("trigger_kind", "trigger_values", "reply_style", "doc_paths",
+                "mode", "first_contact", "daily_cap", "cooldown_hours",
+                "attachments", "cc", "reply_to_body_address")
+
+    def update(self, rule_id: str, hello_verified_at: float, **fields) -> bool:
+        """Changes what a rule does, behind the same human check as its
+        creation: another instruction, trigger, document or limit is
+        another pre-approval. The rule keeps its id, its expiry and its
+        state (active, paused, expired); the mails it handled stay
+        handled. Returns False for an unknown rule."""
+        if not hello_verified_at:
+            raise ValueError("hello_verified_at missing")
+        unknown = [k for k in fields if k not in self.EDITABLE]
+        if unknown:
+            raise ValueError(f"not editable: {', '.join(unknown)}")
+        if fields.get("trigger_kind", TRIGGER_KINDS[0]) not in TRIGGER_KINDS:
+            raise ValueError(f"trigger_kind '{fields['trigger_kind']}' non valido")
+        for key in ("mode", "first_contact"):
+            if fields.get(key, MODES[0]) not in MODES:
+                raise ValueError(f"{key} '{fields[key]}' non valido")
+        if "trigger_values" in fields and not fields["trigger_values"]:
+            raise ValueError("trigger_values vuoto")
+        sets, vals = [], []
+        for key, value in fields.items():
+            if key in ("trigger_values", "doc_paths", "attachments", "cc"):
+                value = json.dumps(list(value or []), ensure_ascii=False)
+            elif key == "daily_cap":
+                value = int(value)
+            elif key == "cooldown_hours":
+                value = float(value)
+            elif key == "reply_to_body_address":
+                value = 1 if value else 0
+            sets.append(f"{key}=?")
+            vals.append(value)
+        sets.append("hello_verified_at=?")
+        vals.append(float(hello_verified_at))
+        vals.append(rule_id)
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE rules SET " + ", ".join(sets) + " WHERE rule_id=?", vals)
+            return cur.rowcount == 1
+
     def delete(self, rule_id: str) -> bool:
         with self._conn() as conn:
             cur = conn.execute("DELETE FROM rules WHERE rule_id=?", (rule_id,))
