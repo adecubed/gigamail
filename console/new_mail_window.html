@@ -174,13 +174,15 @@
     <input type="text" id="mailTo" class="field-input" data-i18n-ph="recipient_ph" placeholder="mario.rossi@example.com" autocomplete="off"/>
     <div id="mailToAutocomplete" class="autocomplete-box hidden"></div>
   </div>
-  <div class="field-row">
+  <div class="field-row" style="position:relative;">
     <span class="field-label" data-i18n="cc_label">CC:</span>
-    <input type="text" id="mailCc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+    <input type="text" id="mailCc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)" autocomplete="off"/>
+    <div id="mailCcAutocomplete" class="autocomplete-box hidden"></div>
   </div>
-  <div class="field-row">
+  <div class="field-row" style="position:relative;">
     <span class="field-label" data-i18n="bcc_label">BCC:</span>
-    <input type="text" id="mailBcc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)"/>
+    <input type="text" id="mailBcc" class="field-input" data-i18n-ph="optional" placeholder="(opzionale)" autocomplete="off"/>
+    <div id="mailBccAutocomplete" class="autocomplete-box hidden"></div>
   </div>
   <div class="field-row">
     <span class="field-label" data-i18n="subject_label">Oggetto:</span>

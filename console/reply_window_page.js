@@ -17,37 +17,49 @@ function T(chiave, italiano){
   return (t && t !== chiave) ? t : italiano;
 }
 
-// ── AUTOCOMPLETE replyTo ──────────────────────────────────────────────────────
-const replyToInput = document.getElementById('replyTo');
-const replyToBox   = document.getElementById('replyToAutocomplete');
+// ── AUTOCOMPLETE A: e CC: ─────────────────────────────────────────────────────
+// Known addresses are offered on To and on CC alike. Addresses are
+// separated by commas or semicolons: the suggestion replaces the last one
+// being typed, the others stay.
+function lastToken(input) {
+  const parts = (input.value || '').split(/[;,]/);
+  return (parts[parts.length - 1] || '').trim();
+}
+function putAddress(input, email) {
+  const parts = (input.value || '').split(/[;,]/);
+  parts[parts.length - 1] = email;
+  input.value = parts.map(p => p.trim()).filter(Boolean).join(', ');
+}
+function addressSuggestions(input, box) {
+  if (!input || !box) return;
+  input.addEventListener('input', () => fetchAddressSuggestions(input, box, lastToken(input)));
+  input.addEventListener('focus', () => fetchAddressSuggestions(input, box, lastToken(input)));
+  document.addEventListener('click', (e) => {
+    if (!box.contains(e.target) && e.target !== input) box.style.display = 'none';
+  });
+}
+addressSuggestions(document.getElementById('replyTo'), document.getElementById('replyToAutocomplete'));
+addressSuggestions(document.getElementById('replyCc'), document.getElementById('replyCcAutocomplete'));
 
-replyToInput.addEventListener('input', () => fetchAddressSuggestions(replyToInput.value.trim()));
-replyToInput.addEventListener('focus', () => fetchAddressSuggestions(replyToInput.value.trim()));
-document.addEventListener('click', (e) => {
-  if (!replyToBox.contains(e.target) && e.target !== replyToInput) {
-    replyToBox.style.display = 'none';
-  }
-});
-
-async function fetchAddressSuggestions(q) {
-  if (!q || q.length < 1) { replyToBox.style.display = 'none'; return; }
+async function fetchAddressSuggestions(input, box, q) {
+  if (!q || q.length < 1) { box.style.display = 'none'; return; }
   try {
     const accountId = mailData?.account_id || null;
     const params = new URLSearchParams({ q });
     if (accountId) params.append('account_id', accountId);
     const results = await fetch(`${API}/addresses/search?${params}`).then(r => r.json());
-    if (!Array.isArray(results) || !results.length) { replyToBox.style.display = 'none'; return; }
-    replyToBox.innerHTML = results.map(r => `
+    if (!Array.isArray(results) || !results.length) { box.style.display = 'none'; return; }
+    box.innerHTML = results.map(r => `
       <div data-email="${esc(r.email)}" style="padding:7px 12px;font-size:11.5px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.75);border-bottom:1px solid rgba(0,0,0,0.05);">
         ${r.name ? `<span style="font-weight:600">${esc(r.name)}</span> — ` : ''}${esc(r.email)}
       </div>`).join('');
-    replyToBox.style.display = 'block';
-    replyToBox.querySelectorAll('[data-email]').forEach(item => {
+    box.style.display = 'block';
+    box.querySelectorAll('[data-email]').forEach(item => {
       item.addEventListener('mouseenter', () => item.style.background = '#f3e6f0');
       item.addEventListener('mouseleave', () => item.style.background = '');
       item.addEventListener('click', () => {
-        replyToInput.value = item.dataset.email;
-        replyToBox.style.display = 'none';
+        putAddress(input, item.dataset.email);
+        box.style.display = 'none';
       });
     });
   } catch(e) { console.error('autocomplete:', e); }

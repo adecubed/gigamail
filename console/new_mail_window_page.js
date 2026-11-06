@@ -236,9 +236,8 @@ document.querySelectorAll('.fu-opt').forEach(opt => {
 });
 document.addEventListener('click', () => { followupDropdown.style.display = 'none'; });
 
-// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
-const mailToInput = document.getElementById('mailTo');
-const mailToBox   = document.getElementById('mailToAutocomplete');
+// ── AUTOCOMPLETE A:, CC:, BCC: ───────────────────────────────────────────────
+// Known addresses are offered on every recipient field, not only on To.
 async function fetchAddresses(q) {
   try { return await (await fetch(`${API}/addresses?q=${encodeURIComponent(q)}`)).json(); } catch { return []; }
 }
@@ -246,29 +245,35 @@ function currentToken(input) {
   const parts = (input.value||'').split(/[;,]/);
   return (parts[parts.length-1]||'').trim();
 }
-function applyAddress(email) {
-  const parts = (mailToInput.value||'').split(/[;,]/);
-  parts[parts.length-1] = ' '+email;
-  mailToInput.value = parts.map(p=>p.trim()).filter(Boolean).join('; ');
-  mailToBox.classList.add('hidden'); mailToBox.innerHTML = ''; mailToInput.focus();
-}
-mailToInput.addEventListener('input', async () => {
-  const q = currentToken(mailToInput);
-  if (!q.length) { mailToBox.classList.add('hidden'); return; }
-  const results = await fetchAddresses(q);
-  if (!results.length) { mailToBox.classList.add('hidden'); return; }
-  mailToBox.innerHTML = results.map(r =>
-    `<div class="autocomplete-item" data-email="${esc(r.email)}">${esc(r.name?r.name+' — ':'')}${esc(r.email)}</div>`
-  ).join('');
-  mailToBox.classList.remove('hidden');
-  mailToBox.querySelectorAll('.autocomplete-item').forEach(item => {
-    item.addEventListener('mousedown', (e) => { e.preventDefault(); applyAddress(item.dataset.email); });
+function addressSuggestions(input, box) {
+  if (!input || !box) return;
+  function applyAddress(email) {
+    const parts = (input.value||'').split(/[;,]/);
+    parts[parts.length-1] = ' '+email;
+    input.value = parts.map(p=>p.trim()).filter(Boolean).join('; ');
+    box.classList.add('hidden'); box.innerHTML = ''; input.focus();
+  }
+  input.addEventListener('input', async () => {
+    const q = currentToken(input);
+    if (!q.length) { box.classList.add('hidden'); return; }
+    const results = await fetchAddresses(q);
+    if (!results.length) { box.classList.add('hidden'); return; }
+    box.innerHTML = results.map(r =>
+      `<div class="autocomplete-item" data-email="${esc(r.email)}">${esc(r.name?r.name+' — ':'')}${esc(r.email)}</div>`
+    ).join('');
+    box.classList.remove('hidden');
+    box.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('mousedown', (e) => { e.preventDefault(); applyAddress(item.dataset.email); });
+    });
   });
-});
-mailToInput.addEventListener('focus', () => { if (currentToken(mailToInput).length) mailToInput.dispatchEvent(new Event('input')); });
-document.addEventListener('click', (e) => {
-  if (!mailToBox.contains(e.target) && e.target !== mailToInput) mailToBox.classList.add('hidden');
-});
+  input.addEventListener('focus', () => { if (currentToken(input).length) input.dispatchEvent(new Event('input')); });
+  document.addEventListener('click', (e) => {
+    if (!box.contains(e.target) && e.target !== input) box.classList.add('hidden');
+  });
+}
+addressSuggestions(document.getElementById('mailTo'),  document.getElementById('mailToAutocomplete'));
+addressSuggestions(document.getElementById('mailCc'),  document.getElementById('mailCcAutocomplete'));
+addressSuggestions(document.getElementById('mailBcc'), document.getElementById('mailBccAutocomplete'));
 
 // ── GENERA ────────────────────────────────────────────────────────────────────
 document.getElementById('btnGenerate').addEventListener('click', async () => {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Known addresses are suggested on CC and BCC too.** The reply, forward
+  and new-mail windows offered the address book only on To; typing in CC
+  or BCC got nothing. Every recipient field now suggests, and a chosen
+  address replaces only the one being typed, the others stay.
 - **"Send failed" on a mail that had gone.** The first approval after the
   backend started loaded the sending module inside the click, which took
   up to twenty seconds on a slow disk; the backend's once-a-minute sweep
