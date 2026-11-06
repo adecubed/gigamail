@@ -227,6 +227,27 @@ pre .c { color: #8a93ad; }
 .faq summary::after { content: "+"; color: var(--gm-pink); font-weight: 700; font-size: 1.2rem; line-height: 1; }
 .faq details[open] summary::after { content: "–"; }
 .faq details p { color: var(--gm-muted); padding: 0 0 18px; font-size: 0.95rem; }
+/* FAQ in colour, like the feature cards: each question its own pastel,
+   question and answer in a deeper shade of it, the +/– in the full colour. */
+.faq > details:nth-child(8n+1) { --fc: 224,64,154; }
+.faq > details:nth-child(8n+2) { --fc: 139,92,246; }
+.faq > details:nth-child(8n+3) { --fc: 59,130,246; }
+.faq > details:nth-child(8n+4) { --fc: 14,165,164; }
+.faq > details:nth-child(8n+5) { --fc: 34,163,90; }
+.faq > details:nth-child(8n+6) { --fc: 217,138,0; }
+.faq > details:nth-child(8n+7) { --fc: 240,90,79; }
+.faq > details:nth-child(8n+8) { --fc: 91,91,214; }
+.faq details { --fc-mix: black; --fc-text: #3a3a44; background: rgba(var(--fc), 0.08); border-color: rgba(var(--fc), 0.25);
+  transition: border-color .22s, box-shadow .22s; }
+.faq summary { color: color-mix(in srgb, rgb(var(--fc)) 78%, var(--fc-mix)); }
+.faq summary::after { color: rgb(var(--fc)); }
+.faq details p { color: color-mix(in srgb, rgb(var(--fc)) 45%, var(--fc-text)); }
+.faq details[open] { border-color: rgba(var(--fc), 0.55); }
+@media (hover: hover) { .faq details:hover { border-color: rgb(var(--fc)); box-shadow: 0 10px 26px rgba(var(--fc), 0.16); } }
+:root[data-theme="dark"] .faq details { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .faq details { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
+}
 
 /* open-source strip */
 .strip { padding: 22px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
