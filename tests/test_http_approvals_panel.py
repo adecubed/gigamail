@@ -153,6 +153,9 @@ def test_approved_requests_nobody_sent_are_resumed(client, monkeypatch):
                         lambda a: sent.append(a["to"]) or {"success": True})
     old = _request(to="left@example.com")
     policy.store().approve(old, by="console:older-backend")
+    _decided_ago(old, 300)
+    just_now = _request(to="clicked@example.com")
+    policy.store().approve(just_now, by="console:tester (console click)")
     expired = _request(to="late@example.com")
     assert policy.store().approve(expired, by="console:older-backend")
     # Expire it after the approval: with a 10 ms TTL the slower Windows
@@ -171,8 +174,39 @@ def test_approved_requests_nobody_sent_are_resumed(client, monkeypatch):
     assert (old, "approval_resumed") in audit
     assert policy.store().get(still_pending)["status"] == policy.PENDING
     assert policy.store().get(expired)["status"] == policy.APPROVED
+    # approved a moment ago: the click that approved it is sending it,
+    # the sweep does not race it
+    assert policy.store().get(just_now)["status"] == policy.APPROVED
     # nothing left: the sweep is idempotent
     assert completion.complete_left_behind() == []
+
+
+def _decided_ago(request_id, seconds):
+    with policy.store()._conn() as conn:
+        conn.execute("UPDATE approvals SET decided_at=? WHERE request_id=?",
+                     (time.time() - seconds, request_id))
+
+
+def test_a_completion_that_lost_the_race_reports_the_send_not_a_failure(client, monkeypatch):
+    """The click's completion and the sweep both reached an approved
+    request; consume is atomic, so one sent it. The loser read "approval
+    no longer valid" and the window said the send had failed, while the
+    mail had gone. The loser now reports what the record says."""
+    from gigamail import completion, server
+    monkeypatch.setitem(server.APPROVED_EXECUTORS, "send_mail",
+                        lambda a: {"success": True})
+    rid = _request(to="once@example.com")
+    policy.store().approve(rid, by="console:tester (console click)")
+    # the other path wins the consume and completes the send
+    assert policy.store().consume_approved(rid, "send_mail")
+    policy.store().record_outcome(rid, "ok", {"accepted": 1})
+    rep = completion.complete(rid)
+    assert rep["status"] == "executed"
+    assert rep["outcome"] == "ok"
+    assert rep["error"] == ""
+    # a request that does not exist still reports the reason
+    rep = completion.complete("req_nobody")
+    assert rep["outcome"] == "failed" and "not found" in rep["error"]
 
 
 def test_edit_closes_the_request_with_a_note_and_requeues_a_rule_draft(client, monkeypatch):

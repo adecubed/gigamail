@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **"Send failed" on a mail that had gone.** The first approval after the
+  backend started loaded the sending module inside the click, which took
+  up to twenty seconds on a slow disk; the backend's once-a-minute sweep
+  of approved requests found the request still waiting and sent it (once:
+  the hand-over is atomic), and the click's own completion then read
+  "approval no longer valid" and the window said the send had failed.
+  The sending module is now loaded when the backend starts, the sweep
+  leaves a request approved less than two minutes ago to the channel that
+  approved it, and a completion that finds the request already sent
+  reports the send, not a failure.
 - **Mails can be printed from the console.** A PRINT button after UNREAD
   opens the system print dialog with the mail's subject, sender,
   recipients and date on top, then its body, images included; "Save as

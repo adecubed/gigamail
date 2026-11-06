@@ -14,11 +14,31 @@ found in the store as "approved and valid" and completed, with an audit
 line that says so. consume_approved is atomic, so a sweep racing a
 click sends once.
 """
+import threading
+import time
 from typing import Any, Dict, List
 
 from gigamail import policy
 
 SWEEP_SECONDS = 60
+# A request approved this recently is being completed by the channel that
+# approved it: the sweep leaves it alone. The first completion in a
+# backend imports the MCP server module, which takes several seconds on a
+# slow disk; a sweep racing that import sent the mail (once, consume is
+# atomic) but the click's own completion then read "approval no longer
+# valid" and the window said the send had failed.
+GRACE_SECONDS = 120
+
+
+def warm_up() -> None:
+    """Imports the MCP server module in the background at backend start,
+    so the first approval does not pay for it in the click."""
+    def _load():
+        try:
+            from gigamail import server  # noqa: F401
+        except Exception:
+            pass
+    threading.Thread(target=_load, name="completion-warm-up", daemon=True).start()
 
 
 def origin_of(request_id: str) -> str:
@@ -59,20 +79,31 @@ def complete(request_id: str) -> Dict[str, Any]:
     try:
         server.execute_approved(request_id)
     except Exception as e:
+        rec = policy.store().get(request_id) or {}
+        if rec.get("status") == policy.EXECUTED:
+            # Consumed meanwhile by another path (the sweep, Telegram, the
+            # CLI): sent once, by them. What the record says is the truth,
+            # not "approval no longer valid".
+            return _report(request_id, origin)
         return _report(request_id, origin, str(e)[:500])
     return _report(request_id, origin)
 
 
-def complete_left_behind() -> List[Dict[str, Any]]:
+def complete_left_behind(grace: float = GRACE_SECONDS) -> List[Dict[str, Any]]:
     """Every request approved, still valid and not consumed: completed
-    now. Returns one report per request, with the id."""
+    now, except the ones approved less than `grace` seconds ago, which
+    their own channel is still completing. Returns one report per
+    request, with the id."""
     try:
         approved = policy.store().list_approved()
     except Exception:
         return []
     out = []
+    now = time.time()
     for rec in approved:
         rid = rec["request_id"]
+        if (rec.get("decided_at") or 0) > now - grace:
+            continue
         policy.audit(rec["tool"], {"request_id": rid, "decided_by": rec.get("decided_by")},
                      "approval_resumed")
         rep = complete(rid)

@@ -141,6 +141,8 @@ def main() -> None:
     # gone, or running old code, while its rules are still active. A guard
     # brings it back, now and every minute, not a button someone has to
     # remember.
+    from gigamail import completion
+    completion.warm_up()
     from .rules import start_watch_guard
     start_watch_guard()
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
