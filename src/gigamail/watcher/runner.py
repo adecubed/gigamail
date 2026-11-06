@@ -18,6 +18,7 @@ from . import (
     ingestion,
     pipeline,
     process_state,
+    rule_expiry,
     telegram,
     tg_risposte,
 )
@@ -93,6 +94,10 @@ class Watcher:
         self.heartbeat()
         stats["processed"] += self.desktop_replies()
         self.heartbeat()
+        try:
+            rule_expiry.tick()
+        except Exception as e:
+            _log(f"rule expiry warnings not sent: {e}", self.verbose)
         # Spam filters before the rules: a mail they hide gets no draft.
         stats["spam"] = self.apply_spam_filters()
         self.heartbeat()

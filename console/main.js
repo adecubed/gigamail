@@ -1001,6 +1001,40 @@ ipcMain.handle('mail-attachment-save-as', async (_evt, { name, bytes }) => {
   }
 });
 
+// ── PRINT button: the mail goes to the system print dialog ──
+// The mail's own iframe cannot print (sandboxed, no scripts), so the page
+// sends a document already sanitized (MailRender.printableHtml) and it is
+// written into a hidden window. That window stays on about:blank: a file://
+// page would get the click secret on its requests to the backend, and the
+// mail's images may point there. No preload, sandboxed, and the document's
+// own CSP (default-src 'none') forbids any script in it.
+ipcMain.handle('print-mail', async (event, { html } = {}) => {
+  const win = new BrowserWindow({
+    show: false,
+    parent: BrowserWindow.fromWebContents(event.sender) || undefined,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+  hardenWindow(win);
+  try {
+    await win.loadURL('about:blank');
+    // resolves when the images have arrived, or after 5 s whatever is missing
+    await win.webContents.executeJavaScript(`new Promise((done) => {
+      document.open(); document.write(${JSON.stringify(String(html || ''))}); document.close();
+      if (document.readyState === 'complete') done();
+      else { window.addEventListener('load', () => done()); setTimeout(done, 5000); }
+    })`);
+    return await new Promise((resolve) => {
+      win.webContents.print({ printBackground: true }, (ok, reason) => {
+        resolve(ok ? { ok: true } : { ok: false, canceled: reason === 'cancelled', error: reason || null });
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
+
 ipcMain.on('window-resize', (event, { w, h }) => {
   BrowserWindow.fromWebContents(event.sender)?.setSize(
     Math.max(380, Math.round(w)),

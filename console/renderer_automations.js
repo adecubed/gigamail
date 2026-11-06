@@ -66,7 +66,9 @@
   // ------------------------------------------------------------ rules
   function fmtDays(expiresAt) {
     const d = Math.floor((expiresAt * 1000 - Date.now()) / 86400000);
-    return d < 0 ? T('scaduta', 'expired', '已过期') : T(`scade tra ${d}g`, `expires in ${d}d`, `${d} 天后过期`);
+    if (expiresAt * 1000 <= Date.now()) return T('scaduta', 'expired', '已过期');
+    if (d < 1) return T('scade entro un giorno', 'expires within a day', '一天内过期');
+    return T(`scade tra ${d}g`, `expires in ${d}d`, `${d} 天后过期`);
   }
 
   function ruleCard(r) {
@@ -85,6 +87,7 @@
       : r.state === 'active'
         ? `<button class="chip-btn" data-act="pause" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pause', 12) : '')} ${T('Pausa', 'Pause', '暂停')}</button>`
         : '';
+    const renewBtn = (r.expired || r.expiring) ? renewButton(r) : '';
     return `
       <div class="ai-card" data-rule="${r.rule_id}">
         <div class="ai-card-head">
@@ -102,10 +105,16 @@
           <span style="flex:1"></span>
           <button class="chip-btn" data-act="activity" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('clipboard', 12) : '')} ${T('Attività', 'Activity', '活动')}</button>
           ${actBtn}
+          ${renewBtn}
           <button class="chip-btn danger" data-act="delete" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('trash', 13) : '')}</button>
         </div>
         <div class="hint" id="act-${r.rule_id}" style="display:none;white-space:pre-wrap;margin-top:8px"></div>
       </div>`;
+  }
+
+  function renewButton(r) {
+    const days = Math.round(r.expiry_days || 30);
+    return `<button class="chip-btn" data-act="renew" data-id="${escapeHtml(r.rule_id)}">↻ ${T(`Rinnova per ${days}g (Hello)`, `Renew for ${days}d (Hello)`, `续期 ${days} 天 (Hello)`)}</button>`;
   }
 
   function escapeHtml(s) {
@@ -134,6 +143,27 @@
   // resumes it with Hello: a banner above the list and a mark on the
   // sidebar icon, visible from any view, until that happens.
   function pausedBanner(rules) {
+    return autoPausedBanner(rules) + renewBanner(rules);
+  }
+
+  // A rule that expired, or will within days, answers nothing after that:
+  // say so above the list, with the button to renew it.
+  function renewBanner(rules) {
+    const due = AV() ? AV().toRenew(rules) : [];
+    return due.map((r) => `
+      <div class="ai-card gm-rule-alert" data-rule-alert="${escapeHtml(r.rule_id)}">
+        <div class="ai-card-title">${r.expired ? T('Regola scaduta', 'Rule expired', '规则已过期') : T('Regola in scadenza', 'Rule expiring', '规则即将过期')}: ${escapeHtml((r.trigger_values || []).join(', '))}</div>
+        <div class="ai-card-sub">${fmtDays(r.expires_at)} · ${r.expired
+          ? T('non risponde a nessuna mail finché non la rinnovi.', 'it answers no mail until you renew it.', '在你续期之前不会回复任何邮件。')
+          : T('dopo non risponde più a nessuna mail.', 'after that it answers no mail.', '之后将不再回复任何邮件。')}</div>
+        <div class="ai-card-row" style="margin-top:8px">
+          <span style="flex:1"></span>
+          ${renewButton(r)}
+        </div>
+      </div>`).join('');
+  }
+
+  function autoPausedBanner(rules) {
     const stuck = AV() ? AV().autoPaused(rules) : [];
     return stuck.map((r) => `
       <div class="ai-card gm-rule-alert" data-rule-alert="${escapeHtml(r.rule_id)}">
@@ -152,10 +182,10 @@
     if (!b) return;
     // how many rules wait for a human to resume them (paused by the burst
     // guard): what needs doing here, not a statistic
-    const n = AV() ? AV().autoPaused(rules).length : 0;
+    const n = AV() ? AV().autoPaused(rules).length + AV().toRenew(rules).length : 0;
     b.textContent = AV() ? AV().badgeText(n) : (n ? String(n) : '');
     b.hidden = !n;
-    b.title = T('Regole in pausa da sole, da riattivare', 'Rules paused by themselves, to resume', '已自动暂停、待恢复的规则');
+    b.title = T('Regole da riattivare o rinnovare', 'Rules to resume or renew', '待恢复或续期的规则');
   }
 
   async function onRuleAction(e) {
@@ -169,6 +199,9 @@
       } else if (act === 'resume') {
         toast(T('Conferma con Windows Hello…', 'Confirm with Windows Hello…', '请用 Windows Hello 确认…'));
         await api(`/rules/${id}/resume`, { method: 'POST' });
+      } else if (act === 'renew') {
+        toast(T('Conferma con Windows Hello…', 'Confirm with Windows Hello…', '请用 Windows Hello 确认…'));
+        await api(`/rules/${id}/renew`, { method: 'POST' });
       } else if (act === 'delete') {
         if (!(await GMDialog.confirm(T('Eliminare la regola?', 'Delete the rule?', '删除此规则？'), { danger: true }))) return;
         await api(`/rules/${id}`, { method: 'DELETE' });

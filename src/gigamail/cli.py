@@ -662,6 +662,34 @@ def cmd_rules_resume(args) -> int:
     return 0
 
 
+def cmd_rules_renew(args) -> int:
+    """Another period of the rule's length from now, behind Hello."""
+    import time as _t
+
+    from gigamail.core import rules as rules_mod
+    from gigamail.policy import audit, user_lang
+    it = user_lang() == "it"
+    rule = rules_mod.store().get(args.rule_id)
+    if not rule:
+        print("Regola inesistente." if it else "No such rule.")
+        return 1
+    days = int(rule["expiry_days"])
+    hello_ts = _hello_or_refuse(
+        f"GigaMail: rinnovare la regola {args.rule_id} per {days} giorni?" if it
+        else f"GigaMail: renew rule {args.rule_id} for {days} days?")
+    if not hello_ts:
+        return 1
+    expires_at = rules_mod.store().renew(args.rule_id, hello_ts)
+    audit("rule", {"rule_id": args.rule_id, "expires_at": expires_at},
+          "rule_renewed", detail=_cli_who())
+    when = _t.strftime("%d/%m/%Y %H:%M", _t.localtime(expires_at))
+    print(f"Regola rinnovata: scade il {when}." if it else f"Rule renewed: it expires on {when}.")
+    if rule["paused"]:
+        print(f"E' ancora in pausa: gigamail rules resume {args.rule_id}" if it
+              else f"It is still paused: gigamail rules resume {args.rule_id}")
+    return 0
+
+
 def cmd_rules_remove(args) -> int:
     from gigamail.core import rules as rules_mod
     if rules_mod.store().delete(args.rule_id):
@@ -1764,6 +1792,10 @@ def main(argv=None) -> int:
         "resume", help="riattiva una regola (richiede Windows Hello / Touch ID)")
     p_resume.add_argument("rule_id")
     p_resume.set_defaults(fn=cmd_rules_resume)
+    p_renew = rules_sub.add_parser(
+        "renew", help="renew a rule for another period of its length (Windows Hello / Touch ID)")
+    p_renew.add_argument("rule_id")
+    p_renew.set_defaults(fn=cmd_rules_renew)
     p_rrm = rules_sub.add_parser("remove")
     p_rrm.add_argument("rule_id")
     p_rrm.set_defaults(fn=cmd_rules_remove)

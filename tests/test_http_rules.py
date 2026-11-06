@@ -63,6 +63,22 @@ def test_pause_libera_resume_con_hello(client, monkeypatch):
     assert client.get("/rules", headers=H).json() == []
 
 
+def test_renew_needs_hello_and_moves_the_expiry(client, monkeypatch):
+    monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    rid = client.post("/rules", json=dict(BODY, expiry_days=30), headers=H).json()["rule_id"]
+    with rules_mod.store()._conn() as conn:
+        conn.execute("UPDATE rules SET expires_at=1 WHERE rule_id=?", (rid,))
+    assert client.get("/rules", headers=H).json()[0]["state"] == "expired"
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "deny")
+    assert client.post(f"/rules/{rid}/renew", headers=H).status_code == 403
+    assert client.get("/rules", headers=H).json()[0]["state"] == "expired"
+    monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
+    renewed = client.post(f"/rules/{rid}/renew", headers=H).json()
+    assert renewed["state"] == "active" and not renewed["expiring"]
+    assert client.post("/rules/rule_missing/renew", headers=H).status_code == 404
+
+
 def test_validazioni(client, monkeypatch):
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")

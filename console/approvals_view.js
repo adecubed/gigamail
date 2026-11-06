@@ -236,7 +236,14 @@
       && /^(raffica|burst)\b/i.test(String(r.pause_reason || '')));
   }
 
-  const ApprovalsView = { summarize, pendingCard, recentCard, detailHtml, outcomeOf, fmtEta, badgeText, badgeCounts, addressOf, notifiedText, notifyFailed, autoPaused };
+  // Rules to renew: expired, or expiring within the warning window (the
+  // backend marks them). A rule expires by design, but silently: these
+  // get the same banner and badge as a rule that paused itself.
+  function toRenew(rules) {
+    return (rules || []).filter((r) => r && !r.paused && (r.expired || r.expiring));
+  }
+
+  const ApprovalsView = { summarize, pendingCard, recentCard, detailHtml, outcomeOf, fmtEta, badgeText, badgeCounts, addressOf, notifiedText, notifyFailed, autoPaused, toRenew };
   if (typeof window !== 'undefined') window.ApprovalsView = ApprovalsView;
   if (typeof module !== 'undefined' && module.exports) module.exports = ApprovalsView;
 })();

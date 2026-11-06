@@ -119,6 +119,27 @@ def resume_rule(rule_id: str):
     return _rule_view(rules_mod.store().get(rule_id))
 
 
+@router.post("/rules/{rule_id}/renew")
+def renew_rule(rule_id: str):
+    """Another period of the rule's length from now. Renewing is approving
+    again: Hello, as for creating it."""
+    import time as _t
+
+    from gigamail.core import rules as rules_mod
+    rule = rules_mod.store().get(rule_id)
+    if not rule:
+        raise HTTPException(404, "Regola inesistente")
+    days = int(rule["expiry_days"])
+    _require_human_or_http(
+        f"GigaMail: rinnovare la regola {rule_id} per {days} giorni?"
+        if policy.user_lang() == "it" else
+        f"GigaMail: renew rule {rule_id} for {days} days?")
+    expires_at = rules_mod.store().renew(rule_id, _t.time())
+    policy.audit("rule", {"rule_id": rule_id, "expires_at": expires_at},
+                 "rule_renewed", detail=_who())
+    return _rule_view(rules_mod.store().get(rule_id))
+
+
 @router.delete("/rules/{rule_id}")
 def delete_rule(rule_id: str):
     from gigamail.core import rules as rules_mod

@@ -8,6 +8,7 @@ let followupHours = 0;
 let sendTimer = null;
 let sendRafId = null;
 let instructionContext = '';
+let instructionContextName = '';
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function T(key, it){ return (window.i18n && window.i18n.t) ? window.i18n.t(key, it) : it; }
@@ -191,21 +192,29 @@ instrEl.addEventListener('drop', async (e) => {
   const file = e.dataTransfer.files?.[0];
   if (!file) return;
   instrEl.placeholder = T('cmp_extracting_text', 'Estrazione testo…');
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    const r = await fetch(`${API}/office/upload`, { method: 'POST', body: formData });
-    const data = await r.json();
-    instructionContext = data.text || '';
-    ctxBadge.innerHTML = `${(typeof GMIcons !== 'undefined' ? GMIcons.svg('file-text', 12) : '')} ${esc(file.name)}`;
+  const ctx = await GMFileContext.extract(API, file);
+  if (ctx.ok) {
+    instructionContext = ctx.text;
+    instructionContextName = ctx.name;
+    ctxBadge.innerHTML = `${(typeof GMIcons !== 'undefined' ? GMIcons.svg('file-text', 12) : '')} ${esc(GMFileContext.badgeText(ctx, T))}`;
+    ctxBadge.title = T('cmp_ctx_remove', 'Clic per togliere il file dal contesto');
     ctxBadge.classList.add('visible');
     instrEl.placeholder = T('ai_instruction_drag_ph', 'Istruzione AI — trascina file per contesto…');
-  } catch(err) {
-    instrEl.placeholder = T('cmp_extract_error_retry', 'Errore estrazione — riprova');
+  } else {
+    // The file did not become context: say so, and show no badge that
+    // would look as if it had.
+    instructionContext = '';
+    instructionContextName = '';
+    ctxBadge.classList.remove('visible');
+    ctxBadge.textContent = '';
+    instrEl.placeholder = T('ai_instruction_drag_ph', 'Istruzione AI — trascina file per contesto…');
+    const msg = `${T('cmp_extract_error', 'File non usato')}: ${ctx.error}`;
+    if (typeof GMDialog !== 'undefined') GMDialog.alert(msg); else instrEl.placeholder = msg;
   }
 });
 ctxBadge.addEventListener('click', () => {
   instructionContext = '';
+  instructionContextName = '';
   ctxBadge.classList.remove('visible');
   ctxBadge.textContent = '';
 });
@@ -269,14 +278,15 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
   btn.disabled = true; btn.textContent = '…'; ta.value = T('cmp_generating', 'Generazione…'); st.textContent = '';
   try {
     const baseInstruction = instrEl.value.trim();
-    const instruction = instructionContext
-      ? `${baseInstruction}\n\n[CONTESTO FILE]\n${instructionContext.slice(0, 3000)}`
-      : baseInstruction;
+    // The dropped file goes apart, whole: the backend puts it in the
+    // prompt as reference material (it used to be cut at 3000 characters).
+    const instruction = baseInstruction;
     const to      = document.getElementById('mailTo').value.trim();
     const subject = document.getElementById('mailSubject').value.trim();
     let url = `${API}/mail/generate_draft`;
     if (accountId) url += `?account_id=${accountId}`;
-    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject}) });
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({instruction,to,subject,
+      context_name: instructionContextName, context_text: instructionContext}) });
     const data = await r.json();
     if (!r.ok) throw (data.detail || `HTTP ${r.status}`);
     ta.value = data.draft || data.text || '';

@@ -230,6 +230,17 @@ test('only a rule paused by the burst guard counts as paused by itself', () => {
   assert.deepEqual(V.autoPaused([]), []);
 });
 
+test('an expired or expiring rule is one to renew, unless it is paused', () => {
+  const rules = [
+    { rule_id: 'gone', state: 'expired', expired: true, expiring: false, paused: false },
+    { rule_id: 'soon', state: 'active', expired: false, expiring: true, paused: false },
+    { rule_id: 'fine', state: 'active', expired: false, expiring: false, paused: false },
+    { rule_id: 'held', state: 'paused', expired: true, expiring: false, paused: true },
+  ];
+  assert.deepEqual(V.toRenew(rules).map((r) => r.rule_id), ['gone', 'soon']);
+  assert.deepEqual(V.toRenew(undefined), []);
+});
+
 test('the icon counts what is to decide and what was decided since the page was last opened, by colour', () => {
   const decided = (over, at, extra = {}) => ({ ...AGENT_SEND, request_id: 'r' + at, status: 'executed',
     decided_at: at, execution_outcome: over, ...extra });
