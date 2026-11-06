@@ -22,9 +22,13 @@
   .state{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
   .state.ok{ color:#16a34a; } .state.err{ color:#dc2626; } .state.warn{ color:var(--gm-amber,#b26f00); }
   .body{ flex:1; min-height:0; overflow:auto; padding:12px 16px; font-size:14.5px; line-height:1.6; white-space:pre-wrap; word-break:break-word; border-top:1px solid var(--gm-line,#e6e6ec); }
-  .edit{ display:none; padding:8px 16px; border-top:1px solid var(--gm-line,#e6e6ec); flex-shrink:0; }
-  .edit.visible{ display:block; }
-  .edit textarea{ width:100%; height:70px; resize:none; font:inherit; font-size:13px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--gm-line,#e6e6ec); outline:none; }
+  .edit{ display:none; padding:8px 16px; border-top:1px solid var(--gm-line,#e6e6ec); flex-shrink:0; flex-direction:column; gap:6px; }
+  .edit.visible{ display:flex; }
+  .edit.editing-text{ flex:1; min-height:0; }
+  .edit textarea{ width:100%; height:56px; resize:none; font:inherit; font-size:13px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--gm-line,#e6e6ec); outline:none; }
+  .edit #bodyEdit{ flex:1; height:auto; min-height:120px; font-size:14px; line-height:1.5; }
+  .edit .note-row{ display:flex; gap:8px; align-items:flex-end; }
+  .edit .note-row textarea{ flex:1; }
   .toolbar{ display:flex; gap:8px; align-items:center; padding:10px 14px; flex-shrink:0; border-top:1px solid var(--gm-line,#e6e6ec); }
   .status{ flex:1; font-size:12px; min-width:0; }
   .btn{ padding:8px 14px; border-radius:10px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; border:1.5px solid var(--gm-line,#e6e6ec); background:transparent; }
@@ -56,8 +60,13 @@
 </div>
 <div class="body" id="body"></div>
 <div class="edit" id="editBox">
+  <div class="hint" id="editTextHint" data-i18n="aw_edit_text_hint">Correggi il testo qui sotto: Invia modificata manda questa versione.</div>
+  <textarea id="bodyEdit" spellcheck="true"></textarea>
   <div class="hint" data-i18n="aw_edit_hint">Cosa cambiare? La richiesta viene chiusa e la bozza riscritta con la tua nota.</div>
-  <textarea id="note" data-i18n-ph="aw_edit_ph" placeholder="per esempio: più breve, e con il prezzo"></textarea>
+  <div class="note-row">
+    <textarea id="note" data-i18n-ph="aw_edit_ph" placeholder="per esempio: più breve, e con il prezzo"></textarea>
+    <button class="btn" id="btnNote" data-i18n="aw_note_send" disabled>Manda la nota all'agente</button>
+  </div>
 </div>
 <div class="toolbar">
   <div class="status" id="status"></div>

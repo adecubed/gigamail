@@ -141,6 +141,42 @@ def save_request(request_id: str, request: Request = None):
             "saved_at": rec.get("saved_at"), "expires_at": rec.get("expires_at")}
 
 
+class AmendRequest(BaseModel):
+    body: str | None = None
+    subject: str | None = None
+
+
+@router.post("/approvals/{request_id}/amend")
+def amend_request(request_id: str, req: AmendRequest, request: Request = None):
+    """The approval window's in-place edit: the person rewrites the text of
+    a pending request and then approves it, instead of closing it with a
+    note and waiting for a new draft. Only the body and the subject can
+    change, and only from a click in the console: the recipients stay
+    what the agent asked for, and the agent, holding the token file,
+    cannot rewrite its own requests. The approval that follows runs the
+    amended arguments, from whatever channel it comes."""
+    from . import console_click
+    if not console_click.is_console_click(request.headers if request else {}):
+        raise HTTPException(403, "only from the console")
+    rec = policy.store().get(request_id)
+    if not rec:
+        raise HTTPException(404, "Richiesta inesistente")
+    changes = {k: v for k, v in {"body": req.body, "subject": req.subject}.items()
+               if v is not None}
+    if not changes:
+        raise HTTPException(400, "nothing to change")
+    missing = [k for k in changes if k not in rec["args"]]
+    if missing:
+        raise HTTPException(400, f"this request has no {', '.join(missing)} to edit")
+    if rec["status"] != policy.PENDING or rec["expired"]:
+        raise HTTPException(409, "Non modificabile: già decisa o scaduta")
+    if not policy.store().amend(request_id, changes, by=f"{_who()} (console click)"):
+        raise HTTPException(409, "Non modificabile: nessuna differenza, o già decisa o scaduta")
+    rec = policy.store().get(request_id)
+    return {"success": True, "request_id": request_id, "status": rec["status"],
+            "preview": rec["preview"]}
+
+
 class EditRequest(BaseModel):
     note: str = ""
 

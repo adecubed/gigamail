@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Edit in the approval window: correct the text in place.** Edit now
+  opens the mail's text for editing, and Approve becomes "Send edited" and
+  sends the corrected version (`POST /approvals/{id}/amend`, body and
+  subject only, from a console click; the recipients stay what the agent
+  asked for). The note for the agent is still there, under the text, with
+  its own button. Before, Edit only opened the note box and left Approve
+  live: a click there sent the old text, which is what happened to a
+  user who had just typed what to change. With the box open, Approve
+  stays off while the text is untouched or a note is being written, and
+  after the note is sent, until the new draft arrives.
+
 - **The agent can save a mail as a draft.** A new MCP tool, `save_draft`,
   saves the mail on the provider's server, in the mailbox's Drafts folder
   (Microsoft 365 and IMAP), instead of sending it, so the user changes and
