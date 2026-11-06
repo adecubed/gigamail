@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **New homepage layout (gigamail.ai, English and Italian).** A complete
+  use case (a quote request, from the mail arriving to your approval) and
+  the videos now come right after the hero, before the features; the
+  setup splits into two paths, the desktop app and the MCP server; three
+  download buttons, one per system, replace the button that guessed the
+  visitor's system; a trust row links the source, security model, signed
+  releases and changelog. The masker is now described as what it is
+  today, a desktop-app filter (MCP side planned), and the page says that
+  a signed automation rule is the one way a mail leaves without a click.
+
 - **Edit in the approval window: correct the text in place.** Edit now
   opens the mail's text for editing, and Approve becomes "Send edited" and
   sends the corrected version (`POST /approvals/{id}/amend`, body and
