@@ -29,8 +29,11 @@ from pathlib import Path
 
 try:
     import tomllib
-except ModuleNotFoundError:  # Python 3.10
-    tomllib = None
+except ModuleNotFoundError:  # Python 3.10: same parser, as a package
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError:
+        tomllib = None
 
 NAME = "gigamail"
 _HEADER = re.compile(r'^\s*\[\s*mcp_servers\s*\.\s*(?:gigamail|"gigamail")\s*(?:\.[^\]]*)?\]\s*(?:#.*)?$')

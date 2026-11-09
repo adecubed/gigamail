@@ -19,6 +19,8 @@ def client(monkeypatch, tmp_path):
     policy.set_store(policy.ApprovalStore(tmp_path / "approvals.db"))
     from gigamail import http_api
     importlib.reload(http_api)
+    from gigamail.http_api import rules as rules_api
+    rules_api._SPAWNED.clear()
     with TestClient(http_api.app) as c:
         yield c
     rules_mod.set_store(None)
@@ -138,6 +140,82 @@ def test_notify_status_forma(client):
     assert st["telegram"]["configured"] is False
 
 
+def _guard_sees_no_live_watcher(monkeypatch, rules_api):
+    monkeypatch.setattr(rules_api, "_watch_state",
+                        lambda: {"running": False, "pid": 9001, "active_rules": 1, "code_stamp": ""})
+
+
+class _Running:
+    def __init__(self, pid):
+        self.pid = pid
+
+    def poll(self):
+        return None
+
+
+def test_a_hung_watcher_is_ended_before_another_starts(client, monkeypatch):
+    """A watcher stuck inside a tick stops beating and looks dead, but never
+    leaves: the guard started a new one every few minutes and seven worked
+    the same mail."""
+    from gigamail.http_api import rules as rules_api
+    _guard_sees_no_live_watcher(monkeypatch, rules_api)
+    stopped, spawned = [], []
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: stopped.append(pid))
+    next_pid = iter([9002, 9003])
+
+    def spawn(interval):
+        pid = next(next_pid)
+        spawned.append(pid)
+        rules_api._SPAWNED[pid] = _Running(pid)
+        return pid
+
+    monkeypatch.setattr(rules_api, "_spawn_watch", spawn)
+    rules_api._SPAWNED[9001] = _Running(9001)
+    assert rules_api.watch_autostart() == 9002
+    assert stopped == [9001] and list(rules_api._SPAWNED) == [9002]
+    assert rules_api.watch_autostart() == 9003
+    assert stopped == [9001, 9002] and list(rules_api._SPAWNED) == [9003]
+
+
+def test_no_new_watcher_when_the_hung_one_cannot_be_ended(client, monkeypatch):
+    from gigamail.http_api import rules as rules_api
+    _guard_sees_no_live_watcher(monkeypatch, rules_api)
+
+    def refuse(pid):
+        raise OSError("access denied")
+
+    monkeypatch.setattr(rules_api, "_stop_watch_process", refuse)
+    monkeypatch.setattr(rules_api, "_spawn_watch", lambda interval: 1 / 0)
+    rules_api._SPAWNED[9001] = _Running(9001)
+    assert rules_api.watch_autostart() is None
+    assert list(rules_api._SPAWNED) == [9001]
+
+
+def test_a_finished_watcher_is_forgotten_not_killed(client, monkeypatch):
+    """Windows reuses pids: an exited watcher must never be killed by pid."""
+    from gigamail.http_api import rules as rules_api
+
+    class Exited:
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: 1 / 0)
+    rules_api._SPAWNED[9001] = Exited()
+    assert rules_api._stop_left_behind() is True
+    assert rules_api._SPAWNED == {}
+
+
+def test_stop_ends_every_watcher_this_backend_started(client, monkeypatch):
+    from gigamail.http_api import rules as rules_api
+    stopped = []
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: stopped.append(pid))
+    monkeypatch.setattr(rules_api, "_pid_alive", lambda pid: True)
+    rules_mod.store().kv_set("watch_pid", "9002")
+    rules_api._SPAWNED.update({9001: _Running(9001), 9002: _Running(9002)})
+    assert client.post("/watch/stop", headers=H).status_code == 200
+    assert sorted(stopped) == [9001, 9002] and rules_api._SPAWNED == {}
+
+
 def test_backend_start_brings_back_a_watcher_with_active_rules(client, monkeypatch):
     """The watcher dies with every update (the installer ends the python
     processes of the install folder); only the Automations button started
@@ -149,6 +227,9 @@ def test_backend_start_brings_back_a_watcher_with_active_rules(client, monkeypat
 
     class FakeProc:
         pid = 4242
+
+        def poll(self):
+            return 0   # exited: nothing for the guard to end
 
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or FakeProc())
     monkeypatch.setattr(rules_api, "_archive_accounts", lambda: 0)
@@ -197,6 +278,9 @@ def test_stop_holds_until_start_even_with_the_guard(client, monkeypatch):
     class P:
         pid = 777
 
+        def poll(self):
+            return 0   # exited: nothing for the guard to end
+
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or P())
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
@@ -238,6 +322,9 @@ def test_stop_and_the_guard_cannot_overlap(client, monkeypatch):
     class P:
         pid = 778
 
+        def poll(self):
+            return 0   # exited: nothing for the guard to end
+
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or P())
     monkeypatch.setenv("ADE_MAIL_DRYRUN", "1")
     monkeypatch.setenv("GIGAMAIL_CONSENT_BACKEND", "allow")
@@ -266,7 +353,8 @@ def _fake_spawn(monkeypatch, pid=4343):
     spawned = []
 
     class P:
-        pass
+        def poll(self):
+            return 0   # exited: nothing for the guard to end
     P.pid = pid
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: spawned.append(a[0]) or P())
     return spawned

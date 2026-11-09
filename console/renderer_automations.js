@@ -423,6 +423,7 @@
                      : T('agente non trovato: installa Claude Code, l\'app Codex / ChatGPT o Antigravity (agy), o configura agent.json',
                          'agent not found: install Claude Code, the Codex / ChatGPT app or Antigravity (agy), or configure agent.json',
                          '未找到代理：请安装 Claude Code、Codex / ChatGPT 应用或 Antigravity (agy)，或配置 agent.json'));
+      if (window.ClaudeLoginPanel) window.ClaudeLoginPanel.refresh(ag);
       set('consentStatus', st.consent_backend ? 'ok' : 'err',
         st.consent_backend || (
           T('nessun backend, approvazioni bloccate', 'no backend, approvals fail closed', '无后端，审批被阻止')

@@ -206,7 +206,8 @@
             <div class="ai-card">
               <div class="ai-card-title" data-i18n="agent_title">Agente che scrive le bozze</div>
               <div class="ai-card-sub" data-i18n="agent_desc">GigaMail non ha un LLM interno: le bozze le scrive il tuo agente (default: Claude Code, `claude -p`). Cambialo in agent.json.</div>
-              <div class="ai-card-row"><select id="agentSelect" class="field-input" style="max-width:200px;margin-right:8px"></select><span class="ai-card-status" id="agentStatus">…</span><button class="chip-btn" id="btnOnboarding" data-i18n="ob_reopen">Guida iniziale</button></div>
+              <div class="ai-card-row"><select id="agentSelect" class="field-input" style="flex:0 0 200px;max-width:200px;margin-right:8px"></select><span class="ai-card-status" id="agentStatus">…</span><button class="chip-btn" id="btnOnboarding" data-i18n="ob_reopen">Guida iniziale</button></div>
+              <div class="agent-login" id="claudeLoginBox" style="display:none"></div>
               <div class="ai-card-title" style="margin-top:12px" data-i18n="codex_title">ChatGPT e Codex</div>
               <div class="ai-card-sub" data-i18n="codex_desc">Collega GigaMail all'app ChatGPT (anche Work) e a Codex: la console scrive la configurazione per te.</div>
               <div class="ai-card-row"><span class="ai-card-status" id="codexStatus">…</span><button class="chip-btn" id="btnCodexConnect" data-i18n="codex_connect">Collega</button></div>
@@ -756,6 +757,7 @@
 <script src="renderer.js"          defer></script>
 <script src="renderer_sender_history.js" defer></script>
 <script src="approvals_view.js"    defer></script>
+<script src="claude_login_panel.js" defer></script>
 <script src="renderer_automations.js" defer></script>
 <script src="popup_bridge.js"      defer></script>
 <script src="mcp_snippets.js" defer></script>

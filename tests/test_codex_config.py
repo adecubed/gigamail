@@ -4,9 +4,12 @@ import sys
 
 import pytest
 
-tomllib = pytest.importorskip("tomllib")
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10: the parser codex_config falls back on
+    import tomli as tomllib
 
-from gigamail.core import codex_config  # noqa: E402  (after importorskip)
+from gigamail.core import codex_config  # noqa: E402  (after the parser)
 
 
 @pytest.fixture

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Connecting Codex works on Python 3.10.** Started from the sources on
+  3.10, Automations said "Python 3.11+ needed to check config.toml" and
+  could not connect Codex: the check now uses `tomli` there. The agent menu
+  also keeps its width when the path next to it is long.
+- **Watchers no longer pile up.** A watcher stuck inside a tick stops
+  beating and looks dead, so the backend started another one every few
+  minutes while the old ones kept running: seven were found working the
+  same mail, slowing everything down and leaving an approved send without
+  an outcome. The backend now ends the watcher it started before starting
+  a new one, and Stop ends them all.
+- **Automations says when Claude Code is signed out, and signs it in.**
+  Next to the agent choice the console said "ready" as soon as the program
+  existed, even when its sign-in had expired and no rule could write a
+  draft; the button to sign in appeared only after a question to the agent
+  bar had failed. The status now reads "installed, but not signed in" and
+  **Sign in to Claude** is right there, no terminal needed. This sign-in is
+  separate from the Claude desktop app's.
 - **A rule can be edited.** Edit on a rule card loads the rule into the
   form: instruction, trigger, documents, fixed attachments, copies and
   limits change in place and the rule keeps its id, its expiry and what it
