@@ -302,6 +302,7 @@ def _spawn_watch(interval: int) -> int:
         env=dict(os.environ), **kwargs)
     rules_mod.store().kv_set("watch_pid", str(proc.pid))
     _SPAWNED[proc.pid] = proc
+    _SPAWNED_AT[proc.pid] = time.time()
     return proc.pid
 
 
@@ -309,6 +310,24 @@ def _spawn_watch(interval: int) -> int:
 # not just the pid: Windows reuses pids, and a stale pid in rules.db could
 # name somebody else's process by the time it gets killed.
 _SPAWNED: dict = {}
+_SPAWNED_AT: dict = {}
+# A new watcher has no heartbeat yet: imports alone take many seconds on a
+# slow disk. Taken for hung, it was ended every eleven seconds and never ran.
+WATCH_START_GRACE_SECONDS = 180
+
+
+def _forget_spawned(pid: int) -> None:
+    _SPAWNED.pop(pid, None)
+    _SPAWNED_AT.pop(pid, None)
+
+
+def _still_starting() -> Optional[int]:
+    """The pid of a watcher started moments ago and still running."""
+    for pid, proc in _SPAWNED.items():
+        if proc.poll() is None \
+                and time.time() - _SPAWNED_AT.get(pid, 0) < WATCH_START_GRACE_SECONDS:
+            return pid
+    return None
 
 
 def _stop_left_behind() -> bool:
@@ -326,7 +345,7 @@ def _stop_left_behind() -> bool:
                 policy.audit("watch", {"pid": pid}, "watch_stop_failed", detail=str(e)[:200])
                 return False
             policy.audit("watch", {"pid": pid}, "watch_hung_stopped")
-        _SPAWNED.pop(pid, None)
+        _forget_spawned(pid)
     return True
 
 
@@ -347,6 +366,9 @@ def watch_start(interval: int = 60):
         st = _watch_state()
         if st["running"]:
             return st
+        starting = _still_starting()
+        if starting:
+            return {**st, "running": True, "pid": starting}
         if not _stop_left_behind():
             raise HTTPException(500, "a previous watcher could not be stopped")
         pid = _spawn_watch(interval)
@@ -388,9 +410,11 @@ def _watch_autostart_locked() -> Optional[int]:
         except Exception as e:
             policy.audit("watch", {"pid": st["pid"]}, "watch_restart_failed", detail=str(e)[:200])
             return None
-        _SPAWNED.pop(int(st["pid"]), None)
+        _forget_spawned(int(st["pid"]))
         rules_mod.store().kv_set("watch_heartbeat", "0")
         reason = "code changed"
+    elif _still_starting():
+        return None
     if not _stop_left_behind():
         return None
     interval = int(rules_mod.store().kv_get("watch_interval", "60") or 60)
@@ -465,7 +489,7 @@ def watch_stop():
                 _stop_watch_process(pid)
             except Exception as e:
                 raise HTTPException(500, f"stop fallito: {e}") from e
-        _SPAWNED.pop(pid, None)
+        _forget_spawned(pid)
         if not _stop_left_behind():
             raise HTTPException(500, "a previous watcher could not be stopped")
         rs.kv_set("watch_pid", "0")

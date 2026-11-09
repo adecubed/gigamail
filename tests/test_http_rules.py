@@ -21,6 +21,7 @@ def client(monkeypatch, tmp_path):
     importlib.reload(http_api)
     from gigamail.http_api import rules as rules_api
     rules_api._SPAWNED.clear()
+    rules_api._SPAWNED_AT.clear()
     with TestClient(http_api.app) as c:
         yield c
     rules_mod.set_store(None)
@@ -175,6 +176,37 @@ def test_a_hung_watcher_is_ended_before_another_starts(client, monkeypatch):
     assert stopped == [9001] and list(rules_api._SPAWNED) == [9002]
     assert rules_api.watch_autostart() == 9003
     assert stopped == [9001, 9002] and list(rules_api._SPAWNED) == [9003]
+
+
+def test_a_watcher_just_started_is_given_time_to_beat(client, monkeypatch):
+    """It has no heartbeat yet: taken for hung, it was ended every eleven
+    seconds and no watcher ever ran."""
+    import time
+
+    from gigamail.http_api import rules as rules_api
+    _guard_sees_no_live_watcher(monkeypatch, rules_api)
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: 1 / 0)
+    monkeypatch.setattr(rules_api, "_spawn_watch", lambda interval: 1 / 0)
+    rules_api._SPAWNED[9001] = _Running(9001)
+    rules_api._SPAWNED_AT[9001] = time.time()
+    assert rules_api.watch_autostart() is None
+    started = client.post("/watch/start", headers=H).json()
+    assert started["running"] is True and started["pid"] == 9001
+    assert list(rules_api._SPAWNED) == [9001]
+
+
+def test_a_new_watcher_is_ended_once_its_time_is_up(client, monkeypatch):
+    import time
+
+    from gigamail.http_api import rules as rules_api
+    _guard_sees_no_live_watcher(monkeypatch, rules_api)
+    stopped = []
+    monkeypatch.setattr(rules_api, "_stop_watch_process", lambda pid: stopped.append(pid))
+    monkeypatch.setattr(rules_api, "_spawn_watch", lambda interval: 9002)
+    rules_api._SPAWNED[9001] = _Running(9001)
+    rules_api._SPAWNED_AT[9001] = time.time() - rules_api.WATCH_START_GRACE_SECONDS - 1
+    assert rules_api.watch_autostart() == 9002
+    assert stopped == [9001]
 
 
 def test_no_new_watcher_when_the_hung_one_cannot_be_ended(client, monkeypatch):
