@@ -14,6 +14,7 @@ from gigamail.core import telegram_channel
 from . import (
     after_appointment,
     archive,
+    drafting,
     execution,
     ingestion,
     pipeline,
@@ -64,9 +65,14 @@ class Watcher:
     def process_message(self, rule: Dict[str, Any], message: Dict[str, Any],
                         retry_feedback: Optional[str] = None,
                         previous_body: Optional[str] = None) -> str:
-        return pipeline.process_message(self, rule, message,
-                                        retry_feedback=retry_feedback,
-                                        previous_body=previous_body)
+        # A draft, its rewrite after a failed check and the guard can each
+        # take an agent run: the heartbeat goes on meanwhile, up to the time
+        # all of them could take.
+        limit = drafting._DRAFT_ATTEMPTS * drafting._DRAFT_TIMEOUT_SECONDS + 60
+        with process_state.beating(self.interval, limit):
+            return pipeline.process_message(self, rule, message,
+                                            retry_feedback=retry_feedback,
+                                            previous_body=previous_body)
 
     def process_retries(self) -> int:
         return execution.process_retries(self)

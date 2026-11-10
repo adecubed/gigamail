@@ -14,6 +14,7 @@ from gigamail.core import accounts as core_accounts
 from gigamail.core import (
     availability,
     calendar_router,
+    doc_check,
     extensions,
     file_extractor,
     html_text,
@@ -27,7 +28,11 @@ from .log import logger
 
 _DRAFT_ATTEMPTS = 3
 _DRAFT_TIMEOUT_SECONDS = policy._env_int("GIGAMAIL_DRAFT_TIMEOUT", 300)
-_DOC_CHARS_MAX = 8000
+# A document goes into the prompt whole up to this size. At 8000 a price
+# list of thirty rows did not fit: the agent got its column headers and
+# the passages matching the words of the mail, which for "I would like to
+# visit it" were none of the rows, and answered that it could not confirm.
+_DOC_CHARS_MAX = doc_check.PROMPT_DOC_CHARS
 # The head of a long document goes in anyway: title, who it is from, the
 # terms that apply to every row.
 _DOC_HEAD_CHARS = 1500

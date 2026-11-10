@@ -158,6 +158,7 @@
                 <textarea id="ruleStyle" class="field-input" rows="4" style="resize:vertical;min-height:60px" data-i18n-ph="rule_style_ph" placeholder="es. cordiale e breve; rispondi nella lingua del mittente"></textarea></div>
               <div class="field-row"><label class="field-label" data-i18n="rule_docs">Documenti (uniche fonti della bozza)</label>
                 <div id="ruleDocsList"></div>
+                <div id="ruleDocsNotes" class="doc-notes" style="display:none"></div>
                 <button class="chip-btn" id="btnPickDocs"><span data-icon="paperclip" data-icon-size="14"></span> <span data-i18n="rule_docs_pick">Aggiungi documento…</span></button></div>
               <div class="field-row"><label class="field-label" data-i18n="rule_attachments">Allegati fissi</label>
                 <input type="text" id="ruleAttachments" class="field-input" data-i18n-ph="rule_attachments_ph" placeholder="nomi dei file registrati nell'identità, separati da virgola"/></div>
@@ -758,6 +759,7 @@
 <script src="renderer_sender_history.js" defer></script>
 <script src="approvals_view.js"    defer></script>
 <script src="claude_login_panel.js" defer></script>
+<script src="doc_notes.js" defer></script>
 <script src="renderer_automations.js" defer></script>
 <script src="popup_bridge.js"      defer></script>
 <script src="mcp_snippets.js" defer></script>

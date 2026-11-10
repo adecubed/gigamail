@@ -83,6 +83,12 @@ def _extract_excel(path: str) -> str:
     lines = []
     for sheet in wb.worksheets:
         lines.append(f'[Foglio: {sheet.title}]')
+        # The size a sheet declares can be wrong: a price list of thirty
+        # rows said it had a million rows of a thousand columns, openpyxl
+        # padded every one of them, and reading it took ten minutes for
+        # each draft. Without the declared size only the rows actually in
+        # the file come back.
+        sheet.reset_dimensions()
         for row in sheet.iter_rows(values_only=True):
             row_text = _row_text(row)
             if row_text.strip(' |'):

@@ -109,8 +109,18 @@
           ${renewBtn}
           <button class="chip-btn danger" data-act="delete" data-id="${r.rule_id}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('trash', 13) : '')}</button>
         </div>
+        <div class="doc-notes" data-docs-for="${escapeHtml(r.rule_id)}" style="display:none"></div>
         <div class="hint" id="act-${r.rule_id}" style="display:none;white-space:pre-wrap;margin-top:8px"></div>
       </div>`;
+  }
+
+  // What the agent will not read well in each rule's documents, under its card.
+  function showDocNotes(rules) {
+    if (!window.DocNotes) return;
+    for (const r of rules) {
+      const box = document.querySelector(`[data-docs-for="${r.rule_id}"]`);
+      if (box && (r.doc_paths || []).length) window.DocNotes.show(box, r.doc_paths, api);
+    }
   }
 
   function renewButton(r) {
@@ -139,6 +149,7 @@
         : `<div class="hint">${T('Nessuna regola. Creane una qui sotto: la conferma finale è Windows Hello.',
                                  'No rules yet. Create one below: the final confirmation is Windows Hello.',
                                  '还没有规则。在下方创建一条：最终确认由 Windows Hello 完成。')}</div>`);
+      showDocNotes(rules);
     } catch (e) {
       box.innerHTML = `<div class="hint">${T('Errore', 'Error', '错误')}: ${escapeHtml(e.message)}</div>`;
     }
@@ -343,6 +354,7 @@
       pickedDocs.splice(parseInt(a.dataset.rm, 10), 1);
       renderDocs();
     }));
+    if (window.DocNotes) window.DocNotes.show($('ruleDocsNotes'), pickedDocs.slice(), api);
   }
 
   async function onPickDocs() {

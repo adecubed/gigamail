@@ -211,6 +211,35 @@ def test_modifica_rifa_la_bozza_col_feedback(world):
     assert "Bozza uno" in prompts[-1]
 
 
+def test_a_late_text_is_not_taken_as_the_changes(world, monkeypatch):
+    # Edit tapped, nothing typed; two hours later a text meant for something
+    # else must not redo the draft.
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"m:{rid}"))
+    later = time.time() + 2 * 3600
+    monkeypatch.setattr(time, "time", lambda: later)
+    w.handle_telegram_event(world["tg"], _ev_text("Fine, see you tomorrow"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert rules_mod.store().retries() == []
+
+
+def test_reject_after_edit_closes_the_wait(world):
+    _rule()
+    world["unread"] = [_msg()]
+    w = watcher_mod.Watcher()
+    w.tick()
+    rid = _pending_id()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"m:{rid}"))
+    w.handle_telegram_event(world["tg"], _ev_cb(f"r:{rid}"))
+    w.handle_telegram_event(world["tg"], _ev_text("Fine, see you tomorrow"))
+    assert policy.store().get(rid)["status"] == policy.REJECTED
+    assert rules_mod.store().retries() == []
+
+
 def test_rifiuta_con_testo_in_un_colpo(world):
     _rule()
     world["unread"] = [_msg()]

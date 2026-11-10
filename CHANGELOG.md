@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- **GigaMail says when a rule's document will not be read well.** In the
+  rule form, as soon as a document is added, and under each rule's card:
+  a document longer than a draft takes, a workbook with several sheets
+  (the agent reads them all, the outdated ones too), a file with no text
+  in it such as a scanned page, one that cannot be read, one slow to
+  read. Before, a document like these gave wrong or empty drafts weeks
+  later and nothing had said why.
+- **A document of a few pages reaches the agent whole.** The limit was
+  8,000 characters: a price list of thirty rows was over it, the agent
+  got its column headers and the passages matching the words of the
+  mail, and for a mail saying only "I would like to visit it" the draft
+  answered that the availability could not be confirmed. The limit is
+  now 30,000.
+- **No second reply to someone already written to.** A reply sent as a new
+  mail to the person named in a portal's notification was not tied to the
+  notification, and the rule drafted another one. A rule now steps aside
+  when a mail to that person was sent, or is waiting for approval, after
+  theirs arrived.
+- **A spreadsheet that declares a wrong size no longer takes ten minutes
+  to read.** A price list of thirty rows said it had a million rows of a
+  thousand columns, and every draft, every search in the documents and
+  every question about them walked all the empty cells first. Only the
+  rows actually in the file are read now: seconds instead of minutes.
+- **A slow draft no longer gets the watcher stopped.** The watcher said it
+  was alive only between drafts, and a draft with Codex can take longer
+  than the silence after which the backend takes a watcher for hung: the
+  watcher was ended in the middle of every draft, and the mail it was
+  answering stayed taken and never got a reply. It now keeps saying so
+  while a draft runs, up to the longest a draft may take.
+- **After Edit on Telegram, only the next few minutes count.** Tapping Edit
+  waited for the changes with no end: a message typed two hours later, for
+  something else, was taken as the changes to a draft already rejected.
+  The wait now lasts 15 minutes, and Reject on the same draft closes it.
 - **A very large IMAP inbox opens.** To show the newest mail GigaMail
   asked the server for the list of every message in the folder. Past some
   110,000 messages that answer is longer than the 1 MB the IMAP library
