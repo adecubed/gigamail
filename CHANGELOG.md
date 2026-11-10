@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **An attachment can be dragged from a received mail onto a mail being
+  written.** Drag its chip, from the reading pane or from a mail opened in
+  its own window, and drop it on a new mail, a reply window or the reply
+  box: it is attached, as a file dropped from the desktop is. Before, it
+  had to be saved to disk and attached from there. A file that runs a
+  program cannot be dragged: "Save as" remains the way to take one out.
 - **GigaMail says when a rule's document will not be read well.** In the
   rule form, as soon as a document is added, and under each rule's card:
   a document longer than a draft takes, a workbook with several sheets
