@@ -48,6 +48,28 @@ class _CalendarioDemo:
     delete_event = _no
 
 
+class NoCalendar(ms_auth.AuthRequired):
+    """No calendar is connected at all: the provider is Microsoft, the
+    default, and there is no Microsoft account. That is every installation
+    with IMAP mailboxes only and no Google calendar. Not a login to redo:
+    the console answered 500 to every calendar request there."""
+
+
+NO_CALENDAR = ("No calendar is connected: GigaMail reads Microsoft 365 and "
+               "Google calendars, and this installation has neither.")
+
+
+def connected() -> bool:
+    """Whether there is a calendar to read at all (see NoCalendar)."""
+    p = provider()
+    if p == 'microsoft':
+        try:
+            return core_accounts.get_calendar_primary() is not None
+        except Exception:
+            return False
+    return True
+
+
 def provider() -> str:
     """'demo', 'google' o 'microsoft', per chi deve mostrarlo o spiegare
     un errore."""
@@ -80,8 +102,10 @@ def _microsoft_primary():
     # usa sempre l'account primario scelto dall'utente (o il primo Microsoft
     # risolto da get_calendar_primary), anche nei thread del watcher.
     account_id = core_accounts.get_calendar_primary()
-    account = (core_accounts.get_account_by_id(account_id)
-               if account_id is not None else None)
+    if account_id is None:
+        ms_auth.clear_current_account()
+        raise NoCalendar(NO_CALENDAR)
+    account = core_accounts.get_account_by_id(account_id)
     if (not account or account.get('type') != 'microsoft'
             or not str(account.get('email') or '').strip()):
         ms_auth.clear_current_account()

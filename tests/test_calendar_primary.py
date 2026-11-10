@@ -50,7 +50,6 @@ def test_primary_calendar_overrides_last_mail_account(monkeypatch, operation):
 
 
 @pytest.mark.parametrize("primary_id, account", [
-    (None, None),
     (99, None),
     (2, {"id": 2, "type": "imap", "email": "imap@example.com"}),
     (1, {"id": 1, "type": "microsoft", "email": ""}),

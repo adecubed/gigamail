@@ -14,6 +14,7 @@ import ssl
 import threading
 import time
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
@@ -610,33 +611,89 @@ def fetch_messages_by_uids(
 _IMAP_DATE_BATCH_SIZE = 500
 
 
-def _uid_recent_ids(conn: imaplib.IMAP4_SSL, top: int) -> List[bytes]:
+# A folder up to this many messages is listed whole. A larger one is read
+# by its recent mail only: the server answers a listing with every UID on
+# one line, and for a very large folder that line is megabytes long, slow to
+# sort, and past what imaplib accepts (see _IMAP_MAX_LINE).
+_IMAP_WHOLE_FOLDER_MAX = 2000
+# How far back to look for the newest mail of a large folder, in days: the
+# next window is tried only when the one before holds too few messages.
+_IMAP_RECENT_WINDOWS = (30, 180, 730)
+_IMAP_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+# imaplib refuses a response line longer than its _MAXLINE (1 MB): the UID
+# list of a folder with some 110,000 messages. The whole listing is now the
+# last resort for a large folder, but when it is needed it must not fail.
+_IMAP_MAX_LINE = 10 * 1024 * 1024
+if getattr(imaplib, "_MAXLINE", 0) < _IMAP_MAX_LINE:
+    imaplib._MAXLINE = _IMAP_MAX_LINE
+
+
+def _imap_date(day) -> str:
+    """A date as IMAP search keys want it (05-Nov-2026), in any locale."""
+    return f"{day.day:02d}-{_IMAP_MONTHS[day.month - 1]}-{day.year}"
+
+
+def _imap_transport_broke(e: Exception) -> bool:
+    """Whether an imaplib error means the connection can no longer be used
+    (dropped, or a response cut short), not that the server said no."""
+    return isinstance(e, imaplib.IMAP4.abort) or "got more than" in str(e)
+
+
+def _uid_recent_ids(conn: imaplib.IMAP4_SSL, top: int,
+                    total: Optional[int] = None) -> List[bytes]:
     """
     Prova a ottenere direttamente gli UID più recenti con SORT.
     Senza SORT, ordina gli UID usando solo le intestazioni Date, a batch.
     Gli UID indicano l'ordine di inserimento nella cartella, non la data:
     una vecchia mail importata non deve nascondere una risposta recente.
+
+    `total` is how many messages the selected folder holds. A large folder
+    is asked for the mail sent in the last weeks only, then months, then
+    two years: its whole listing made a large inbox unreadable (the
+    answer was refused past 1 MB, or the server took longer to sort it
+    than the connection waits). The windows are by Date header, the same
+    key the order uses, so the newest N of a window that holds N are the
+    newest N of the folder and every page keeps the same order.
     """
     if top <= 0:
         return []
-    try:
-        typ, data = conn.uid("SORT", "(REVERSE DATE)", "UTF-8", "ALL")
-        if typ == "OK":
-            ordered = data[0].split() if data and data[0] else []
-            return ordered[:top]
-    except Exception:
-        pass
+    dates: Dict[bytes, float] = {}
+    if total is not None and total > _IMAP_WHOLE_FOLDER_MAX:
+        today = datetime.now(timezone.utc).date()
+        for days in _IMAP_RECENT_WINDOWS:
+            since = _imap_date(today - timedelta(days=days))
+            ids = _uids_newest_first(conn, f"SENTSINCE {since}", dates)
+            if len(ids) >= top:
+                return ids[:top]
+    return _uids_newest_first(conn, "ALL", dates)[:top]
 
-    # ALL contains no text: no charset is needed (some servers reject UTF-8).
-    typ, data = conn.uid("search", None, "ALL")
+
+def _uids_newest_first(conn: imaplib.IMAP4_SSL, criterion: str,
+                       dates: Dict[bytes, float]) -> List[bytes]:
+    """The UIDs matching `criterion`, newest first by Date header. `dates`
+    keeps the dates already fetched, from one window to the next."""
+    try:
+        typ, data = conn.uid("SORT", "(REVERSE DATE)", "UTF-8", criterion)
+        if typ == "OK":
+            return data[0].split() if data and data[0] else []
+    except imaplib.IMAP4.error as e:
+        # BAD: this server has no SORT, the search below does without. A
+        # broken connection is another matter: the next command on it would
+        # read the rest of this answer as its own.
+        if _imap_transport_broke(e):
+            raise
+
+    # No text in the criterion: no charset is needed (some servers reject UTF-8).
+    typ, data = conn.uid("search", None, criterion)
     if typ != "OK":
         raise RuntimeError(f"IMAP UID search failed: {typ}")
     ids = data[0].split() if data and data[0] else []
     if not ids:
         return []
-    dates = {}
-    for offset in range(0, len(ids), _IMAP_DATE_BATCH_SIZE):
-        batch = ids[offset:offset + _IMAP_DATE_BATCH_SIZE]
+    missing = [uid for uid in ids if uid not in dates]
+    for offset in range(0, len(missing), _IMAP_DATE_BATCH_SIZE):
+        batch = missing[offset:offset + _IMAP_DATE_BATCH_SIZE]
         typ, items = _uid_fetch(
             conn, ",".join(uid.decode() for uid in batch),
             "(UID BODY.PEEK[HEADER.FIELDS (DATE)])")
@@ -658,7 +715,8 @@ def _uid_recent_ids(conn: imaplib.IMAP4_SSL, top: int) -> List[bytes]:
                 stamp = 0.0
             dates[uid] = stamp
     # A UID tie-breaker makes equal/missing dates stable across page requests.
-    return sorted(dates, key=lambda uid: (dates[uid], int(uid)), reverse=True)[:top]
+    return sorted((uid for uid in ids if uid in dates),
+                  key=lambda uid: (dates[uid], int(uid)), reverse=True)
 
 
 def _fetch_recent_headers_by_sequence(conn: imaplib.IMAP4_SSL, top: int, total: Optional[int] = None) -> List[Dict[str, str]]:
@@ -1255,17 +1313,22 @@ def get_messages(
                 if not resolved:
                     _imap_debug_log(f"get_messages folder request={requested!r} resolved=None email={email_addr}")
                     return []
-            select_status, _ = conn.select(f'"{resolved}"')
+            select_status, select_data = conn.select(f'"{resolved}"')
             if select_status != "OK":
                 _imap_debug_log(f"get_messages select-failed folder={resolved!r} status={select_status}")
                 return []
-            _imap_debug_log(f"get_messages folder request={requested!r} resolved={resolved!r} email={email_addr}")
+            try:
+                total = int(select_data[0])   # EXISTS: messages in the folder
+            except (TypeError, ValueError, IndexError):
+                total = None
+            _imap_debug_log(f"get_messages folder request={requested!r} resolved={resolved!r} "
+                            f"total={total} email={email_addr}")
             _imap_timing_log("select_folder", started_select, f"folder={resolved}")
             messages: List[Dict] = []
             started_headers = time.perf_counter()
             # Page the ordered UID list, not an expanding physical window:
             # every page must use the same order to avoid skipped messages.
-            ids = _uid_recent_ids(conn, top + skip)[skip:skip + top]
+            ids = _uid_recent_ids(conn, top + skip, total=total)[skip:skip + top]
             header_items = []
             if ids:
                 status, msg_data = _uid_fetch(
