@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Two or more people in copy all receive the mail.** A reply or a new
+  mail written in the console with several addresses in CC or BCC,
+  separated by a comma, reached the main recipient only: the addresses
+  went to the mail server as one malformed recipient, which the server
+  could accept without delivering to anyone, and the send was reported as
+  done. One address in copy worked. Each address is now a recipient of
+  its own, over SMTP and Microsoft 365 alike, also when the addresses are
+  separated by a space or a new line, or a name in quotes has a comma in
+  it. A recipient that is still not an address (a name with no brackets
+  around its address) stops the send with a message that names it,
+  instead of being handed to the server.
 - **An attachment can be dragged from a received mail onto a mail being
   written.** Drag its chip, from the reading pane or from a mail opened in
   its own window, and drop it on a new mail, a reply window or the reply
