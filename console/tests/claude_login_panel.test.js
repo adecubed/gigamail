@@ -135,4 +135,11 @@ test('the manual page and the code reach the backend; a foreign address is not s
   await until(() => box(other).querySelector('.agent-login-wait'));
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(other.document.querySelector('.agent-login-url'), null);
+
+  // Both sign-ins are still pending and their panels keep asking, for as
+  // long as a real sign-in may take: end them, or the test file never exits.
+  for (const win of [w, other]) {
+    win.electronAPI.claudeLoginStatus = async () => ({ pending: false, logged_in: false, url: '' });
+    await until(() => loginButton(win));
+  }
 });

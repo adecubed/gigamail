@@ -52,7 +52,16 @@ const CalendarView = (() => {
     </div>`;
   }
 
-  return { notesText, attendeesText, eventItemHtml, eventPopupHtml };
+  /** What the agenda says when it has no events. With IMAP mailboxes only
+   *  and no Google calendar there is no calendar at all: say that, and
+   *  where to connect one, not "no events" as if one had been read. */
+  function emptyText(connected) {
+    return connected === false
+      ? T('cal_none_connected', 'Nessun calendario collegato. GigaMail legge i calendari di Microsoft 365 e Google: collegane uno da + Account.')
+      : T('no_event_period', 'Nessun evento nel periodo.');
+  }
+
+  return { notesText, attendeesText, eventItemHtml, eventPopupHtml, emptyText };
 })();
 if (typeof window !== 'undefined') window.CalendarView = CalendarView;
 
@@ -61,16 +70,20 @@ async function loadEvents() {
   const days = parseInt(byId('calDays')?.value || '7', 10);
   try {
     const events = await api.getEvents(days);
-    renderEvents(events);
+    let connected = true;
+    if (!Array.isArray(events) || events.length === 0) {
+      try { connected = (await api.getCalendarProvider()).connected !== false; } catch { connected = true; }
+    }
+    renderEvents(events, connected);
     setText('statEvents', Array.isArray(events) ? events.length : 0);
   } catch (e) { console.error('loadEvents:', e); }
 }
 
-function renderEvents(events) {
+function renderEvents(events, connected = true) {
   const list = byId('eventsList');
   if (!list) return;
   if (!Array.isArray(events) || events.length === 0) {
-    list.innerHTML = '<div class="list-empty">'+T('no_event_period','Nessun evento nel periodo.')+'</div>';
+    list.innerHTML = '<div class="list-empty">'+esc(CalendarView.emptyText(connected))+'</div>';
     return;
   }
   list.innerHTML = events.map(event => CalendarView.eventItemHtml(event)).join('');

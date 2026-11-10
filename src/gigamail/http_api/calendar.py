@@ -25,14 +25,22 @@ def calendar(days_ahead: int = 7, days_back: int = 0,
     vista agenda: 7). Il backend leggeva solo days_ahead e ignorava
     l'altro in silenzio: la console riceveva sempre 7 giorni, e un
     appuntamento fra dieci giorni in calendario non compariva."""
-    return calendar_router.get_events(
-        days_ahead=days if days is not None else days_ahead,
-        days_back=days_back)
+    try:
+        return calendar_router.get_events(
+            days_ahead=days if days is not None else days_ahead,
+            days_back=days_back)
+    except calendar_router.NoCalendar:
+        # Nothing to show is the truth for the agenda, as for the demo
+        # account; /calendar/provider says that no calendar is connected.
+        return []
 
 
 @router.get("/calendar/today")
 def calendar_today():
-    return calendar_router.get_events(days_ahead=1, days_back=0)
+    try:
+        return calendar_router.get_events(days_ahead=1, days_back=0)
+    except calendar_router.NoCalendar:
+        return []
 
 
 @router.get("/calendar/free_slots")

@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **A very large IMAP inbox opens.** To show the newest mail GigaMail
+  asked the server for the list of every message in the folder. Past some
+  110,000 messages that answer is longer than the 1 MB the IMAP library
+  accepts, and on a slow server sorting it takes longer than the
+  connection waits: the inbox answered "Internal Server Error", even for
+  one mail, while smaller folders worked. A folder with more than 2,000
+  messages is now asked for the mail of the last 30 days only, then 180,
+  then two years, and for everything only when those are not enough; the
+  order and the pages are the same as before.
+- **A failed request says why, and there is a log.** An error from the
+  mail server reaches the console with the server's reason ("the mail
+  server answered with an error: ...", "did not answer in time") instead
+  of "Internal Server Error", and every failed request is written to
+  `%APPDATA%/ADE/mail/logs/console.log` (`~/.ade/mail/logs/` elsewhere)
+  with its stack: the route as declared, never a search text or a message
+  id, and the first 300 characters of the error, which can quote the mail
+  server's answer but never a mail's body. Before, the reason went to an
+  output the installed app shows nowhere.
+- **With IMAP mailboxes only, the calendar is empty, not broken.** GigaMail
+  reads Microsoft 365 and Google calendars. An installation with neither
+  answered 500 to every calendar request; now the agenda says that no
+  calendar is connected and where to connect one, and creating an event
+  says the same.
 - **Connecting Codex works on Python 3.10.** Started from the sources on
   3.10, Automations said "Python 3.11+ needed to check config.toml" and
   could not connect Codex: the check now uses `tomli` there. The agent menu

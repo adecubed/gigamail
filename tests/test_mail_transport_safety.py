@@ -1,5 +1,8 @@
 """Provider-level regressions: assert the actual wire payload and IMAP effects."""
 import email
+import imaplib
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from types import SimpleNamespace
 
 import pytest
@@ -301,7 +304,7 @@ def test_router_reply_reads_original_from_requested_folder(monkeypatch):
 
 def test_imap_pagination_returns_all_pages_once(monkeypatch, imap):
     uids = [b"7", b"6", b"5", b"4", b"3", b"2", b"1"]
-    monkeypatch.setattr(imap_client, "_uid_recent_ids", lambda c, top: uids[:top])
+    monkeypatch.setattr(imap_client, "_uid_recent_ids", lambda c, top, total=None: uids[:top])
     monkeypatch.setattr(imap_client, "_resolve_folder", lambda c, f: "INBOX")
 
     def fetch(c, uid_set, query):
@@ -405,3 +408,117 @@ def test_imap_fallback_date_failure_never_claims_an_empty_page():
     conn.date_status = "NO"
     with pytest.raises(RuntimeError, match="date header fetch failed"):
         imap_client._uid_recent_ids(conn, 2)
+
+
+class LargeFolderIMAP:
+    """A folder too large to list whole: `recent` maps days of age to how
+    many messages were sent within them."""
+
+    def __init__(self, recent, supports_sort=True, sort_error=None):
+        self.recent = recent
+        self.supports_sort = supports_sort
+        self.sort_error = sort_error
+        self.criteria = []
+        self.date_fetches = []
+
+    def _uids(self, criterion):
+        if criterion == "ALL":
+            return [str(n).encode() for n in range(1, max(self.recent.values()) + 1)]
+        day = datetime.strptime(criterion.split()[1], "%d-%b-%Y").date()
+        age = (datetime.now(timezone.utc).date() - day).days
+        return [str(n).encode() for n in range(1, self.recent.get(age, 0) + 1)]
+
+    def uid(self, command, *args):
+        command = command.upper()
+        if command == "SORT":
+            if self.sort_error:
+                raise self.sort_error
+            if not self.supports_sort:
+                raise imaplib.IMAP4.error("UID command error: BAD [b'Unknown command']")
+            self.criteria.append(args[-1])
+            return "OK", [b" ".join(self._uids(args[-1]))]
+        if command == "SEARCH":
+            self.criteria.append(args[-1])
+            return "OK", [b" ".join(self._uids(args[-1]))]
+        assert command == "FETCH"
+        self.date_fetches.append(args[0])
+        # a lower UID is a newer mail
+        return "OK", [(f"1 (UID {uid}".encode(),
+                       f"Date: {format_datetime(datetime(2026, 11, 1, tzinfo=timezone.utc) - timedelta(hours=int(uid)))}\r\n".encode())
+                      for uid in args[0].split(",")]
+
+
+def test_large_folder_is_asked_for_recent_mail_only():
+    """A large inbox answered a listing with every UID on one line: past
+    1 MB imaplib refused it and the inbox could not be opened at all."""
+    conn = LargeFolderIMAP({30: 40, 180: 400, 730: 5000})
+    assert imap_client._uid_recent_ids(conn, 30, total=150000) == [str(n).encode() for n in range(1, 31)]
+    assert len(conn.criteria) == 1 and conn.criteria[0].startswith("SENTSINCE ")
+    assert "ALL" not in conn.criteria
+
+
+def test_large_folder_widens_the_window_until_a_page_is_full():
+    conn = LargeFolderIMAP({30: 40, 180: 400, 730: 5000})
+    ids = imap_client._uid_recent_ids(conn, 300, total=150000)
+    assert len(ids) == 300 and ids[0] == b"1"
+    assert [c.split()[0] for c in conn.criteria] == ["SENTSINCE", "SENTSINCE"]
+
+
+def test_large_folder_with_nothing_recent_falls_back_to_the_whole_listing():
+    conn = LargeFolderIMAP({9999: 2500})   # an old archive
+    assert len(imap_client._uid_recent_ids(conn, 30, total=2500)) == 30
+    assert conn.criteria[-1] == "ALL" and len(conn.criteria) == 4
+
+
+def test_small_or_unknown_folder_is_still_listed_whole():
+    for total in (None, 0, imap_client._IMAP_WHOLE_FOLDER_MAX):
+        conn = LargeFolderIMAP({9999: 50})
+        imap_client._uid_recent_ids(conn, 30, total=total)
+        assert conn.criteria == ["ALL"]
+
+
+def test_large_folder_without_sort_fetches_each_date_once(monkeypatch):
+    monkeypatch.setattr(imap_client, "_IMAP_DATE_BATCH_SIZE", 1000)
+    conn = LargeFolderIMAP({30: 40, 180: 400, 730: 5000}, supports_sort=False)
+    ids = imap_client._uid_recent_ids(conn, 300, total=150000)
+    assert ids[:3] == [b"1", b"2", b"3"] and len(ids) == 300
+    fetched = [uid for batch in conn.date_fetches for uid in batch.split(",")]
+    assert len(fetched) == len(set(fetched)) == 400
+
+
+@pytest.mark.parametrize("error", [
+    imaplib.IMAP4.abort("socket error: EOF"),
+    imaplib.IMAP4.error("got more than 1000000 bytes"),
+    TimeoutError("timed out"),
+])
+def test_a_broken_connection_during_sort_is_not_taken_for_no_sort(error):
+    """The next command on that connection would read the rest of the cut
+    answer as its own: the failure is reported, not papered over."""
+    conn = LargeFolderIMAP({30: 40}, sort_error=error)
+    with pytest.raises(type(error)):
+        imap_client._uid_recent_ids(conn, 30, total=150000)
+    assert conn.criteria == []
+
+
+def test_imaplib_accepts_the_listing_of_a_very_large_folder():
+    assert imaplib._MAXLINE >= 10 * 1024 * 1024
+
+
+def test_imap_search_dates_do_not_depend_on_the_locale():
+    assert imap_client._imap_date(datetime(2026, 11, 5).date()) == "05-Nov-2026"
+
+
+def test_get_messages_passes_the_folder_size_on(monkeypatch):
+    seen = {}
+
+    class Conn:
+        def select(self, folder):
+            return "OK", [b"150000"]
+
+    monkeypatch.setattr(imap_client, "_acquire_connection", lambda *a, **kw: ("key", Conn()))
+    monkeypatch.setattr(imap_client, "_release_connection", lambda *a, **kw: None)
+    monkeypatch.setattr(imap_client, "_resolve_folder", lambda c, f: "INBOX")
+    monkeypatch.setattr(imap_client, "_uid_recent_ids",
+                        lambda c, top, total=None: seen.update(top=top, total=total) or [])
+    assert imap_client.get_messages("host", 993, "me", "pw", top=30, skip=30) == []
+    assert seen == {"top": 60, "total": 150000}
