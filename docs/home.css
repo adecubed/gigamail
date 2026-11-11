@@ -154,6 +154,9 @@ section.works { padding: 6px 0 20px; }
 .hero-actions .alt a { font-weight: 600; }
 .hero-video { padding: 10px; }
 .hero-video video { border-radius: 12px; width: 100%; aspect-ratio: 2 / 1; background: #d1d0d5; }
+/* downloads under the hero video */
+.after-video { margin-top: 22px; }
+.after-video .dl3 .btn { padding: 15px 26px; font-size: 1.08rem; border-radius: 14px; }
 .trust { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; font-size: 0.85rem; color: var(--gm-muted); }
 .trust span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gm-green); margin-right: 7px; vertical-align: 1px; }
 @media (max-width: 860px) { .hero { padding-top: 28px; } }

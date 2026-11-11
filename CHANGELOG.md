@@ -14,6 +14,9 @@
   to the new places, and the sitemap lists the three features pages.
   The hero's paragraph under the headline moved too: it now opens the
   features page, under a title of its own.
+  The download buttons moved from the hero to just under the hero
+  video, and the hero's first line says "Download for free" instead of
+  "Free forever".
 
 - **The approval card in the agent chat has Edit.** It offered only
   Approve and Reject: correcting the text meant going to the approvals
