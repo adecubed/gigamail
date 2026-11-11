@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Suggested attachments are attached again.** After "Generate", the
+  reply window offers the knowledge files that match the mail (a floor
+  plan named in the request, for example). Adding them asked the backend
+  for an endpoint it never had: each file became a chip with no name and
+  a "NaN KB" size, and the mail would have left without it. The backend
+  now hands out those files, and only files that are among the knowledge
+  files of an account or folder; a file it refuses is said in a message
+  instead of turning into an empty chip.
+
 - **GigaMail says when an account's archive stops being updated.** The
   search and the agent answer from the archive: when one account stopped
   syncing (a changed password, a login the server refused), its archive

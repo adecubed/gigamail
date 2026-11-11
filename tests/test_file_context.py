@@ -97,3 +97,60 @@ def test_no_file_no_block(monkeypatch):
     seen = _prompt_of(monkeypatch)
     agent_api.smart_draft("x", agent_api.SmartDraftRequest(subject="Price"), account_id=1)
     assert "ATTACHED AS CONTEXT" not in seen["prompt"]
+
+
+# -- a suggested knowledge file, attached --------------------------------------
+# The reply window asked GET /files/local for the bytes of a suggested
+# attachment; the backend never had it, and each 404 became a chip with no
+# name and a "NaN KB" size.
+
+@pytest.fixture()
+def knowledge(tmp_path, monkeypatch):
+    from gigamail.core import accounts as core_accounts
+    folder = tmp_path / "listings"
+    folder.mkdir()
+    (folder / "floor_plan_C.7.2.pdf").write_bytes(b"%PDF-1.4 plan")
+    (folder / "setup.exe").write_bytes(b"MZ")
+    single = tmp_path / "price_list.csv"
+    single.write_text(PRICES, encoding="utf-8")
+    (tmp_path / "private.txt").write_text("not for mail", encoding="utf-8")
+    idents = {1: {"file_paths": [str(folder)], "folder_identities": {}},
+              2: {"file_paths": [], "folder_identities": {"Leads": {"file_paths": [str(single)]}}}}
+    monkeypatch.setattr(core_accounts, "get_accounts", lambda: [{"id": 1}, {"id": 2}])
+    monkeypatch.setattr(core_accounts, "get_identity", lambda aid: idents[aid])
+    return tmp_path
+
+
+def _local(client, path):
+    return client.get("/files/local", params={"path": str(path)}, headers=H)
+
+
+def test_a_file_in_a_knowledge_folder_is_released(client, knowledge):
+    r = _local(client, knowledge / "listings" / "floor_plan_C.7.2.pdf")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    import base64
+    assert body["name"] == "floor_plan_C.7.2.pdf" and body["size"] == 13
+    assert base64.b64decode(body["data_b64"]) == b"%PDF-1.4 plan"
+    assert body["type"] == "application/pdf"
+
+
+def test_a_knowledge_file_of_a_folder_identity_is_released(client, knowledge):
+    r = _local(client, knowledge / "price_list.csv")
+    assert r.status_code == 200 and r.json()["name"] == "price_list.csv"
+
+
+def test_a_file_outside_the_knowledge_is_refused(client, knowledge):
+    assert _local(client, knowledge / "private.txt").status_code == 404
+    assert _local(client, knowledge / "listings" / ".." / "private.txt").status_code == 404
+    assert _local(client, knowledge / "missing.pdf").status_code == 404
+
+
+def test_a_program_is_not_released(client, knowledge):
+    assert _local(client, knowledge / "listings" / "setup.exe").status_code == 403
+
+
+def test_the_disk_needs_the_token(client, knowledge):
+    r = client.get("/files/local",
+                   params={"path": str(knowledge / "price_list.csv")})
+    assert r.status_code in (401, 403)
