@@ -17,6 +17,23 @@ from .log import _log, logger
 _PIN_MAX_FAILS = 3
 _PIN_LOCK_SECONDS = 900
 
+# After Edit on a draft, the next text typed is its changes. Only for a
+# while: a wait left open caught a message typed two hours later for
+# something else, and took it as the changes to a draft already rejected.
+FEEDBACK_AWAIT = "tg_await_feedback"
+FEEDBACK_WAIT_SECONDS = 15 * 60
+
+
+def waiting_feedback(rs) -> str:
+    """The request whose changes the next text is, or "" (none, or the
+    wait is over)."""
+    rid, _, since = (rs.kv_get(FEEDBACK_AWAIT, "") or "").partition("|")
+    try:
+        fresh = time.time() - float(since) < FEEDBACK_WAIT_SECONDS
+    except ValueError:
+        fresh = False
+    return rid if rid and fresh else ""
+
 
 def say(tg, it: str, en: str) -> None:
     tg.send(it if policy.user_lang() == "it" else en)
@@ -144,9 +161,9 @@ def handle_event(w, tg, ev: Dict[str, Any]) -> None:
         rs.kv_set(after_appointment.AWAIT, "")
         after_appointment.on_text(tg, outcome_key, text)
         return
-    waiting = rs.kv_get("tg_await_feedback")
+    waiting = waiting_feedback(rs)
     if waiting:
-        rs.kv_set("tg_await_feedback", "")
+        rs.kv_set(FEEDBACK_AWAIT, "")
         retry(w, tg, waiting, text, rs)
         return
     in_attesa_istruzione = rs.kv_get(tg_risposte.AWAIT, "")
@@ -278,6 +295,8 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
         tg.clear_buttons(message_id)
         return
     if act == "r":
+        if waiting_feedback(rs) == rid:
+            rs.kv_set(FEEDBACK_AWAIT, "")
         policy.store().reject(rid, by=who)
         if da_regola:
             rs.set_status(row["rule_id"], row["message_id"], "rejected")
@@ -286,7 +305,7 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
         tg.clear_buttons(message_id)
         return
     if act == "m":
-        rs.kv_set("tg_await_feedback", rid)
+        rs.kv_set(FEEDBACK_AWAIT, f"{rid}|{time.time()}")
         # The last thing asked wins: the changes must not end up in meeting
         # notes left pending.
         from . import after_appointment

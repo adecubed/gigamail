@@ -422,6 +422,19 @@ class ArchiveStore:
                     PRIMARY KEY (account_id, source)
                 )
             """)
+            # How each account's sync went last time: the archive is only
+            # as good as its last sync, and a search cannot tell "nothing
+            # arrived" from "this account stopped syncing days ago".
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS account_sync (
+                    account_id      INTEGER PRIMARY KEY,
+                    last_ok_at      REAL    NOT NULL DEFAULT 0,
+                    last_attempt_at REAL    NOT NULL DEFAULT 0,
+                    error           TEXT    NOT NULL DEFAULT '',
+                    error_since     REAL    NOT NULL DEFAULT 0,
+                    alerted_at      REAL    NOT NULL DEFAULT 0
+                )
+            """)
 
     # -- scrittura ------------------------------------------------------
 
@@ -535,6 +548,55 @@ class ArchiveStore:
                 (int(account_id), folder, uidvalidity, cursor,
                  1 if complete else 0, time.time(),
                  None if complete is None else 1))
+
+    def sync_ok(self, account_id: int, now: Optional[float] = None) -> None:
+        """The account synced. alerted_at is left alone: the watcher reads
+        it to say the account is back."""
+        now = time.time() if now is None else now
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO account_sync (account_id, last_ok_at,"
+                " last_attempt_at) VALUES (?,?,?)"
+                " ON CONFLICT(account_id) DO UPDATE SET"
+                " last_ok_at=excluded.last_ok_at,"
+                " last_attempt_at=excluded.last_attempt_at,"
+                " error='', error_since=0",
+                (int(account_id), now, now))
+
+    def sync_failed(self, account_id: int, error: str,
+                    now: Optional[float] = None) -> None:
+        """The account did not sync. error_since keeps the first failure
+        of a run of them."""
+        now = time.time() if now is None else now
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO account_sync (account_id, last_attempt_at,"
+                " error, error_since) VALUES (?,?,?,?)"
+                " ON CONFLICT(account_id) DO UPDATE SET"
+                " last_attempt_at=excluded.last_attempt_at,"
+                " error=excluded.error,"
+                " error_since=CASE WHEN account_sync.error_since > 0"
+                "                  THEN account_sync.error_since"
+                "                  ELSE excluded.error_since END",
+                (int(account_id), now, (error or "?")[:300], now))
+
+    def sync_alerted(self, account_id: int, at: float) -> None:
+        """at > 0: the user was told the account is behind; 0: told it is
+        back."""
+        with self._conn() as conn:
+            conn.execute("UPDATE account_sync SET alerted_at=?"
+                         " WHERE account_id=?", (float(at), int(account_id)))
+
+    def sync_rows(self) -> Dict[int, Dict[str, Any]]:
+        with self._conn() as conn:
+            return {int(r["account_id"]): dict(r)
+                    for r in conn.execute("SELECT * FROM account_sync")}
+
+    def count_by_account(self) -> Dict[int, int]:
+        with self._conn() as conn:
+            return {int(r["account_id"]): int(r["n"]) for r in conn.execute(
+                "SELECT account_id, COUNT(*) n FROM messages"
+                " GROUP BY account_id")}
 
     def ha_chiave(self, account_id: int, message_id: str) -> bool:
         """Il messaggio con questo Message-ID e' gia' in archivio?"""

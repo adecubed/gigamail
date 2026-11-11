@@ -137,7 +137,7 @@ function renderAttachments() {
       ? `<img src="${a.dataUrl}" alt="${esc(a.name)}"/>`
       : (typeof GMIcons !== 'undefined' ? GMIcons.svg('paperclip', 13) : '');
     return `<span class="attach-chip">
-      ${preview} ${esc(a.name)} (${Math.round(a.size/1024)}KB)
+      ${preview} ${esc(a.name)} (${Math.round((a.size || 0)/1024)}KB)
       <button class="attach-chip-rm" data-index="${i}">✕</button>
     </span>`;
   }).join('');
@@ -145,6 +145,21 @@ function renderAttachments() {
     attachments.splice(Number(b.dataset.index), 1);
     renderAttachments();
   }));
+}
+
+// An attachment dragged from a received mail (attachment_drag.js): the
+// drop carries which file of which message, the bytes come from the backend.
+function takeMailAttachment(e) {
+  if (typeof GMAttachmentDrag === 'undefined') return false;
+  return GMAttachmentDrag.takeDrop(e, API, (file) => {
+    const image = file.type.startsWith('image/');
+    attachments.push({ ...file, isImage: image,
+      dataUrl: image ? `data:${file.type};base64,${file.data_b64}` : null });
+    renderAttachments();
+  }, (name, err) => {
+    const msg = `${T('cmp_attachment_error', 'Errore allegato')} ${name}: ${err.message}`;
+    if (typeof GMDialog !== 'undefined') GMDialog.alert(msg); else alert(msg);
+  });
 }
 
 // ── DRAG & DROP SUL CORPO ──────────────────────────────────────────────────────
@@ -161,6 +176,7 @@ bodyWrap.addEventListener('dragleave', (e) => {
 bodyWrap.addEventListener('drop', (e) => {
   e.preventDefault();
   bodyOverlay.classList.remove('visible');
+  if (takeMailAttachment(e)) return;
   for (const file of Array.from(e.dataTransfer.files || [])) addFileAsAttachment(file);
 });
 

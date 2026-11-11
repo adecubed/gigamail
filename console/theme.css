@@ -349,5 +349,7 @@ html[data-theme="dark"] body .gm-mail-alert-btn.primary, html[data-theme="dark"]
 /* A rule that paused itself: amber banner above the rules list, amber
    mark on the Automations icon */
 .s-badge.warn { background: var(--gm-amber, #d97706); }
+.doc-notes { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--gm-amber, #d97706); border-radius: 8px; background: color-mix(in srgb, var(--gm-amber, #d97706) 10%, transparent); font-size: 12px; line-height: 1.45; }
+.doc-note + .doc-note { margin-top: 4px; }
 .gm-rule-alert { border-color: var(--gm-amber, #d97706); background: color-mix(in srgb, var(--gm-amber, #d97706) 10%, transparent); }
 .ai-card-status.warn { color: var(--gm-amber, #d97706); }

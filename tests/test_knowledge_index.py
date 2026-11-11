@@ -127,3 +127,15 @@ def test_a_long_rule_document_without_matches_is_cut_as_before(tmp_path):
     rule = {"doc_paths": [str(doc)]}
     assert (drafting._rule_docs_text(rule, "submarine")
             == drafting._rule_docs_text(rule))
+
+
+def test_a_document_of_a_few_pages_goes_in_whole(tmp_path):
+    """A price list of thirty rows was over the old limit: the agent got
+    its headers and the passages matching the words of the mail, which
+    for "I would like to visit it" were none of the rows."""
+    doc = tmp_path / "list.csv"
+    doc.write_text("Code;Sqm;Price\n" + "".join(
+        f"X.{i}.1;{60 + i};{200000 + i}\n" for i in range(600)), encoding="utf-8")
+    out = drafting._rule_docs_text({"doc_paths": [str(doc)]}, "I would like to visit it")
+    assert 8000 < len(out) < drafting._DOC_CHARS_MAX
+    assert "X.0.1;60;200000" in out and "X.599.1;659;200599" in out

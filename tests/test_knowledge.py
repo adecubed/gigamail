@@ -118,6 +118,34 @@ def test_an_empty_cell_keeps_the_columns_in_place(tmp_path):
                                  "X.4.2 | 95 |  | 210000"]
 
 
+def test_a_sheet_that_declares_a_huge_size_is_read_at_once(tmp_path):
+    """A price list of thirty rows declared a million rows of a thousand
+    columns: every draft spent ten minutes walking the empty ones."""
+    import time
+    import zipfile
+    openpyxl = pytest.importorskip("openpyxl")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Prices"
+    ws.append(["Code", "Price"])
+    ws.append(["X.4.2", 210000])
+    plain = tmp_path / "plain.xlsx"
+    wb.save(plain)
+    huge = tmp_path / "huge.xlsx"
+    with zipfile.ZipFile(plain) as src, zipfile.ZipFile(huge, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename == "xl/worksheets/sheet1.xml":
+                assert b'<dimension ref="A1:B2"' in data
+                data = data.replace(b'<dimension ref="A1:B2"',
+                                    b'<dimension ref="A1:AMJ1048576"')
+            dst.writestr(item, data)
+    started = time.time()
+    text, _kind = file_extractor.extract_text(str(huge))
+    assert time.time() - started < 5
+    assert text.splitlines() == ["[Foglio: Prices]", "Code | Price", "X.4.2 | 210000"]
+
+
 def test_an_old_xls_is_read_with_xlrd(tmp_path, monkeypatch):
     """openpyxl does not open .xls. No library here writes one, so the
     workbook xlrd returns is built from xlrd's own cells."""

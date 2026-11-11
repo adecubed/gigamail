@@ -149,6 +149,17 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
     if not verdict.reply:
         return _skip("guard:" + ",".join(verdict.reasons))
 
+    # The person this rule would write to may already have a mail, sent or
+    # waiting, written after theirs arrived: by hand, or by the agent as a
+    # new mail instead of a reply to the notification.
+    if retry_feedback is None and received_ts is not None:
+        person = sender
+        if rule.get("reply_to_body_address") and not ingestion.is_followup(rule, sender):
+            person = body_reply_address(full, sender)
+        earlier = reply_guard.mail_to_since(person, received_ts) if person else None
+        if earlier:
+            return _skip("already-answered:" + earlier["request_id"])
+
     # modalita' effettiva: auto solo se la regola lo chiede, le barriere
     # lo permettono (DMARC pass) e non e' un primo contatto con
     # first_contact=semi

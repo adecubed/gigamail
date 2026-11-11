@@ -4,7 +4,9 @@ La stessa risposta serve a tre chiamanti — console, CLI e l'attivita'
 pianificata — e tre copie divergerebbero: basta che una dica 'fermo'
 quando e' vivo e si ritrovano due watcher sulle stesse regole.
 """
+import contextlib
 import os
+import threading
 import time
 from typing import Any, Dict
 
@@ -73,6 +75,35 @@ def heartbeat(interval: int, force: bool = False) -> None:
         # Senza heartbeat la console dira' "fermo" mentre il watcher gira,
         # e chi lancia il task ne avviera' un secondo: va detto.
         logger.warning("heartbeat non scritto: %s", e)
+
+
+BUSY_BEAT_SECONDS = 30.0
+
+
+@contextlib.contextmanager
+def beating(interval: int, limit_seconds: float):
+    """Keeps the heartbeat fresh while one long step runs (a draft).
+
+    The watcher beats between steps, and a draft with its retries can last
+    longer than the silence after which the backend's guard takes the
+    watcher for hung: it was ended in the middle of every draft, the mail
+    stayed taken and never got a reply. A side thread beats until the step
+    ends, and at most for limit_seconds: a step stuck past every timeout
+    still goes silent, and the guard still ends it."""
+    done = threading.Event()
+
+    def _beat() -> None:
+        deadline = time.time() + max(float(limit_seconds), 0.0)
+        while not done.wait(BUSY_BEAT_SECONDS) and time.time() < deadline:
+            heartbeat(interval, force=True)
+
+    thread = threading.Thread(target=_beat, name="watch-busy-beat", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        done.set()
+        thread.join(timeout=5)
 
 
 def should_yield(interval: int) -> str:

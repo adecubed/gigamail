@@ -435,6 +435,8 @@ async function openMail(id, overrideFolder = null) {
         const att = atts[parseInt(chip.dataset.attIndex, 10)];
         if (!att) return;
         chip.addEventListener('click', () => openAtt(att));
+        // dragged onto a mail being written, it is attached to it
+        window.GMAttachmentDrag?.makeSource(chip, { id, name: att.name, accountId: activeAccountId, folder: folderValue, type: att.contentType });
         chip.addEventListener('contextmenu', (e) => { e.preventDefault(); showMenu(e.clientX, e.clientY, att); });
       });
     })();

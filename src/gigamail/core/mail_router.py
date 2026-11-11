@@ -293,6 +293,23 @@ def _send_backend(
             'warning': None,
             'error': 'Account non trovato',
         }
+    # A recipient that is not an address (two addresses left in one piece,
+    # a name with no address) can be accepted by the server and reach
+    # nobody: said here, before anything is sent, for every provider.
+    from .addresses import malformed
+    bad = malformed([to]) + malformed(cc) + malformed(bcc)
+    if bad:
+        from gigamail import policy
+        names = ', '.join(f'"{b}"' for b in bad)
+        return {
+            'success': False,
+            'provider': None,
+            'sent_copy_saved': False,
+            'warning': None,
+            'error': (f"Destinatario non valido: {names}. Niente è stato inviato."
+                      if policy.user_lang() == 'it' else
+                      f'Not a valid recipient: {names}. Nothing was sent.'),
+        }
     if _demo(a):
         return _normalize_send_result(demo.send_message(
             a, to, subject, body, reply_to_id=reply_to_id,

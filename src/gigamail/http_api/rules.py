@@ -101,6 +101,20 @@ def _rule_view(r: dict) -> dict:
     return d
 
 
+class DocumentsCheck(BaseModel):
+    paths: List[str] = []
+
+
+@router.post("/documents/check")
+def check_documents(body: DocumentsCheck):
+    """What the agent will not read well in these documents: too long,
+    several sheets, no text, unreadable, slow. Numbers only, never the
+    content. Asked by the rule form when a document is picked and by the
+    rule cards, so a document that gives poor drafts says so at once."""
+    from gigamail.core import doc_check
+    return doc_check.check_many(body.paths[:50])
+
+
 @router.get("/rules")
 def list_rules():
     from gigamail.core import rules as rules_mod
@@ -277,7 +291,13 @@ def _pid_alive(pid: int) -> bool:
 
 @router.get("/watch/status")
 def watch_status():
-    return _watch_state()
+    from gigamail.core import archive_health
+    try:
+        sync = archive_health.status()
+    except Exception as e:
+        sync = []
+        print(f"[console] archive sync status not read: {e}", flush=True)
+    return {**_watch_state(), "archive_sync": sync}
 
 
 def _spawn_watch(interval: int) -> int:

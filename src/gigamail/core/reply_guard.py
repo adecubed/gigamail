@@ -53,6 +53,48 @@ def _request_state(request_id: str) -> Optional[str]:
     return None
 
 
+_MAIL_TOOLS = ("send_mail", "reply_mail")
+
+
+def _recipients(args: Dict[str, Any]) -> set:
+    to = args.get("to") or ""
+    parts = to if isinstance(to, (list, tuple)) else str(to).split(",")
+    return {str(p).strip().lower() for p in parts if str(p).strip()}
+
+
+def mail_to_since(address: str, since_ts: float) -> Optional[Dict[str, Any]]:
+    """A mail to `address` asked for after `since_ts`, sent or waiting.
+
+    A reply written by hand, or by the agent as a new mail to the person
+    named in a portal's notification, is not tied to the notification it
+    answers: the rule drafted a second reply to someone who already had
+    one. The approval store knows who every mail was for.
+    Returns {"state": PENDING | SENT, "request_id"} or None."""
+    wanted = str(address or "").strip().lower()
+    if not wanted:
+        return None
+    try:
+        store = policy.store()
+        records = store.list_pending() + store.list_decided(since_ts, limit=200)
+    except Exception as e:  # pragma: no cover - store unavailable
+        logger.debug("approvals not read: %s", e)
+        return None
+    pending: Optional[Dict[str, Any]] = None
+    for rec in records:
+        if rec.get("tool") not in _MAIL_TOOLS:
+            continue
+        if float(rec.get("created_at") or 0) < since_ts:
+            continue
+        if wanted not in _recipients(rec.get("args") or {}):
+            continue
+        state = _request_state(rec["request_id"])
+        if state == SENT:
+            return {"state": SENT, "request_id": rec["request_id"]}
+        if state == PENDING and pending is None:
+            pending = {"state": PENDING, "request_id": rec["request_id"]}
+    return pending
+
+
 def existing_reply(message_id: str,
                    exclude_rule: str = "") -> Optional[Dict[str, Any]]:
     """The reply already drafted for this mail, if there is one.

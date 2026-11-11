@@ -68,7 +68,9 @@ def google_calendar_primary(email: str):
 
 @router.get("/calendar/provider")
 def get_calendar_provider():
-    return {"provider": calendar_router.provider()}
+    # connected: false with IMAP mailboxes only and no Google calendar
+    return {"provider": calendar_router.provider(),
+            "connected": calendar_router.connected()}
 
 
 @router.post("/calendar/provider/{provider}")

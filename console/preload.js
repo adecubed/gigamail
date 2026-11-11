@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   claudeLoginCode:   (code) => apiJson(`${API}/agent/claude/login/code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }),
   approveRequest: (id)   => apiJson(`${API}/approvals/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
   rejectRequest:  (id)   => apiJson(`${API}/approvals/${encodeURIComponent(id)}/reject`, { method: 'POST' }),
+  getRequest:     (id)   => apiJson(`${API}/approvals/${encodeURIComponent(id)}`),
   openExternal:   (url) => ipcRenderer.invoke('open-external', url),  // whitelist nel main
   onOpenMail:     (callback) => ipcRenderer.on('open-mail', (_, data) => callback(data)),
   onShowPending:  (callback) => ipcRenderer.on('show-pending-view', () => callback()),

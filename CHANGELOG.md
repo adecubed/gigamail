@@ -2,6 +2,114 @@
 
 ## Unreleased
 
+- **The approval card in the agent chat has Edit.** It offered only
+  Approve and Reject: correcting the text meant going to the approvals
+  page. Edit opens the same window as there; back in the console the
+  card shows the corrected text, and a request approved or rejected in
+  that window is no longer offered on the card.
+- **Save on the approvals page.** "Save" (decide later: the request
+  waits 7 days instead of 15 minutes) was only in the request's own
+  window. The cards of "Waiting for you" have it too.
+
+- **Suggested attachments are attached again.** After "Generate", the
+  reply window offers the knowledge files that match the mail (a floor
+  plan named in the request, for example). Adding them asked the backend
+  for an endpoint it never had: each file became a chip with no name and
+  a "NaN KB" size, and the mail would have left without it. The backend
+  now hands out those files, and only files that are among the knowledge
+  files of an account or folder; a file it refuses is said in a message
+  instead of turning into an empty chip.
+
+- **GigaMail says when an account's archive stops being updated.** The
+  search and the agent answer from the archive: when one account stopped
+  syncing (a changed password, a login the server refused), its archive
+  stopped growing and a question such as "what arrived from this sender
+  since yesterday?" got "nothing" with full confidence. The only trace
+  was a line in the watcher log. Now:
+  - Automations shows one line per account under the watcher: the mail
+    in the archive, when it was last updated, and the error of the last
+    sync if it failed;
+  - when an account has not synced for more than 6 hours and its syncs
+    have been failing for at least an hour, the watcher says so once, on
+    Telegram and on the desktop, and says again when the account is
+    back. A PC switched on after a weekend, whose first sync fails before
+    the network is up, raises no alert;
+  - a search on an account whose archive is that far behind tells the
+    agent, which can then say that recent mail may be missing instead of
+    concluding that nothing arrived.
+- **Two or more people in copy all receive the mail.** A reply or a new
+  mail written in the console with several addresses in CC or BCC,
+  separated by a comma, reached the main recipient only: the addresses
+  went to the mail server as one malformed recipient, which the server
+  could accept without delivering to anyone, and the send was reported as
+  done. One address in copy worked. Each address is now a recipient of
+  its own, over SMTP and Microsoft 365 alike, also when the addresses are
+  separated by a space or a new line, or a name in quotes has a comma in
+  it. A recipient that is still not an address (a name with no brackets
+  around its address) stops the send with a message that names it,
+  instead of being handed to the server.
+- **An attachment can be dragged from a received mail onto a mail being
+  written.** Drag its chip, from the reading pane or from a mail opened in
+  its own window, and drop it on a new mail, a reply window or the reply
+  box: it is attached, as a file dropped from the desktop is. Before, it
+  had to be saved to disk and attached from there. A file that runs a
+  program cannot be dragged: "Save as" remains the way to take one out.
+- **GigaMail says when a rule's document will not be read well.** In the
+  rule form, as soon as a document is added, and under each rule's card:
+  a document longer than a draft takes, a workbook with several sheets
+  (the agent reads them all, the outdated ones too), a file with no text
+  in it such as a scanned page, one that cannot be read, one slow to
+  read. Before, a document like these gave wrong or empty drafts weeks
+  later and nothing had said why.
+- **A document of a few pages reaches the agent whole.** The limit was
+  8,000 characters: a price list of thirty rows was over it, the agent
+  got its column headers and the passages matching the words of the
+  mail, and for a mail saying only "I would like to visit it" the draft
+  answered that the availability could not be confirmed. The limit is
+  now 30,000.
+- **No second reply to someone already written to.** A reply sent as a new
+  mail to the person named in a portal's notification was not tied to the
+  notification, and the rule drafted another one. A rule now steps aside
+  when a mail to that person was sent, or is waiting for approval, after
+  theirs arrived.
+- **A spreadsheet that declares a wrong size no longer takes ten minutes
+  to read.** A price list of thirty rows said it had a million rows of a
+  thousand columns, and every draft, every search in the documents and
+  every question about them walked all the empty cells first. Only the
+  rows actually in the file are read now: seconds instead of minutes.
+- **A slow draft no longer gets the watcher stopped.** The watcher said it
+  was alive only between drafts, and a draft with Codex can take longer
+  than the silence after which the backend takes a watcher for hung: the
+  watcher was ended in the middle of every draft, and the mail it was
+  answering stayed taken and never got a reply. It now keeps saying so
+  while a draft runs, up to the longest a draft may take.
+- **After Edit on Telegram, only the next few minutes count.** Tapping Edit
+  waited for the changes with no end: a message typed two hours later, for
+  something else, was taken as the changes to a draft already rejected.
+  The wait now lasts 15 minutes, and Reject on the same draft closes it.
+- **A very large IMAP inbox opens.** To show the newest mail GigaMail
+  asked the server for the list of every message in the folder. Past some
+  110,000 messages that answer is longer than the 1 MB the IMAP library
+  accepts, and on a slow server sorting it takes longer than the
+  connection waits: the inbox answered "Internal Server Error", even for
+  one mail, while smaller folders worked. A folder with more than 2,000
+  messages is now asked for the mail of the last 30 days only, then 180,
+  then two years, and for everything only when those are not enough; the
+  order and the pages are the same as before.
+- **A failed request says why, and there is a log.** An error from the
+  mail server reaches the console with the server's reason ("the mail
+  server answered with an error: ...", "did not answer in time") instead
+  of "Internal Server Error", and every failed request is written to
+  `%APPDATA%/ADE/mail/logs/console.log` (`~/.ade/mail/logs/` elsewhere)
+  with its stack: the route as declared, never a search text or a message
+  id, and the first 300 characters of the error, which can quote the mail
+  server's answer but never a mail's body. Before, the reason went to an
+  output the installed app shows nowhere.
+- **With IMAP mailboxes only, the calendar is empty, not broken.** GigaMail
+  reads Microsoft 365 and Google calendars. An installation with neither
+  answered 500 to every calendar request; now the agenda says that no
+  calendar is connected and where to connect one, and creating an event
+  says the same.
 - **Connecting Codex works on Python 3.10.** Started from the sources on
   3.10, Automations said "Python 3.11+ needed to check config.toml" and
   could not connect Codex: the check now uses `tomli` there. The agent menu

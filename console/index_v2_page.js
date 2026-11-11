@@ -55,6 +55,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     dz.addEventListener('dragleave',e=>{if(!dz.contains(e.relatedTarget))ov?.classList.remove('visible');});
     dz.addEventListener('drop',async e=>{
       e.preventDefault();ov?.classList.remove('visible');
+      // an attachment dragged from a received mail (attachment_drag.js)
+      if(window.GMAttachmentDrag?.takeDrop(e,window.GIGAMAIL_API||'http://127.0.0.1:8002',file=>{
+        if(typeof replyAttachments==='undefined')return;
+        replyAttachments.push(file);
+        if(typeof renderReplyAttachments==='function')renderReplyAttachments();
+      },(name,err)=>{
+        if(typeof showToast==='function')showToast(`${T('cmp_attachment_error','Errore allegato')} ${name}: ${err.message}`);
+      }))return;
       for(const file of Array.from(e.dataTransfer.files||[])){
         const reader=new FileReader();
         reader.onload=ev=>{

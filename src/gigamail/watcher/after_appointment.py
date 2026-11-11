@@ -359,7 +359,8 @@ def on_button(tg, key: str, code: str, message_id: int = 0) -> None:
     # The last thing asked wins: an Edit or a Reply left half-way must
     # not swallow the meeting notes.
     rs = rules_mod.store()
-    rs.kv_set("tg_await_feedback", "")
+    from . import telegram  # telegram imports this module
+    rs.kv_set(telegram.FEEDBACK_AWAIT, "")
     rs.kv_set(tg_risposte.AWAIT, "")
     rs.kv_set(AWAIT, key)
     _say(tg,

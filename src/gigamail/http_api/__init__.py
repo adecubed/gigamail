@@ -114,6 +114,11 @@ for _r in (accounts, addresses, mail, calendar, google, mask, agent, approvals, 
            files):
     app.include_router(_r.router)
 
+# A failed request says why, and is written to the log (errors.py).
+from . import errors  # noqa: E402
+
+errors.install(app)
+
 # Nomi che restano raggiungibili dalla facciata (compatibilita').
 from .accounts import IMAP_PROVIDERS, ImapAccountRequest  # noqa: E402,F401
 from .common import _active_id, _who  # noqa: E402,F401
@@ -141,6 +146,9 @@ def main() -> None:
     # gone, or running old code, while its rules are still active. A guard
     # brings it back, now and every minute, not a button someone has to
     # remember.
+    from gigamail import __version__
+    errors.log().info("backend started: gigamail %s, pid %s, port %s", __version__, os.getpid(), PORT)
+    print(f"[console] log file: {errors.log_path()}", flush=True)
     from gigamail import completion
     completion.warm_up()
     from .rules import start_watch_guard

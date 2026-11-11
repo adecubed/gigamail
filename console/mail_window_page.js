@@ -175,6 +175,8 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
       const att = attachments[parseInt(chip.dataset.attIndex, 10)];
       if (!att) return;
       chip.addEventListener('click', () => openAttachment(att));
+      // dragged onto a mail being written, it is attached to it
+      window.GMAttachmentDrag?.makeSource(chip, { id, name: att.name, accountId, folder, type: att.contentType });
       chip.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         showAttachMenu(e.clientX, e.clientY, att);

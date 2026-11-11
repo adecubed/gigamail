@@ -66,3 +66,10 @@ test('eventPopupHtml: struttura .modal della console, tutto escapato, bottoni co
   assert.equal((bare.match(/ob-muted/g) || []).length, 1); assert.ok(!bare.includes('ob-p'));
   assert.ok(bare.includes('(senza titolo)') === false);
 });
+
+test('emptyText: no calendar connected is not "no events"', () => {
+  const w = load();
+  assert.match(w.CalendarView.emptyText(false), /Nessun calendario collegato/);
+  assert.equal(w.CalendarView.emptyText(true), 'Nessun evento nel periodo.');
+  assert.equal(w.CalendarView.emptyText(undefined), 'Nessun evento nel periodo.');
+});

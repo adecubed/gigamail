@@ -472,10 +472,10 @@ def test_prompt_del_drafter_marca_la_mail_come_non_fidata(fake_world, tmp_path):
 
 
 def test_long_rule_document_brings_the_row_the_mail_asks_about(fake_world, tmp_path):
-    """The row is far beyond the first 8000 characters: before, the prompt
-    stopped there and the draft said the information was missing."""
+    """The row is far beyond what a prompt takes of one document: before,
+    the prompt stopped there and the draft said the information was missing."""
     doc = tmp_path / "price_list.txt"
-    filler = "".join(f"Apartment B.{i}.2, {60 + i} sqm, garden view\n" for i in range(400))
+    filler = "".join(f"Apartment B.{i}.2, {60 + i} sqm, garden view\n" for i in range(1200))
     doc.write_text("Price list 2026 - Via Roma 10\n" + filler
                    + "Apartment X.4.2, 95 sqm, terrace, price 210000\n",
                    encoding="utf-8")
@@ -710,3 +710,90 @@ def test_a_watcher_leaves_when_another_one_runs_or_the_code_changed(monkeypatch,
     monkeypatch.setattr(telegram_channel, "channel", lambda: None)
     w.run(once=True)
     assert ticks == []
+
+
+def test_the_heartbeat_goes_on_while_a_draft_runs(fake_world, monkeypatch):
+    """A draft with Codex took longer than the silence after which the
+    backend's guard takes the watcher for hung: it was ended in the middle
+    of every draft, and the mail never got a reply."""
+    from gigamail.watcher import process_state
+    monkeypatch.setattr(process_state, "BUSY_BEAT_SECONDS", 0.05)
+    rs = rules_mod.store()
+    beats = []
+
+    def slow_draft(prompt, **kw):
+        rs.kv_set("watch_heartbeat", "0")
+        time.sleep(0.5)
+        beats.append(float(rs.kv_get("watch_heartbeat", "0")))
+        return fake_world["draft"]
+
+    monkeypatch.setattr(agent_bridge, "run", slow_draft)
+    _rule()
+    fake_world["unread"] = [_msg()]
+    watcher_mod.Watcher().tick()
+    assert beats and time.time() - beats[0] < 1
+    assert len(policy.store().list_pending()) == 1
+
+
+def test_the_busy_heartbeat_stops_at_its_limit(monkeypatch):
+    # A step stuck past every timeout goes silent again, so the guard can
+    # still end a watcher that is really hung.
+    from gigamail.watcher import process_state
+    monkeypatch.setattr(process_state, "BUSY_BEAT_SECONDS", 0.05)
+    rs = rules_mod.store()
+    with process_state.beating(60, limit_seconds=0.2):
+        time.sleep(0.4)
+        rs.kv_set("watch_heartbeat", "0")
+        time.sleep(0.3)
+        assert rs.kv_get("watch_heartbeat") == "0"
+
+
+def _portal_rule():
+    """A rule on a portal's notifications, created an hour ago: it only
+    takes the mail that arrived after it was created."""
+    rule_id = _rule(trigger_values=["portal@example.com"], reply_to_body_address=True)
+    with rules_mod.store()._conn() as conn:
+        conn.execute("UPDATE rules SET created_at=? WHERE rule_id=?",
+                     (time.time() - 3600, rule_id))
+    return rule_id
+
+
+def _portal_lead(mid, minutes_ago):
+    from email.utils import formatdate
+    lead = _msg(mid=mid, sender="portal@example.com",
+                body="New message\nEmail: bruna@example.com\nIs it available?")
+    lead["receivedDateTime"] = formatdate(time.time() - minutes_ago * 60)
+    return lead
+
+
+def test_a_person_already_written_to_gets_no_second_reply(fake_world):
+    """The reply to a portal's lead went out as a new mail to the person,
+    not as a reply to the notification: nothing tied the two, and the rule
+    drafted a second reply for someone who already had one."""
+    rule_id = _portal_rule()
+    rid = policy.store().create(
+        "send_mail", {"to": "Bruna@example.com", "subject": "Flat", "body": "Yes"},
+        {})
+    fake_world["unread"] = [_portal_lead("p1", minutes_ago=30)]
+    watcher_mod.Watcher().tick()
+    assert [p["request_id"] for p in policy.store().list_pending()] == [rid]
+    row = rules_mod.store().get_handled(rule_id, "p1")
+    assert row["status"] == "skipped" and row["reason"] == f"already-answered:{rid}"
+
+
+def test_a_mail_sent_before_the_lead_or_rejected_does_not_count(fake_world):
+    _portal_rule()
+    old = policy.store().create(
+        "send_mail", {"to": "bruna@example.com", "subject": "Flat", "body": "Hi"}, {})
+    policy.store().reject(old, by="test")
+    other = policy.store().create(
+        "send_mail", {"to": "carla@example.com", "subject": "Flat", "body": "Hi"}, {})
+    policy.store().reject(other, by="test")
+    fake_world["unread"] = [_portal_lead("p2", minutes_ago=30)]
+    watcher_mod.Watcher().tick()
+    pend = policy.store().list_pending()
+    assert len(pend) == 1 and pend[0]["args"]["to"] == "bruna@example.com"
+    # asked for before the mail arrived: about something else
+    from gigamail.core import reply_guard
+    assert reply_guard.mail_to_since("bruna@example.com", time.time() - 60)
+    assert reply_guard.mail_to_since("bruna@example.com", time.time() + 60) is None
