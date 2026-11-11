@@ -132,7 +132,47 @@ class Watcher:
         # spostamenti di questo giro compresi.
         stats["salvate"] = self.archivia_posta()
         self.heartbeat()
+        self.archive_sync_alerts()
         return stats
+
+    def archive_sync_alerts(self) -> int:
+        """Tell the user when an account stops syncing, and when it is
+        back: on Telegram and on the desktop. A failure here does not stop
+        the tick."""
+        from gigamail.core import archive_health, desktop_notify
+        try:
+            due = archive_health.alerts_due()
+        except Exception as e:
+            _log(f"archive sync alerts not checked: {e}", self.verbose)
+            return 0
+        if not due:
+            return 0
+        try:
+            tg = telegram_channel.channel()
+        except Exception:
+            tg = None
+        for row, kind in due:
+            who = row["email"] or row["name"] or str(row["account_id"])
+            if kind == "behind":
+                it = (f"⚠ L'archivio di {who} non si aggiorna da più di "
+                      f"{archive_health.STALE_SECONDS // 3600} ore: "
+                      f"{row['error']}. Ricerche e agente non vedono la "
+                      "posta arrivata da allora.")
+                en = (f"⚠ The archive of {who} has not been updated for over "
+                      f"{archive_health.STALE_SECONDS // 3600} hours: "
+                      f"{row['error']}. Search and the agent do not see the "
+                      "mail that arrived since then.")
+            else:
+                it = f"✅ L'archivio di {who} si aggiorna di nuovo."
+                en = f"✅ The archive of {who} is being updated again."
+            _log(en, True)
+            if tg:
+                try:
+                    telegram.say(tg, it, en)
+                except Exception as e:
+                    _log(f"archive sync alert not sent on Telegram: {e}", self.verbose)
+            desktop_notify.notify("GigaMail", it if policy.user_lang() == "it" else en)
+        return len(due)
 
     # -- fase E: la copia locale di tutta la posta ------------------------
 

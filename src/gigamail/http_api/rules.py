@@ -291,7 +291,13 @@ def _pid_alive(pid: int) -> bool:
 
 @router.get("/watch/status")
 def watch_status():
-    return _watch_state()
+    from gigamail.core import archive_health
+    try:
+        sync = archive_health.status()
+    except Exception as e:
+        sync = []
+        print(f"[console] archive sync status not read: {e}", flush=True)
+    return {**_watch_state(), "archive_sync": sync}
 
 
 def _spawn_watch(interval: int) -> int:

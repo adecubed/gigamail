@@ -752,6 +752,10 @@ body {
 .auto-col { flex:1; min-width:320px; display:flex; flex-direction:column; gap:10px; }
 .auto-col > .field-label { margin-top:4px; }#view-automations .ai-card .field-row, #view-pending .ai-card .field-row { margin-bottom:8px; }#view-automations .ai-card-status.warn, #view-pending .ai-card-status.warn { color:#b45309; font-weight:600; }
 .auto-log { max-height:180px; overflow:auto; background:rgba(0,0,0,0.04); border-radius:var(--radius-sm); padding:8px; margin-top:8px; white-space:pre-wrap; }
+.watch-sync { margin-top:6px; font-size:12px; line-height:1.6; }
+.watch-sync-row { opacity:.8; }
+.watch-sync-row.bad { opacity:1; }
+.watch-sync-err { color: rgba(200,50,40,0.85); }
 /* Automazioni: scrollbar larga e sempre visibile, scorrimento con rotella */
 .auto-body { scrollbar-gutter: stable; }
 .auto-body::-webkit-scrollbar { width:12px; }

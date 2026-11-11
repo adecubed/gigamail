@@ -209,3 +209,4 @@ html[data-theme="dark"] #imapStatus [style*="180,40,30"] { color: var(--gm-amber
 html[data-theme="dark"] #imapStatus a { color: var(--gm-pink) !important; }
 html[data-theme="dark"] #btnAddGmail { color: #ff8a80 !important; }
 html[data-theme="dark"] #btnAddZoom { color: #79a2f4 !important; }
+html[data-theme="dark"] .watch-sync-err { color: #ff7b7b !important; }
