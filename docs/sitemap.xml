@@ -172,4 +172,28 @@
     <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/security-zh.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/security.html"/>
   </url>
+  <url>
+    <loc>https://gigamail.ai/features.html</loc>
+    <lastmod>2026-11-11</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/features.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/features-it.html"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/features-zh.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/features.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/features-it.html</loc>
+    <lastmod>2026-11-11</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/features.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/features-it.html"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/features-zh.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/features.html"/>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/features-zh.html</loc>
+    <lastmod>2026-11-11</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gigamail.ai/features.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://gigamail.ai/features-it.html"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/features-zh.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gigamail.ai/features.html"/>
+  </url>
 </urlset>

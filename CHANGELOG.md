@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The demo videos and the feature cards have their own page, and the
+  approval steps live on the security page.** The home showed three demo videos and eight feature cards between the
+  hero video and the approval section. They now live on a features page
+  in English, Italian and Chinese (`features.html`, `features-it.html`,
+  `features-zh.html`); the home keeps the "More than a send button"
+  heading with one button to it. The approval section ("The agent
+  proposes. You decide.") left the home too: the security page already
+  shows the same three steps, so the home keeps the heading and a button
+  to it. The Demo, Features and Control links in every page's menu point
+  to the new places, and the sitemap lists the three features pages.
+
 - **The approval card in the agent chat has Edit.** It offered only
   Approve and Reject: correcting the text meant going to the approvals
   page. Edit opens the same window as there; back in the console the

@@ -33,7 +33,7 @@
 <meta name="twitter:image:alt" content="GigaMail 标志：为你的 AI 智能体准备的邮件。">
 <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "SoftwareApplication", "@id": "https://gigamail.ai/#software", "name": "GigaMail", "url": "https://gigamail.ai/", "description": "面向 AI 智能体的开源智能体邮件。你的智能体负责阅读、搜索和起草；未经你批准，不会发送或删除任何内容。Microsoft Graph + IMAP，数据在本地，AGPL-3.0。", "applicationCategory": "BusinessApplication", "applicationSubCategory": "Email client for AI agents", "operatingSystem": "Windows, macOS, Linux", "softwareVersion": "0.6.7", "downloadUrl": "https://github.com/adecubed/gigamail/releases/latest", "installUrl": "https://github.com/adecubed/gigamail/releases/latest", "license": "https://www.gnu.org/licenses/agpl-3.0.html", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "image": "https://gigamail.ai/brand/gigamail-logo-1024.png", "screenshot": "https://gigamail.ai/demo/gigamail-launch-poster.png", "featureList": ["把任何 AI 智能体连接到你收件箱的 MCP 服务器", "支持 Microsoft Graph 和 IMAP", "搜索索引、记忆和凭据都在本地", "任何发送或删除之前都需要人工批准", "带范围、到期时间和每日上限的自动化规则"], "sameAs": ["https://github.com/adecubed/gigamail", "https://pypi.org/project/gigamail/"], "author": {"@type": "Organization", "name": "Adecubed", "url": "https://github.com/adecubed"}}, {"@type": "WebPage", "@id": "https://gigamail.ai/zh.html#webpage", "url": "https://gigamail.ai/zh.html", "name": "GigaMail", "inLanguage": "zh-Hans", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}, "video": [{"@type": "VideoObject", "name": "GigaMail 四步完成设置", "description": "连接邮箱，说明由谁回复，连接你的智能体。未经你批准，一封也不会发出。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-onboarding-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-onboarding.mp4", "uploadDate": "2026-11-04", "duration": "PT21S"}, {"@type": "VideoObject", "name": "GigaMail：智能体提议，由你批准", "description": "客户来信，你的智能体起草回复；它可以请求发送，但不能批准。由你在它触及不到的地方批准。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-approval-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-approval.mp4", "uploadDate": "2026-11-04", "duration": "PT15S"}, {"@type": "VideoObject", "name": "GigaMail：脱敏器隐藏敏感信息", "description": "在一封关于三张演唱会门票的邮件中，桌面应用里的脱敏器会在智能体读取之前隐藏 IBAN 和电话号码。靠规则和校验和，不用 AI。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-masker-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-masker.mp4", "uploadDate": "2026-11-04", "duration": "PT15S"}]}, {"@type": "FAQPage", "@id": "https://gigamail.ai/zh.html#faq", "mainEntity": [{"@type": "Question", "name": "什么是智能体邮件？", "acceptedAnswer": {"@type": "Answer", "text": "由 AI 智能体替你阅读、搜索和起草，而重要的决定仍由人来做的邮件方式。在 GigaMail 中，智能体负责准备；发送、回复和删除都等你批准。"}}, {"@type": "Question", "name": "GigaMail 支持哪些 AI 智能体？", "acceptedAnswer": {"@type": "Answer", "text": "Claude Code 和 Claude Desktop、Codex、OpenClaw、Hermes，以及任何支持 MCP 的客户端。GigaMail 自身不带 AI：智能来自你连接的智能体，它读取的内容适用该智能体的数据政策。"}}, {"@type": "Question", "name": "可以连接哪些邮箱？", "acceptedAnswer": {"@type": "Answer", "text": "通过 Microsoft Graph 连接 Microsoft 365 和 Outlook.com，以及任何 IMAP 服务器：Gmail、Aruba、Libero 等。多个账号可以并存，各自从自己的地址回复。"}}, {"@type": "Question", "name": "我的数据在哪里？", "acceptedAnswer": {"@type": "Answer", "text": "在你的电脑上。邮件索引、归档、凭据、记忆和配置都留在本地；GigaMail 不运行任何服务器，也不接收任何数据。在桌面应用中，脱敏器可以在智能体起草回复之前隐藏敏感字段。详见隐私政策（英文）。"}}, {"@type": "Question", "name": "会有邮件未经我批准就发出吗？", "acceptedAnswer": {"@type": "Answer", "text": "只有通过你在应用中创建并签署的自动化规则才会，并且受其范围、到期时间和每日上限约束。没有任何 MCP 工具可以创建或修改规则，所以智能体或邮件都无法开启规则。"}}, {"@type": "Question", "name": "GigaMail 收费吗？", "acceptedAnswer": {"@type": "Answer", "text": "不收费。桌面应用和 MCP 服务器都免费：无需账号，无需订阅，没有广告。GigaMail 以 AGPL-3.0 许可开源，发布在 GitHub 和 PyPI 上。"}}, {"@type": "Question", "name": "GigaMail 和 AgentMail 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "AgentMail 在它自己的云端为 AI 智能体创建新邮箱，通过 API 驱动。GigaMail 把你的智能体连接到你已经在用的邮箱，运行在你的电脑上，每一次发送、回复和删除都要经过你的批准。查看逐项对比（英文）。"}}, {"@type": "Question", "name": "GigaMail 和 Composio 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "Composio 通过它的云端为智能体提供一千多个应用的工具，登录信息由云端保管，调用也由云端发起。GigaMail 只做邮件和日历，从你的电脑运行，每一次发送、回复和删除都要经过你的批准。两者可以并用。查看对比（英文）。"}}, {"@type": "Question", "name": "GigaMail 和 Outlook 中的 Copilot 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "Copilot 是微软内置在 Outlook 中的助手：它是 Microsoft 365 的付费附加功能（在基础许可之外，每用户每月 21 美元起），使用微软选定的模型，运行在微软的云端，只处理微软的邮箱。GigaMail 免费，运行在你的电脑上，支持 Microsoft 365 和任何 IMAP 邮箱，智能体由你选择：Claude、Codex、OpenClaw、Hermes 或任何 MCP 客户端。而且智能体无法批准自己的操作：发送和删除都等你决定，并在它触及不到的地方确认。查看对比（英文）。"}}]}]}</script>
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
-<link rel="stylesheet" href="./home.css?v=23">
+<link rel="stylesheet" href="./home.css?v=24">
 <script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
 <script type="module" src="/business/analytics.js"></script>
 </head>
@@ -43,9 +43,9 @@
   <div class="wrap">
     <a class="brand" href="./zh.html" aria-label="GigaMail 首页"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
     <nav class="topnav" aria-label="页面导航">
-      <a href="#videos">演示</a>
-      <a href="#features">功能</a>
-      <a href="#approval">掌控</a>
+      <a href="./features-zh.html#videos">演示</a>
+      <a href="./features-zh.html">功能</a>
+      <a href="./security-zh.html#gate">掌控</a>
       <a href="#install">安装</a>
       <a href="#faq">常见问题</a>
       <a href="./changelog.html">更新日志</a>
@@ -98,38 +98,6 @@
   </div>
 </section>
 
-<section id="videos" aria-labelledby="demo-title">
-  <div class="wrap">
-    <div class="sec-head">
-      <p class="kicker">一封邮件，从头到尾</p>
-      <h2 id="demo-title">客户来信询价，并想约个时间见面。</h2>
-      <p class="lede">从邮件到达到你的回复发出，中间发生了这些事。</p>
-    </div>
-    <div class="story">
-      <ol>
-        <li class="card"><span class="n">01</span><div><h3>邮件到达</h3><p>“能把 40 件的价格发给我吗？下周能见个面吗？”</p></div></li>
-        <li class="card"><span class="n">02</span><div><h3>智能体先做功课</h3><p>它找出与这位客户的往来邮件，阅读你的价目表，并在你的工作时间内查找日历上的空闲时段。</p></div></li>
-        <li class="card"><span class="n">03</span><div><h3>它写好整封回复</h3><p>你的数字，你的语气，两个真实可约的时间。它请求发送，而它能做的也仅此而已。</p></div></li>
-        <li class="card you"><span class="n">04</span><div><h3>你批准，完成。</h3><p>在应用、手机或通知中批准，并用 Windows Hello 或 Touch ID 确认。邮件按你看到的原样发出。</p></div></li>
-      </ol>
-      <article class="card main-video video-card">
-        <video controls loop muted preload="metadata" playsinline poster="./demo/gigamail-approval-poster.jpg"><source src="./demo/gigamail-approval.mp4" type="video/mp4"></video>
-        <div class="vc-body"><div class="vc-n">简而言之</div><h3>它可以请求发送，但不能批准。</h3></div>
-      </article>
-    </div>
-    <div class="grid grid-2 more-videos">
-      <article class="card video-card">
-        <video controls preload="none" playsinline poster="./demo/gigamail-onboarding-poster.jpg"><source src="./demo/gigamail-onboarding.mp4" type="video/mp4"></video>
-        <div class="vc-body"><div class="vc-n">设置<span>21 秒</span></div><h3>四步即可开始</h3><p>连接邮箱，说明由谁回复，连接你的智能体。</p></div>
-      </article>
-      <article class="card video-card">
-        <video controls preload="none" playsinline poster="./demo/gigamail-masker-poster.jpg"><source src="./demo/gigamail-masker.mp4" type="video/mp4"></video>
-        <div class="vc-body"><div class="vc-n">脱敏<span>15 秒</span></div><h3>它只看到你想让它看到的。</h3><p>在桌面应用中，IBAN 和电话号码会在智能体起草之前被隐藏：靠规则和校验和，不用 AI。</p></div>
-      </article>
-    </div>
-  </div>
-</section>
-
 <section id="features" aria-labelledby="features-title">
   <div class="wrap">
     <div class="sec-head">
@@ -137,51 +105,9 @@
       <h2 id="features-title">远不止一个发送按钮。</h2>
       <p class="lede">阅读、搜索、记忆和起草都无需询问你。只有会在外部留下痕迹的操作才等你决定。</p>
     </div>
-    <div class="grid grid-4">
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
-        <h3>什么都找得到</h3>
-        <p>“我们三月发出的那份报价”只需问一句。本地归档保存每一封邮件和附件，即使服务器已经删除。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg></div>
-        <h3>阅读附件</h3>
-        <p>PDF 和办公文档对智能体来说都是文本，所以答案来自产品手册，而不是猜测。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
-        <h3>依据你的文档起草</h3>
-        <p>价目表、条款、产品资料。回复引用你的数字，文档没写的它就不说。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-        <h3>安排会议</h3>
-        <p>只提供你工作时间内的空闲时段。日程在你批准后才创建。支持 Microsoft 365 或 Google 日历。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
-        <h3>记住每个人</h3>
-        <p>往来记录、语气和你自己的备注都保存在每位发件人旁边。给这个人起草前，它会先读这些。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></div>
-        <h3>自动化</h3>
-        <p>“这些发件人的来信，依据这些文档生成草稿。”半自动模式每次都会问你；全自动模式只在你签署的范围内运行，带有到期时间和每日上限。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="m22 6-10 7L2 6"/></svg></div>
-        <h3>你的所有邮箱</h3>
-        <p>Microsoft 365 和 IMAP：Outlook、Gmail、Aruba、Libero 以及任何服务器。多个账号在控制台中合并显示，每封回复都从正确的地址发出。</p>
-      </article>
-      <article class="card feature">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="m4 4 16 16"/></svg></div>
-        <h3>隐藏敏感信息</h3>
-        <p>在桌面应用中，邮件交给智能体起草之前，脱敏器会替换税号、增值税号、IBAN 和电话号码。结果确定，不用 AI。面向 MCP 智能体的版本已在计划中。</p>
-      </article>
-    </div>
-    <div class="card console-note">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
-      <p><strong>桌面控制台还提供</strong>一个围绕智能体打造的邮件客户端：用自然语言向你的邮件提问，口述指令，查看等待你处理的请求，管理自动化，并把多个账号合并成一个列表阅读。同一个引擎，无需终端。</p>
+    <div class="see-more">
+      <a class="btn btn-primary btn-send" href="./features-zh.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg><span>查看它能做什么</span></a>
+      <span class="muted">演示视频和全部功能，都在这一页。</span>
     </div>
   </div>
 </section>
@@ -193,29 +119,9 @@
       <h2 id="control-title">智能体提议，由你决定。</h2>
       <p class="lede">智能体可以请求发送邮件，但它永远拿不到任何能用来批准自己请求的东西。</p>
     </div>
-    <div class="steps">
-      <article class="card step">
-        <div class="n">01 · 预览</div>
-        <h3>智能体得到一份预览</h3>
-        <p>发送、回复或删除只会返回预览和一个无效力的请求编号。智能体无法把这个编号变成实际操作。</p>
-        <span class="chip chip-inert">请求 req_7f3a · 无效力</span>
-      </article>
-      <article class="card step">
-        <div class="n">02 · 批准</div>
-        <h3>你来批准，在它触及不到的地方</h3>
-        <p>通过控制台、命令行、Telegram 或 Windows 通知批准，并用 Windows Hello 或 Touch ID 确认。</p>
-        <span class="chip chip-held">已暂挂 · 等待批准</span>
-      </article>
-      <article class="card step">
-        <div class="n">03 · 执行</div>
-        <h3>执行的正是你看到的内容</h3>
-        <p>执行的是你审阅过的参数，绝不会被替换。每一次写入都会记入只增不改的操作日志。</p>
-        <span class="chip chip-ok">已由你批准 · 已发送</span>
-      </article>
-    </div>
-    <div class="card callout">
-      <p><strong>邮件是输入，不是指令。</strong>邮件内容一律视为不可信数据。凭据从不经过智能体通道，所以藏在邮件里的指令无法添加账号或读取机密。</p>
-      <a class="btn btn-ghost" href="./security-zh.html">安全模型</a>
+    <div class="see-more">
+      <a class="btn btn-primary btn-send" href="./security-zh.html#gate"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>了解审批如何运作</span></a>
+      <span class="muted">目前已有的全部保护措施，以及尚未解决的问题。</span>
     </div>
   </div>
 </section>

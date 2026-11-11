@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fcf6fa">
+<title>GigaMail：你的智能体能做什么——演示与功能</title>
+<meta name="description" content="阅读、搜索、记忆和起草都无需询问你。只有会在外部留下痕迹的操作才等你决定。">
+<link rel="canonical" href="https://gigamail.ai/features-zh.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/features.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/features-it.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/features-zh.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/features.html">
+<link rel="icon" href="./brand/gigamail.ico?v=2" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="./brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="./brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="og:url" content="https://gigamail.ai/features-zh.html">
+<meta property="og:title" content="GigaMail：你的智能体能做什么——演示与功能">
+<meta property="og:description" content="免费、开源的智能体邮件。你的智能体负责阅读、搜索和起草；未经你批准，不会发送或删除任何内容。Windows、macOS、Linux、pip。">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GigaMail 标志：为你的 AI 智能体准备的邮件。">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail：你的智能体能做什么——演示与功能">
+<meta name="twitter:description" content="免费、开源的智能体邮件。你的智能体负责阅读、搜索和起草；未经你批准，不会发送或删除任何内容。Windows、macOS、Linux、pip。">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta name="twitter:image:alt" content="GigaMail 标志：为你的 AI 智能体准备的邮件。">
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=24">
+<script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./zh.html" aria-label="GigaMail 首页"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="页面导航">
+      <a href="#videos">演示</a>
+      <a href="#features">功能</a>
+      <a href="./security-zh.html#gate">掌控</a>
+      <a href="./zh.html#install">安装</a>
+      <a href="./zh.html#faq">常见问题</a>
+      <a href="./changelog.html">更新日志</a>
+      <a href="./security-zh.html">安全</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./features.html" hreflang="en" lang="en">EN</a><a class="lang" href="./features-it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./zh.html#install">下载</a>
+  </div>
+</header>
+
+<main>
+
+<section id="videos" aria-labelledby="demo-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">一封邮件，从头到尾</p>
+      <h2 id="demo-title">客户来信询价，并想约个时间见面。</h2>
+      <p class="lede">从邮件到达到你的回复发出，中间发生了这些事。</p>
+    </div>
+    <div class="story">
+      <ol>
+        <li class="card"><span class="n">01</span><div><h3>邮件到达</h3><p>“能把 40 件的价格发给我吗？下周能见个面吗？”</p></div></li>
+        <li class="card"><span class="n">02</span><div><h3>智能体先做功课</h3><p>它找出与这位客户的往来邮件，阅读你的价目表，并在你的工作时间内查找日历上的空闲时段。</p></div></li>
+        <li class="card"><span class="n">03</span><div><h3>它写好整封回复</h3><p>你的数字，你的语气，两个真实可约的时间。它请求发送，而它能做的也仅此而已。</p></div></li>
+        <li class="card you"><span class="n">04</span><div><h3>你批准，完成。</h3><p>在应用、手机或通知中批准，并用 Windows Hello 或 Touch ID 确认。邮件按你看到的原样发出。</p></div></li>
+      </ol>
+      <article class="card main-video video-card">
+        <video controls loop muted preload="metadata" playsinline poster="./demo/gigamail-approval-poster.jpg"><source src="./demo/gigamail-approval.mp4" type="video/mp4"></video>
+        <div class="vc-body"><div class="vc-n">简而言之</div><h3>它可以请求发送，但不能批准。</h3></div>
+      </article>
+    </div>
+    <div class="grid grid-2 more-videos">
+      <article class="card video-card">
+        <video controls preload="none" playsinline poster="./demo/gigamail-onboarding-poster.jpg"><source src="./demo/gigamail-onboarding.mp4" type="video/mp4"></video>
+        <div class="vc-body"><div class="vc-n">设置<span>21 秒</span></div><h3>四步即可开始</h3><p>连接邮箱，说明由谁回复，连接你的智能体。</p></div>
+      </article>
+      <article class="card video-card">
+        <video controls preload="none" playsinline poster="./demo/gigamail-masker-poster.jpg"><source src="./demo/gigamail-masker.mp4" type="video/mp4"></video>
+        <div class="vc-body"><div class="vc-n">脱敏<span>15 秒</span></div><h3>它只看到你想让它看到的。</h3><p>在桌面应用中，IBAN 和电话号码会在智能体起草之前被隐藏：靠规则和校验和，不用 AI。</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="kicker">你的智能体能做什么</p>
+      <h2 id="features-title">远不止一个发送按钮。</h2>
+      <p class="lede">阅读、搜索、记忆和起草都无需询问你。只有会在外部留下痕迹的操作才等你决定。</p>
+    </div>
+    <div class="grid grid-4">
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+        <h3>什么都找得到</h3>
+        <p>“我们三月发出的那份报价”只需问一句。本地归档保存每一封邮件和附件，即使服务器已经删除。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg></div>
+        <h3>阅读附件</h3>
+        <p>PDF 和办公文档对智能体来说都是文本，所以答案来自产品手册，而不是猜测。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
+        <h3>依据你的文档起草</h3>
+        <p>价目表、条款、产品资料。回复引用你的数字，文档没写的它就不说。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h3>安排会议</h3>
+        <p>只提供你工作时间内的空闲时段。日程在你批准后才创建。支持 Microsoft 365 或 Google 日历。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        <h3>记住每个人</h3>
+        <p>往来记录、语气和你自己的备注都保存在每位发件人旁边。给这个人起草前，它会先读这些。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></div>
+        <h3>自动化</h3>
+        <p>“这些发件人的来信，依据这些文档生成草稿。”半自动模式每次都会问你；全自动模式只在你签署的范围内运行，带有到期时间和每日上限。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="m22 6-10 7L2 6"/></svg></div>
+        <h3>你的所有邮箱</h3>
+        <p>Microsoft 365 和 IMAP：Outlook、Gmail、Aruba、Libero 以及任何服务器。多个账号在控制台中合并显示，每封回复都从正确的地址发出。</p>
+      </article>
+      <article class="card feature">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="m4 4 16 16"/></svg></div>
+        <h3>隐藏敏感信息</h3>
+        <p>在桌面应用中，邮件交给智能体起草之前，脱敏器会替换税号、增值税号、IBAN 和电话号码。结果确定，不用 AI。面向 MCP 智能体的版本已在计划中。</p>
+      </article>
+    </div>
+    <div class="card console-note">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+      <p><strong>桌面控制台还提供</strong>一个围绕智能体打造的邮件客户端：用自然语言向你的邮件提问，口述指令，查看等待你处理的请求，管理自动化，并把多个账号合并成一个列表阅读。同一个引擎，无需终端。</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="final-title">
+  <div class="wrap">
+    <div class="card final">
+      <h2 id="final-title">把收件箱交给你的智能体，最后拍板的仍是你。</h2>
+      <p class="lede" style="margin:10px auto 18px">免费、开源，在应用中几步即可完成设置。</p>
+      <div class="hero-actions">
+        <div class="dl3"><a class="btn os-win" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" rel="noopener"><span>Windows</span></a><a class="btn os-mac" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" rel="noopener"><span>macOS</span></a><a class="btn os-linux" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-amd64.deb" rel="noopener"><span>Linux <small>beta</small></span></a></div>
+        <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener">在 GitHub 上查看</a>
+      </div>
+      <p class="muted" style="margin-top:14px;font-size:.9rem"><a href="./mail-city.html">Mail City：一封邮件旅程的 3D 导览</a>（英文）</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">隐私政策</a>
+    <a href="./terms.html">服务条款</a>
+    <a href="./security-zh.html">安全</a>
+    <a href="./credits.html">代码致谢</a>
+    <a href="./changelog.html">更新日志</a>
+    <a href="./mail-city.html">Mail City</a>
+    <a href="./mcp-map.html">MCP 工具图</a>
+    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./features.html" hreflang="en" lang="en">English</a>
+    <a href="./features-it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+
+<script src="./home.js?v=7" defer></script>
+</body>
+</html>
