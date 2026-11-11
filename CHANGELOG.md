@@ -12,6 +12,8 @@
   shows the same three steps, so the home keeps the heading and a button
   to it. The Demo, Features and Control links in every page's menu point
   to the new places, and the sitemap lists the three features pages.
+  The hero's paragraph under the headline moved too: it now opens the
+  features page, under a title of its own.
 
 - **The approval card in the agent chat has Edit.** It offered only
   Approve and Reject: correcting the text meant going to the approvals
