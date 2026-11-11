@@ -17,6 +17,8 @@
   The download buttons moved from the hero to just under the hero
   video, and the hero's first line says "Download for free" instead of
   "Free forever".
+  In "Works with", the mail row is now "Email providers" and lists
+  AOL Mail, Xfinity, GMX and WEB.DE too.
 
 - **The approval card in the agent chat has Edit.** It offered only
   Approve and Reject: correcting the text meant going to the approvals
