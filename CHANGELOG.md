@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The approval card in the agent chat has Edit.** It offered only
+  Approve and Reject: correcting the text meant going to the approvals
+  page. Edit opens the same window as there; back in the console the
+  card shows the corrected text, and a request approved or rejected in
+  that window is no longer offered on the card.
+- **Save on the approvals page.** "Save" (decide later: the request
+  waits 7 days instead of 15 minutes) was only in the request's own
+  window. The cards of "Waiting for you" have it too.
+
+- **Suggested attachments are attached again.** After "Generate", the
+  reply window offers the knowledge files that match the mail (a floor
+  plan named in the request, for example). Adding them asked the backend
+  for an endpoint it never had: each file became a chip with no name and
+  a "NaN KB" size, and the mail would have left without it. The backend
+  now hands out those files, and only files that are among the knowledge
+  files of an account or folder; a file it refuses is said in a message
+  instead of turning into an empty chip.
+
 - **GigaMail says when an account's archive stops being updated.** The
   search and the agent answer from the archive: when one account stopped
   syncing (a changed password, a login the server refused), its archive

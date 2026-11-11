@@ -183,6 +183,7 @@
         : (a.summary ? `<div class="agent-appr-sum">${escHtml(a.summary)}</div>` : '')}
       <div class="agent-appr-actions">
         <button class="agent-btn ghost" data-act="reject">${escHtml(L('agent_reject', 'Rifiuta'))}</button>
+        <button class="agent-btn ghost" data-act="edit">${escHtml(L('aw_edit', 'Modifica'))}</button>
         <button class="agent-btn primary" data-act="approve">${escHtml(L('agent_approve', 'Approva'))}</button>
       </div>`);
     el.dataset.requestId = a.request_id;
@@ -196,6 +197,7 @@
       save();
     };
     if (entry.s && entry.s !== 'pending' && STATES[entry.s]) { state(entry.s); return el; }
+    pendingCards.set(a.request_id, () => syncCard(el, entry, state));
     el.querySelector('[data-act="approve"]').addEventListener('click', async (ev) => {
       if (busy) return;
       const btn = ev.currentTarget;
@@ -260,6 +262,12 @@
         setBusy(false);
       }
     });
+    // The request's own window, the one of the approvals page: the text
+    // to correct, a note for the agent, Save. The card catches up when the
+    // console gets the focus back.
+    el.querySelector('[data-act="edit"]').addEventListener('click', () => {
+      window.electronAPI.openApprovalWindow?.(a.request_id, 'edit');
+    });
     el.querySelector('[data-act="reject"]').addEventListener('click', async () => {
       try {
         await window.electronAPI.rejectRequest(a.request_id);
@@ -270,6 +278,43 @@
     });
     return el;
   }
+
+  // Pending cards, by request id: each one re-reads its request when the
+  // console gets the focus back, so a text corrected in the request's
+  // window shows here, and a request decided there is not offered again.
+  const pendingCards = new Map();
+
+  async function syncCard(el, entry, state) {
+    const id = entry.a.request_id;
+    if (entry.s !== 'pending' || !el.isConnected) { pendingCards.delete(id); return; }
+    let rec;
+    try { rec = await window.electronAPI.getRequest(id); } catch (_) { return; }
+    if (!rec || entry.s !== 'pending') return;
+    const st = rec.status || 'pending';
+    if (st === 'pending') {
+      const body = String((rec.preview && rec.preview.body) || (rec.args && rec.args.body) || '');
+      const pre = el.querySelector('.agent-appr-body pre');
+      if (body && pre && body !== pre.textContent) {
+        pre.textContent = body;
+        entry.a.body = body.slice(0, 20000);
+        save();
+      }
+      return;
+    }
+    pendingCards.delete(id);
+    if (st === 'rejected') state('rejected');
+    else if (st === 'executed') {
+      const out = rec.execution_outcome || '';
+      state(out === 'dryrun' ? 'not-run' : out && out !== 'ok' ? 'failed' : 'executed');
+    }
+    else if (st === 'approved') state('approved');
+  }
+
+  function syncPendingCards() {
+    if (typeof window.electronAPI?.getRequest !== 'function') return;
+    pendingCards.forEach((sync) => sync());
+  }
+  window.addEventListener('focus', syncPendingCards);
 
   function setBusy(on) {
     busy = on;

@@ -137,7 +137,7 @@ function renderAttachments() {
       ? `<img src="${a.dataUrl}" alt="${esc(a.name)}"/>`
       : (typeof GMIcons !== 'undefined' ? GMIcons.svg('paperclip', 13) : '');
     return `<span class="attach-chip">
-      ${preview} ${esc(a.name)} (${Math.round(a.size/1024)}KB)
+      ${preview} ${esc(a.name)} (${Math.round((a.size || 0)/1024)}KB)
       <button class="attach-chip-rm" data-index="${i}">✕</button>
     </span>`;
   }).join('');

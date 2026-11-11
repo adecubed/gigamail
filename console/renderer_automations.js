@@ -620,6 +620,10 @@
         } else {
           toast(`${L('st_approved_agent', 'approvata, in esecuzione')}${r.error ? ': ' + r.error : ''}`, 'ok');
         }
+      } else if (btn.dataset.act === 'save') {
+        // Decide later: days instead of minutes, as from the request window.
+        await api(`/approvals/${encodeURIComponent(id)}/save`, { method: 'POST' });
+        toast(L('aw_saved', 'Salvata: la ritrovi in “Richieste in attesa” per 7 giorni.'), 'ok');
       } else if (btn.dataset.act === 'reject') {
         await api(`/approvals/${encodeURIComponent(id)}/reject`, { method: 'POST' });
         toast(L('pending_rejected_msg', 'Rifiutata: non parte nulla.'), 'ok');

@@ -266,3 +266,57 @@ test('other errors keep their message and get no sign-in button', async () => {
   assert.equal(w.document.querySelector('[data-act="claude-login"]'), null);
   assert.match(w.document.getElementById('agentThread').textContent, /rotto/);
 });
+
+// -- Edit on the approval card -------------------------------------------------
+// The card in the chat offered only Approve and Reject: correcting the text
+// meant going to the approvals page.
+
+async function cardFor(w, body = 'Hello Anna') {
+  w.electronAPI.agentCommand = async () => ({
+    answer: 'Waiting for you.',
+    approvals: [{ request_id: 'req_9', tool: 'reply_mail', subject: 'Re: Visit', body }] });
+  await ready(w);
+  const ta = w.document.getElementById('agentInput');
+  ta.value = 'reply to Anna';
+  ta.dispatchEvent(new w.Event('input'));
+  w.document.getElementById('agentSend').click();
+  await new Promise((r) => setTimeout(r, 20));
+}
+
+test('Edit on the card opens the request window in edit mode', async () => {
+  const { w } = load();
+  const opened = [];
+  w.electronAPI.openApprovalWindow = (id, action) => opened.push([id, action]);
+  await cardFor(w);
+  w.document.querySelector('[data-act="edit"]').click();
+  assert.deepEqual(opened, [['req_9', 'edit']]);
+});
+
+test('back in the console, the card shows the corrected text', async () => {
+  const { w } = load();
+  w.electronAPI.getRequest = async () => ({ status: 'pending', preview: { body: 'Hello Anna, see you at 5' } });
+  await cardFor(w);
+  w.dispatchEvent(new w.Event('focus'));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(w.document.querySelector('.agent-appr-body pre').textContent, 'Hello Anna, see you at 5');
+  assert.ok(w.document.querySelector('[data-act="approve"]'), 'still to decide');
+});
+
+test('a request approved in its window is not offered again on the card', async () => {
+  const { w } = load();
+  w.electronAPI.getRequest = async () => ({ status: 'executed', execution_outcome: 'ok' });
+  await cardFor(w);
+  w.dispatchEvent(new w.Event('focus'));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(w.document.querySelector('[data-act="approve"]'), null);
+  assert.equal(w.document.querySelector('[data-act="edit"]'), null);
+});
+
+test('a request rejected in its window reads as rejected', async () => {
+  const { w } = load();
+  w.electronAPI.getRequest = async () => ({ status: 'rejected' });
+  await cardFor(w);
+  w.dispatchEvent(new w.Event('focus'));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(w.document.querySelector('.rejected'));
+});
