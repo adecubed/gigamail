@@ -329,6 +329,8 @@ footer .spacer { flex: 1; }
 @media (max-width: 860px) { .subscribe { grid-template-columns: 1fr; } }
 .subscribe h2 { font-size: clamp(1.35rem, 2.6vw, 1.75rem); letter-spacing: -0.02em; margin: 4px 0 8px; }
 .subscribe .muted { font-size: 0.94rem; }
+section#contact { padding-bottom: 8px; }
+.contact .btn { padding: 14px 28px; font-size: 1.02rem; }
 .sub-form .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .sub-form input[type="email"] { flex: 1 1 220px; min-width: 0; font: inherit; padding: 11px 14px; border-radius: 12px; border: 1.5px solid var(--gm-line); background: var(--gm-card2); color: var(--gm-ink); }
 .sub-form input[type="email"]:focus { outline: none; border-color: var(--gm-pink); box-shadow: 0 0 0 3px rgba(var(--gm-accent-rgb),0.15); }
