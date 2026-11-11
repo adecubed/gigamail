@@ -281,7 +281,31 @@ def sincronizza(account_id: int, *, limite: int = LIMITE_GIRO,
     `budget` caps the seconds spent, connection included (None: no cap,
     for the command line). Past it the sync stops between commands and
     returns timed_out=1; an IMAP command still blocked HARD_STOP_GRACE
-    seconds later has its socket shut down and raises TimeoutError."""
+    seconds later has its socket shut down and raises TimeoutError.
+
+    The outcome is recorded per account (archive_health reads it): a sync
+    out of time still reached the server, so it counts as done."""
+    from . import archivio
+    try:
+        esito = _sync_account(account_id, limite=limite, battito=battito,
+                              budget=budget)
+    except Exception as e:
+        try:
+            archivio.store().sync_failed(account_id, f"{type(e).__name__}: {e}")
+        except Exception as e2:
+            logger.warning("archive: sync failure of %s not recorded: %s",
+                           account_id, e2)
+        raise
+    try:
+        archivio.store().sync_ok(account_id)
+    except Exception as e:
+        logger.warning("archive: sync of %s not recorded: %s", account_id, e)
+    return esito
+
+
+def _sync_account(account_id: int, *, limite: int,
+                  battito: Callable[[], None],
+                  budget: Optional[float]) -> Dict[str, int]:
     from . import mail_router
     deadline = None if budget is None else time.monotonic() + budget
     a = mail_router._account(account_id)

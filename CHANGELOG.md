@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **GigaMail says when an account's archive stops being updated.** The
+  search and the agent answer from the archive: when one account stopped
+  syncing (a changed password, a login the server refused), its archive
+  stopped growing and a question such as "what arrived from this sender
+  since yesterday?" got "nothing" with full confidence. The only trace
+  was a line in the watcher log. Now:
+  - Automations shows one line per account under the watcher: the mail
+    in the archive, when it was last updated, and the error of the last
+    sync if it failed;
+  - when an account has not synced for more than 6 hours and its syncs
+    have been failing for at least an hour, the watcher says so once, on
+    Telegram and on the desktop, and says again when the account is
+    back. A PC switched on after a weekend, whose first sync fails before
+    the network is up, raises no alert;
+  - a search on an account whose archive is that far behind tells the
+    agent, which can then say that recent mail may be missing instead of
+    concluding that nothing arrived.
 - **Two or more people in copy all receive the mail.** A reply or a new
   mail written in the console with several addresses in CC or BCC,
   separated by a comma, reached the main recipient only: the addresses

@@ -406,12 +406,44 @@
       $('btnWatchStart').style.display = st.running ? 'none' : '';
       $('btnWatchStop').style.display = st.running ? '' : 'none';
       $('watchRulesCount').textContent = T(`${st.active_rules} regole attive`, `${st.active_rules} active rules`, `${st.active_rules} 条启用的规则`);
+      renderArchiveSync(st.archive_sync || []);
       const log = await api('/watch/log?lines=25');
       $('watchLog').textContent = log.join('\n') || T('(nessun log)', '(no log)', '(无日志)');
     } catch (e) {
       el.className = 'ai-card-status err';
       el.textContent = e.message;
     }
+  }
+
+  // One line per account: how much the archive holds and when it last
+  // synced, so an account that stopped syncing shows here, not only in
+  // the log.
+  function agoText(ts) {
+    const s = Math.max(0, Date.now() / 1000 - ts);
+    if (s < 120) return T('adesso', 'just now', '刚刚');
+    const m = Math.round(s / 60);
+    if (m < 120) return T(`${m} min fa`, `${m} min ago`, `${m} 分钟前`);
+    const h = Math.round(s / 3600);
+    if (h < 48) return T(`${h} ore fa`, `${h} hours ago`, `${h} 小时前`);
+    const d = Math.round(s / 86400);
+    return T(`${d} giorni fa`, `${d} days ago`, `${d} 天前`);
+  }
+
+  function renderArchiveSync(rows) {
+    const box = $('watchSync');
+    if (!box) return;
+    box.innerHTML = rows.map((r) => {
+      const who = escapeHtml(r.email || r.name || String(r.account_id));
+      const n = Number(r.messages || 0).toLocaleString();
+      const when = r.last_ok_at
+        ? T(`aggiornato ${agoText(r.last_ok_at)}`, `updated ${agoText(r.last_ok_at)}`, `更新于 ${agoText(r.last_ok_at)}`)
+        : T('mai sincronizzato', 'never synced', '从未同步');
+      const err = r.error
+        ? ` · <span class="watch-sync-err">${escapeHtml(T('errore', 'error', '错误'))}: ${escapeHtml(r.error)}</span>`
+        : '';
+      const cls = r.behind || r.error ? 'watch-sync-row bad' : 'watch-sync-row';
+      return `<div class="${cls}">${r.behind ? '⚠ ' : ''}<b>${who}</b> · ${n} mail · ${escapeHtml(when)}${err}</div>`;
+    }).join('');
   }
 
   // ------------------------------------------------------------ notifiche
