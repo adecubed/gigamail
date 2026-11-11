@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaMail 安全：智能体能做什么、不能做什么、后续计划</title>
+<meta name="description" content="GigaMail 如何让 AI 智能体在你的邮箱里安全工作：批准在智能体触及不到的地方进行，自动化规则需要你签署，数据留在本地，隐藏文字和可执行附件不会交给智能体。以及它覆盖不到的地方和后续计划。">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/security-zh.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/security.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/security-it.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/security-zh.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/security.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/security-zh.html">
+<meta property="og:title" content="GigaMail 安全：智能体能做什么、不能做什么、后续计划">
+<meta property="og:description" content="GigaMail 如何让 AI 智能体在你的邮箱里安全工作：批准在智能体触及不到的地方进行，自动化规则需要你签署，数据留在本地，隐藏文字和可执行附件不会交给智能体。以及它覆盖不到的地方和后续计划。">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail 安全：智能体能做什么、不能做什么、后续计划">
+<meta name="twitter:description" content="GigaMail 如何让 AI 智能体在你的邮箱里安全工作：批准在智能体触及不到的地方进行，自动化规则需要你签署，数据留在本地，隐藏文字和可执行附件不会交给智能体。以及它覆盖不到的地方和后续计划。">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/security-zh.html#webpage", "url": "https://gigamail.ai/security-zh.html", "name": "GigaMail 安全：智能体能做什么、不能做什么、后续计划", "description": "GigaMail 如何让 AI 智能体在你的邮箱里安全工作：批准在智能体触及不到的地方进行，自动化规则需要你签署，数据留在本地，隐藏文字和可执行附件不会交给智能体。以及它覆盖不到的地方和后续计划。", "inLanguage": "zh-Hans", "dateModified": "2026-11-11", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=19">
+<link rel="stylesheet" href="./pages.css?v=2">
+<style>.subpage .card .btn { white-space: normal; text-align: left; } .subpage .jump { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 18px; font-size: 0.92rem; font-weight: 600; } .subpage .steps { margin-bottom: 4px; } .subpage .step p { font-size: 0.93rem; } .subpage .tbl td:last-child { white-space: nowrap; } .subpage .card ul { margin: 0; padding-left: 1.1rem; } .subpage .card li { margin: 8px 0; } .subpage section { scroll-margin-top: 70px; }</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./zh.html" aria-label="GigaMail 首页"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="页面导航">
+      <a href="./zh.html#features">功能</a>
+      <a href="./zh.html#approval">掌控</a>
+      <a href="./zh.html#install">安装</a>
+      <a href="./mcp-map.html">MCP 工具图</a>
+      <a href="./security-zh.html">安全</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./security.html" hreflang="en" lang="en">EN</a><a class="lang" href="./security-it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./zh.html#install">下载</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">安全</p>
+    <h1 id="t">智能体能做什么，不能做什么，以及<em>还有哪些尚未解决</em>。</h1>
+    <p class="lede">GigaMail 让 AI 智能体访问你的邮箱。本页列出目前已有的每一项防护、我们已知的局限，以及接下来计划构建的内容。它会随每个版本更新。</p>
+    <nav class="jump" aria-label="本页内容">
+      <a href="#gate">批准</a><a href="#channels">谁来批准</a><a href="#rules">自动化</a><a href="#data">你的数据</a><a href="#mail">恶意邮件</a><a href="#console">桌面应用</a><a href="#limits">局限</a><a href="#planned">计划</a><a href="#report">报告漏洞</a>
+    </nav>
+  </div>
+</section>
+
+<section id="gate" aria-labelledby="s-gate"><div class="wrap narrow">
+  <h2 id="s-gate">智能体提议，由你决定。</h2>
+  <p class="muted note" style="margin:0 0 14px">智能体可以请求发送邮件，但它永远拿不到任何能用来批准自己请求的东西。</p>
+  <div class="steps">
+    <article class="card step"><div class="n">01 · 预览</div><h3>智能体得到一份预览</h3><p>发送、回复或删除只会返回预览和一个无效力的请求编号。智能体无法把这个编号变成实际操作。</p><span class="chip chip-inert">请求 req_7f3a · 无效力</span></article>
+    <article class="card step"><div class="n">02 · 批准</div><h3>你来批准，在它触及不到的地方</h3><p>通过控制台、命令行、Telegram 或 Windows 通知批准，并用 Windows Hello 或 Touch ID 确认。</p><span class="chip chip-held">已暂挂 · 等待批准</span></article>
+    <article class="card step"><div class="n">03 · 执行</div><h3>执行的正是你看到的内容</h3><p>执行的是你审阅过的参数，绝不会被替换。每一次写入都会记入只增不改的操作日志。</p><span class="chip chip-ok">已由你批准 · 已发送</span></article>
+  </div>
+  <p class="muted note">有十个工具需要经过这道批准：发送和回复，移动和删除邮件，删除文件夹，创建和删除日历日程，创建 Zoom 会议，上传和删除 Drive 文件。<a href="./mcp-map.html">MCP 工具图</a>（英文）列出了全部 31 个工具及其风险等级。</p>
+  <div class="grid grid-2" style="margin-top:14px">
+    <article class="card pad"><h3>与你看到的内容绑定</h3><p>已批准的请求按创建时固定下来的账号、收件人、文件夹和附件执行。附件与其 SHA-256 和大小绑定：如果你批准之后磁盘上的文件被替换，发送会被拦下。</p></article>
+    <article class="card pad"><h3>出问题时一律拒绝</h3><p>如果批准记录无法读取，什么都不会执行：返回的是一个明确的拒绝，而不是一个日后可能被人屏蔽掉的错误。在无法验证真人的电脑上，批准会被拒绝，而不是退化成一个“是/否”提问。</p></article>
+  </div>
+</div></section>
+
+<section id="channels" aria-labelledby="s-channels"><div class="wrap narrow">
+  <h2 id="s-channels">谁可以批准，从最强到最弱</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>渠道</th><th>工作方式</th><th>强度</th></tr></thead>
+    <tbody>
+      <tr><td>Windows Hello / Touch ID</td><td>每次批准都会在设备上询问。程序可以弹出这个提示，但只有坐在电脑前的人才能通过。在 Windows 和 macOS 上默认开启。</td><td><span class="chip-c c-safe">最强</span></td></tr>
+      <tr><td>Linux 上的本地 PIN</td><td>在交互式终端中输入，只以哈希形式保存，输错 3 次后锁定 15 分钟。从脚本运行该命令的智能体得不到任何提示。</td><td><span class="chip-c c-read">较弱</span></td></tr>
+      <tr><td>Telegram</td><td>需手动开启。在你通过系统验证登记的那个聊天里点一下即可。任何登录了你 Telegram 账号的设备都能操作，包括一直开着的桌面客户端。</td><td><span class="chip-c c-danger">最弱</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">拒绝不需要以上任何一项：说“不”永远是安全的。如果你开启了 Telegram 批准，请不要在智能体使用的那台电脑上保持 Telegram 登录。</p>
+</div></section>
+
+<section id="rules" aria-labelledby="s-rules"><div class="wrap narrow">
+  <h2 id="s-rules">自动化，只有你签署才生效</h2>
+  <p class="muted note" style="margin:0 0 14px">邮件不经点击就发出的唯一途径：你在应用中创建的规则，针对你选定的发件人和文档。半自动模式仍然每次询问；全自动模式只在你签署的范围内运行。</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>没有任何工具能开启规则</h3><p>规则只能在应用或命令行中、经过 Windows Hello 或 Touch ID 验证后创建和恢复。没有任何 MCP 工具可以创建或修改规则，所以一封邮件无法开启自动驾驶。暂停规则不需要验证。</p></article>
+    <article class="card pad"><h3>范围天生就窄</h3><p>指定的发件人或单个文件夹，只用附加到规则上的文档，有每日上限，对同一发件人的两次回复之间有间隔，并且必须设置到期时间。绝不会是“所有邮件”。</p></article>
+    <article class="card pad"><h3>智能体只写正文，别的不碰</h3><p>收件人、主题和会话都取自收到的邮件。回复只发给触发规则的那位发件人，绝不会发给邮件或草稿里写的其他地址。</p></article>
+    <article class="card pad"><h3>是否回复由规则决定，而不是模型</h3><p>以下邮件不会自动回复：未通过发件人验证（DMARC）的邮件、自动生成的邮件、邮件列表、no-reply 发件人、垃圾邮件，以及带可执行文件或压缩包附件的邮件。新发件人的第一封邮件由你处理。短时间内匹配过多会让规则自动暂停。</p></article>
+  </div>
+  <p class="muted note">每一次自动发送都会连同放行它的规则一起记入操作日志，你也会收到与批准请求相同的通知。</p>
+</div></section>
+
+<section id="data" aria-labelledby="s-data"><div class="wrap narrow">
+  <h2 id="s-data">数据留在本地</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>没有 GigaMail 服务器</h3><p>索引、归档、凭据、记忆和配置都在你的电脑上。GigaMail 不运行任何服务器，也不接收任何数据。智能体读取的内容由该智能体处理，适用其提供商的政策。</p></article>
+    <article class="card pad"><h3>凭据从不经过智能体</h3><p>账号由你在应用或自己的终端里添加。没有任何工具能让智能体添加账号，或读取密码、令牌或密钥。</p></article>
+    <article class="card pad"><h3>一次只操作一个账号</h3><p>每个工具都会指明它操作的账号。请求某个邮箱的智能体无法读取或写入另一个邮箱。</p></article>
+    <article class="card pad"><h3>只限你登记过的文件</h3><p>智能体只能引用你添加为知识文件的文档。不在该列表中的路径一律拒绝，链接和快捷方式也不例外。</p></article>
+  </div>
+  <div class="card pad" style="margin-top:14px"><h3><span class="chip-c c-safe">桌面应用</span>敏感字段已隐藏</h3><p>邮件交给智能体起草之前，脱敏器会替换税号、增值税号、IBAN 和电话号码，并在草稿中把它们还原。靠规则和校验和，不用 AI。面向 MCP 智能体的同款过滤器已在<a href="#planned">计划</a>中。</p></div>
+</div></section>
+
+<section id="mail" aria-labelledby="s-mail"><div class="wrap narrow">
+  <h2 id="s-mail">邮件是输入，不是指令</h2>
+  <p class="muted note" style="margin:0 0 14px">邮件内容一律视为不可信数据。藏在邮件里的指令无法添加账号、读取机密或批准发送。</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>智能体读到的就是你看到的</h3><p>人看不到的文字（隐藏的区块、零号字体、白底白字、不可见字符）会被去掉并标记。智能体拿到的是可见文字，而不是原始 HTML。无法检查的邮件会被扣下，而不是靠猜测处理。</p></article>
+    <article class="card pad"><h3>程序到不了智能体手里</h3><p>可执行附件不会为智能体下载，会带上警告标记，在归档中则被替换为一条说明。桌面应用绝不会打开这类文件；你仍然可以自己另存。</p></article>
+    <article class="card pad"><h3>没有链接会自动打开</h3><p>智能体写出的文字在应用和 Telegram 中显示时，都不会加载图片或链接预览。携带数据的链接不经点击就无法被访问。</p></article>
+    <article class="card pad"><h3>用恶意邮件做过测试</h3><p>每次改动都会运行防注入测试；还有一套红队测试，把恶意邮件交给开启了全部工具的真实智能体，并在保护机制下只记录破坏性操作而不执行。</p></article>
+  </div>
+</div></section>
+
+<section id="console" aria-labelledby="s-console"><div class="wrap narrow">
+  <h2 id="s-console">桌面应用把邮件当作危险地带</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>邮件无法运行代码</h3><p>每封邮件都经过同一个过滤器，并显示在不运行任何脚本的沙箱中。链接只能作为网页或邮件地址打开。</p></article>
+    <article class="card pad"><h3>只在本地，并由令牌保护</h3><p>应用只与你电脑上它自己的后端通信，每次安装使用一个随机令牌。</p></article>
+    <article class="card pad"><h3>已签名的发布版本</h3><p>从打了标签的源代码构建。Windows 安装包和应用已签名；macOS 应用已签名并经过公证。Linux 包未签名。SHA-256 校验值见<a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">发布页面</a>。</p></article>
+    <article class="card pad"><h3>连接经过验证</h3><p>默认检查邮件服务器的证书。使用自签名证书的服务器，只有在你通过 Windows Hello 或 Touch ID 为该账号放行后才会被接受。</p></article>
+  </div>
+</div></section>
+
+<section id="limits" aria-labelledby="s-limits"><div class="wrap narrow">
+  <h2 id="s-limits">它覆盖不到的地方</h2>
+  <div class="card pad"><ul>
+    <li><strong>你的智能体决定请求什么。</strong>恶意邮件仍然可能说服智能体去请求一次不明智的发送。请求会停在预览这一步：这正是设计在起作用，预览就是你该仔细看的地方。</li>
+    <li><strong>拥有终端的智能体绕开 GigaMail。</strong>如果它能以你的身份运行任意命令，就可以直接操作你的邮件程序或邮件服务商。任何邮件关卡都拦不住这一点。请保持智能体自身的命令批准功能开启。</li>
+    <li><strong>你的模型提供商。</strong>智能体读取的内容会离开 GigaMail 的边界，适用该提供商的数据政策。</li>
+    <li><strong>操作日志只增不改，但并非防篡改。</strong>任何能写入你磁盘的人都可以修改它。</li>
+    <li><strong>可见的指令。</strong>人能读到的文字仍然会到达模型。去除隐藏文字缩小了你看到的与智能体读到的之间的差距，但并没有消除它。</li>
+    <li><strong>已经被攻破的电脑或用户账号。</strong></li>
+  </ul></div>
+</div></section>
+
+<section id="planned" aria-labelledby="s-planned"><div class="wrap narrow">
+  <h2 id="s-planned">计划中</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>内容</th><th>原因</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>面向 MCP 智能体的脱敏器</td><td>目前只有桌面应用向智能体请求草稿时才会隐藏敏感字段。同样的过滤器将用于通过 MCP 连接的智能体。</td><td><span class="chip-c c-read">计划中</span></td></tr>
+      <tr><td>Telegram 批准仅限手机</td><td>目前任何已登录的 Telegram 客户端点一下都能批准。批准将改到一个要求手机生物识别的 Telegram 小程序中，桌面和网页客户端将无法批准。</td><td><span class="chip-c c-read">计划中</span></td></tr>
+      <tr><td>更严格的隐藏文字识别</td><td>继承的样式、更多颜色写法和字号，以及只可能用来隐藏文字的复杂样式规则。</td><td><span class="chip-c c-danger">下个版本</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section id="fixed" aria-labelledby="s-fixed"><div class="wrap narrow">
+  <h2 id="s-fixed">已发现并修复</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>版本</th><th>问题</th><th>改动</th></tr></thead>
+    <tbody>
+      <tr><td>0.4.1</td><td>IMAP 连接没有验证邮件服务器的证书。</td><td>默认验证证书和主机名；证书被拒绝时连接立即中止。</td></tr>
+      <tr><td>0.4.0</td><td>已批准的附件可以在发送前在磁盘上被替换。</td><td>附件与其 SHA-256 和大小绑定；不一致时发送会被拦下。</td></tr>
+      <tr><td>0.1.4</td><td>拥有终端的智能体可以自己运行批准命令。</td><td>无论从哪条路径批准，都需要 Windows Hello 或 Touch ID。</td></tr>
+      <tr><td>0.1.1</td><td>智能体会收到一个确认令牌，可以批准自己的请求。</td><td>批准移到了智能体触及不到的地方；它只会收到一个无效力的请求编号。</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">其中一些是由阅读代码的人报告的。致谢见完整的<a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">安全政策</a>（英文）。</p>
+</div></section>
+
+<section id="report" aria-labelledby="s-report"><div class="wrap narrow">
+  <h2 id="s-report">报告漏洞</h2>
+  <div class="card pad"><p>请不要提交公开的 issue。请使用 <a href="https://github.com/adecubed/gigamail/security/advisories/new" rel="noopener">GitHub 私密漏洞报告</a>，或发邮件到 <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>，主题中注明“GigaMail security”，请用英文或意大利文书写。你会在 72 小时内收到确认，7 天内收到评估结果。我们没有赏金计划：我们会在版本说明中公开致谢，除非你希望匿名。</p>
+  <p style="margin-top:12px"><a class="btn btn-ghost" href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">GitHub 上的完整安全政策（英文）</a></p></div>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">隐私政策</a>
+    <a href="./terms.html">服务条款</a>
+    <a href="./credits.html">代码致谢</a>
+    <a href="./mcp-map.html">MCP 工具图</a>
+    <a href="./security-zh.html">安全</a>
+    <a href="./install-zh.html">安装</a>
+    <a href="./changelog.html">更新日志</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./security.html" hreflang="en" lang="en">English</a>
+    <a href="./security-it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+</body>
+</html>

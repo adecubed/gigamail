@@ -71,6 +71,117 @@
     cards.forEach(function (c) { io.observe(c); });
   }
 
+  // Hero title: the words rise in one after the other, then an underline
+  // draws itself under the highlighted sentence. The inline script in the
+  // page's head hides the title until this has run (class js-fx on <html>);
+  // without JS or with reduced motion the title is simply there.
+  var title = document.querySelector('.hero h1');
+  if (title && document.documentElement.classList.contains('js-fx')) {
+    var lang = document.documentElement.lang || 'en';
+    // Chinese has no spaces: split it into words where the browser can,
+    // otherwise into single characters.
+    var pieces = function (text) {
+      if (lang.indexOf('zh') !== 0) return text.split(/(\s+)/);
+      if (window.Intl && Intl.Segmenter) {
+        return Array.from(new Intl.Segmenter(lang, { granularity: 'word' }).segment(text), function (s) { return s.segment; });
+      }
+      return Array.from(text);
+    };
+    var index = 0;
+    (function walk(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (child) {
+        if (child.nodeType === 1 && child.tagName !== 'BR') { walk(child); return; }
+        if (child.nodeType !== 3) return;
+        var frag = document.createDocumentFragment();
+        pieces(child.nodeValue).forEach(function (part) {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(' ')); return; }
+          var box = document.createElement('span');
+          box.className = 'w';
+          var inner = document.createElement('span');
+          inner.textContent = part;
+          inner.style.setProperty('--i', index++);
+          box.appendChild(inner);
+          frag.appendChild(box);
+        });
+        node.replaceChild(frag, child);
+      });
+    })(title);
+    title.setAttribute('aria-label', title.textContent.replace(/\s+/g, ' ').trim());
+    var mark = title.querySelector('em');
+    if (mark) mark.style.setProperty('--draw-delay', (index * 55 + 350) + 'ms');
+    title.classList.add('words');
+  }
+
+  // Hero prompt: example requests type themselves, pause, erase, and the
+  // next one follows. The phrases come from the page (data-phrases), so each
+  // language has its own; the first one is already in the HTML.
+  var typed = document.querySelector('[data-phrases]');
+  if (typed && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    var phrases = typed.getAttribute('data-phrases').split('|');
+    var text = document.createElement('span');
+    var caret = document.createElement('span');
+    caret.className = 'caret';
+    typed.textContent = '';
+    typed.appendChild(text);
+    typed.appendChild(caret);
+    var type = function (phrase, at, erasing) {
+      var line = phrases[phrase];
+      text.textContent = line.slice(0, at);
+      var next;
+      if (!erasing && at < line.length) next = [phrase, at + 1, false, 38];
+      else if (!erasing) next = [phrase, at, true, 1700];
+      else if (at > 0) next = [phrase, at - 1, true, 16];
+      else next = [(phrase + 1) % phrases.length, 0, false, 350];
+      setTimeout(function () { type(next[0], next[1], next[2]); }, next[3]);
+    };
+    setTimeout(function () { type(0, 0, false); }, 1500);
+  }
+
+  // Story: the four steps play out like the hero prompt. When the list
+  // scrolls into view the steps light up one after the other and each
+  // description types itself. The untyped rest stays in the page, invisible,
+  // so the cards keep their size and nothing jumps.
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.story ol li'));
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (steps.length && 'IntersectionObserver' in window && !still) {
+    var list = steps[0].parentNode;
+    var lines = steps.map(function (step) {
+      var p = step.querySelector('p');
+      var chars = Array.from(p.textContent);
+      var shown = document.createElement('span');
+      var caret = document.createElement('span');
+      var rest = document.createElement('span');
+      caret.className = 'caret';
+      caret.hidden = true;
+      rest.className = 'rest';
+      rest.textContent = chars.join('');
+      p.setAttribute('aria-label', chars.join(''));
+      p.textContent = '';
+      p.appendChild(shown); p.appendChild(caret); p.appendChild(rest);
+      return { step: step, chars: chars, shown: shown, caret: caret, rest: rest };
+    });
+    list.classList.add('js-typing');
+    var play = function (n) {
+      if (n >= lines.length) return;
+      var line = lines[n], at = 0;
+      line.step.classList.add('on');
+      line.caret.hidden = false;
+      (function tick() {
+        at = Math.min(line.chars.length, at + 2);
+        line.shown.textContent = line.chars.slice(0, at).join('');
+        line.rest.textContent = line.chars.slice(at).join('');
+        if (at < line.chars.length) { setTimeout(tick, 22); return; }
+        setTimeout(function () { line.caret.hidden = true; play(n + 1); }, 450);
+      })();
+    };
+    new IntersectionObserver(function (entries, observer) {
+      if (!entries[0].isIntersecting) return;
+      observer.disconnect();
+      play(0);
+    }, { threshold: 0.4 }).observe(list);
+  }
+
   // Hero clip: do not autoplay for people who asked for less motion.
   var hero = document.getElementById('hero-clip');
   if (hero && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

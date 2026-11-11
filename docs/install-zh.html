@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>安装 GigaMail：全部安装包、pip 与手动配置</title>
+<meta name="description" content="GigaMail 的全部安装包（Windows、macOS、Linux），用 pip 单独安装核心，以及手动连接邮箱和 AI 智能体的命令：Claude Code、Claude Desktop、Codex、OpenClaw、Hermes 或任何 MCP 客户端。">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/install-zh.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/install.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/install-it.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/install-zh.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/install.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/install-zh.html">
+<meta property="og:title" content="安装 GigaMail：全部安装包、pip 与手动配置">
+<meta property="og:description" content="GigaMail 的全部安装包（Windows、macOS、Linux），用 pip 单独安装核心，以及手动连接邮箱和 AI 智能体的命令：Claude Code、Claude Desktop、Codex、OpenClaw、Hermes 或任何 MCP 客户端。">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="安装 GigaMail：全部安装包、pip 与手动配置">
+<meta name="twitter:description" content="GigaMail 的全部安装包（Windows、macOS、Linux），用 pip 单独安装核心，以及手动连接邮箱和 AI 智能体的命令：Claude Code、Claude Desktop、Codex、OpenClaw、Hermes 或任何 MCP 客户端。">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/install-zh.html#webpage", "url": "https://gigamail.ai/install-zh.html", "name": "安装 GigaMail：全部安装包、pip 与手动配置", "description": "GigaMail 的全部安装包（Windows、macOS、Linux），用 pip 单独安装核心，以及手动连接邮箱和 AI 智能体的命令：Claude Code、Claude Desktop、Codex、OpenClaw、Hermes 或任何 MCP 客户端。", "inLanguage": "zh-Hans", "dateModified": "2026-11-11", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=19">
+<link rel="stylesheet" href="./pages.css?v=2">
+<style>.subpage .install { grid-template-columns: 1fr; max-width: 1040px; margin: 0 auto; } .install .card { scroll-margin-top: 80px; } .subpage .install .card { padding: 26px 28px; }</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./zh.html" aria-label="GigaMail 首页"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="页面导航">
+      <a href="./zh.html#features">功能</a>
+      <a href="./zh.html#approval">掌控</a>
+      <a href="./zh.html#install">安装</a>
+      <a href="./mcp-map.html">MCP 工具图</a>
+      <a href="./gigamail-vs-agentmail.html">对比 AgentMail</a>
+      <a href="./security-zh.html">安全</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./install.html" hreflang="en" lang="en">EN</a><a class="lang" href="./install-it.html" hreflang="it" lang="it">IT</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="#step-get">下载</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">安装</p>
+    <h1 id="t">全部安装包，以及<em>终端</em>里的装法。</h1>
+    <p class="lede">桌面应用会带你走完全部三步。这里是其余的一切：各个系统的安装包、用 pip 单独安装核心，以及手动连接邮箱和智能体的命令。</p>
+  </div>
+</section>
+<section aria-label="安装"><div class="wrap">
+    <div class="install">
+      <article class="card" id="step-get">
+        <p class="kicker">第 1 步</p>
+        <h3>获取 GigaMail</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">一个自带 Python 的安装包：无需预装任何东西，无需管理员密码，会自动更新。</p>
+        <div class="dl">
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" data-platform="win" rel="noopener"><span>Windows 10 / 11</span><small>GigaMail-Setup.exe</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" data-platform="mac-arm" rel="noopener"><span>macOS，Apple Silicon</span><small>GigaMail-arm64.dmg</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x64.dmg" data-platform="mac-intel" rel="noopener"><span>macOS，Intel</span><small>GigaMail-x64.dmg</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-amd64.deb" data-platform="linux" rel="noopener"><span>Linux，Debian / Ubuntu <em class="beta">测试版</em></span><small>GigaMail-amd64.deb</small></a>
+          <a href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-x86_64.AppImage" data-platform="linux-appimage" rel="noopener"><span>Linux，AppImage <em class="beta">测试版</em></span><small>GigaMail-x86_64.AppImage</small></a>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">Windows 版已签名，macOS 版已签名并经过公证；Linux 包为测试版，未签名（Ubuntu 23.10 及更高版本请用 .deb）。SHA-256 校验值见<a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">发布页面</a>。不需要图形界面？只装核心：</p>
+<pre><code>pip install "gigamail[all]"</code></pre>
+      </article>
+      <article class="card" id="step-mailbox">
+        <p class="kicker">第 2 步</p>
+        <h3>连接你的邮箱</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">在应用中，引导流程会替你完成：Microsoft 365 在浏览器中登录，或用应用专用密码连接 IMAP。在终端中：</p>
+<pre><code>gigamail login                <span class="c"># Microsoft 365，设备代码登录</span>
+gigamail accounts add-imap    <span class="c"># Gmail、Aruba、Libero……</span>
+gigamail check                <span class="c"># 做一次搜索，生成一封等你批准的草稿</span></code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.94rem">然后说明由谁回复：身份、语气，以及智能体可以引用的文件。</p>
+<pre><code>gigamail identity set
+gigamail identity add-file ./pricelist.xlsx</code></pre>
+        <p class="muted" style="margin-top:12px;font-size:.88rem">凭据由你在自己的终端里输入。没有任何工具能让智能体添加账号。</p>
+      </article>
+      <article class="card" id="step-agent">
+        <p class="kicker">第 3 步</p>
+        <h3>连接你的智能体</h3>
+        <p class="muted" style="margin-top:8px;font-size:.94rem">GigaMail 自身不带 AI：智能来自你连接的智能体。应用的第三步会替你复制好准确的配置；手动配置则是下面其中一种。</p>
+        <div class="tabs" role="tablist" aria-label="智能体">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="ag-claude-code" id="tab-claude-code">Claude Code</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-claude-desktop" id="tab-claude-desktop">Claude Desktop</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-codex" id="tab-codex">Codex</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-openclaw" id="tab-openclaw">OpenClaw</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-hermes" id="tab-hermes">Hermes</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="ag-any" id="tab-any">任何 MCP 客户端</button>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-code" aria-labelledby="tab-claude-code">
+          <p>这个仓库本身就是一个 Claude Code 插件：它会注册服务器，并添加一个让 Claude 了解批准关卡的技能。</p>
+<pre><code>claude plugin marketplace add adecubed/gigamail
+claude plugin install gigamail@gigamail</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
+          <p>把服务器加到 <code>claude_desktop_config.json</code> 的 <code>mcpServers</code> 下，然后重启 Claude Desktop。</p>
+<pre><code>{
+  "mcpServers": {
+    "gigamail": { "command": "gigamail-server" }
+  }
+}</code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-codex" aria-labelledby="tab-codex" hidden>
+          <p>作为 Codex 插件安装，带同样的技能：</p>
+<pre><code>codex plugin marketplace add adecubed/gigamail
+codex plugin add gigamail@gigamail</code></pre>
+          <p>或者只注册服务器，这也是 <a href="https://chatgpt.com/plugins/plugins_6aa41ff2b150819181fcdf4c944933a3" rel="noopener">OpenAI 插件目录</a>中的条目所要求的方式：</p>
+<pre><code>codex mcp add gigamail -- gigamail-server</code></pre>
+          <p>用的是 ChatGPT 而不是终端？请看<a href="https://github.com/adecubed/gigamail/blob/main/CODEX_SETUP.md" rel="noopener">分步指南</a>（英文）。</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-openclaw" aria-labelledby="tab-openclaw" hidden>
+          <p>OpenClaw 在保存之前会先探测服务器。请把 <code>GIGAMAIL_ROOT</code> 指向你的 GigaMail 数据文件夹。</p>
+<pre><code>openclaw mcp add gigamail --command gigamail-server \
+  --env "GIGAMAIL_ROOT=&lt;你的数据文件夹&gt;"
+openclaw skills install @adecubed/gigamail   <span class="c"># 批准关卡技能</span></code></pre>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-hermes" aria-labelledby="tab-hermes" hidden>
+          <p>Hermes 只把你声明的环境变量传给 stdio 服务器，所以必须设置 <code>GIGAMAIL_ROOT</code>。在 <code>~/.hermes/config.yaml</code> 中：</p>
+<pre><code>mcp_servers:
+  gigamail:
+    command: "gigamail-server"
+    env:
+      GIGAMAIL_ROOT: "&lt;你的数据文件夹&gt;"</code></pre>
+          <p>用 <code>hermes mcp test gigamail</code> 检查。</p>
+        </div>
+        <div class="panel" role="tabpanel" id="ag-any" aria-labelledby="tab-any" hidden>
+          <p>任何能启动 stdio 服务器的 MCP 客户端都可以。命令是 <code>gigamail-server</code>，不占用网络端口，不需要 API 密钥。如果客户端会过滤环境变量，请声明 <code>GIGAMAIL_ROOT</code>。</p>
+          <p>已验证的配置、工具过滤，以及如何在手机上收到批准请求，见 <a href="https://github.com/adecubed/gigamail/blob/main/INTEGRATIONS.md" rel="noopener">INTEGRATIONS.md</a>（英文）。</p>
+        </div>
+      </article>
+    </div>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">隐私政策</a>
+    <a href="./terms.html">服务条款</a>
+    <a href="./credits.html">代码致谢</a>
+    <a href="./mcp-map.html">MCP 工具图</a>
+    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="./install-zh.html">安装</a>
+    <a href="./changelog.html">更新日志</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./install.html" hreflang="en" lang="en">English</a>
+    <a href="./install-it.html" hreflang="it" lang="it">Italiano</a>
+  </div>
+</footer>
+<script src="./home.js?v=4" defer></script>
+</body>
+</html>

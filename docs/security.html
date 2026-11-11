@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaMail security: what the agent can do, what it cannot, what is planned</title>
+<meta name="description" content="How GigaMail keeps an AI agent safe in your mailbox: approval outside the agent's reach, signed automation rules, local data, hidden text and executable attachments kept away from the agent. What it does not cover, and what is planned.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/security.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/security.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/security-it.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/security-zh.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/security.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/security.html">
+<meta property="og:title" content="GigaMail security: what the agent can do, what it cannot, what is planned">
+<meta property="og:description" content="How GigaMail keeps an AI agent safe in your mailbox: approval outside the agent's reach, signed automation rules, local data, hidden text and executable attachments kept away from the agent. What it does not cover, and what is planned.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail security: what the agent can do, what it cannot, what is planned">
+<meta name="twitter:description" content="How GigaMail keeps an AI agent safe in your mailbox: approval outside the agent's reach, signed automation rules, local data, hidden text and executable attachments kept away from the agent. What it does not cover, and what is planned.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/security.html#webpage", "url": "https://gigamail.ai/security.html", "name": "GigaMail security: what the agent can do, what it cannot, what is planned", "description": "How GigaMail keeps an AI agent safe in your mailbox: approval outside the agent's reach, signed automation rules, local data, hidden text and executable attachments kept away from the agent. What it does not cover, and what is planned.", "inLanguage": "en", "dateModified": "2026-11-11", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=19">
+<link rel="stylesheet" href="./pages.css?v=2">
+<style>.subpage .card .btn { white-space: normal; text-align: left; } .subpage .jump { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 18px; font-size: 0.92rem; font-weight: 600; } .subpage .steps { margin-bottom: 4px; } .subpage .step p { font-size: 0.93rem; } .subpage .tbl td:last-child { white-space: nowrap; } .subpage .card ul { margin: 0; padding-left: 1.1rem; } .subpage .card li { margin: 8px 0; } .subpage section { scroll-margin-top: 70px; }</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="./#features">What it does</a>
+      <a href="./#approval">Approval</a>
+      <a href="./#install">Install</a>
+      <a href="./mcp-map.html">MCP map</a>
+      <a href="./security.html">Security</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./security-it.html" hreflang="it" lang="it">IT</a><a class="lang" href="./security-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">Security</p>
+    <h1 id="t">What the agent can do, what it cannot, and <em>what is still open</em>.</h1>
+    <p class="lede">GigaMail hands an AI agent access to a mailbox. This page lists every protection that is in place today, the limits we know about, and what we plan to build next. It grows with each release.</p>
+    <nav class="jump" aria-label="On this page">
+      <a href="#gate">Approval</a><a href="#channels">Who approves</a><a href="#rules">Automations</a><a href="#data">Your data</a><a href="#mail">Hostile mail</a><a href="#console">Desktop app</a><a href="#limits">Limits</a><a href="#planned">Planned</a><a href="#report">Report</a>
+    </nav>
+  </div>
+</section>
+
+<section id="gate" aria-labelledby="s-gate"><div class="wrap narrow">
+  <h2 id="s-gate">The agent proposes. You decide.</h2>
+  <p class="muted note" style="margin:0 0 14px">An agent can ask to send a message. It never receives anything it could use to approve its own request.</p>
+  <div class="steps">
+    <article class="card step"><div class="n">01 · PREVIEW</div><h3>The agent gets a preview</h3><p>A send, reply or delete returns the preview and an inert request id. The agent cannot turn that id into an action.</p><span class="chip chip-inert">request req_7f3a · inert</span></article>
+    <article class="card step"><div class="n">02 · APPROVAL</div><h3>You approve, outside its reach</h3><p>Console, command line, Telegram or a Windows notification, confirmed with Windows Hello or Touch ID.</p><span class="chip chip-held">Held · awaiting approval</span></article>
+    <article class="card step"><div class="n">03 · EXECUTION</div><h3>Exactly what you saw runs</h3><p>The arguments you reviewed, never a replacement. Every write lands in an append-only action log.</p><span class="chip chip-ok">Approved by you · sent</span></article>
+  </div>
+  <p class="muted note">Ten tools wait behind this gate: sending and replying, moving and deleting messages, deleting folders, creating and deleting calendar events, creating Zoom meetings, uploading and deleting Drive files. The <a href="./mcp-map.html">MCP map</a> lists all 31 tools with their risk class.</p>
+  <div class="grid grid-2" style="margin-top:14px">
+    <article class="card pad"><h3>Bound to what you saw</h3><p>An approved request runs with the account, recipients, folder and attachments frozen when it was created. Attachments are bound to their SHA-256 and size: a file swapped on disk after your approval stops the send.</p></article>
+    <article class="card pad"><h3>It fails closed</h3><p>If the approval store cannot be read, nothing runs: the answer is a named refusal, not an error someone might later silence. On a machine with no way to verify a person, approval is refused rather than replaced by a yes/no question.</p></article>
+  </div>
+</div></section>
+
+<section id="channels" aria-labelledby="s-channels"><div class="wrap narrow">
+  <h2 id="s-channels">Who can approve, strongest first</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Channel</th><th>How it works</th><th>How strong</th></tr></thead>
+    <tbody>
+      <tr><td>Windows Hello / Touch ID</td><td>Asked at every approval, on the device. A program can open the prompt; only the person at the machine can satisfy it. On by default on Windows and macOS.</td><td><span class="chip-c c-safe">STRONGEST</span></td></tr>
+      <tr><td>Local PIN on Linux</td><td>Typed in an interactive terminal, stored only as a hash, locked for 15 minutes after 3 wrong attempts. An agent running the command from a script gets no prompt.</td><td><span class="chip-c c-read">WEAKER</span></td></tr>
+      <tr><td>Telegram</td><td>Opt-in. A tap from the chat you registered behind the OS prompt. It works from any device signed into your Telegram account, including a desktop client left open.</td><td><span class="chip-c c-danger">WEAKEST</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">Rejecting never needs any of these: saying no is always safe. If you enable Telegram approval, do not keep Telegram signed in on the machine the agent uses.</p>
+</div></section>
+
+<section id="rules" aria-labelledby="s-rules"><div class="wrap narrow">
+  <h2 id="s-rules">Automations, only if you sign them</h2>
+  <p class="muted note" style="margin:0 0 14px">The one way a mail leaves without a click: a rule you create in the app, for senders and documents you choose. Semi-auto still asks each time; auto runs inside the scope you signed.</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>No tool can switch one on</h3><p>A rule is created and resumed only behind Windows Hello or Touch ID, from the app or the command line. No MCP tool can create or change a rule, so a mail cannot switch on autopilot. Pausing needs no prompt.</p></article>
+    <article class="card pad"><h3>Narrow by design</h3><p>Specific senders or one folder, only the documents attached to the rule, a daily cap, a pause between replies to the same sender, and a mandatory expiry. Never “everything”.</p></article>
+    <article class="card pad"><h3>The agent writes the body, nothing else</h3><p>Recipient, subject and thread come from the incoming message. The reply goes to the sender that matched the rule, never to an address written in the mail or in the draft.</p></article>
+    <article class="card pad"><h3>Rules decide whether to reply, not a model</h3><p>No automatic reply to mail that fails sender authentication (DMARC), to automatic mail, mailing lists, no-reply senders, spam, or mail with executable or archive attachments. The first message from a new sender goes through you. A burst of matches pauses the rule.</p></article>
+  </div>
+  <p class="muted note">Every automatic send is written to the action log with the rule that let it through, and you get the same notification as for an approval.</p>
+</div></section>
+
+<section id="data" aria-labelledby="s-data"><div class="wrap narrow">
+  <h2 id="s-data">Your data stays local</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>No GigaMail server</h3><p>Index, archive, credentials, memory and configuration live on your machine. GigaMail runs no servers and receives nothing. What the agent reads is handled by that agent, under its provider's policy.</p></article>
+    <article class="card pad"><h3>Credentials never pass through the agent</h3><p>Accounts are added by you, in the app or in your own shell. There is no tool an agent could use to add an account or read a password, a token or a key.</p></article>
+    <article class="card pad"><h3>One account at a time</h3><p>Every tool names the account it works on. An agent asking for one mailbox cannot read or write another.</p></article>
+    <article class="card pad"><h3>Only the files you registered</h3><p>The agent can quote only the documents you added as knowledge files. Paths outside that list are refused, links and shortcuts included.</p></article>
+  </div>
+  <div class="card pad" style="margin-top:14px"><h3><span class="chip-c c-safe">DESKTOP APP</span>Sensitive fields hidden</h3><p>The masker replaces tax codes, VAT numbers, IBANs and phone numbers before a mail goes to the agent for a draft, and puts them back in the draft. Rules and checksums, no AI. The same filter for MCP agents is <a href="#planned">planned</a>.</p></div>
+</div></section>
+
+<section id="mail" aria-labelledby="s-mail"><div class="wrap narrow">
+  <h2 id="s-mail">An email is input, not authority</h2>
+  <p class="muted note" style="margin:0 0 14px">Message content is treated as untrusted data. An instruction hidden in a mail cannot add an account, read a secret or approve a send.</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>The agent reads what you see</h3><p>Text a person cannot see (hidden blocks, zero-size fonts, white on white, invisible characters) is left out and flagged. The agent gets the visible text, never the raw HTML. A mail that cannot be checked is withheld, not guessed.</p></article>
+    <article class="card pad"><h3>Programs never reach the agent</h3><p>An executable attachment is not downloaded for an agent, is marked with a warning, and is replaced by a note in the archive. The desktop app never opens one; you can still save it yourself.</p></article>
+    <article class="card pad"><h3>No link opens by itself</h3><p>Text written by an agent is shown without loading images or previews, in the app and on Telegram. A link that carries data cannot be fetched without a click.</p></article>
+    <article class="card pad"><h3>Tested against hostile mail</h3><p>Anti-injection tests run on every change, and a red-team run feeds hostile emails to a real agent with every tool enabled, behind a guard that records destructive actions instead of running them.</p></article>
+  </div>
+</div></section>
+
+<section id="console" aria-labelledby="s-console"><div class="wrap narrow">
+  <h2 id="s-console">The desktop app treats mail as hostile ground</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>Mail cannot run code</h3><p>Every message passes through one sanitizer and is shown in a sandbox where no script runs. Links open only as web or mail addresses.</p></article>
+    <article class="card pad"><h3>Local and token-gated</h3><p>The app talks only to its own backend on your machine, with a random token per installation.</p></article>
+    <article class="card pad"><h3>Signed releases</h3><p>Built from the tagged source. Windows installer and app are signed; the macOS app is signed and notarized. Linux packages are not signed. SHA-256 digests are on the <a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">release page</a>.</p></article>
+    <article class="card pad"><h3>Connections verified</h3><p>Mail server certificates are checked by default. A server with a self-signed certificate is accepted only for the account where you allowed it, behind Windows Hello or Touch ID.</p></article>
+  </div>
+</div></section>
+
+<section id="limits" aria-labelledby="s-limits"><div class="wrap narrow">
+  <h2 id="s-limits">What this does not cover</h2>
+  <div class="card pad"><ul>
+    <li><strong>What your agent decides to ask.</strong> A hostile mail can still persuade an agent to request an unwise send. The request stops at the preview: that is the design working, and the preview is where to look.</li>
+    <li><strong>An agent with a shell that goes around GigaMail.</strong> If it can run any command as you, it can drive your mail program or your provider directly. No mail gate can prevent that. Keep the agent's own command approvals on.</li>
+    <li><strong>Your model provider.</strong> What the agent reads leaves GigaMail's boundary and follows that provider's data policy.</li>
+    <li><strong>The action log is append-only, not tamper-proof.</strong> Anyone who can write to your disk can alter it.</li>
+    <li><strong>Visible instructions.</strong> Text a person can read still reaches the model. Hidden-text removal narrows the gap between what you see and what the agent reads; it does not close it.</li>
+    <li><strong>A machine or user account that is already compromised.</strong></li>
+  </ul></div>
+</div></section>
+
+<section id="planned" aria-labelledby="s-planned"><div class="wrap narrow">
+  <h2 id="s-planned">Planned</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>What</th><th>Why</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>The masker for MCP agents</td><td>Today sensitive fields are hidden only when the desktop app asks the agent for a draft. The same filter will apply to agents connected over MCP.</td><td><span class="chip-c c-read">PLANNED</span></td></tr>
+      <tr><td>Telegram approval from the phone only</td><td>Today a tap from any signed-in Telegram client approves. Approval will move to a Telegram Mini App that asks for the phone's biometrics, so desktop and web clients cannot approve.</td><td><span class="chip-c c-read">PLANNED</span></td></tr>
+      <tr><td>Stricter hidden-text reading</td><td>Inherited styles, more colour forms and font sizes, and complex style rules that can only hide text.</td><td><span class="chip-c c-danger">NEXT RELEASE</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section id="fixed" aria-labelledby="s-fixed"><div class="wrap narrow">
+  <h2 id="s-fixed">Found and fixed</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>What was wrong</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td>0.4.1</td><td>The mail server's certificate was not verified on IMAP connections.</td><td>Certificate and host name are verified by default; a rejected certificate stops the connection.</td></tr>
+      <tr><td>0.4.0</td><td>An approved attachment could be swapped on disk before sending.</td><td>Attachments are bound to their SHA-256 and size; a mismatch stops the send.</td></tr>
+      <tr><td>0.1.4</td><td>An agent with a shell could run the approval command itself.</td><td>Approving requires Windows Hello or Touch ID, from every path.</td></tr>
+      <tr><td>0.1.1</td><td>The agent received a confirmation token and could approve its own request.</td><td>Approval moved outside the agent's reach; it receives only an inert request id.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">Some of these were reported by people reading the code. They are credited in the full <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">security policy</a>.</p>
+</div></section>
+
+<section id="report" aria-labelledby="s-report"><div class="wrap narrow">
+  <h2 id="s-report">Report a vulnerability</h2>
+  <div class="card pad"><p>Please do not open a public issue. Use <a href="https://github.com/adecubed/gigamail/security/advisories/new" rel="noopener">GitHub private vulnerability reporting</a>, or write to <a href="mailto:founder@adecubed.com">founder@adecubed.com</a> with “GigaMail security” in the subject. You get an acknowledgement within 72 hours and an assessment within 7 days. There is no bounty programme: there is a public thank-you in the release notes, unless you prefer to stay anonymous.</p>
+  <p style="margin-top:12px"><a class="btn btn-ghost" href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">Full security policy on GitHub</a></p></div>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Terms of Service</a>
+    <a href="./credits.html">Code credits</a>
+    <a href="./mcp-map.html">MCP map</a>
+    <a href="./security.html">Security</a>
+    <a href="./install.html">Install</a>
+    <a href="./changelog.html">What's new</a>
+    <a href="./mail-city.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./security-it.html" hreflang="it" lang="it">Italiano</a>
+    <a href="./security-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  </div>
+</footer>
+</body>
+</html>

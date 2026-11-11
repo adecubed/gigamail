@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sicurezza di GigaMail: cosa può fare l'agente, cosa no, cosa è in programma</title>
+<meta name="description" content="Come GigaMail tiene al sicuro un agente AI nella tua posta: approvazione fuori dalla portata dell'agente, automazioni firmate, dati locali, testo nascosto e allegati eseguibili tenuti lontani dall'agente. Cosa non copre e cosa è in programma.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/security-it.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/security.html">
+<link rel="alternate" hreflang="it" href="https://gigamail.ai/security-it.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://gigamail.ai/security-zh.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/security.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="it_IT">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/security-it.html">
+<meta property="og:title" content="Sicurezza di GigaMail: cosa può fare l'agente, cosa no, cosa è in programma">
+<meta property="og:description" content="Come GigaMail tiene al sicuro un agente AI nella tua posta: approvazione fuori dalla portata dell'agente, automazioni firmate, dati locali, testo nascosto e allegati eseguibili tenuti lontani dall'agente. Cosa non copre e cosa è in programma.">
+<meta property="og:image" content="https://gigamail.ai/social-card-it.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sicurezza di GigaMail: cosa può fare l'agente, cosa no, cosa è in programma">
+<meta name="twitter:description" content="Come GigaMail tiene al sicuro un agente AI nella tua posta: approvazione fuori dalla portata dell'agente, automazioni firmate, dati locali, testo nascosto e allegati eseguibili tenuti lontani dall'agente. Cosa non copre e cosa è in programma.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card-it.png?v=2">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "@id": "https://gigamail.ai/security-it.html#webpage", "url": "https://gigamail.ai/security-it.html", "name": "Sicurezza di GigaMail: cosa può fare l'agente, cosa no, cosa è in programma", "description": "Come GigaMail tiene al sicuro un agente AI nella tua posta: approvazione fuori dalla portata dell'agente, automazioni firmate, dati locali, testo nascosto e allegati eseguibili tenuti lontani dall'agente. Cosa non copre e cosa è in programma.", "inLanguage": "it", "dateModified": "2026-11-11", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=19">
+<link rel="stylesheet" href="./pages.css?v=2">
+<style>.subpage .card .btn { white-space: normal; text-align: left; } .subpage .jump { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 18px; font-size: 0.92rem; font-weight: 600; } .subpage .steps { margin-bottom: 4px; } .subpage .step p { font-size: 0.93rem; } .subpage .tbl td:last-child { white-space: nowrap; } .subpage .card ul { margin: 0; padding-left: 1.1rem; } .subpage .card li { margin: 8px 0; } .subpage section { scroll-margin-top: 70px; }</style>
+<script type="module" src="/business/analytics.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./it.html" aria-label="GigaMail, pagina iniziale"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sezioni">
+      <a href="./it.html#features">Cosa fa</a>
+      <a href="./it.html#approval">Approvazione</a>
+      <a href="./it.html#install">Installa</a>
+      <a href="./mcp-map-it.html">Mappa MCP</a>
+      <a href="./security-it.html">Sicurezza</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="lang" href="./security.html" hreflang="en" lang="en">EN</a><a class="lang" href="./security-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./it.html#install">Scarica</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">Sicurezza</p>
+    <h1 id="t">Cosa può fare l’agente, cosa non può, e <em>cosa resta aperto</em>.</h1>
+    <p class="lede">GigaMail dà a un agente AI l’accesso a una casella di posta. Questa pagina elenca ogni protezione che c’è oggi, i limiti che conosciamo e quello che abbiamo in programma. Cresce a ogni release.</p>
+    <nav class="jump" aria-label="In questa pagina">
+      <a href="#gate">Approvazione</a><a href="#channels">Chi approva</a><a href="#rules">Automazioni</a><a href="#data">I tuoi dati</a><a href="#mail">Mail ostili</a><a href="#console">App desktop</a><a href="#limits">Limiti</a><a href="#planned">In programma</a><a href="#report">Segnala</a>
+    </nav>
+  </div>
+</section>
+
+<section id="gate" aria-labelledby="s-gate"><div class="wrap narrow">
+  <h2 id="s-gate">L’agente propone. Decidi tu.</h2>
+  <p class="muted note" style="margin:0 0 14px">Un agente può chiedere di inviare un messaggio. Non riceve mai nulla con cui approvare da solo la propria richiesta.</p>
+  <div class="steps">
+    <article class="card step"><div class="n">01 · ANTEPRIMA</div><h3>L’agente riceve un’anteprima</h3><p>Un invio, una risposta o una cancellazione restituiscono l’anteprima e un id di richiesta inerte. L’agente non può trasformare quell’id in un’azione.</p><span class="chip chip-inert">richiesta req_7f3a · inerte</span></article>
+    <article class="card step"><div class="n">02 · APPROVAZIONE</div><h3>Approvi tu, fuori dalla sua portata</h3><p>Console, riga di comando, Telegram o una notifica di Windows, con conferma Windows Hello o Touch ID.</p><span class="chip chip-held">In attesa · da approvare</span></article>
+    <article class="card step"><div class="n">03 · ESECUZIONE</div><h3>Parte esattamente ciò che hai visto</h3><p>Gli argomenti che hai controllato, mai una sostituzione. Ogni scrittura finisce in un registro delle azioni a sola aggiunta.</p><span class="chip chip-ok">Approvata da te · inviata</span></article>
+  </div>
+  <p class="muted note">Dieci strumenti aspettano dietro questa approvazione: inviare e rispondere, spostare e cancellare messaggi, cancellare cartelle, creare e cancellare eventi in calendario, creare riunioni Zoom, caricare e cancellare file su Drive. La <a href="./mcp-map-it.html">mappa MCP</a> elenca tutti i 31 strumenti con la loro classe di rischio.</p>
+  <div class="grid grid-2" style="margin-top:14px">
+    <article class="card pad"><h3>Legata a ciò che hai visto</h3><p>Una richiesta approvata parte con account, destinatari, cartella e allegati fissati quando è stata creata. Gli allegati sono legati alla loro impronta SHA-256 e alla dimensione: un file sostituito sul disco dopo la tua approvazione blocca l’invio.</p></article>
+    <article class="card pad"><h3>Nel dubbio, non parte</h3><p>Se l’archivio delle approvazioni non è leggibile, non parte nulla: la risposta è un rifiuto esplicito, non un errore che qualcuno potrebbe poi nascondere. Su un computer che non può verificare una persona, l’approvazione viene rifiutata invece di diventare una domanda sì/no.</p></article>
+  </div>
+</div></section>
+
+<section id="channels" aria-labelledby="s-channels"><div class="wrap narrow">
+  <h2 id="s-channels">Chi può approvare, dal più forte</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Canale</th><th>Come funziona</th><th>Quanto è forte</th></tr></thead>
+    <tbody>
+      <tr><td>Windows Hello / Touch ID</td><td>Chiesto a ogni approvazione, sul dispositivo. Un programma può aprire la richiesta; solo la persona davanti al computer può soddisfarla. Attivo di serie su Windows e macOS.</td><td><span class="chip-c c-safe">IL PIÙ FORTE</span></td></tr>
+      <tr><td>PIN locale su Linux</td><td>Digitato in un terminale interattivo, conservato solo come hash, bloccato per 15 minuti dopo 3 tentativi sbagliati. Un agente che lancia il comando da uno script non riceve la richiesta.</td><td><span class="chip-c c-read">PIÙ DEBOLE</span></td></tr>
+      <tr><td>Telegram</td><td>Facoltativo. Un tocco dalla chat che hai registrato dietro la conferma del sistema. Funziona da ogni dispositivo collegato al tuo account Telegram, compreso un client desktop lasciato aperto.</td><td><span class="chip-c c-danger">IL PIÙ DEBOLE</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">Rifiutare non richiede nessuno di questi: dire di no è sempre sicuro. Se attivi l’approvazione da Telegram, non tenere Telegram collegato sul computer che usa l’agente.</p>
+</div></section>
+
+<section id="rules" aria-labelledby="s-rules"><div class="wrap narrow">
+  <h2 id="s-rules">Automazioni, solo se le firmi</h2>
+  <p class="muted note" style="margin:0 0 14px">L’unico modo in cui una mail parte senza un clic: una regola che crei nell’app, per i mittenti e i documenti che scegli. In semi-auto chiede comunque ogni volta; in auto lavora dentro il perimetro che hai firmato.</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>Nessuno strumento può accenderne una</h3><p>Una regola si crea e si riattiva solo dietro Windows Hello o Touch ID, dall’app o dalla riga di comando. Nessuno strumento MCP può creare o modificare una regola: una mail non può accendere l’autopilota. Metterla in pausa non richiede conferma.</p></article>
+    <article class="card pad"><h3>Stretta per costruzione</h3><p>Mittenti precisi o una sola cartella, solo i documenti allegati alla regola, un limite giornaliero, una pausa tra le risposte allo stesso mittente e una scadenza obbligatoria. Mai «tutto».</p></article>
+    <article class="card pad"><h3>L’agente scrive il testo, nient’altro</h3><p>Destinatario, oggetto e conversazione vengono dal messaggio in arrivo. La risposta va al mittente che ha fatto scattare la regola, mai a un indirizzo scritto nella mail o nella bozza.</p></article>
+    <article class="card pad"><h3>Se rispondere lo decidono regole, non un modello</h3><p>Nessuna risposta automatica a mail che non superano l’autenticazione del mittente (DMARC), a mail automatiche, liste, mittenti no-reply, spam, o mail con allegati eseguibili o archivi. Il primo messaggio di un mittente nuovo passa da te. Una raffica di corrispondenze mette in pausa la regola.</p></article>
+  </div>
+  <p class="muted note">Ogni invio automatico finisce nel registro delle azioni con la regola che l’ha fatto passare, e ricevi la stessa notifica di un’approvazione.</p>
+</div></section>
+
+<section id="data" aria-labelledby="s-data"><div class="wrap narrow">
+  <h2 id="s-data">I dati restano da te</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>Nessun server GigaMail</h3><p>Indice, archivio, credenziali, memoria e configurazione stanno sul tuo computer. GigaMail non ha server e non riceve nulla. Ciò che l’agente legge è gestito da quell’agente, secondo le regole del suo fornitore.</p></article>
+    <article class="card pad"><h3>Le credenziali non passano dall’agente</h3><p>Gli account li aggiungi tu, nell’app o nel tuo terminale. Non esiste uno strumento con cui un agente possa aggiungere un account o leggere una password, un token o una chiave.</p></article>
+    <article class="card pad"><h3>Un account alla volta</h3><p>Ogni strumento indica l’account su cui lavora. Un agente che chiede una casella non può leggerne o scriverne un’altra.</p></article>
+    <article class="card pad"><h3>Solo i file che hai registrato</h3><p>L’agente può citare solo i documenti che hai aggiunto come file di conoscenza. I percorsi fuori da quell’elenco vengono rifiutati, collegamenti compresi.</p></article>
+  </div>
+  <div class="card pad" style="margin-top:14px"><h3><span class="chip-c c-safe">APP DESKTOP</span>Campi sensibili nascosti</h3><p>Il masker sostituisce codici fiscali, partite IVA, IBAN e numeri di telefono prima che una mail vada all’agente per la bozza, e li rimette nella bozza. Regole e checksum, niente AI. Lo stesso filtro per gli agenti MCP è <a href="#planned">in programma</a>.</p></div>
+</div></section>
+
+<section id="mail" aria-labelledby="s-mail"><div class="wrap narrow">
+  <h2 id="s-mail">Una mail è input, non autorità</h2>
+  <p class="muted note" style="margin:0 0 14px">Il contenuto dei messaggi è trattato come dato non fidato. Un’istruzione nascosta in una mail non può aggiungere un account, leggere un segreto o approvare un invio.</p>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>L’agente legge quello che vedi tu</h3><p>Il testo che una persona non vede (blocchi nascosti, caratteri a dimensione zero, bianco su bianco, caratteri invisibili) viene tolto e segnalato. L’agente riceve il testo visibile, mai l’HTML grezzo. Una mail che non si riesce a controllare viene trattenuta, non indovinata.</p></article>
+    <article class="card pad"><h3>I programmi non arrivano all’agente</h3><p>Un allegato eseguibile non viene scaricato per un agente, è segnato con un avviso e nell’archivio è sostituito da una nota. L’app desktop non ne apre mai uno; puoi comunque salvarlo tu.</p></article>
+    <article class="card pad"><h3>Nessun link si apre da solo</h3><p>Il testo scritto da un agente viene mostrato senza caricare immagini o anteprime, nell’app e su Telegram. Un link che porta via dati non può essere aperto senza un clic.</p></article>
+    <article class="card pad"><h3>Provato contro mail ostili</h3><p>I test anti-injection girano a ogni modifica, e una prova d’attacco dà mail ostili a un agente vero con tutti gli strumenti attivi, dietro una protezione che registra le azioni distruttive invece di eseguirle.</p></article>
+  </div>
+</div></section>
+
+<section id="console" aria-labelledby="s-console"><div class="wrap narrow">
+  <h2 id="s-console">L’app desktop tratta la posta come terreno ostile</h2>
+  <div class="grid grid-2">
+    <article class="card pad"><h3>Una mail non può eseguire codice</h3><p>Ogni messaggio passa da un unico filtro ed è mostrato in un ambiente isolato dove non gira nessuno script. I link si aprono solo come indirizzi web o di posta.</p></article>
+    <article class="card pad"><h3>Locale e protetta da un token</h3><p>L’app parla solo con il proprio motore sul tuo computer, con un token casuale per ogni installazione.</p></article>
+    <article class="card pad"><h3>Release firmate</h3><p>Costruite dal sorgente etichettato. Installer e app Windows sono firmati; l’app macOS è firmata e autenticata da Apple. I pacchetti Linux non sono firmati. Le impronte SHA-256 sono nella <a href="https://github.com/adecubed/gigamail/releases/latest" rel="noopener">pagina della release</a>.</p></article>
+    <article class="card pad"><h3>Connessioni verificate</h3><p>I certificati dei server di posta sono controllati di serie. Un server con certificato autofirmato è accettato solo per l’account su cui l’hai permesso, dietro Windows Hello o Touch ID.</p></article>
+  </div>
+</div></section>
+
+<section id="limits" aria-labelledby="s-limits"><div class="wrap narrow">
+  <h2 id="s-limits">Cosa non copre</h2>
+  <div class="card pad"><ul>
+    <li><strong>Quello che il tuo agente decide di chiedere.</strong> Una mail ostile può ancora convincere un agente a chiedere un invio sbagliato. La richiesta si ferma all’anteprima: è il progetto che funziona, e l’anteprima è il punto in cui guardare.</li>
+    <li><strong>Un agente con un terminale che aggira GigaMail.</strong> Se può eseguire qualsiasi comando a tuo nome, può usare direttamente il tuo programma di posta o il tuo fornitore. Nessun controllo sulla posta può impedirlo. Tieni attive le approvazioni dei comandi dell’agente.</li>
+    <li><strong>Il fornitore del tuo modello.</strong> Ciò che l’agente legge esce dal perimetro di GigaMail e segue le regole sui dati di quel fornitore.</li>
+    <li><strong>Il registro delle azioni è a sola aggiunta, non a prova di manomissione.</strong> Chi può scrivere sul tuo disco può alterarlo.</li>
+    <li><strong>Le istruzioni visibili.</strong> Il testo che una persona può leggere arriva comunque al modello. Togliere il testo nascosto riduce la distanza tra ciò che vedi e ciò che l’agente legge; non la annulla.</li>
+    <li><strong>Un computer o un account utente già compromesso.</strong></li>
+  </ul></div>
+</div></section>
+
+<section id="planned" aria-labelledby="s-planned"><div class="wrap narrow">
+  <h2 id="s-planned">In programma</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Cosa</th><th>Perché</th><th>Stato</th></tr></thead>
+    <tbody>
+      <tr><td>Il masker per gli agenti MCP</td><td>Oggi i campi sensibili vengono nascosti solo quando l’app desktop chiede una bozza all’agente. Lo stesso filtro varrà per gli agenti collegati via MCP.</td><td><span class="chip-c c-read">IN PROGRAMMA</span></td></tr>
+      <tr><td>Approvazione da Telegram solo dal telefono</td><td>Oggi approva un tocco da qualsiasi client Telegram collegato. L’approvazione passerà a una Mini App di Telegram che chiede la biometria del telefono: i client desktop e web non potranno approvare.</td><td><span class="chip-c c-read">IN PROGRAMMA</span></td></tr>
+      <tr><td>Lettura più severa del testo nascosto</td><td>Stili ereditati, più forme di colore e dimensioni dei caratteri, e regole di stile complesse che possono solo nascondere testo.</td><td><span class="chip-c c-danger">PROSSIMA RELEASE</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section id="fixed" aria-labelledby="s-fixed"><div class="wrap narrow">
+  <h2 id="s-fixed">Trovato e corretto</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Release</th><th>Cosa non andava</th><th>Cosa è cambiato</th></tr></thead>
+    <tbody>
+      <tr><td>0.4.1</td><td>Il certificato del server di posta non veniva verificato nelle connessioni IMAP.</td><td>Certificato e nome del server sono verificati di serie; un certificato rifiutato interrompe la connessione.</td></tr>
+      <tr><td>0.4.0</td><td>Un allegato approvato poteva essere sostituito sul disco prima dell’invio.</td><td>Gli allegati sono legati a impronta SHA-256 e dimensione; una differenza blocca l’invio.</td></tr>
+      <tr><td>0.1.4</td><td>Un agente con un terminale poteva lanciare da solo il comando di approvazione.</td><td>Approvare richiede Windows Hello o Touch ID, da qualsiasi strada.</td></tr>
+      <tr><td>0.1.1</td><td>L’agente riceveva un codice di conferma e poteva approvare la propria richiesta.</td><td>L’approvazione è uscita dalla portata dell’agente, che riceve solo un id di richiesta inerte.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted note">Alcuni di questi sono stati segnalati da persone che hanno letto il codice. Sono ringraziate nella <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">politica di sicurezza completa</a> (in inglese).</p>
+</div></section>
+
+<section id="report" aria-labelledby="s-report"><div class="wrap narrow">
+  <h2 id="s-report">Segnalare una vulnerabilità</h2>
+  <div class="card pad"><p>Per favore non aprire una issue pubblica. Usa la <a href="https://github.com/adecubed/gigamail/security/advisories/new" rel="noopener">segnalazione privata di GitHub</a>, oppure scrivi a <a href="mailto:founder@adecubed.com">founder@adecubed.com</a> con «GigaMail security» nell’oggetto. Ricevi una conferma entro 72 ore e una valutazione entro 7 giorni. Non c’è un programma di ricompense: c’è un ringraziamento pubblico nelle note di release, a meno che tu preferisca restare anonimo.</p>
+  <p style="margin-top:12px"><a class="btn btn-ghost" href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">Politica di sicurezza completa su GitHub</a></p></div>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Termini di servizio</a>
+    <a href="./credits.html">Crediti del codice</a>
+    <a href="./mcp-map-it.html">Mappa MCP</a>
+    <a href="./security-it.html">Sicurezza</a>
+    <a href="./install-it.html">Installazione</a>
+    <a href="./changelog-it.html">Novità</a>
+    <a href="./mail-city-it.html">Mail City</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+    <a href="./security.html" hreflang="en" lang="en">English</a>
+    <a href="./security-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GigaMail — Claude chat animation</title>
+<!--
+  A site animation, not a recording: a person talks to Claude, Claude uses
+  GigaMail over MCP, a reply waits for approval, the person approves from
+  GigaMail's notification and Claude sends. The chat is drawn here in a
+  neutral style; it is not Claude's interface and uses none of its artwork.
+  Every frame is a pure function of time: window.seek(seconds) draws it, so
+  render.mjs can photograph the frames one by one and the film is the same
+  every time. Open the file in a browser to watch it live (?t=12 freezes a
+  moment, ?lang=it switches language). All names, addresses and figures are
+  invented.
+-->
+<style>
+  @font-face { font-family: 'Poppins'; font-weight: 500; src: url('../../docs/fonts/poppins-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Poppins'; font-weight: 600; src: url('../../docs/fonts/poppins-latin-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Poppins'; font-weight: 700; src: url('../../docs/fonts/poppins-latin-700-normal.woff2') format('woff2'); }
+  :root { --bg: #d1d0d5; --ink: #26252b; --muted: #77757f; --pink: #c4267f; --line: #e8e6ec; --amber-bg: #fcefd6; --amber: #a36a00; --green-bg: #e1f4e7; --green: #1f7a43; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; color: var(--ink); overflow: hidden; }
+  #stage { position: relative; width: 1280px; height: 720px; background: var(--bg); overflow: hidden; }
+
+  .app { position: absolute; left: 70px; top: 30px; width: 1140px; height: 568px; border-radius: 26px; background: #fcfbf9; box-shadow: 0 24px 50px rgba(40, 30, 60, .15); overflow: hidden; }
+  .side { position: absolute; left: 0; top: 0; bottom: 0; width: 250px; padding: 18px 14px; background: #f5f3ef; border-right: 1px solid var(--line); font-size: 14.5px; }
+  .side .dots { display: flex; gap: 7px; margin: 2px 0 20px 6px; }
+  .side .dots i { width: 11px; height: 11px; border-radius: 50%; background: #dcdae0; }
+  .side .nav { display: flex; align-items: center; gap: 10px; padding: 7px 8px; color: #3d3b44; }
+  .side .nav svg { width: 17px; height: 17px; flex: none; stroke: #55535c; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .side .label { margin: 20px 8px 6px; font-size: 12.5px; color: var(--muted); }
+  .side .chat { padding: 7px 8px; border-radius: 8px; color: #3d3b44; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side .chat.on { background: #e7e4de; color: var(--ink); }
+  .side .me { position: absolute; left: 14px; right: 14px; bottom: 16px; display: flex; align-items: center; gap: 10px; padding: 0 8px; color: #3d3b44; }
+  .side .me i { width: 26px; height: 26px; border-radius: 50%; background: #6b5bd6; color: #fff; display: grid; place-items: center; font: 600 12px 'Poppins'; font-style: normal; }
+  .bar { position: absolute; left: 250px; right: 0; top: 0; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 24px; }
+  .bar b { font-size: 15.5px; font-weight: 600; }
+  .bar .mcp { margin-left: auto; padding: 5px 12px; border-radius: 999px; background: #f1eef4; font: 600 12px 'Poppins'; color: #6a6772; }
+  .bar .mcp i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2a9d57; margin-right: 7px; }
+
+  .msgs { position: absolute; left: 330px; right: 80px; top: 62px; bottom: 118px; overflow: hidden; }
+  .msgs-inner { position: absolute; left: 0; right: 0; top: 0; }
+  .item { padding-bottom: 14px; }
+  .user { width: fit-content; max-width: 520px; margin-left: auto; padding: 11px 16px; border-radius: 18px; background: #efece7; font-size: 17px; line-height: 1.4; }
+  .claude { font-size: 17px; line-height: 1.5; }
+  .who { margin-bottom: 4px; font: 600 13px 'Poppins'; color: var(--muted); }
+  .tool { display: flex; align-items: center; gap: 10px; width: fit-content; padding: 7px 14px 7px 9px; border-radius: 11px; background: #fff; border: 1px solid var(--line); font-size: 14.5px; }
+  .tool code { font: 600 13.5px Consolas, 'Cascadia Mono', monospace; }
+  .tool span { color: var(--muted); }
+  .tool .state { width: 19px; height: 19px; border-radius: 50%; flex: none; display: grid; place-items: center; font: 700 11px 'Poppins'; }
+  .tool .state.run { border: 2.5px solid #d9d6de; border-top-color: var(--pink); }
+  .tool .state.ok { background: var(--green-bg); color: var(--green); }
+  .tool .state.held { background: var(--amber-bg); color: var(--amber); }
+  .pill { margin-left: 4px; padding: 3px 10px; border-radius: 999px; font: 600 12px 'Poppins'; }
+  .pill.held { background: var(--amber-bg); color: var(--amber); }
+  .pill.sent { background: var(--green-bg); color: var(--green); }
+  .mails { margin: 8px 0 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
+  .mails li { display: grid; grid-template-columns: 190px 1fr; gap: 12px; padding: 8px 14px; font-size: 15.5px; border-top: 1px solid var(--line); }
+  .mails li:first-child { border-top: 0; }
+  .mails b { font-weight: 600; }
+  .mails span { color: #55535c; }
+  .draft { margin-top: 8px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 15.5px; line-height: 1.5; }
+  .draft .to { color: var(--muted); font-size: 14px; }
+  .draft .subj { font-weight: 600; margin-bottom: 4px; }
+
+  .input { position: absolute; left: 330px; right: 80px; bottom: 44px; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; border-radius: 18px; background: #fff; border: 1px solid #dedbe2; box-shadow: 0 4px 14px rgba(40, 30, 60, .06); font-size: 17px; }
+  .input .plus { font-size: 24px; color: #8d8a94; line-height: 1; }
+  .input .ph { color: #a9a6b0; }
+  .input .send { margin-left: auto; width: 34px; height: 34px; border-radius: 11px; background: var(--ink); display: grid; place-items: center; }
+  .input .mic { margin-left: auto; width: 20px; height: 20px; stroke: #77757f; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .input .send { margin-left: 10px; }
+  .under { position: absolute; left: 330px; right: 80px; bottom: 16px; text-align: center; font-size: 12.5px; color: var(--muted); }
+  .caret { display: inline-block; width: 2px; height: 20px; margin-left: 1px; background: var(--ink); vertical-align: -4px; }
+
+  /* GigaMail's notification, outside the chat */
+  .toast { position: absolute; right: 30px; top: 372px; width: 390px; padding: 16px 18px 16px; border-radius: 14px; background: #2a2930; color: #fff; box-shadow: 0 22px 46px rgba(20, 15, 35, .38); }
+  .toast .head { display: flex; align-items: center; gap: 9px; font: 600 13px 'Poppins'; color: #c9c6d1; }
+  .toast h3 { margin: 10px 0 4px; font: 600 18px 'Poppins'; }
+  .toast p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #d6d3dc; }
+  .toast .btns { display: flex; gap: 10px; margin-top: 14px; }
+  .toast .btn { flex: 1; padding: 9px 0; border-radius: 9px; text-align: center; font: 600 15px 'Poppins'; background: #45434d; color: #fff; }
+  .toast .btn.primary { background: var(--pink); }
+  .toast .hello { display: flex; align-items: center; gap: 9px; margin-top: 14px; font: 600 15px 'Poppins'; color: #8fe0aa; }
+  .toast .tick { width: 22px; height: 22px; border-radius: 50%; background: #2a9d57; color: #fff; display: grid; place-items: center; font-size: 13px; }
+  .pointer { position: absolute; left: 0; top: 0; width: 30px; height: 30px; z-index: 5; }
+  .caption { position: absolute; left: 0; right: 0; top: 630px; text-align: center; font: 600 35px 'Poppins'; letter-spacing: -.01em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="app">
+    <div class="side">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="nav"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="s-new"></span></div>
+      <div class="nav"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="s-search"></span></div>
+      <div class="label" id="s-recent"></div>
+      <div id="s-chats"></div>
+      <div class="me"><i id="s-initial"></i><span id="s-me"></span></div>
+    </div>
+    <div class="bar"><b id="chat-title"></b><span class="mcp"><i></i><span id="mcp-label"></span></span></div>
+    <div class="msgs" id="view"><div class="msgs-inner" id="msgs"></div></div>
+    <div class="input"><span class="plus">+</span><span id="typed"></span><svg class="mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span></div>
+    <div class="under" id="under"></div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <svg class="pointer" id="pointer" viewBox="0 0 30 30" aria-hidden="true"><path d="M4 2 L4 24 L10 18.5 L14 27.5 L18 25.7 L14 17 L22 17 Z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  <div class="caption" id="caption"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var TEXT = {
+    en: {
+      mcp: 'GigaMail connected', placeholder: 'Type your message',
+      newChat: 'New chat', search: 'Search', recent: 'Recents', title: 'Today’s mail', me: 'You', initial: 'Y',
+      chats: ['Today’s mail', 'Offer for the trade fair', 'Notes from Monday’s call', 'Supplier comparison', 'Holiday plan'],
+      under: 'An illustration of a chat with Claude, with GigaMail connected over MCP.',
+      ask1: 'Any new mail?',
+      found: 'Yes, 4 new messages:',
+      mails: [['Mario Rossi', 'Quote for 40 units'], ['Anna Bianchi', 'Meeting on Thursday'], ['Luca Verdi', 'Invoice 118'], ['Example Weekly', 'This week’s newsletter']],
+      ask2: 'Reply to Mario: 40 units are €18.50 each, delivery in 10 days.',
+      unread: 'inbox', replyTool: 'to Mario Rossi', held: 'approval required', sentPill: 'sent',
+      drafted: 'Here is the reply. I can’t send it myself: approve it in the GigaMail notification.',
+      to: 'To mario.rossi@example.com', subject: 'Re: Quote for 40 units',
+      body: 'Hi Mario, 40 units are €18.50 each, with delivery in 10 days. Let me know if you’d like to go ahead.',
+      approved: 'You approved it. Sending the mail now.',
+      done: 'Sent to Mario, exactly as you approved it.',
+      toastHead: 'GigaMail · you, not the agent', toastTitle: 'Approve this reply?', toastText: '“Re: Quote for 40 units” to mario.rossi@example.com',
+      approve: 'Approve', reject: 'Reject', hello: 'Confirmed with Windows Hello',
+      captions: ['Ask Claude about your mail.', 'Tell it what to answer.', 'It can ask to send. It can’t approve.', 'You approve. Then it sends.']
+    },
+    it: {
+      mcp: 'GigaMail collegato', placeholder: 'Scrivi il tuo messaggio',
+      newChat: 'Nuova chat', search: 'Cerca', recent: 'Recenti', title: 'La posta di oggi', me: 'Tu', initial: 'T',
+      chats: ['La posta di oggi', 'Offerta per la fiera', 'Appunti della call di lunedì', 'Confronto fornitori', 'Piano ferie'],
+      under: 'Illustrazione di una chat con Claude, con GigaMail collegato via MCP.',
+      ask1: 'Sono arrivate nuove mail?',
+      found: 'Sì, ci sono 4 nuovi messaggi:',
+      mails: [['Mario Rossi', 'Preventivo per 40 pezzi'], ['Anna Bianchi', 'Riunione di giovedì'], ['Luca Verdi', 'Fattura 118'], ['Example Weekly', 'La newsletter della settimana']],
+      ask2: 'Rispondi a Mario: 40 pezzi costano 18,50 € l’uno, consegna in 10 giorni.',
+      unread: 'posta in arrivo', replyTool: 'a Mario Rossi', held: 'serve l’approvazione', sentPill: 'inviata',
+      drafted: 'Ecco la risposta. Non posso inviarla io: approvala dalla notifica di GigaMail.',
+      to: 'A mario.rossi@example.com', subject: 'Re: Preventivo per 40 pezzi',
+      body: 'Ciao Mario, 40 pezzi costano 18,50 € l’uno, con consegna in 10 giorni. Fammi sapere se vuoi procedere.',
+      approved: 'Hai approvato. Invio la mail.',
+      done: 'Inviata a Mario, esattamente come l’hai approvata.',
+      toastHead: 'GigaMail · tu, non l’agente', toastTitle: 'Approvi questa risposta?', toastText: '«Re: Preventivo per 40 pezzi» a mario.rossi@example.com',
+      approve: 'Approva', reject: 'Rifiuta', hello: 'Confermato con Windows Hello',
+      captions: ['Chiedi a Claude della tua posta.', 'Digli cosa rispondere.', 'Può chiedere di inviare. Non può approvare.', 'Approvi tu. Poi invia.']
+    }
+  };
+  var query = new URLSearchParams(location.search);
+  var lang = TEXT[query.get('lang')] ? query.get('lang') : 'en';
+  var T = TEXT[lang];
+  document.documentElement.lang = lang;
+  var DURATION = 27;
+  var $ = function (id) { return document.getElementById(id); };
+  var clamp = function (x) { return Math.max(0, Math.min(1, x)); };
+  var ease = function (x) { x = clamp(x); return 1 - Math.pow(1 - x, 3); };
+  var span = function (t, from, to) { return clamp((t - from) / (to - from)); };
+  var lerp = function (a, b, p) { return a + (b - a) * p; };
+  var esc = function (s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+  $('mcp-label').textContent = T.mcp;
+  $('s-new').textContent = T.newChat; $('s-search').textContent = T.search; $('s-recent').textContent = T.recent;
+  $('s-me').textContent = T.me; $('s-initial').textContent = T.initial; $('chat-title').textContent = T.title; $('under').textContent = T.under;
+  $('s-chats').innerHTML = T.chats.map(function (c, i) { return '<div class="chat' + (i === 0 ? ' on' : '') + '">' + esc(c) + '</div>'; }).join('');
+
+  // Moments of the film, in seconds.
+  var TYPE1 = [0.6, 1.7], SEND1 = 2.0, UNREAD = 2.6, UNREAD_DONE = 3.6, LIST = 3.9;
+  var TYPE2 = [6.8, 10.2], SEND2 = 10.5, REPLY = 11.1, HELD = 12.3, DRAFT = 12.7;
+  var TOAST = 15.4, MOVE = [16.4, 17.5], CLICK = 17.7, HELLO = 18.3, TOAST_OUT = 19.9;
+  var APPROVED = 20.3, SENDING = 20.9, SENT = 22.2, DONE = 22.6;
+  var ACTS = [0, TYPE2[0] - 0.3, HELD, TOAST];
+
+  function spinner(t) { return '<span class="state run" style="transform:rotate(' + Math.round(t * 420) + 'deg)"></span>'; }
+  function tool(state, name, what, pill) { return '<div class="tool">' + state + '<code>' + name + '</code><span>' + esc(what) + '</span>' + (pill || '') + '</div>'; }
+
+  window.seek = function (t) {
+    t = Math.max(0, Math.min(DURATION, t));
+
+    // The input: two requests are typed and sent.
+    var typed = '', caret = false, active = false;
+    [[TYPE1, SEND1, T.ask1], [TYPE2, SEND2, T.ask2]].forEach(function (turn) {
+      if (t >= turn[0][0] - 0.3 && t < turn[1]) {
+        active = true;
+        typed = turn[2].slice(0, Math.round(span(t, turn[0][0], turn[0][1]) * turn[2].length));
+        caret = t < turn[0][1] || Math.floor(t * 2) % 2 === 0;
+      }
+    });
+    $('typed').innerHTML = active ? esc(typed) + (caret ? '<span class="caret"></span>' : '') : '<span class="ph">' + T.placeholder + '</span>';
+
+    // The conversation. Every item is always in the page, so its height is
+    // known; opacity and the scroll position follow its progress.
+    var mails = '<ul class="mails">' + T.mails.map(function (m, i) {
+      var p = ease(span(t, LIST + 0.25 + i * 0.22, LIST + 0.6 + i * 0.22));
+      return '<li style="opacity:' + p.toFixed(3) + '"><b>' + esc(m[0]) + '</b><span>' + esc(m[1]) + '</span></li>';
+    }).join('') + '</ul>';
+    var replyState = t < HELD ? spinner(t) : '<span class="state held">!</span>';
+    var sendState = t < SENT ? spinner(t) : '<span class="state ok">✓</span>';
+    var items = [
+      [SEND1, '<div class="user">' + esc(T.ask1) + '</div>'],
+      [UNREAD, tool(t < UNREAD_DONE ? spinner(t) : '<span class="state ok">✓</span>', 'list_unread', T.unread)],
+      [LIST, '<div class="claude"><div class="who">Claude</div>' + esc(T.found) + mails + '</div>'],
+      [SEND2, '<div class="user">' + esc(T.ask2) + '</div>'],
+      [REPLY, tool(replyState, 'reply_mail', T.replyTool, t >= HELD ? '<b class="pill held">' + T.held + '</b>' : '')],
+      [DRAFT, '<div class="claude"><div class="who">Claude</div>' + esc(T.drafted) + '<div class="draft"><div class="to">' + esc(T.to) + '</div><div class="subj">' + esc(T.subject) + '</div>' + esc(T.body) + '</div></div>'],
+      [APPROVED, '<div class="claude"><div class="who">Claude</div>' + esc(T.approved) + '</div>'],
+      [SENDING, tool(sendState, 'reply_mail', T.replyTool, t >= SENT ? '<b class="pill sent">' + T.sentPill + '</b>' : '')],
+      [DONE, '<div class="claude">' + esc(T.done) + '</div>']
+    ];
+    var progress = items.map(function (item) { return ease(span(t, item[0], item[0] + 0.4)); });
+    $('msgs').innerHTML = items.map(function (item, i) {
+      return '<div class="item" style="opacity:' + progress[i].toFixed(3) + '">' + item[1] + '</div>';
+    }).join('');
+    var shown = 0;
+    Array.prototype.forEach.call($('msgs').children, function (node, i) { shown += node.offsetHeight * progress[i]; });
+    $('msgs').style.transform = 'translateY(' + (-Math.max(0, shown - $('view').clientHeight)).toFixed(1) + 'px)';
+
+    // GigaMail's notification slides in from the right, is answered, leaves.
+    var toast = $('toast');
+    var visible = ease(span(t, TOAST, TOAST + 0.45)) * (1 - ease(span(t, TOAST_OUT, TOAST_OUT + 0.4)));
+    toast.style.opacity = visible.toFixed(3);
+    toast.style.transform = 'translateX(' + ((1 - visible) * 60).toFixed(1) + 'px)';
+    var pressed = t >= CLICK && t < CLICK + 0.18;
+    var inner = '<div class="head"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#c4267f"/><circle cx="12" cy="12" r="3.4" fill="#fff"/></svg>' + T.toastHead + '</div>'
+      + '<h3>' + T.toastTitle + '</h3><p>' + esc(T.toastText) + '</p>';
+    if (t < HELLO) inner += '<div class="btns"><span class="btn primary" id="go" style="transform:scale(' + (pressed ? 0.95 : 1) + ')">' + T.approve + '</span><span class="btn">' + T.reject + '</span></div>';
+    else inner += '<div class="hello" style="opacity:' + ease(span(t, HELLO, HELLO + 0.3)).toFixed(3) + '"><span class="tick">✓</span>' + T.hello + '</div>';
+    toast.innerHTML = inner;
+
+    // The pointer goes to Approve, clicks, and fades.
+    var pointer = $('pointer');
+    var go = document.getElementById('go');
+    if (go && visible > 0.99) {
+      var box = go.getBoundingClientRect(), stage = $('stage').getBoundingClientRect();
+      window.__target = [box.left - stage.left + box.width * 0.55, box.top - stage.top + box.height * 0.5];
+    }
+    var target = window.__target || [960, 520];
+    var move = ease(span(t, MOVE[0], MOVE[1]));
+    pointer.style.opacity = (span(t, MOVE[0] - 0.2, MOVE[0]) * (1 - span(t, HELLO + 0.2, HELLO + 0.6))).toFixed(3);
+    pointer.style.transform = 'translate(' + lerp(760, target[0], move).toFixed(1) + 'px,' + lerp(640, target[1], move).toFixed(1) + 'px)';
+
+    // One caption per act, cross-faded.
+    var act = 0;
+    ACTS.forEach(function (start, i) { if (t >= start) act = i; });
+    var into = ease(span(t, ACTS[act], ACTS[act] + 0.4));
+    var out = act < ACTS.length - 1 ? 1 - span(t, ACTS[act + 1] - 0.25, ACTS[act + 1]) : 1;
+    $('caption').textContent = T.captions[act];
+    $('caption').style.opacity = (into * out).toFixed(3);
+  };
+  window.DURATION = DURATION;
+
+  if (query.get('t') !== null) { window.seek(Number(query.get('t'))); return; }
+  if (query.get('still') !== null) { window.seek(0); return; }
+  var start = performance.now();
+  (function loop(now) { window.seek(((now - start) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); })(start);
+})();
+</script>
+</body>
+</html>
