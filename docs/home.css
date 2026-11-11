@@ -162,6 +162,11 @@ section.works { padding: 6px 0 20px; }
 section { padding: 44px 0; }
 .sec-head { margin-bottom: 26px; }
 .sec-head .lede { margin-top: 10px; }
+/* the features teaser on the home: one button to the features page */
+.see-more { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.btn-send { gap: 10px; padding: 14px 24px; font-size: 1.05rem; max-width: 100%; white-space: normal; text-align: left; }
+.btn-send svg { transition: transform .2s ease; }
+.btn-send:hover svg { transform: translate(3px, -3px); }
 .grid { display: grid; gap: 14px; }
 .grid > *, .steps > *, .install > * { min-width: 0; }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
