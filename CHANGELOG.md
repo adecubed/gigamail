@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The approval card in the agent chat has Edit.** It offered only
+  Approve and Reject: correcting the text meant going to the approvals
+  page. Edit opens the same window as there; back in the console the
+  card shows the corrected text, and a request approved or rejected in
+  that window is no longer offered on the card.
+- **Save on the approvals page.** "Save" (decide later: the request
+  waits 7 days instead of 15 minutes) was only in the request's own
+  window. The cards of "Waiting for you" have it too.
+
 - **Suggested attachments are attached again.** After "Generate", the
   reply window offers the knowledge files that match the mail (a floor
   plan named in the request, for example). Adding them asked the backend

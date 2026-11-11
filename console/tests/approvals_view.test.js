@@ -59,6 +59,15 @@ test('the pending card has approve and reject for that request and escapes the s
   assert.ok(html.includes('richiesta dell&#39;agente'));   // the label goes through the same escaping
 });
 
+test('Save on the list too: decide later, offered until the request is saved', () => {
+  // Only the request window had it: a request read on this page could only
+  // be approved, rejected or left to expire in 15 minutes.
+  assert.match(V.pendingCard(AGENT_SEND, t, NOW), /data-act="save" data-id="req_def"/);
+  const saved = V.pendingCard({ ...AGENT_SEND, saved_at: NOW - 60, expires_at: NOW + 6 * 86400 }, t, NOW);
+  assert.ok(!saved.includes('data-act="save"'));
+  assert.ok(saved.includes('salvata'));
+});
+
 test('the watcher card names the rule mode, the recipient source and the expiry', () => {
   const html = V.pendingCard(WATCHER_REPLY, t, NOW);
   assert.ok(html.includes('bozza del watcher'));
@@ -169,6 +178,10 @@ test('opening Automations lists what waits, counts it on the badge, and Reject r
   assert.ok(calls.includes('open-window req_abc edit'), calls.join(', '));
   assert.ok(!calls.some((c) => /\/(approve|reject|edit)$/.test(c)));
   assert.equal(list.querySelector('button[data-act="edit"]').disabled, false);
+
+  list.querySelector('button[data-act="save"]').click();
+  await tick();
+  assert.ok(calls.includes('POST /approvals/req_abc/save'), calls.join(', '));
 
   list.querySelector('button[data-act="reject"]').click();
   await tick();
