@@ -113,29 +113,87 @@
     title.classList.add('words');
   }
 
-  // Hero prompt: example requests type themselves, pause, erase, and the
-  // next one follows. The phrases come from the page (data-phrases), so each
-  // language has its own; the first one is already in the HTML.
-  var typed = document.querySelector('[data-phrases]');
-  if (typed && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-    var phrases = typed.getAttribute('data-phrases').split('|');
+  // Hero exchange: a request types itself, the agent answers, and the
+  // outcome follows: "waiting for your OK" turning into "approved" when the
+  // action leaves a trace, or "nothing to approve" when it only reads. The
+  // turns come from the page (.ask-data), so each language has its own; the
+  // first one is already in the HTML for readers without scripts or motion.
+  var ask = document.querySelector('.ask-box');
+  var askData = ask && ask.querySelector('.ask-data');
+  if (askData && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    var chat = JSON.parse(askData.textContent);
+    var typed = ask.querySelector('.typed');
+    var agent = ask.querySelector('.ask-agent');
+    var reply = agent.querySelector('span');
+    var state = ask.querySelector('.ask-state');
+    var pill = state.querySelector('.ask-pill');
     var text = document.createElement('span');
     var caret = document.createElement('span');
     caret.className = 'caret';
+    // Keep the box as tall as its longest turn, so the page below never jumps.
+    var reserve = function () {
+      [[typed.parentNode, typed, 0], [agent, reply, 1]].forEach(function (row) {
+        var keep = row[1].textContent, tallest = 0;
+        row[0].style.minHeight = '';
+        chat.turns.forEach(function (turn) {
+          row[1].textContent = turn[row[2]];
+          tallest = Math.max(tallest, row[0].offsetHeight);
+        });
+        row[1].textContent = keep;
+        row[0].style.minHeight = tallest + 'px';
+      });
+    };
+    reserve();
     typed.textContent = '';
     typed.appendChild(text);
     typed.appendChild(caret);
-    var type = function (phrase, at, erasing) {
-      var line = phrases[phrase];
-      text.textContent = line.slice(0, at);
-      var next;
-      if (!erasing && at < line.length) next = [phrase, at + 1, false, 38];
-      else if (!erasing) next = [phrase, at, true, 1700];
-      else if (at > 0) next = [phrase, at - 1, true, 16];
-      else next = [(phrase + 1) % phrases.length, 0, false, 350];
-      setTimeout(function () { type(next[0], next[1], next[2]); }, next[3]);
+    window.addEventListener('resize', function () {
+      var now = text.textContent, said = reply.textContent;
+      typed.textContent = now;
+      reserve();
+      typed.textContent = '';
+      text.textContent = now;
+      typed.appendChild(text);
+      typed.appendChild(caret);
+      reply.textContent = said;
+    });
+    ask.classList.add('live');
+    var play = function (index) {
+      var turn = chat.turns[index];
+      var chars = Array.from(turn[0]);
+      var reads = turn[2] === 'read';
+      var at = 0;
+      agent.classList.remove('on');
+      state.classList.remove('on');
+      text.textContent = '';
+      caret.hidden = false;
+      var key = function () {
+        at += 1;
+        text.textContent = chars.slice(0, at).join('');
+        if (at < chars.length) { setTimeout(key, 34); return; }
+        caret.hidden = true;
+        setTimeout(function () {
+          reply.textContent = turn[1];
+          agent.classList.add('on');
+        }, 550);
+        setTimeout(function () {
+          pill.className = 'ask-pill ' + (reads ? 'read' : 'wait');
+          pill.textContent = chat.labels[reads ? 'read' : 'wait'];
+          state.classList.add('on');
+        }, 1700);
+        if (!reads) setTimeout(function () {
+          pill.className = 'ask-pill ok';
+          pill.textContent = chat.labels[turn[2]];
+        }, 3100);
+        setTimeout(function () {
+          agent.classList.remove('on');
+          state.classList.remove('on');
+        }, reads ? 4600 : 5900);
+        setTimeout(function () { play((index + 1) % chat.turns.length); }, reads ? 5000 : 6300);
+      };
+      key();
     };
-    setTimeout(function () { type(0, 0, false); }, 1500);
+    setTimeout(function () { play(0); }, 1500);
   }
 
   // Story: the four steps play out like the hero prompt. When the list

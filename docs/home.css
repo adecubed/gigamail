@@ -116,10 +116,23 @@ section.showcase { padding: 10px 0 30px; }
 @keyframes hero-underline { to { background-size: 100% .14em; } }
 
 /* Hero prompt: an example request that types itself. */
-.ask-box { display: flex; align-items: center; gap: 12px; max-width: 34rem; margin: 0 0 22px; padding: 14px 18px; border-radius: 14px;
+.ask-box { display: grid; gap: 10px; max-width: 46rem; margin: 40px 0 22px; padding: 18px 20px; border-radius: 16px;
   background: var(--gm-card); border: 1px solid var(--gm-line); box-shadow: 0 8px 24px rgba(0, 0, 0, .05); font-size: 1rem; }
-.ask-box .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gm-pink); flex: none; }
-.ask-box .typed { min-height: 1.5em; }
+/* Hero exchange (home.js): the request types itself, the agent answers, then
+   the outcome: waiting for the OK and approved, or nothing to approve. */
+.ask-row { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 12px; align-items: baseline; margin: 0; }
+.ask-row > b { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gm-muted); }
+.ask-you > b { color: var(--gm-pink); }
+.ask-you .typed { font-weight: 600; min-height: 1.5em; }
+.ask-agent > span { color: var(--gm-muted); }
+.ask-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; background: var(--gm-fill); color: var(--gm-muted); }
+.ask-pill.wait { background: var(--gm-amber-bg); color: var(--gm-amber); }
+.ask-pill.ok { background: var(--gm-green-bg); color: var(--gm-green); animation: ask-pop .35s ease-out; }
+.ask-pill.ok::before { content: "\2713\00a0"; }
+.ask-box.live .ask-agent, .ask-box.live .ask-state { opacity: 0; transform: translateY(4px); transition: opacity .3s ease, transform .3s ease; }
+.ask-box.live .ask-agent.on, .ask-box.live .ask-state.on { opacity: 1; transform: none; }
+@keyframes ask-pop { from { transform: scale(.92); } to { transform: scale(1); } }
+@media (max-width: 560px) { .ask-row { grid-template-columns: 1fr; gap: 2px; } .ask-state > b { display: none; } }
 /* Works with: mailboxes and agents, one pastel per name. */
 section.works { padding: 6px 0 20px; }
 .works h2.kicker { margin-bottom: 12px; line-height: inherit; }
@@ -127,6 +140,9 @@ section.works { padding: 6px 0 20px; }
 .works-row > span { font-size: 0.82rem; font-weight: 600; color: var(--gm-muted); }
 .works-row ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .works-row li { padding: 7px 14px; border-radius: 999px; border: 1px solid; font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+.works-row li:not(.any) { display: inline-flex; align-items: center; gap: 8px; padding-left: 7px; }
+/* Brand marks sit on a white tile, so they read the same on every pastel and in dark mode. */
+.works-row li img { width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 6px; background: #fff; object-fit: contain; }
 .works-row .tone-1 { background: #dcecff; color: #1d4f8f; border-color: #bcd8fb; }
 .works-row .tone-2 { background: #ebe3fb; color: #503494; border-color: #d6c8f5; }
 .works-row .tone-3 { background: #ffe8cc; color: #8a4b0a; border-color: #f8d2a4; }
