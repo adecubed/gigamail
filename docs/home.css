@@ -118,19 +118,24 @@ section.showcase { padding: 10px 0 30px; }
 /* Hero prompt: an example request that types itself. */
 .ask-box { display: grid; gap: 10px; max-width: 46rem; margin: 40px 0 22px; padding: 18px 20px; border-radius: 16px;
   background: var(--gm-card); border: 1px solid var(--gm-line); box-shadow: 0 8px 24px rgba(0, 0, 0, .05); font-size: 1rem; }
-/* Hero exchange (home.js): the request types itself, the agent answers, then
-   the outcome: waiting for the OK and approved, or nothing to approve. */
+/* Hero exchange (home.js): short scenes between you and the agent. Your lines
+   type themselves, the agent's fade in, then the outcome: waiting for the OK
+   and approved or rejected, or nothing to approve. */
+.ask-box { align-content: start; }
+.ask-rows { display: grid; gap: 10px; }
 .ask-row { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 12px; align-items: baseline; margin: 0; }
 .ask-row > b { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gm-muted); }
 .ask-you > b { color: var(--gm-pink); }
-.ask-you .typed { font-weight: 600; min-height: 1.5em; }
+.ask-you > span { font-weight: 600; min-height: 1.5em; }
 .ask-agent > span { color: var(--gm-muted); }
 .ask-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; background: var(--gm-fill); color: var(--gm-muted); }
 .ask-pill.wait { background: var(--gm-amber-bg); color: var(--gm-amber); }
 .ask-pill.ok { background: var(--gm-green-bg); color: var(--gm-green); animation: ask-pop .35s ease-out; }
 .ask-pill.ok::before { content: "\2713\00a0"; }
-.ask-box.live .ask-agent, .ask-box.live .ask-state { opacity: 0; transform: translateY(4px); transition: opacity .3s ease, transform .3s ease; }
-.ask-box.live .ask-agent.on, .ask-box.live .ask-state.on { opacity: 1; transform: none; }
+.ask-pill.no { background: rgba(214, 60, 60, .14); color: #cf4545; animation: ask-pop .35s ease-out; }
+.ask-pill.no::before { content: "\2715\00a0"; }
+.ask-box.live .ask-row { opacity: 0; transform: translateY(4px); transition: opacity .3s ease, transform .3s ease; }
+.ask-box.live .ask-row.on { opacity: 1; transform: none; }
 @keyframes ask-pop { from { transform: scale(.92); } to { transform: scale(1); } }
 @media (max-width: 560px) { .ask-row { grid-template-columns: 1fr; gap: 2px; } .ask-state > b { display: none; } }
 /* Works with: mailboxes and agents, one pastel per name. */
