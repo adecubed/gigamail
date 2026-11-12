@@ -36,6 +36,11 @@
   .send-btn{ padding:8px 16px; border-radius:10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; border:none; }
   .send-btn:disabled{ opacity:.6; cursor:default; }
   .hint{ font-size:11.5px; opacity:.75; }
+  .attach-row{ display:flex; gap:8px; align-items:center; }
+  .attach-row .btn{ padding:5px 10px; font-size:12px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ display:inline-flex; gap:6px; align-items:center; font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid var(--gm-line,#e6e6ec); }
+  .chip-x{ border:none; background:transparent; cursor:pointer; font:inherit; color:inherit; padding:0 2px; }
 </style>
 <link rel="stylesheet" href="theme-popup.css"/>
 <link rel="stylesheet" href="theme-dark.css"/>
@@ -62,6 +67,12 @@
 <div class="edit" id="editBox">
   <div class="hint" id="editTextHint" data-i18n="aw_edit_text_hint">Correggi il testo qui sotto: Invia modificata manda questa versione.</div>
   <textarea id="bodyEdit" spellcheck="true"></textarea>
+  <div class="attach-row" id="attachRow">
+    <button class="btn" id="btnAttach" type="button" data-i18n="aw_attach">Allega file</button>
+    <span class="hint" data-i18n="aw_attach_hint">o trascina qui un file, anche da un'altra mail</span>
+    <input type="file" id="fileInput" multiple style="display:none"/>
+  </div>
+  <div class="chips" id="addedBox"></div>
   <div class="hint" data-i18n="aw_edit_hint">Cosa cambiare? La richiesta viene chiusa e la bozza riscritta con la tua nota.</div>
   <div class="note-row">
     <textarea id="note" data-i18n-ph="aw_edit_ph" placeholder="per esempio: più breve, e con il prezzo"></textarea>
@@ -75,6 +86,8 @@
   <button class="btn btn-danger" id="btnReject" data-i18n="aw_reject">Rifiuta</button>
   <button class="send-btn" id="btnApprove" data-i18n="aw_approve">Approva</button>
 </div>
+<script src="attachment_guard.js"></script>
+<script src="attachment_drag.js"></script>
 <script src="approval_window_page.js"></script>
 <div id="resizeHandle" style="position:fixed;bottom:0;right:0;width:18px;height:18px;cursor:nwse-resize;z-index:9999;background:linear-gradient(135deg,transparent 50%,rgba(0,0,0,0.2) 50%);border-radius:0 0 8px 0;"></div>
 <script src="window_resize.js" data-api="approvalWindowAPI" data-min-w="420" data-min-h="360"></script>

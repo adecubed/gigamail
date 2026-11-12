@@ -134,6 +134,72 @@ test('Edit opens the text in place: Approve is off until it changes, then sends 
   assert.ok(calls.includes('close'));
 });
 
+test('Edit takes files from anywhere: they go with the amend, then the approval sends', async () => {
+  let rec = { ...REQ, tool: 'reply_mail' };
+  const { w, calls, load, tick } = open((p, opts) => {
+    if (p === '/approvals/req_1') return { status: 200, body: rec };
+    if (p === '/approvals/req_1/amend') {
+      const names = JSON.parse(opts.body).attachments.map((f) => ({ name: f.name }));
+      rec = { ...rec, preview: { ...rec.preview, attachments: [...rec.preview.attachments, ...names] } };
+      return { status: 200, body: { success: true, status: 'pending', preview: rec.preview } };
+    }
+    if (p === '/approvals/req_1/approve') { rec = { ...rec, status: 'executed', execution_outcome: 'ok' }; return { status: 200, body: { status: 'executed', outcome: 'ok' } }; }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  w.GMAttachmentGuard = { isExecutableName: (n) => /\.exe$/i.test(n) };
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  assert.ok(!d.getElementById('editBox').classList.contains('visible'), 'no attaching outside the edit box');
+  d.getElementById('btnEdit').click();
+  assert.equal(d.getElementById('attachRow').style.display, '');
+  assert.equal(d.getElementById('btnApprove').disabled, true);
+  const pick = async (files) => {
+    const input = d.getElementById('fileInput');
+    Object.defineProperty(input, 'files', { value: files, configurable: true });
+    input.dispatchEvent(new w.Event('change'));
+    await tick();
+    await tick();
+  };
+  await pick([new w.File(['MZ'], 'setup.exe')]);
+  assert.equal(d.getElementById('addedBox').children.length, 0, 'a program is not attached');
+  assert.match(d.getElementById('status').textContent, /setup\.exe/);
+  await pick([new w.File(['terms'], 'terms.txt'), new w.File(['plan'], 'floor plan.pdf')]);
+  assert.equal(d.getElementById('addedBox').children.length, 2);
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'a file alone is a change to send');
+  assert.equal(d.getElementById('btnApprove').textContent, 'Invia modificata');
+  // the cross on a chip takes the file away
+  d.getElementById('addedBox').children[0].querySelector('button').click();
+  assert.equal(d.getElementById('addedBox').children.length, 1);
+  d.getElementById('btnApprove').click();
+  await tick();
+  const amend = calls.find((c) => c.startsWith('POST /approvals/req_1/amend'));
+  const sent = JSON.parse(amend.slice(amend.indexOf('{')));
+  assert.deepEqual(sent, { attachments: [{ name: 'floor plan.pdf', data_b64: Buffer.from('plan').toString('base64') }] });
+  assert.ok(calls.indexOf('POST /approvals/req_1/approve') > calls.indexOf(amend));
+  assert.equal(d.getElementById('attachments').textContent, 'A.1.pdf, floor plan.pdf');
+});
+
+test('files are not offered on a request that sends no mail, and leaving Edit drops them', async () => {
+  const other = { ...REQ, tool: 'create_event' };
+  const first = open((p) => (p === '/approvals/req_1' ? { status: 200, body: other } : { status: 404, body: {} }));
+  await first.load({ request_id: 'req_1', action: 'edit' });
+  assert.equal(first.w.document.getElementById('attachRow').style.display, 'none');
+
+  const { w, calls, load, tick } = open((p) => (p === '/approvals/req_1' ? { status: 200, body: REQ } : { status: 404, body: {} }));
+  await load({ request_id: 'req_1', action: 'edit' });
+  const d = w.document;
+  const input = d.getElementById('fileInput');
+  Object.defineProperty(input, 'files', { value: [new w.File(['terms'], 'terms.txt')], configurable: true });
+  input.dispatchEvent(new w.Event('change'));
+  await tick();
+  await tick();
+  assert.equal(d.getElementById('addedBox').children.length, 1);
+  d.getElementById('btnEdit').click();   // "Annulla modifica"
+  assert.equal(d.getElementById('addedBox').children.length, 0);
+  assert.equal(d.getElementById('btnApprove').textContent, 'Approva');
+  assert.ok(!calls.some((c) => c.includes('/amend')));
+});
+
 test('a note for the agent keeps Approve off, even with the text changed; Escape and Edit again leave the box', async () => {
   let rec = REQ;
   const { w, calls, load, tick } = open((p) => {

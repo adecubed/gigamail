@@ -384,6 +384,13 @@ class ApprovalStore:
         """Chiamata SOLO dalla console o dalla CLI — mai da un tool MCP.
         `by` identifica il canale e l'utente di sistema che ha approvato."""
         rec = self.get(request_id)
+        if str(by).startswith("telegram:") and outside_files((rec or {}).get("args")):
+            # A file from outside the registered ones leaves only with a
+            # yes given at the PC, where the whole path is on screen.
+            audit("approval", {"request_id": request_id, "by": by,
+                               "for_tool": (rec or {}).get("tool")},
+                  "approve_failed", detail="outside file: only at the PC")
+            return False
         ok = self._decide(request_id, APPROVED, by)
         audit("approval", {"request_id": request_id, "by": by,
                            "for_tool": (rec or {}).get("tool")},
@@ -416,17 +423,22 @@ class ApprovalStore:
     # Never the addressing: a request stays bound to the recipients the
     # agent asked for, so an edit cannot redirect a mail.
     AMENDABLE = ("body", "subject")
+    # The requests that send a mail: the only ones a file can be added to.
+    ATTACHABLE_TOOLS = ("send_mail", "reply_mail")
 
     def amend(self, request_id: str, changes: Dict[str, Any],
-              by: str = "unknown") -> bool:
+              by: str = "unknown",
+              add_attachments: Optional[List[Dict[str, Any]]] = None) -> bool:
         """Rewrite the text of a PENDING request before it is approved: the
         person corrects the mail in place instead of asking the agent for a
         new draft. Only AMENDABLE fields the request already has can change
         (a move has no body to edit); the preview follows the arguments, so
         what is shown is what will run. The fingerprint is recomputed: the
         amended request no longer stands in for the agent's original
-        payload. Returns False when nothing valid was given or the request
-        is no longer pending."""
+        payload. `add_attachments` are files the person added, already
+        resolved (core.attachments.stage): they join the ones the request
+        has, in the arguments and in the preview. Returns False when
+        nothing valid was given or the request is no longer pending."""
         rec = self.get(request_id)
         if not rec:
             return False
@@ -443,6 +455,15 @@ class ApprovalStore:
             if key in preview:
                 preview[key] = value
             touched.append(key)
+        added = list(add_attachments or [])
+        if added and rec["tool"] in self.ATTACHABLE_TOOLS and "body" in args:
+            from gigamail.core import attachments as attachments_mod
+            args["attachments"] = list(args.get("attachments") or []) + added
+            preview["attachments"] = (list(preview.get("attachments") or [])
+                                      + attachments_mod.preview(added))
+            touched.append("attachments")
+        else:
+            added = []
         if not touched:
             return False
         now = time.time()
@@ -456,7 +477,8 @@ class ApprovalStore:
             )
             ok = cur.rowcount == 1
         audit("approval", {"request_id": request_id, "by": by,
-                           "fields": touched, "for_tool": rec.get("tool")},
+                           "fields": touched, "for_tool": rec.get("tool"),
+                           "attachments_added": [f.get("name") for f in added]},
               "amended" if ok else "amend_failed")
         return ok
 
@@ -620,6 +642,40 @@ def _notify_command() -> Optional[List[str]]:
         return None
 
 
+def outside_files(holder: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The attachments of a request (its args or its preview) that the
+    agent asked for by path, outside the files registered for the account."""
+    return [a for a in ((holder or {}).get("attachments") or [])
+            if isinstance(a, dict) and a.get("outside")]
+
+
+def attachment_labels(preview: Optional[Dict[str, Any]]) -> List[str]:
+    """What to show for each attachment: its name, and the whole path for
+    one from outside the registered files."""
+    out = []
+    for a in (preview or {}).get("attachments") or []:
+        if not isinstance(a, dict):
+            out.append(str(a))
+        elif a.get("outside"):
+            out.append(f"{a.get('name', '?')} (⚠ {a.get('path', '?')})")
+        else:
+            out.append(str(a.get("name", "?")))
+    return out
+
+
+def outside_warning(preview: Optional[Dict[str, Any]]) -> str:
+    """The line a notification carries when the mail takes a file from
+    outside the registered ones; empty otherwise."""
+    paths = [str(a.get("path", "?")) for a in outside_files(preview)]
+    if not paths:
+        return ""
+    if user_lang() == "it":
+        return ("⚠ Allega un file FUORI dai file dell'account: " + ", ".join(paths)
+                + ". Si approva solo dal PC.")
+    return ("⚠ Attaches a file from OUTSIDE the account's files: " + ", ".join(paths)
+            + ". It can be approved only at the PC.")
+
+
 def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
     parts = []
     for k in ("to", "subject", "replying_to", "action", "folder_from",
@@ -734,10 +790,8 @@ def full_preview_text(tool: str, preview: Dict[str, Any],
             righe.append(f"{etichetta}: {v if not isinstance(v, list) else ', '.join(map(str, v))}")
     allegati = preview.get("attachments") or []
     if allegati:
-        nomi = [a.get("name", "?") if isinstance(a, dict) else str(a)
-                for a in allegati]
         righe.append(("Allegati: " if it else "Attachments: ")
-                     + ", ".join(nomi))
+                     + ", ".join(attachment_labels(preview)))
     rispondendo = preview.get("replying_to")
     if rispondendo:
         righe.append(("In risposta a: " if it else "Replying to: ")
@@ -944,6 +998,11 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
         text = f"GigaMail: {tool} in attesa di approvazione — {summary}"
     else:
         text = f"GigaMail: {tool} awaiting approval — {summary}"
+    warning = outside_warning(preview)
+    if warning:
+        text = f"{text}\n{warning}"
+        if message:
+            message = text
 
     fired = False
     try:

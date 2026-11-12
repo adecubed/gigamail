@@ -170,6 +170,7 @@
     entry = entry || remember({ k: 'appr', a: {
       request_id: a.request_id, tool: a.tool, subject: a.subject, summary: a.summary,
       to: a.to || '', body: String(a.body || '').slice(0, 20000),
+      attachments: (a.attachments || []).map(String),
     }, q: question || '', s: 'pending' });
     // What is being approved, in full: the recipient and the text itself,
     // not just the one-line summary (the user could not read the reply
@@ -179,6 +180,7 @@
       <div class="agent-appr-head">${escHtml(L('agent_waiting', 'In attesa della tua approvazione'))}</div>
       <div class="agent-appr-title">${escHtml(a.subject || a.tool)}</div>
       ${a.to ? `<div class="agent-appr-sum">${escHtml(L('pending_to', 'a'))} ${escHtml(a.to)}</div>` : ''}
+      ${(a.attachments || []).length ? `<div class="agent-appr-sum agent-appr-att">${escHtml(L('detail_attachments', 'Allegati'))}: ${escHtml(a.attachments.join(', '))}</div>` : ''}
       ${body ? `<details class="agent-appr-body" open><summary>${escHtml(L('pending_body', 'Testo'))}</summary><pre>${escHtml(body)}</pre></details>`
         : (a.summary ? `<div class="agent-appr-sum">${escHtml(a.summary)}</div>` : '')}
       <div class="agent-appr-actions">

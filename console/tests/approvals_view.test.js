@@ -280,3 +280,11 @@ test('the icon counts what is to decide and what was decided since the page was 
   assert.deepEqual(V.badgeCounts([WATCHER_REPLY], recent, NOW, NOW), { todo: 1, ok: 0, warn: 0, err: 0 });
   assert.deepEqual(V.badgeCounts([], [], 0, NOW), { todo: 0, ok: 0, warn: 0, err: 0 });
 });
+
+test('a file from outside the registered ones is listed with its whole path', () => {
+  const s = V.summarize({ ...AGENT_SEND, preview: { ...AGENT_SEND.preview, attachments: [
+    { name: 'A.1.pdf', path: 'C:/docs/A.1.pdf' },
+    { name: 'offer.pdf', path: 'C:/elsewhere/offer.pdf', outside: true },
+  ] } }, NOW);
+  assert.deepEqual(s.attachments, ['A.1.pdf', 'offer.pdf (⚠ C:/elsewhere/offer.pdf)']);
+});

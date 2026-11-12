@@ -7,6 +7,8 @@ const $ = (id) => document.getElementById(id);
 let current = null;      // the request record
 let action = 'show';
 let editing = false;     // the edit box is open: the text can be corrected in place
+let added = [];          // files the person adds while editing: {name, data_b64, size}
+const MAIL_TOOLS = ['send_mail', 'reply_mail'];
 
 function T(key, fallback) {
   const t = window.i18n && window.i18n.t ? window.i18n.t(key) : '';
@@ -66,6 +68,15 @@ function isOpen(rec) {
 function textChanged() {
   return editing && canAmend(current) && $('bodyEdit').value !== bodyText(current);
 }
+// A mail being corrected can also take files, from anywhere on the disk or
+// from another mail: the agent attaches only what is registered for the
+// account, the person picks what they want.
+function canAttach(rec) {
+  return canAmend(rec) && MAIL_TOOLS.includes(rec.tool);
+}
+function hasChanges() {
+  return textChanged() || (editing && canAttach(current) && added.length > 0);
+}
 
 // Which buttons are live follows the request AND the edit box: with the box
 // open, Approve sends only what is on screen (the corrected text) and stays
@@ -75,9 +86,9 @@ function updateButtons() {
   if (!current) return;
   const open = isOpen(current);
   const noteTyped = $('note').value.trim().length > 0;
-  const approveOn = open && (!editing || (textChanged() && !noteTyped));
+  const approveOn = open && (!editing || (hasChanges() && !noteTyped));
   $('btnApprove').disabled = !approveOn;
-  $('btnApprove').textContent = (editing && textChanged()) ? T('aw_send_edited', 'Invia modificata') : T('aw_approve', 'Approva');
+  $('btnApprove').textContent = (editing && hasChanges()) ? T('aw_send_edited', 'Invia modificata') : T('aw_approve', 'Approva');
   $('btnSave').disabled = !open || editing;
   $('btnReject').disabled = !open && current.status !== 'approved';
   $('btnEdit').disabled = !open && current.status !== 'approved';
@@ -96,8 +107,82 @@ function setEditing(on) {
   $('body').style.display = text ? 'none' : '';
   if (text) $('bodyEdit').value = bodyText(current);
   if (!editing) $('note').value = '';
+  $('attachRow').style.display = (text && canAttach(current)) ? '' : 'none';
+  if (!editing) added = [];
+  renderAdded();
   updateButtons();
   if (editing) (text ? $('bodyEdit') : $('note')).focus();
+}
+
+function renderAdded() {
+  const box = $('addedBox');
+  box.textContent = '';
+  added.forEach((f, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = `${f.name} (${Math.max(1, Math.round((f.size || 0) / 1024))} KB)`;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'chip-x';
+    x.textContent = '×';
+    x.title = T('aw_attach_remove', 'Togli');
+    x.addEventListener('click', () => { added.splice(i, 1); renderAdded(); updateButtons(); });
+    chip.appendChild(x);
+    box.appendChild(chip);
+  });
+}
+
+function addFile(file) {
+  if (!editing || !canAttach(current) || !file || !file.name) return;
+  const guard = window.GMAttachmentGuard;
+  if (guard && guard.isExecutableName(file.name)) {
+    say(`${file.name}: ${T('aw_attach_exec', 'è un programma, non si allega.')}`, 'err');
+    return;
+  }
+  if (added.some((f) => f.name === file.name)) return;
+  added.push({ name: file.name, data_b64: file.data_b64, size: file.size });
+  say('');
+  renderAdded();
+  updateButtons();
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, data_b64: String(reader.result).split(',')[1] || '', size: file.size });
+    reader.onerror = () => reject(reader.error || new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function attachError(name, e) {
+  say(`${T('cmp_attachment_error', 'Errore allegato')} ${name}: ${(e && e.message) || e}`, 'err');
+}
+
+async function addFiles(list) {
+  for (const file of Array.from(list || [])) {
+    try { addFile(await readFile(file)); } catch (e) { attachError(file.name, e); }
+  }
+}
+
+// A drop on the edit box: files from the desktop, or an attachment dragged
+// from a received mail (attachment_drag.js). Dragged text is left to the
+// text box.
+function carriesFiles(e) {
+  const types = Array.from((e.dataTransfer && e.dataTransfer.types) || []);
+  return types.includes('Files') || !!(window.GMAttachmentDrag && window.GMAttachmentDrag.carries(e));
+}
+function onDragOver(e) {
+  if (!carriesFiles(e)) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = (editing && canAttach(current)) ? 'copy' : 'none';
+}
+function onDrop(e) {
+  if (!carriesFiles(e)) return;
+  e.preventDefault();
+  if (!editing || !canAttach(current)) return;
+  if (window.GMAttachmentDrag && window.GMAttachmentDrag.takeDrop(e, API, addFile, attachError)) return;
+  addFiles(e.dataTransfer.files);
 }
 
 function render(rec) {
@@ -112,7 +197,7 @@ function render(rec) {
   const from = addressOf(p.from);
   const to = addressOf(p.to) || (replying ? addressOf(replying.from) : '');
   const subject = String(p.subject || (replying && replying.subject) || '');
-  const att = (p.attachments || a.attachments || []).map((x) => (typeof x === 'string' ? x.split(/[\\/]/).pop() : x && x.name)).filter(Boolean);
+  const att = (p.attachments || a.attachments || []).map((x) => (typeof x === 'string' ? x.split(/[\\/]/).pop() : x && x.name && (x.outside ? `${x.name} (⚠ ${x.path})` : x.name))).filter(Boolean);
   const row = (id, value, el) => { $(id).style.display = value ? '' : 'none'; if (value) $(el).textContent = value; };
   row('rowFrom', from, 'from');
   row('rowTo', to, 'to');
@@ -152,12 +237,18 @@ async function reload() {
 async function doApprove() {
   if (!current || $('btnApprove').disabled) return;
   $('btnApprove').disabled = true;
-  if (textChanged()) {
-    // What is approved is what is on screen: the corrected text goes to the
-    // request first, then the approval runs it.
+  if (hasChanges()) {
+    // What is approved is what is on screen: the corrected text and the
+    // added files go to the request first, then the approval runs it.
     say(T('aw_amending', 'Aggiorno il testo…'));
+    const change = {};
+    if (textChanged()) change.body = $('bodyEdit').value;
+    if (added.length) change.attachments = added.map((f) => ({ name: f.name, data_b64: f.data_b64 }));
     try {
-      await api(`/approvals/${encodeURIComponent(current.request_id)}/amend`, { method: 'POST', body: JSON.stringify({ body: $('bodyEdit').value }) });
+      await api(`/approvals/${encodeURIComponent(current.request_id)}/amend`, { method: 'POST', body: JSON.stringify(change) });
+      // they are in the request now: a second click must not add them again
+      added = [];
+      renderAdded();
     } catch (e) {
       say(`${T('agent_not_approved', 'Non approvata')}: ${e.message || e}`, 'err');
       updateButtons();
@@ -270,6 +361,12 @@ $('btnSave').addEventListener('click', doSave);
 $('btnEdit').addEventListener('click', doEdit);
 $('btnNote').addEventListener('click', doNote);
 $('bodyEdit').addEventListener('input', updateButtons);
+$('btnAttach').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', async (e) => { await addFiles(e.target.files); e.target.value = ''; });
+// On the whole window: a file dropped outside the box must not make the
+// window open it in place of the request.
+document.addEventListener('dragover', onDragOver);
+document.addEventListener('drop', onDrop);
 $('note').addEventListener('input', updateButtons);
 $('note').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doNote(); });
 $('btnClose').addEventListener('click', () => window.approvalWindowAPI.close());

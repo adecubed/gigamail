@@ -26,7 +26,7 @@
     const a = rec.args || {};
     const replying = p.replying_to && typeof p.replying_to === 'object' ? p.replying_to : null;
     const attachments = (p.attachments || a.attachments || [])
-      .map((x) => (typeof x === 'string' ? x.split(/[\\/]/).pop() : x && x.name))
+      .map((x) => (typeof x === 'string' ? x.split(/[\\/]/).pop() : x && x.name && (x.outside ? `${x.name} (⚠ ${x.path})` : x.name)))
       .filter(Boolean);
     return {
       id: rec.request_id,

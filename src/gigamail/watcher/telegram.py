@@ -259,6 +259,15 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
                 "GigaMail: approve on the PC (Hello). From here "
                 "you can only reject or ask for changes.")
             return
+        if policy.outside_files(rec.get("args")):
+            say(tg,
+                "\u26a0 Questa mail allega un file fuori dai file "
+                "dell'account: si approva solo dal PC, dove vedi il percorso "
+                "completo. Da qui puoi rifiutare o chiedere modifiche.",
+                "\u26a0 This mail attaches a file from outside the account's "
+                "files: it can be approved only at the PC, where the whole "
+                "path is shown. From here you can reject or ask for changes.")
+            return
         atteso = rs.kv_get("tg_approve_pin", "")
         if atteso:
             # Con un PIN configurato il tap non decide: apre solo la

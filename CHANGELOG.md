@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The agent can attach a file you name by its full path.** By name it
+  still reaches only the files registered for the account, and it cannot
+  browse the disk; told "attach C:/Documents/offer.pdf", it asks for that
+  one file. The toast, the approval window, the approvals page and the
+  card in the agent chat show the whole path, and such a mail is approved
+  only at the PC: Telegram can reject it or ask for changes. Programs,
+  files over 25 MB and GigaMail's own data are refused; the watcher's
+  rules keep to registered names.
+- **Attach any file while correcting a draft.** In the approval window,
+  Edit could change only the text: the attachments stayed the ones the
+  agent had picked among the files registered for the account. Now
+  "Attach file" (or a drop, also of an attachment dragged from another
+  mail) adds a file from anywhere on the disk, and "Send edited" sends
+  the mail with it. Only a click in the console can add one; the agent
+  still attaches only registered files. Programs are refused and the
+  attachments of one mail stop at 25 MB in total.
 - **The approval card in the agent chat has Edit.** It offered only
   Approve and Reject: correcting the text meant going to the approvals
   page. Edit opens the same window as there; back in the console the

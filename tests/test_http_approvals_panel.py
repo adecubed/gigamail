@@ -305,3 +305,112 @@ def test_the_reply_alert_popup_reads_the_context_and_queues_the_instruction(clie
         assert rules_mod.store().kv_keys(tg_risposte._KV_DESKTOP)
     finally:
         console_click.set_secret("")
+
+
+def _b64(data: bytes) -> str:
+    import base64
+    return base64.b64encode(data).decode("ascii")
+
+
+def test_a_person_adds_a_file_from_anywhere_to_a_draft_and_it_is_sent(client, monkeypatch):
+    """Correcting a draft, the person attaches a file that is not among the
+    account's registered ones: it joins the request (arguments and
+    preview), the approval sends those bytes, and only a console click
+    can do it. A program, a second file under a name already taken, a
+    request that sends no mail and a decided request are refused."""
+    from gigamail import consent, server
+    from gigamail.core import attachments
+    from gigamail.http_api import console_click
+    monkeypatch.setattr(consent, "require_human", lambda reason: True)
+    monkeypatch.delenv("ADE_MAIL_DRYRUN", raising=False)
+    sent = []
+    monkeypatch.setitem(
+        server.APPROVED_EXECUTORS, "send_mail",
+        lambda a: sent.append(attachments.payload(a.get("attachments"))) or {"success": True})
+    args = {"to": "mario.rossi@example.com", "subject": "Visit", "body": "at 5pm"}
+    rid = policy.store().create("send_mail", dict(args), dict(args))
+    plan = {"name": "C:/somewhere/else/floor plan.pdf", "data_b64": _b64(b"%PDF plan")}
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        H = {console_click.HEADER: secret}
+        url = f"/approvals/{rid}/amend"
+        assert client.post(url, json={"attachments": [plan]}).status_code == 403
+        r = client.post(url, json={"attachments": [{"name": "setup.exe", "data_b64": _b64(b"MZ")}]},
+                        headers=H)
+        assert r.status_code == 400 and "setup.exe" in r.json()["detail"]
+        r = client.post(url, json={"attachments": [{"name": "x.pdf", "data_b64": "not base64!"}]},
+                        headers=H)
+        assert r.status_code == 400
+        assert "attachments" not in policy.store().get(rid)["args"]
+
+        r = client.post(url, json={"attachments": [plan]}, headers=H)
+        assert r.status_code == 200, r.text
+        rec = policy.store().get(rid)
+        assert rec["status"] == policy.PENDING and rec["args"]["body"] == "at 5pm"
+        (att,) = rec["args"]["attachments"]
+        # the name is kept without the path it came with, and is not the stored path
+        assert att["name"] == "floor plan.pdf" and att["added_by"] == "person"
+        assert att["size"] == len(b"%PDF plan") and "floor plan" not in att["path"]
+        assert [p["name"] for p in rec["preview"]["attachments"]] == ["floor plan.pdf"]
+        assert policy.store().find_pending("send_mail", args) is None
+
+        # the same file again changes nothing; another one under its name is refused
+        assert client.post(url, json={"attachments": [plan]}, headers=H).status_code == 409
+        r = client.post(url, json={"attachments": [{"name": "floor plan.pdf",
+                                                    "data_b64": _b64(b"other")}]}, headers=H)
+        assert r.status_code == 400 and "floor plan.pdf" in r.json()["detail"]
+        # text and a second file in one go
+        r = client.post(url, json={"body": "at 6pm", "attachments": [
+            {"name": "terms.txt", "data_b64": _b64(b"terms")}]}, headers=H)
+        assert r.status_code == 200, r.text
+        assert [a["name"] for a in policy.store().get(rid)["args"]["attachments"]] == [
+            "floor plan.pdf", "terms.txt"]
+
+        # a request that sends no mail has nothing to attach a file to
+        move = policy.store().create("move_message", {"message_id": "m1", "body": "x"}, {})
+        assert client.post(f"/approvals/{move}/amend", json={"attachments": [plan]},
+                           headers=H).status_code == 400
+
+        assert client.post(f"/approvals/{rid}/approve").status_code == 200
+        assert [(f["name"], f["data_b64"]) for f in sent[0]] == [
+            ("floor plan.pdf", _b64(b"%PDF plan")), ("terms.txt", _b64(b"terms"))]
+        assert client.post(url, json={"attachments": [
+            {"name": "late.txt", "data_b64": _b64(b"late")}]}, headers=H).status_code == 409
+    finally:
+        console_click.set_secret("")
+
+
+def test_an_added_file_changed_on_disk_stops_the_send(tmp_path, monkeypatch):
+    """The copy kept with the request is checked like every attachment:
+    different bytes at send time, nothing leaves."""
+    from gigamail.core import attachments
+    (att,) = attachments.stage("req_abc", [{"name": "terms.txt", "data_b64": _b64(b"terms")}])
+    assert attachments.payload([att])[0]["data_b64"] == _b64(b"terms")
+    with open(att["path"], "wb") as fh:
+        fh.write(b"swapped")
+    with pytest.raises(attachments.AttachmentChanged):
+        attachments.payload([att])
+
+
+def test_added_files_have_a_total_limit_and_stale_copies_are_removed(monkeypatch):
+    import os
+
+    from gigamail.core import attachments
+    monkeypatch.setattr(attachments, "MAX_ADDED_BYTES", 10)
+    existing = [{"name": "a.pdf", "sha256": "x", "size": 6}]
+    with pytest.raises(ValueError):
+        attachments.stage("req_big", [{"name": "b.pdf", "data_b64": _b64(b"12345")}], existing)
+    assert not (attachments.staging_root() / "req_big").exists()
+    with pytest.raises(ValueError):
+        attachments.stage("../outside", [{"name": "b.pdf", "data_b64": _b64(b"1")}])
+
+    (kept,) = attachments.stage("req_live", [{"name": "b.pdf", "data_b64": _b64(b"1")}])
+    (gone,) = attachments.stage("req_done", [{"name": "b.pdf", "data_b64": _b64(b"1")}])
+    (fresh,) = attachments.stage("req_fresh", [{"name": "b.pdf", "data_b64": _b64(b"1")}])
+    old = time.time() - 2 * 3600
+    for f in (kept, gone):
+        os.utime(os.path.dirname(f["path"]), (old, old))
+    assert attachments.discard_stale(lambda rid: rid == "req_live") == 1
+    assert os.path.exists(kept["path"]) and os.path.exists(fresh["path"])
+    assert not os.path.exists(gone["path"])

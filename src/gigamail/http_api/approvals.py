@@ -141,9 +141,21 @@ def save_request(request_id: str, request: Request = None):
             "saved_at": rec.get("saved_at"), "expires_at": rec.get("expires_at")}
 
 
+class AddedFile(BaseModel):
+    name: str
+    data_b64: str
+
+
 class AmendRequest(BaseModel):
     body: str | None = None
     subject: str | None = None
+    attachments: list[AddedFile] | None = None
+
+
+def _still_waiting(request_id: str) -> bool:
+    rec = policy.store().get(request_id)
+    return bool(rec and rec["status"] in (policy.PENDING, policy.APPROVED)
+                and not rec["expired"])
 
 
 @router.post("/approvals/{request_id}/amend")
@@ -154,7 +166,13 @@ def amend_request(request_id: str, req: AmendRequest, request: Request = None):
     change, and only from a click in the console: the recipients stay
     what the agent asked for, and the agent, holding the token file,
     cannot rewrite its own requests. The approval that follows runs the
-    amended arguments, from whatever channel it comes."""
+    amended arguments, from whatever channel it comes.
+
+    The person can also add files to a mail, from anywhere: the agent
+    attaches only what is registered for the account, a person picks what
+    they want. The bytes come with the click and are kept with the request."""
+    from gigamail.core import attachments as attachments_mod
+
     from . import console_click
     if not console_click.is_console_click(request.headers if request else {}):
         raise HTTPException(403, "only from the console")
@@ -163,15 +181,29 @@ def amend_request(request_id: str, req: AmendRequest, request: Request = None):
         raise HTTPException(404, "Richiesta inesistente")
     changes = {k: v for k, v in {"body": req.body, "subject": req.subject}.items()
                if v is not None}
-    if not changes:
+    files = [f.model_dump() for f in req.attachments or []]
+    if not changes and not files:
         raise HTTPException(400, "nothing to change")
     missing = [k for k in changes if k not in rec["args"]]
     if missing:
         raise HTTPException(400, f"this request has no {', '.join(missing)} to edit")
+    if files and (rec["tool"] not in policy.ApprovalStore.ATTACHABLE_TOOLS
+                  or "body" not in rec["args"]):
+        raise HTTPException(400, "this request sends no mail: nothing to attach a file to")
     if rec["status"] != policy.PENDING or rec["expired"]:
         raise HTTPException(409, "Non modificabile: già decisa o scaduta")
-    if not policy.store().amend(request_id, changes, by=f"{_who()} (console click)"):
+    try:
+        added = attachments_mod.stage(request_id, files, rec["args"].get("attachments"))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not policy.store().amend(request_id, changes, by=f"{_who()} (console click)",
+                                add_attachments=added):
+        attachments_mod.discard(added)
         raise HTTPException(409, "Non modificabile: nessuna differenza, o già decisa o scaduta")
+    try:
+        attachments_mod.discard_stale(_still_waiting)
+    except Exception:
+        pass
     rec = policy.store().get(request_id)
     return {"success": True, "request_id": request_id, "status": rec["status"],
             "preview": rec["preview"]}
