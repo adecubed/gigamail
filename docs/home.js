@@ -113,29 +113,105 @@
     title.classList.add('words');
   }
 
-  // Hero prompt: example requests type themselves, pause, erase, and the
-  // next one follows. The phrases come from the page (data-phrases), so each
-  // language has its own; the first one is already in the HTML.
-  var typed = document.querySelector('[data-phrases]');
-  if (typed && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-    var phrases = typed.getAttribute('data-phrases').split('|');
-    var text = document.createElement('span');
+  // Hero exchange: short scenes between you and the agent. Your lines type
+  // themselves, the agent's fade in, and the outcome follows: "waiting for
+  // your OK" turning into approved or rejected when the action leaves a
+  // trace, or "nothing to approve" when it only reads. A scene may start
+  // from the agent (the watcher announcing new mail) and a long one runs
+  // over two pages. The pages come from the page (.ask-data), so each
+  // language has its own; the first one is already in the HTML for readers
+  // without scripts or motion.
+  var ask = document.querySelector('.ask-box');
+  var askData = ask && ask.querySelector('.ask-data');
+  if (askData && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    var chat = JSON.parse(askData.textContent);
+    var rows = ask.querySelector('.ask-rows');
+    var state = ask.querySelector('.ask-state');
+    var pill = state.querySelector('.ask-pill');
     var caret = document.createElement('span');
     caret.className = 'caret';
-    typed.textContent = '';
-    typed.appendChild(text);
-    typed.appendChild(caret);
-    var type = function (phrase, at, erasing) {
-      var line = phrases[phrase];
-      text.textContent = line.slice(0, at);
-      var next;
-      if (!erasing && at < line.length) next = [phrase, at + 1, false, 38];
-      else if (!erasing) next = [phrase, at, true, 1700];
-      else if (at > 0) next = [phrase, at - 1, true, 16];
-      else next = [(phrase + 1) % phrases.length, 0, false, 350];
-      setTimeout(function () { type(next[0], next[1], next[2]); }, next[3]);
+    var look = { wait: 'wait', read: 'read', rejected: 'no' };
+    var addRow = function (line, into) {
+      var p = document.createElement('p');
+      var label = document.createElement('b');
+      var body = document.createElement('span');
+      p.className = 'ask-row ask-' + line[0];
+      label.textContent = chat.who[line[0]];
+      p.appendChild(label);
+      p.appendChild(body);
+      into.appendChild(p);
+      return body;
     };
-    setTimeout(function () { type(0, 0, false); }, 1500);
+    // Keep the box as tall as its longest page, so the page below never
+    // jumps: every page is laid out once in an invisible copy and measured.
+    var reserve = function () {
+      var ghost = document.createElement('div');
+      var ghostRows = document.createElement('div');
+      ghost.className = 'ask-box';
+      ghost.style.cssText = 'position:absolute;visibility:hidden;box-sizing:border-box;margin:0;width:' + ask.offsetWidth + 'px';
+      ghostRows.className = 'ask-rows';
+      ghost.appendChild(ghostRows);
+      ghost.appendChild(state.cloneNode(true));
+      ask.parentNode.appendChild(ghost);
+      var tallest = 0;
+      chat.pages.forEach(function (page) {
+        ghostRows.textContent = '';
+        page.rows.forEach(function (line) { addRow(line, ghostRows).textContent = line[1]; });
+        tallest = Math.max(tallest, ghost.offsetHeight);
+      });
+      ask.parentNode.removeChild(ghost);
+      ask.style.boxSizing = 'border-box';
+      ask.style.minHeight = tallest + 'px';
+    };
+    var play = function (index) {
+      var page = chat.pages[index];
+      rows.textContent = '';
+      state.classList.remove('on');
+      var outcome = function (n) {
+        var key = page.pills[n];
+        pill.className = 'ask-pill ' + (look[key] || 'ok');
+        pill.textContent = chat.labels[key];
+        state.classList.add('on');
+        if (n + 1 < page.pills.length) { setTimeout(function () { outcome(n + 1); }, 1400); return; }
+        setTimeout(function () {
+          Array.prototype.forEach.call(rows.children, function (p) { p.classList.remove('on'); });
+          state.classList.remove('on');
+        }, 2600);
+        setTimeout(function () { play((index + 1) % chat.pages.length); }, 3000);
+      };
+      var say = function (n) {
+        if (n === page.rows.length) { setTimeout(function () { outcome(0); }, 300); return; }
+        var line = page.rows[n];
+        var chars = Array.from(line[1]);
+        var body = addRow(line, rows);
+        if (line[0] !== 'you') {
+          body.textContent = line[1];
+          setTimeout(function () { body.parentNode.classList.add('on'); }, 30);
+          setTimeout(function () { say(n + 1); }, 800 + chars.length * 18);
+          return;
+        }
+        var text = document.createElement('span');
+        var at = 0;
+        body.appendChild(text);
+        body.appendChild(caret);
+        caret.hidden = false;
+        body.parentNode.classList.add('on');
+        var key = function () {
+          at += 1;
+          text.textContent = chars.slice(0, at).join('');
+          if (at < chars.length) { setTimeout(key, 34); return; }
+          caret.hidden = true;
+          setTimeout(function () { say(n + 1); }, 550);
+        };
+        setTimeout(key, n ? 400 : 0);
+      };
+      say(0);
+    };
+    reserve();
+    window.addEventListener('resize', reserve);
+    ask.classList.add('live');
+    rows.textContent = '';
+    setTimeout(function () { play(0); }, 1500);
   }
 
   // Story: the four steps play out like the hero prompt. When the list
