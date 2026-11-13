@@ -127,8 +127,9 @@
   // reject, approve). Read opens the draft, Edit opens it in a text box,
   // and the others end the scene as they would in the app. A bubble points
   // at the buttons so it is clear they can be clicked. Nothing is sent:
-  // the mail is invented and stays in the page. When nobody touches it the
-  // loop moves on after a while and comes back to it.
+  // the mail is invented and stays in the page. When it is the only page
+  // (as now) it simply stays; with other pages after it, an untouched
+  // scene gives way to them after a while and comes back with the loop.
   var ask = document.querySelector('.ask-box');
   var askData = ask && ask.querySelector('.ask-data');
   if (askData) {
@@ -402,9 +403,10 @@
     };
     var play = function (index) {
       var page = chat.pages[index];
-      var after = function () { play((index + 1) % chat.pages.length); };
+      // With the try-it scene alone there is nothing to move on to.
+      var after = chat.pages.length > 1 ? function () { play((index + 1) % chat.pages.length); } : null;
       if (page.try) {
-        if (trial) trial.start(after); else after();
+        if (trial) trial.start(after); else if (after) after();
         return;
       }
       rows.textContent = '';
@@ -416,7 +418,7 @@
           Array.prototype.forEach.call(rows.children, function (p) { p.classList.remove('on'); });
           state.classList.remove('on');
         }, 2600);
-        setTimeout(after, 3000);
+        if (after) setTimeout(after, 3000);
       };
       var say = function (n) {
         if (n === page.rows.length) { setTimeout(function () { outcome(0); }, 300); return; }
@@ -453,8 +455,11 @@
       // Less motion: no scenes rolling by, only the one the visitor plays.
       if (trial) trial.start(null);
     } else {
-      rows.textContent = '';
-      setTimeout(function () { play(0); }, 1500);
+      if (chat.pages.length === 1) play(0);
+      else {
+        rows.textContent = '';
+        setTimeout(function () { play(0); }, 1500);
+      }
     }
   }
 

@@ -38,9 +38,8 @@
   the draft as the window shows it, Edit opens it in a text box with
   "Send edited", and Save, Reject and Approve end the scene as in the
   app; a bubble walks over the buttons to say they can be clicked. The
-  mail is invented and nothing is sent. Left alone, the scene gives way
-  to the animated ones after 15 seconds and comes back with the loop;
-  with reduced motion it is the only scene and stays.
+  mail is invented and nothing is sent. It is now the hero's only
+  scene: the animated exchanges between you and the agent are gone.
   In "Works with", the mail row is now "Email providers" and lists
   AOL Mail, Xfinity, GMX and WEB.DE too.
 
