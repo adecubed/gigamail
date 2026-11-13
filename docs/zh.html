@@ -33,7 +33,7 @@
 <meta name="twitter:image:alt" content="GigaMail 标志：为你的 AI 智能体准备的邮件。">
 <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "SoftwareApplication", "@id": "https://gigamail.ai/#software", "name": "GigaMail", "url": "https://gigamail.ai/", "description": "面向 AI 智能体的开源智能体邮件。你的智能体负责阅读、搜索和起草；未经你批准，不会发送或删除任何内容。Microsoft Graph + IMAP，数据在本地，AGPL-3.0。", "applicationCategory": "BusinessApplication", "applicationSubCategory": "Email client for AI agents", "operatingSystem": "Windows, macOS, Linux", "softwareVersion": "0.6.7", "downloadUrl": "https://github.com/adecubed/gigamail/releases/latest", "installUrl": "https://github.com/adecubed/gigamail/releases/latest", "license": "https://www.gnu.org/licenses/agpl-3.0.html", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "image": "https://gigamail.ai/brand/gigamail-logo-1024.png", "screenshot": "https://gigamail.ai/demo/gigamail-launch-poster.png", "featureList": ["把任何 AI 智能体连接到你收件箱的 MCP 服务器", "支持 Microsoft Graph 和 IMAP", "搜索索引、记忆和凭据都在本地", "任何发送或删除之前都需要人工批准", "带范围、到期时间和每日上限的自动化规则"], "sameAs": ["https://github.com/adecubed/gigamail", "https://pypi.org/project/gigamail/"], "author": {"@type": "Organization", "name": "Adecubed", "url": "https://github.com/adecubed"}}, {"@type": "WebPage", "@id": "https://gigamail.ai/zh.html#webpage", "url": "https://gigamail.ai/zh.html", "name": "GigaMail", "inLanguage": "zh-Hans", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}, "video": [{"@type": "VideoObject", "name": "GigaMail 四步完成设置", "description": "连接邮箱，说明由谁回复，连接你的智能体。未经你批准，一封也不会发出。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-onboarding-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-onboarding.mp4", "uploadDate": "2026-11-04", "duration": "PT21S"}, {"@type": "VideoObject", "name": "GigaMail：智能体提议，由你批准", "description": "客户来信，你的智能体起草回复；它可以请求发送，但不能批准。由你在它触及不到的地方批准。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-approval-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-approval.mp4", "uploadDate": "2026-11-04", "duration": "PT15S"}, {"@type": "VideoObject", "name": "GigaMail：脱敏器隐藏敏感信息", "description": "在一封关于三张演唱会门票的邮件中，桌面应用里的脱敏器会在智能体读取之前隐藏 IBAN 和电话号码。靠规则和校验和，不用 AI。", "thumbnailUrl": "https://gigamail.ai/demo/gigamail-masker-poster.jpg", "contentUrl": "https://gigamail.ai/demo/gigamail-masker.mp4", "uploadDate": "2026-11-04", "duration": "PT15S"}]}, {"@type": "FAQPage", "@id": "https://gigamail.ai/zh.html#faq", "mainEntity": [{"@type": "Question", "name": "什么是智能体邮件？", "acceptedAnswer": {"@type": "Answer", "text": "由 AI 智能体替你阅读、搜索和起草，而重要的决定仍由人来做的邮件方式。在 GigaMail 中，智能体负责准备；发送、回复和删除都等你批准。"}}, {"@type": "Question", "name": "GigaMail 支持哪些 AI 智能体？", "acceptedAnswer": {"@type": "Answer", "text": "Claude Code 和 Claude Desktop、Codex、OpenClaw、Hermes，以及任何支持 MCP 的客户端。GigaMail 自身不带 AI：智能来自你连接的智能体，它读取的内容适用该智能体的数据政策。"}}, {"@type": "Question", "name": "可以连接哪些邮箱？", "acceptedAnswer": {"@type": "Answer", "text": "通过 Microsoft Graph 连接 Microsoft 365 和 Outlook.com，以及任何 IMAP 服务器：Gmail、Aruba、Libero 等。多个账号可以并存，各自从自己的地址回复。"}}, {"@type": "Question", "name": "我的数据在哪里？", "acceptedAnswer": {"@type": "Answer", "text": "在你的电脑上。邮件索引、归档、凭据、记忆和配置都留在本地；GigaMail 不运行任何服务器，也不接收任何数据。在桌面应用中，脱敏器可以在智能体起草回复之前隐藏敏感字段。详见隐私政策（英文）。"}}, {"@type": "Question", "name": "会有邮件未经我批准就发出吗？", "acceptedAnswer": {"@type": "Answer", "text": "只有通过你在应用中创建并签署的自动化规则才会，并且受其范围、到期时间和每日上限约束。没有任何 MCP 工具可以创建或修改规则，所以智能体或邮件都无法开启规则。"}}, {"@type": "Question", "name": "GigaMail 收费吗？", "acceptedAnswer": {"@type": "Answer", "text": "不收费。桌面应用和 MCP 服务器都免费：无需账号，无需订阅，没有广告。GigaMail 以 AGPL-3.0 许可开源，发布在 GitHub 和 PyPI 上。"}}, {"@type": "Question", "name": "GigaMail 和 AgentMail 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "AgentMail 在它自己的云端为 AI 智能体创建新邮箱，通过 API 驱动。GigaMail 把你的智能体连接到你已经在用的邮箱，运行在你的电脑上，每一次发送、回复和删除都要经过你的批准。查看逐项对比（英文）。"}}, {"@type": "Question", "name": "GigaMail 和 Composio 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "Composio 通过它的云端为智能体提供一千多个应用的工具，登录信息由云端保管，调用也由云端发起。GigaMail 只做邮件和日历，从你的电脑运行，每一次发送、回复和删除都要经过你的批准。两者可以并用。查看对比（英文）。"}}, {"@type": "Question", "name": "GigaMail 和 Outlook 中的 Copilot 有什么不同？", "acceptedAnswer": {"@type": "Answer", "text": "Copilot 是微软内置在 Outlook 中的助手：它是 Microsoft 365 的付费附加功能（在基础许可之外，每用户每月 21 美元起），使用微软选定的模型，运行在微软的云端，只处理微软的邮箱。GigaMail 免费，运行在你的电脑上，支持 Microsoft 365 和任何 IMAP 邮箱，智能体由你选择：Claude、Codex、OpenClaw、Hermes 或任何 MCP 客户端。而且智能体无法批准自己的操作：发送和删除都等你决定，并在它触及不到的地方确认。查看对比（英文）。"}}]}]}</script>
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
-<link rel="stylesheet" href="./home.css?v=29">
+<link rel="stylesheet" href="./home.css?v=30">
 <script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
 <script type="module" src="/business/analytics.js"></script>
 </head>
@@ -63,15 +63,20 @@
 <section class="hero" aria-labelledby="hero-title">
   <div class="wrap">
     <div>
-      <p class="kicker">免费下载 · 开源 · Windows、macOS 与 Linux</p>
+      <p class="kicker">桌面应用，永久免费</p>
       <h1 id="hero-title">别人给你的智能体一个邮箱。<br>我们把你的智能体带进你自己的邮箱。<br><em>未经你同意，一封也不会发出。</em></h1>
-      <div class="ask-box" aria-hidden="true">
-        <div class="ask-rows">
+      <div class="ask-box">
+        <div class="ask-rows" aria-hidden="true">
           <p class="ask-row ask-you"><b>你</b><span>用最新的价目表回复</span></p>
           <p class="ask-row ask-agent"><b>智能体</b><span>草稿已备好，附上你的 2026 年价目表。要发送吗？</span></p>
         </div>
-        <p class="ask-row ask-state"><b></b><span><span class="ask-pill ok">你已批准 · 已发送</span></span></p>
-        <script type="application/json" class="ask-data">{"who": {"you": "你", "agent": "智能体"}, "labels": {"wait": "等待你的同意", "sent": "你已批准 · 已发送", "event": "你已批准 · 已记入日历", "read": "只读 · 无需批准", "rejected": "你已拒绝 · 未发送"}, "pages": [{"rows": [["you", "用最新的价目表回复"], ["agent", "草稿已备好，附上你的 2026 年价目表。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "罗西先生来信：他问订单什么时候发货。我想这样回复：“周四发货，随后提供物流单号。”要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "客户来信：想在周二 10 点通话。要我确认并记到日历上吗？"], ["you", "不"]], "pills": ["rejected"]}, {"rows": [["agent", "我不确认。要我提议另一天吗？"], ["you", "好，周三 9 点"], ["agent", "草稿已备好：提议周三 9 点。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "Acme 发来两封新邮件。要看看吗？"], ["you", "好，给我看"], ["agent", "一封确认订单，另一封想把交货改到周一。"]], "pills": ["read"]}, {"rows": [["you", "找出我们三月发出的那份报价"], ["agent", "找到了：3 月 14 日的报价，40 件，每件 120 欧元。"]], "pills": ["read"]}, {"rows": [["you", "总结这位客户今天的来信"], ["agent", "三封来信：对方要 40 件，想要折扣，并提议本周通话。"]], "pills": ["read"]}, {"rows": [["you", "给客户发一封带 Zoom 链接的邮件"], ["agent", "草稿已备好，附上周五 13 点的 Zoom 链接。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["you", "在日历上记下周五 13 点与客户的会面"], ["agent", "周五 13 点你有空。要记到日历上吗？"]], "pills": ["wait", "event"]}]}</script>
+        <p class="ask-row ask-state" aria-live="polite"><b></b><span><span class="ask-pill ok">你已批准 · 已发送</span></span></p>
+        <script type="application/json" class="ask-data">{"who": {"you": "你", "agent": "智能体"}, "labels": {"wait": "等待你的同意", "sent": "你已批准 · 已发送", "event": "你已批准 · 已记入日历", "read": "只读 · 无需批准", "rejected": "你已拒绝 · 未发送"}, "pages": [{"try": true}, {"rows": [["you", "用最新的价目表回复"], ["agent", "草稿已备好，附上你的 2026 年价目表。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "罗西先生来信：他问订单什么时候发货。我想这样回复：“周四发货，随后提供物流单号。”要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "客户来信：想在周二 10 点通话。要我确认并记到日历上吗？"], ["you", "不"]], "pills": ["rejected"]}, {"rows": [["agent", "我不确认。要我提议另一天吗？"], ["you", "好，周三 9 点"], ["agent", "草稿已备好：提议周三 9 点。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["agent", "Acme 发来两封新邮件。要看看吗？"], ["you", "好，给我看"], ["agent", "一封确认订单，另一封想把交货改到周一。"]], "pills": ["read"]}, {"rows": [["you", "找出我们三月发出的那份报价"], ["agent", "找到了：3 月 14 日的报价，40 件，每件 120 欧元。"]], "pills": ["read"]}, {"rows": [["you", "总结这位客户今天的来信"], ["agent", "三封来信：对方要 40 件，想要折扣，并提议本周通话。"]], "pills": ["read"]}, {"rows": [["you", "给客户发一封带 Zoom 链接的邮件"], ["agent", "草稿已备好，附上周五 13 点的 Zoom 链接。要发送吗？"]], "pills": ["wait", "sent"]}, {"rows": [["you", "在日历上记下周五 13 点与客户的会面"], ["agent", "周五 13 点你有空。要记到日历上吗？"]], "pills": ["wait", "event"]}], "try": {"intro": "有一封新回复在等你确认。", "note": "试试看：这些按钮可以点。", "buttons": {"read": "阅读", "edit": "修改", "save": "保存", "reject": "拒绝", "approve": "批准", "send": "发送修改版"}, "hints": {"read": "点击阅读", "edit": "点击修改", "save": "点击保存", "reject": "点击拒绝", "approve": "点击发送", "send": "点击发送"}, "mail": {"title": "待批准的请求", "state": "状态", "waiting": "等待中", "to": "收件人", "subject": "主题", "attachments": "附件", "to_value": "mario.rossi@example.com", "subject_value": "回复：最新价目表", "file": "price-list-2026.pdf", "body": "Mario 你好，\n\n感谢你的来信。附件是我们 2026 年的最新价目表。\n\n此致\nAnna", "edit_hint": "在下方修改文本：“发送修改版”会发送此版本。"}, "done": {"saved": "已保存 · 稍后决定，未发送"}, "again": "再试一次"}}</script>
+      </div>
+      <div class="hero-actions">
+        <div class="dl3"><a class="btn os-win" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" rel="noopener"><span>Windows</span></a><a class="btn os-mac" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" rel="noopener"><span>macOS</span></a><a class="btn os-linux" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-amd64.deb" rel="noopener"><span>Linux <small>beta</small></span></a></div>
+        <span class="alt"><a href="./install-zh.html#step-get">Intel Mac、AppImage、校验和</a></span>
+        <span class="alt">开发者？<a href="#setup-mcp">通过 MCP 连接</a></span>
       </div>
     </div>
   </div>
@@ -93,11 +98,6 @@
       </video>
     </div>
     <div class="after-video">
-      <div class="hero-actions">
-        <div class="dl3"><a class="btn os-win" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe" rel="noopener"><span>Windows</span></a><a class="btn os-mac" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-arm64.dmg" rel="noopener"><span>macOS</span></a><a class="btn os-linux" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-amd64.deb" rel="noopener"><span>Linux <small>beta</small></span></a></div>
-        <span class="alt"><a href="./install-zh.html#step-get">Intel Mac、AppImage、校验和</a></span>
-        <span class="alt">开发者？<a href="#setup-mcp">通过 MCP 连接</a></span>
-      </div>
       <div class="trust">
         <span>数据留在你自己的电脑上</span>
         <span>无需账号，无需订阅</span>
@@ -282,6 +282,6 @@
   </div>
 </footer>
 
-<script src="./home.js?v=10" defer></script>
+<script src="./home.js?v=11" defer></script>
 </body>
 </html>
