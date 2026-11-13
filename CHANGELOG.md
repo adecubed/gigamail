@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **GENERATE works when forwarding.** In the Forward window it failed with
+  "The mail could not be read from the server or the archive" and the
+  error took the place of the forwarded mail. It now reads the original
+  mail (with the same check for orders hidden in it), writes the note for
+  the new recipient and puts it above the forwarded mail, which stays as
+  it was.
 - **The agent can attach a file you name by its full path.** By name it
   still reaches only the files registered for the account, and it cannot
   browse the disk; told "attach C:/Documents/offer.pdf", it asks for that

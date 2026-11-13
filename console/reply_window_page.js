@@ -9,6 +9,10 @@ let sendTimer = null;
 let sendRafId = null;
 let instructionContext = ''; // text of the file dropped on the instruction
 let instructionContextName = '';
+// The mail being forwarded. mailData.id is cleared in forward mode (the
+// forward must not join the original thread), so GENERA reads the
+// original from here and keeps its text below the note it writes.
+let forwardSrc = null;
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 /** Traduce una chiave, con l'italiano come ripiego naturale. */
@@ -129,6 +133,7 @@ async function applyMailData(data) {
       });
     }
 
+    forwardSrc = { id: srcId, account_id: srcAcc, folder: srcFolder, body: data.forward_body || '' };
     mailData.id = null;  // non agganciare il thread originale
     document.getElementById('replyTo').focus();
     return;
@@ -335,15 +340,17 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
     // prompt as reference material (it used to be cut at 3000 characters).
     const instruction = baseInstruction;
 
-    let url = `${API}/mail/${encodeURIComponent(mailData.id)}/smart_draft`;
+    const src = forwardSrc || mailData;
+    let url = `${API}/mail/${encodeURIComponent(src.id)}/smart_draft`;
     const params = [];
-    if (mailData.account_id) params.push(`account_id=${mailData.account_id}`);
-    if (mailData.folder)     params.push(`folder=${encodeURIComponent(mailData.folder)}`);
+    if (src.account_id) params.push(`account_id=${src.account_id}`);
+    if (src.folder)     params.push(`folder=${encodeURIComponent(src.folder)}`);
     if (params.length) url += '?' + params.join('&');
     const r = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ instruction, body_text:mailData.body_text||mailData.bodyPreview||'', subject:mailData.subject||'', sender:mailData.sender||'',
-                              context_name: instructionContextName, context_text: instructionContext })
+                              context_name: instructionContextName, context_text: instructionContext,
+                              ...(forwardSrc ? { mode: 'forward', to: document.getElementById('replyTo').value } : {}) })
     });
     const data = await r.json();
     // Un errore del server (agente non collegato, login scaduto) va detto:
@@ -365,12 +372,13 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
           "testo rivolto all'assistente"))}</div>
         <div class="gb-quote">${esc(data.passage || '')}</div>`;
       guard.style.display = 'block';
-      ta.value = '';
+      ta.value = forwardSrc ? forwardSrc.body : '';
       window._lastGeneratedDraft = '';
       btn.innerHTML = (typeof GMIcons !== 'undefined' ? GMIcons.svg('zap', 14) : '') + ' ' + T('generate', 'GENERA'); btn.disabled = false;
       return;
     }
-    ta.value = data.draft || data.text || '';
+    const draft = data.draft || data.text || '';
+    ta.value = forwardSrc ? `${draft}\n\n${forwardSrc.body}` : draft;
     window._lastGeneratedDraft = ta.value;
     if (data.warning === 'unchecked_markup') {
       // The draft exists, but it was written from a mail whose HTML could
@@ -393,7 +401,10 @@ document.getElementById('btnGenerate').addEventListener('click', async () => {
       banner.style.display = 'block';
       document.getElementById('btnAddSuggested')?.addEventListener('click', addSuggestedAttachments);
     }
-  } catch(e) { ta.value = `${T('error', 'Errore')}: ${e}`; }
+  } catch(e) {
+    // In a forward the error goes above the forwarded mail, which stays.
+    ta.value = `${T('error', 'Errore')}: ${e}` + (forwardSrc ? `\n\n${forwardSrc.body}` : '');
+  }
   btn.innerHTML = (typeof GMIcons !== 'undefined' ? GMIcons.svg('zap', 14) : '') + ' ' + T('generate', 'GENERA'); btn.disabled = false;
 });
 
