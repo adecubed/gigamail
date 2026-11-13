@@ -120,17 +120,28 @@
   // from the agent (the watcher announcing new mail) and a long one runs
   // over two pages. The pages come from the page (.ask-data), so each
   // language has its own; the first one is already in the HTML for readers
-  // without scripts or motion.
+  // without scripts.
+  //
+  // The first scene is one the visitor plays: a reply waiting for the OK,
+  // with the buttons of the app's approval window (read, edit, save,
+  // reject, approve). Read opens the draft, Edit opens it in a text box,
+  // and the others end the scene as they would in the app. A bubble points
+  // at the buttons so it is clear they can be clicked. Nothing is sent:
+  // the mail is invented and stays in the page. When it is the only page
+  // (as now) it simply stays; with other pages after it, an untouched
+  // scene gives way to them after a while and comes back with the loop.
   var ask = document.querySelector('.ask-box');
   var askData = ask && ask.querySelector('.ask-data');
-  if (askData && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+  if (askData) {
+    var calmAsk = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var chat = JSON.parse(askData.textContent);
     var rows = ask.querySelector('.ask-rows');
     var state = ask.querySelector('.ask-state');
     var pill = state.querySelector('.ask-pill');
     var caret = document.createElement('span');
     caret.className = 'caret';
-    var look = { wait: 'wait', read: 'read', rejected: 'no' };
+    var look = { wait: 'wait', read: 'read', rejected: 'no', saved: 'saved' };
+    var labelOf = function (key) { return (chat.try && chat.try.done && chat.try.done[key]) || chat.labels[key]; };
     var addRow = function (line, into) {
       var p = document.createElement('p');
       var label = document.createElement('b');
@@ -142,8 +153,224 @@
       into.appendChild(p);
       return body;
     };
+    var showPill = function (key) {
+      pill.className = 'ask-pill ' + (look[key] || 'ok');
+      pill.textContent = labelOf(key);
+      state.classList.add('on');
+    };
+
+    // The try-it scene. Built once; shown only while it plays.
+    var T = chat.try;
+    var trial = null;
+    if (T) {
+      var tryBox = document.createElement('div');
+      var bar = document.createElement('div');
+      var note = document.createElement('p');
+      var mail = document.createElement('div');
+      var tip = document.createElement('span');
+      var again = document.createElement('button');
+      tryBox.className = 'try';
+      tryBox.hidden = true;
+      bar.className = 'try-bar';
+      bar.setAttribute('role', 'group');
+      bar.setAttribute('aria-label', T.intro);
+      note.className = 'try-note';
+      note.textContent = T.note;
+      mail.className = 'try-mail';
+      mail.hidden = true;
+      tip.className = 'try-tip';
+      tip.setAttribute('aria-hidden', 'true');
+      again.type = 'button';
+      again.className = 'try-again';
+      again.textContent = T.again;
+      again.hidden = true;
+      var button = function (act) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'try-btn' + (act === 'approve' || act === 'send' ? ' try-send' : act === 'reject' ? ' try-danger' : '');
+        b.setAttribute('data-act', act);
+        b.textContent = T.buttons[act];
+        return b;
+      };
+      ['read', 'edit', 'save', 'reject', 'approve'].forEach(function (act) { bar.appendChild(button(act)); });
+      tryBox.appendChild(bar);
+      tryBox.appendChild(note);
+      tryBox.appendChild(mail);
+      ask.insertBefore(tryBox, state);
+      ask.appendChild(tip);
+      state.querySelector('span').appendChild(again);
+
+      var draft = T.mail.body;
+      var field = function (into, label, value) {
+        var row = document.createElement('div');
+        var l = document.createElement('span');
+        row.className = 'try-row';
+        l.className = 'try-label';
+        l.textContent = label;
+        row.appendChild(l);
+        if (typeof value === 'string') {
+          var v = document.createElement('span');
+          v.textContent = value;
+          row.appendChild(v);
+        } else row.appendChild(value);
+        into.appendChild(row);
+      };
+      // The draft as the app's approval window shows it: title, fields,
+      // text, and the buttons at the bottom. editing swaps the text for a
+      // text box and Approve for Send edited, as in the app.
+      var openMail = function (editing) {
+        mail.textContent = '';
+        var title = document.createElement('div');
+        var fields = document.createElement('div');
+        var st = document.createElement('span');
+        var chip = document.createElement('span');
+        var tools = document.createElement('div');
+        title.className = 'try-title';
+        title.textContent = T.mail.title;
+        fields.className = 'try-fields';
+        st.className = 'try-state';
+        st.textContent = T.mail.waiting;
+        chip.className = 'try-chip';
+        chip.textContent = T.mail.file;
+        field(fields, T.mail.state, st);
+        field(fields, T.mail.to, T.mail.to_value);
+        field(fields, T.mail.subject, T.mail.subject_value);
+        field(fields, T.mail.attachments, chip);
+        mail.appendChild(title);
+        mail.appendChild(fields);
+        if (editing) {
+          var edit = document.createElement('div');
+          var hint = document.createElement('p');
+          var area = document.createElement('textarea');
+          edit.className = 'try-edit';
+          hint.textContent = T.mail.edit_hint;
+          area.value = draft;
+          area.rows = 6;
+          area.setAttribute('aria-label', T.mail.subject_value);
+          area.addEventListener('input', function () { draft = area.value; });
+          edit.appendChild(hint);
+          edit.appendChild(area);
+          mail.appendChild(edit);
+        } else {
+          var text = document.createElement('div');
+          text.className = 'try-body';
+          text.textContent = draft;
+          mail.appendChild(text);
+        }
+        tools.className = 'try-tools';
+        (editing ? ['save', 'reject', 'send'] : ['edit', 'save', 'reject', 'approve']).forEach(function (act) { tools.appendChild(button(act)); });
+        mail.appendChild(tools);
+        bar.hidden = true;
+        note.hidden = true;
+        mail.hidden = false;
+        pointAt(0);
+        var first = mail.querySelector(editing ? 'textarea' : '.try-btn');
+        if (first && trial.byKeyboard) first.focus();
+      };
+
+      // The bubble walks over the buttons that are on screen, saying what
+      // each does. It stops for good once the scene ends.
+      var tipTimer = 0;
+      var tipAt = 0;
+      var pointAt = function (n) {
+        clearTimeout(tipTimer);
+        var list = Array.prototype.filter.call(tryBox.querySelectorAll('.try-btn'), function (b) { return b.offsetParent; });
+        if (!list.length) { tip.classList.remove('on'); return; }
+        var target = list[n % list.length];
+        var box = ask.getBoundingClientRect();
+        var r = target.getBoundingClientRect();
+        // Above the button, or below it when the buttons wrap and it is not
+        // on the first line, so the bubble never covers another button.
+        var below = target.offsetTop > list[0].offsetTop;
+        tip.textContent = T.hints[target.getAttribute('data-act')];
+        tip.classList.toggle('below', below);
+        tip.style.left = (r.left - box.left + r.width / 2) + 'px';
+        tip.style.top = (below ? r.bottom - box.top + 8 : r.top - box.top - 8) + 'px';
+        tip.classList.add('on');
+        tipAt = n;
+        if (!calmAsk) tipTimer = setTimeout(function () { pointAt(n + 1); }, 1700);
+      };
+
+      trial = { next: null, waitTimer: 0, touched: false, over: false, byKeyboard: false };
+      var finish = function (key) {
+        clearTimeout(tipTimer);
+        clearTimeout(trial.waitTimer);
+        tip.classList.remove('on');
+        mail.hidden = true;
+        bar.hidden = true;
+        note.hidden = true;
+        showPill(key);
+        again.hidden = false;
+        if (trial.byKeyboard) again.focus();
+        moveOn(5000);
+      };
+      // Leave the scene for the animated ones, unless the visitor is on the
+      // box: then wait until the pointer leaves.
+      var moveOn = function (after) {
+        clearTimeout(trial.waitTimer);
+        if (!trial.next) return;
+        trial.waitTimer = setTimeout(function () {
+          if (trial.over || ask.contains(document.activeElement) && document.activeElement !== document.body) { moveOn(2500); return; }
+          leave();
+        }, after);
+      };
+      var leave = function () {
+        clearTimeout(tipTimer);
+        clearTimeout(trial.waitTimer);
+        tip.classList.remove('on');
+        tryBox.hidden = true;
+        again.hidden = true;
+        state.classList.remove('on');
+        var go = trial.next;
+        trial.next = null;
+        if (go) go();
+      };
+      trial.start = function (next) {
+        trial.next = next;
+        trial.touched = false;
+        draft = T.mail.body;
+        rows.textContent = '';
+        addRow(['agent', T.intro], rows).textContent = T.intro;
+        var row = rows.lastChild;
+        setTimeout(function () { row.classList.add('on'); }, 30);
+        again.hidden = true;
+        mail.hidden = true;
+        bar.hidden = false;
+        note.hidden = false;
+        tryBox.hidden = false;
+        showPill('wait');
+        setTimeout(function () { pointAt(4); }, calmAsk ? 0 : 700);
+        moveOn(15000);
+      };
+      tryBox.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-act]');
+        if (!b) return;
+        trial.touched = true;
+        trial.byKeyboard = e.detail === 0;
+        clearTimeout(trial.waitTimer);
+        var act = b.getAttribute('data-act');
+        if (act === 'read') openMail(false);
+        else if (act === 'edit') openMail(true);
+        else if (act === 'save') finish('saved');
+        else if (act === 'reject') finish('rejected');
+        else finish('sent');
+      });
+      again.addEventListener('click', function (e) {
+        trial.byKeyboard = e.detail === 0;
+        var next = trial.next;
+        clearTimeout(trial.waitTimer);
+        trial.start(next);
+        if (trial.byKeyboard) bar.querySelector('.try-btn').focus();
+      });
+      ask.addEventListener('mouseenter', function () { trial.over = true; });
+      ask.addEventListener('mouseleave', function () { trial.over = false; });
+      window.addEventListener('resize', function () { if (tip.classList.contains('on')) pointAt(tipAt); });
+    }
+
     // Keep the box as tall as its longest page, so the page below never
     // jumps: every page is laid out once in an invisible copy and measured.
+    // The draft opened from the try-it scene may make it taller: that
+    // happens on a click, so the move is expected.
     var reserve = function () {
       var ghost = document.createElement('div');
       var ghostRows = document.createElement('div');
@@ -156,7 +383,18 @@
       var tallest = 0;
       chat.pages.forEach(function (page) {
         ghostRows.textContent = '';
-        page.rows.forEach(function (line) { addRow(line, ghostRows).textContent = line[1]; });
+        if (page.try) {
+          if (!T) return;
+          addRow(['agent', T.intro], ghostRows).textContent = T.intro;
+          var copy = tryBox.cloneNode(true);
+          copy.hidden = false;
+          copy.querySelector('.try-bar').hidden = false;
+          copy.querySelector('.try-note').hidden = false;
+          copy.querySelector('.try-mail').hidden = true;
+          ghostRows.appendChild(copy);
+        } else {
+          page.rows.forEach(function (line) { addRow(line, ghostRows).textContent = line[1]; });
+        }
         tallest = Math.max(tallest, ghost.offsetHeight);
       });
       ask.parentNode.removeChild(ghost);
@@ -165,19 +403,22 @@
     };
     var play = function (index) {
       var page = chat.pages[index];
+      // With the try-it scene alone there is nothing to move on to.
+      var after = chat.pages.length > 1 ? function () { play((index + 1) % chat.pages.length); } : null;
+      if (page.try) {
+        if (trial) trial.start(after); else if (after) after();
+        return;
+      }
       rows.textContent = '';
       state.classList.remove('on');
       var outcome = function (n) {
-        var key = page.pills[n];
-        pill.className = 'ask-pill ' + (look[key] || 'ok');
-        pill.textContent = chat.labels[key];
-        state.classList.add('on');
+        showPill(page.pills[n]);
         if (n + 1 < page.pills.length) { setTimeout(function () { outcome(n + 1); }, 1400); return; }
         setTimeout(function () {
           Array.prototype.forEach.call(rows.children, function (p) { p.classList.remove('on'); });
           state.classList.remove('on');
         }, 2600);
-        setTimeout(function () { play((index + 1) % chat.pages.length); }, 3000);
+        if (after) setTimeout(after, 3000);
       };
       var say = function (n) {
         if (n === page.rows.length) { setTimeout(function () { outcome(0); }, 300); return; }
@@ -210,8 +451,16 @@
     reserve();
     window.addEventListener('resize', reserve);
     ask.classList.add('live');
-    rows.textContent = '';
-    setTimeout(function () { play(0); }, 1500);
+    if (calmAsk) {
+      // Less motion: no scenes rolling by, only the one the visitor plays.
+      if (trial) trial.start(null);
+    } else {
+      if (chat.pages.length === 1) play(0);
+      else {
+        rows.textContent = '';
+        setTimeout(function () { play(0); }, 1500);
+      }
+    }
   }
 
   // Story: the four steps play out like the hero prompt. When the list

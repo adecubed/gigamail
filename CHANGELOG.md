@@ -36,9 +36,16 @@
   to the new places, and the sitemap lists the three features pages.
   The hero's paragraph under the headline moved too: it now opens the
   features page, under a title of its own.
-  The download buttons moved from the hero to just under the hero
-  video, and the hero's first line says "Download for free" instead of
-  "Free forever".
+  The download buttons sit right under the hero exchange, and the
+  hero's first line says "Desktop app, free forever"; the platforms are
+  on the buttons.
+  The hero exchange opens with a scene the visitor plays: a reply waiting
+  for the OK, with the buttons of the app's approval window. Read opens
+  the draft as the window shows it, Edit opens it in a text box with
+  "Send edited", and Save, Reject and Approve end the scene as in the
+  app; a bubble walks over the buttons to say they can be clicked. The
+  mail is invented and nothing is sent. It is now the hero's only
+  scene: the animated exchanges between you and the agent are gone.
   In "Works with", the mail row is now "Email providers" and lists
   AOL Mail, Xfinity, GMX and WEB.DE too.
 
