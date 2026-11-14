@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Installs that never update by themselves now hear about a new
+  version.** A pip install, or the desktop app used only through MCP from
+  Claude Code or Codex, stayed on the version installed and nothing said
+  a newer one was out. The MCP server now looks up the latest version at
+  most once a day, in the background (PyPI for a pip install, the GitHub
+  releases for the desktop app), and when one is newer it tells the agent
+  in its instructions, with how to update: `pip install -U gigamail`, or
+  opening the desktop app once. The CLI prints the same as one line.
+  Nothing is installed by itself. With no network it stays quiet;
+  `GIGAMAIL_NO_UPDATE_CHECK=1` turns it off. The privacy page says what
+  the lookup sends (nothing about you or your mail).
 - **The line at the bottom of every mail is now "Sent via gigamail.ai".**
   It used to read "Sent via GigaMail Desktop" (or "Inviato da GigaMail
   Desktop"); it is now the same English line for everyone and names the

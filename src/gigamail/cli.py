@@ -1907,7 +1907,22 @@ def main(argv=None) -> int:
     p_purge.set_defaults(fn=cmd_purge)
 
     args = parser.parse_args(argv)
-    return args.fn(args)
+    code = args.fn(args)
+    _say_update()
+    return code
+
+
+def _say_update() -> None:
+    """One line on stderr when a newer GigaMail is known (the MCP server
+    looks it up once a day): a pip install never updates by itself."""
+    try:
+        from gigamail import __version__, policy
+        from gigamail.core import update_check
+        line = update_check.user_line(__version__, policy.user_lang())
+    except Exception:
+        return
+    if line:
+        print(line, file=sys.stderr)
 
 
 if __name__ == "__main__":

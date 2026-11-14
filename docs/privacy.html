@@ -119,6 +119,13 @@
   </div>
   <p>GigaMail does not choose the agent for you and sends nothing to any
   provider of its own.</p>
+  <p>To tell you when a newer version is out, GigaMail asks which version
+  is the latest: the desktop app asks GitHub when it starts, and the MCP
+  server asks PyPI (or GitHub, for the desktop app) at most once a day.
+  These requests carry nothing about you, your accounts or your mail; like
+  any request on the web, the server that answers sees your IP address.
+  Setting <code>GIGAMAIL_NO_UPDATE_CHECK=1</code> turns off the server's
+  check.</p>
 
   <h2>Google user data: limited use</h2>
   <p>GigaMail's use and transfer of information received from Google APIs

@@ -33,6 +33,9 @@ os.environ["GIGAMAIL_LANG"] = "it"
 # Nessuna estensione accesa di default: la suite prova il core nudo. I test
 # che ne vogliono una la accendono con le fixture qui sotto.
 os.environ["GIGAMAIL_EXTENSIONS"] = ""
+# No lookup of the latest version on PyPI/GitHub from the suite: the tests
+# of update_check switch it back on and never touch the network.
+os.environ["GIGAMAIL_NO_UPDATE_CHECK"] = "1"
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))

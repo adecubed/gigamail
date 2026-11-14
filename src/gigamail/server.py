@@ -1422,7 +1422,24 @@ def drive_delete_file(
     )
 
 
+def _announce_update() -> None:
+    """When a newer GigaMail is known (core/update_check), say it in the
+    instructions the agent reads when it connects, so a user who never
+    opens the console still hears about it. The lookup for the next start
+    runs in the background and never delays this one."""
+    from gigamail.core import update_check
+    notice = update_check.agent_notice(_version())
+    update_check.refresh_in_background()
+    if notice:
+        low = mcp._lowlevel_server
+        low.instructions = (low.instructions or "") + notice
+
+
 def main() -> None:
+    try:
+        _announce_update()
+    except Exception:
+        pass  # a failed check must never keep the server from starting
     mcp.run()  # stdio
 
 
