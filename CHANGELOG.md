@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The line at the bottom of every mail is now "Sent via gigamail.ai".**
+  It used to read "Sent via GigaMail Desktop" (or "Inviato da GigaMail
+  Desktop"); it is now the same English line for everyone and names the
+  site, so whoever receives the mail can find GigaMail. It can still be
+  switched off per account in the console, and a draft signed with the
+  old wording is not signed twice when redrafted.
 - **GENERATE works when forwarding.** In the Forward window it failed with
   "The mail could not be read from the server or the archive" and the
   error took the place of the forwarded mail. It now reads the original

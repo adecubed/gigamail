@@ -184,7 +184,7 @@ def set_identity(account_id: int, req: IdentityRequest):
 
 class SignatureRequest(BaseModel):
     signature: str = ""
-    # The "Sent via GigaMail Desktop" line; None leaves it as it is.
+    # The "Sent via gigamail.ai" line; None leaves it as it is.
     sent_via: Optional[bool] = None
 
 

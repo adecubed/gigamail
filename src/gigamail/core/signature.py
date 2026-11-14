@@ -11,9 +11,12 @@ text into every mail the user approves.
 
 An empty signature (the default) adds nothing of the user's own.
 
-Below it goes one line saying the mail was sent with GigaMail, in the
-user's language, as mobile mail apps do ("Sent from Outlook for
-Android"). It is on by default and can be switched off per account.
+Below it goes one line saying the mail was sent with GigaMail, as
+mobile mail apps do ("Sent from Outlook for Android"): "Sent via
+gigamail.ai", in English for every user, with the site's domain as plain
+text so whoever reads it can find GigaMail (most mail apps turn the
+domain into a link on their own). It is on by default and can be
+switched off per account.
 """
 from gigamail.core import accounts
 
@@ -22,13 +25,15 @@ from gigamail.core import accounts
 _LEGACY_KEY = "firma_account_{}"
 _KEY = "signature_account_{}"
 _SENT_VIA_KEY = "sent_via_account_{}"
-# Every language the line was ever written in: a body that already ends
-# with one of them (a redraft, a language switched in between) is not
-# tagged twice.
-SENT_VIA = {
-    "it": "Inviato da GigaMail Desktop",
-    "en": "Sent via GigaMail Desktop",
-}
+SENT_VIA = "Sent via gigamail.ai"
+# Every wording the line ever had: a body that already ends with one of
+# them (a redraft, a draft signed by an earlier version) is not tagged
+# twice.
+_EVERY_LINE = (
+    SENT_VIA,
+    "Sent via GigaMail Desktop",
+    "Inviato da GigaMail Desktop",
+)
 MAX_CHARS = 1000
 
 
@@ -56,8 +61,8 @@ def save(account_id: int, text: str) -> str:
 
 
 def sent_via_enabled(account_id) -> bool:
-    """Whether mail from this account ends with the "Sent via GigaMail
-    Desktop" line. On unless the user switched it off."""
+    """Whether mail from this account ends with the "Sent via
+    gigamail.ai" line. On unless the user switched it off."""
     if account_id is None:
         return True
     try:
@@ -73,25 +78,20 @@ def set_sent_via(account_id: int, enabled: bool) -> bool:
 
 
 def sent_via_line() -> str:
-    """The line in the user's language (English when unknown)."""
-    try:
-        from gigamail import policy
-        lang = policy.user_lang()
-    except Exception:
-        lang = "en"
-    return SENT_VIA.get(lang, SENT_VIA["en"])
+    """The line, the same for every user."""
+    return SENT_VIA
 
 
 def apply(account_id, body: str) -> str:
     """`body` with the account's signature at the bottom, then the
-    "Sent via GigaMail Desktop" line when it is on.
+    "Sent via gigamail.ai" line when it is on.
 
     Idempotent: a body that already ends with the signature or with the
     line (a redraft of a signed draft, a template that writes it itself)
     is not signed again, so nothing ever appears twice."""
     body = body or ""
     text = body.rstrip()
-    if any(text.endswith(line) for line in SENT_VIA.values()):
+    if any(text.endswith(line) for line in _EVERY_LINE):
         return body
     sig = get(account_id)
     added = False
