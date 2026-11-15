@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Site: the home's title in search results is "Bring ChatGPT and Claude
+  into your email, safely"** (in Italian and Chinese too), instead of
+  "open-source AI email agent for Gmail, Outlook & MCP". The description
+  and the link previews say the same and no longer lead with the licence.
 - **Installs that never update by themselves now hear about a new
   version.** A pip install, or the desktop app used only through MCP from
   Claude Code or Codex, stayed on the version installed and nothing said
