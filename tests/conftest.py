@@ -27,6 +27,9 @@ os.environ.pop("ADE_CONSOLE_TOKEN", None)
 os.environ["GIGAMAIL_CONSENT_BACKEND"] = "deny"
 # ...e non deve nemmeno far comparire toast di sistema sul suo desktop.
 os.environ["GIGAMAIL_NOTIFY_DESKTOP"] = "0"
+# ...and must never write to the Keychain / Secret Service of whoever runs
+# it: the keyring tests use a fake backend.
+os.environ["GIGAMAIL_OS_KEYRING"] = "0"
 # Lingua delle notifiche pinnata: la suite deve dare lo stesso esito sul
 # PC italiano di Paolo e sui runner CI in inglese.
 os.environ["GIGAMAIL_LANG"] = "it"

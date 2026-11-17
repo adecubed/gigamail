@@ -3,6 +3,7 @@ accounts.py — Gestione multi-account ADE Mail.
 Salva account Microsoft e IMAP in SQLite locale cifrato.
 DB e KEY in %APPDATA%\ADE\mail\ per persistenza tra riavvii.
 """
+import hashlib
 import json
 import os
 import sqlite3
@@ -10,12 +11,15 @@ from typing import Dict, List, Optional
 
 from cryptography.fernet import Fernet
 
+from . import os_keyring as _os_keyring
 from .data_paths import data_root as _data_root
 
 _ADE_DATA = str(_data_root())
 DB_PATH  = os.path.join(_ADE_DATA, '.accounts.db')
 KEY_PATH = os.path.join(_ADE_DATA, '.accounts.key')
 KEY_PATH_DPAPI = KEY_PATH + '.dpapi'
+# macOS/Linux: the key is in the OS keyring; this file names the entry.
+KEY_PATH_KEYRING = KEY_PATH + '.keyring'
 
 try:
     from . import win_dpapi as _dpapi
@@ -27,14 +31,83 @@ def _dpapi_ok() -> bool:
     return _dpapi is not None and _dpapi.available()
 
 
+class KeyUnavailableError(RuntimeError):
+    """The accounts key lives in the OS keyring and cannot be read now."""
+
+
+def _keyring_name() -> str:
+    # One entry per data folder: a test run or a second data root never
+    # reads or overwrites the key of the real one.
+    digest = hashlib.sha256(os.path.abspath(_ADE_DATA).encode()).hexdigest()
+    return f"accounts-key:{digest[:16]}"
+
+
+def _write_private(path: str, data: bytes) -> None:
+    """Write a secret file readable only by its owner (0600 on POSIX)."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'wb') as f:
+        f.write(data)
+    _restrict(path)
+
+
+def _restrict(path: str) -> None:
+    if os.name == 'posix':
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+
+
+def _store_in_keyring(key: bytes) -> bool:
+    """Put the key in the OS keyring and leave the marker file that says
+    so. True only when the key reads back identical."""
+    if not _os_keyring.available():
+        return False
+    name = _keyring_name()
+    try:
+        _os_keyring.store(name, key.decode('ascii'))
+        if _os_keyring.load(name) != key.decode('ascii'):
+            return False
+    except OSError:
+        return False
+    _write_private(KEY_PATH_KEYRING, name.encode('ascii'))
+    return True
+
+
 def _get_key() -> bytes:
     """Chiave Fernet degli account. Su Windows la chiave su disco è protetta
     con DPAPI (legata all'utente): copiare i file non basta a decifrarla.
-    La chiave legacy in chiaro viene migrata al primo accesso."""
+    La chiave legacy in chiaro viene migrata al primo accesso.
+
+    On macOS and Linux the key goes to the OS keyring (Keychain, Secret
+    Service) when there is one, with a marker file next to the database
+    naming the entry. Where there is none (a Linux server) it stays in a
+    file readable only by its owner."""
     # 1. formato protetto
     if _dpapi_ok() and os.path.exists(KEY_PATH_DPAPI):
         with open(KEY_PATH_DPAPI, 'rb') as f:
             return _dpapi.unprotect(f.read())
+    # 1b. OS keyring. A missing entry is an error, never a reason to make
+    # a new key: that would orphan every account already saved.
+    if os.path.exists(KEY_PATH_KEYRING):
+        with open(KEY_PATH_KEYRING, 'rb') as f:
+            name = f.read().decode('ascii').strip()
+        try:
+            value = _os_keyring.load(name)
+        except OSError as e:
+            raise KeyUnavailableError(
+                f"The GigaMail accounts key is in the system keyring "
+                f"({_os_keyring.SERVICE} / {name}) and the keyring cannot be "
+                f"reached: {e}. Unlock it (or log in to a desktop session) "
+                f"and try again."
+            ) from e
+        if not value:
+            raise KeyUnavailableError(
+                f"The GigaMail accounts key is missing from the system "
+                f"keyring ({_os_keyring.SERVICE} / {name}). Without it the "
+                f"saved accounts cannot be decrypted."
+            )
+        return value.encode('ascii')
     # 2. legacy in chiaro -> migra se possibile
     if os.path.exists(KEY_PATH):
         with open(KEY_PATH, 'rb') as f:
@@ -43,15 +116,18 @@ def _get_key() -> bytes:
             with open(KEY_PATH_DPAPI, 'wb') as f:
                 f.write(_dpapi.protect(key))
             os.remove(KEY_PATH)
+        elif _store_in_keyring(key):
+            os.remove(KEY_PATH)
+        else:
+            _restrict(KEY_PATH)
         return key
     # 3. prima esecuzione
     key = Fernet.generate_key()
     if _dpapi_ok():
         with open(KEY_PATH_DPAPI, 'wb') as f:
             f.write(_dpapi.protect(key))
-    else:
-        with open(KEY_PATH, 'wb') as f:
-            f.write(key)
+    elif not _store_in_keyring(key):
+        _write_private(KEY_PATH, key)
     return key
 def _encrypt(text: str) -> str:
     f = Fernet(_get_key())

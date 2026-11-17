@@ -34,6 +34,9 @@ dependencies = [
     "winrt-Windows.UI.Notifications>=3.0; sys_platform == 'win32'",
     "winrt-Windows.Data.Xml.Dom>=3.0; sys_platform == 'win32'",
     "pyobjc-framework-LocalAuthentication>=10; sys_platform == 'darwin'",
+    # Accounts key in the OS keyring on macOS (Keychain) and Linux (Secret
+    # Service); Windows uses DPAPI (core/os_keyring.py, core/win_dpapi.py).
+    "keyring>=24; sys_platform != 'win32'",
 ]
 
 [project.optional-dependencies]
