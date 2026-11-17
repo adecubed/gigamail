@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Site: `llms.txt`.** A plain-text summary of GigaMail at
+  gigamail.ai/llms.txt, with the key facts and links to every page, for
+  AI assistants that read the site.
+
 ## v0.6.8 — 2026-11-17
 
 - **The README downloads Linux too.** Windows, macOS and Linux (beta)

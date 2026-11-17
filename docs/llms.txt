@@ -1,0 +1,42 @@
+# GigaMail
+
+> GigaMail is a free desktop app and MCP server that brings ChatGPT, Claude, Codex or any AI agent into the mailbox you already have (Microsoft 365/Outlook, Gmail and any IMAP account). The agent searches mail, reads attachments, drafts replies and books meetings; nothing is sent, deleted or moved without the user's approval, given outside the agent's reach. Mail, indexes and credentials stay on the user's computer: GigaMail runs no cloud service.
+
+Key facts:
+
+- Platforms: desktop app for Windows 10/11 (code-signed), macOS (Apple Silicon and Intel, signed and notarized) and Linux (.deb and AppImage, beta). The app updates itself.
+- Core without the app: `pip install gigamail` (MCP server, CLI, watcher). MCP command: `gigamail-server`, stdio only, no network port.
+- Works with: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes Agent, Google Antigravity and any MCP client.
+- Price: free forever, for personal and business use.
+- Approval model: reads are free; sending, deleting and other actions with effects outside the computer wait for a human approval from the console, the CLI, a desktop notification or Telegram. The agent only gets an inert request id and cannot approve itself through the MCP channel.
+- Privacy: no GigaMail server receives mail or credentials. Mail the agent reads is handled by that agent's model provider. A masker can hide tax codes, IBANs, emails and phone numbers before the agent sees them.
+- Features: hybrid search (provider + local index), a local archive of every account with attachments, sender memory and contact notes, calendar-aware drafts that only propose free times, knowledge files per account (price lists, terms), signed automation rules.
+- MCP tools: 31 (18 reads, 3 audited writes, 10 actions behind human approval).
+- How it differs: unlike AgentMail it uses your existing mailbox, not new hosted inboxes; unlike Composio it runs on your computer, not through a cloud that holds your logins; unlike Copilot in Outlook it is free, works with any IMAP mailbox and lets you choose the agent.
+- Source code: https://github.com/adecubed/gigamail (AGPL-3.0). MCP registry name: io.github.adecubed/gigamail.
+
+## Get started
+
+- [Install](https://gigamail.ai/install.html): every installer, the pip core, and manual setup for each agent
+- [Download page](https://gigamail.ai/): Windows, macOS and Linux downloads
+- [Latest release](https://github.com/adecubed/gigamail/releases/latest): installers with SHA-256 digests
+
+## Docs
+
+- [Features](https://gigamail.ai/features.html): what the agent can do, with demos
+- [Security](https://gigamail.ai/security.html): what the agent can and cannot do, and what is planned
+- [MCP map](https://gigamail.ai/mcp-map.html): all 31 MCP tools and their risk classes
+- [Changelog](https://gigamail.ai/changelog.html): every release
+
+## Comparisons
+
+- [GigaMail vs AgentMail](https://gigamail.ai/gigamail-vs-agentmail.html): your own mailbox, or new inboxes for agents
+- [GigaMail vs Composio](https://gigamail.ai/gigamail-vs-composio.html): your mail on your computer, or a thousand apps through a cloud
+- [GigaMail vs Copilot in Outlook](https://gigamail.ai/gigamail-vs-copilot.html): the agent you choose, or the one Microsoft builds in
+
+## Optional
+
+- [Mail City](https://gigamail.ai/mail-city.html): interactive 3D tour of a mail's journey through GigaMail
+- [Privacy policy](https://gigamail.ai/privacy.html)
+- [Terms of service](https://gigamail.ai/terms.html)
+- [Italian home](https://gigamail.ai/it.html) and [Chinese home](https://gigamail.ai/zh.html)
