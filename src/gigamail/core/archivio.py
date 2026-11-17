@@ -840,14 +840,18 @@ def messaggio(riga: Dict[str, Any], raw: bytes) -> Dict[str, Any]:
         return [{"emailAddress": {"name": n, "address": a}}
                 for n, a in _indirizzi(lista)]
 
+    opened = bool(encryption and encryption.get("decrypted"))
+    # The row holds the outer From. For an opened mail the sender is the
+    # one inside the encryption, as when it is read from the server: it is
+    # the one the signature was checked against.
+    sender = (_indirizzi(_h(grezzo, "From")) or [None])[0] if opened else None
+    name, address = sender or (riga.get("from_name") or "",
+                               riga.get("from_addr") or "")
     return {
         "id": f"{PREFISSO_ID}{riga['id']}",
         "provider_id": riga.get("provider_id") or "",
-        "subject": (str(msg.get("Subject") or "")
-                    if encryption and encryption.get("decrypted")
-                    else riga.get("subject") or ""),
-        "from": {"emailAddress": {"name": riga.get("from_name") or "",
-                                  "address": riga.get("from_addr") or ""}},
+        "subject": str(msg.get("Subject") or "") if opened else riga.get("subject") or "",
+        "from": {"emailAddress": {"name": name, "address": address}},
         "toRecipients": _rec(_h(grezzo, "To")),
         "ccRecipients": _rec(_h(grezzo, "Cc")),
         "receivedDateTime": riga.get("date_utc") or "",

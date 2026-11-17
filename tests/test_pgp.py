@@ -126,6 +126,19 @@ def test_an_older_mail_does_not_replace_a_newer_key(peer):
     assert pgp.peer_cert(PEER).fingerprint == peer.extract_certificate().fingerprint
 
 
+def test_a_date_in_the_future_does_not_pin_a_key(monkeypatch, peer):
+    """A mail dated years ahead would otherwise make every real mail
+    after it "older", and the key could never be updated again."""
+    day = 86400
+    arrived = email.utils.parsedate_to_datetime("Thu, 12 Nov 2026 10:00:00 +0100").timestamp()
+    monkeypatch.setattr(pgp.time, "time", lambda: arrived)
+    pgp.learn_autocrypt(_mail_from_peer(peer, date="Thu, 12 Nov 2099 10:00:00 +0100"))
+    new = pysequoia.Tsk.generate(user_id=f"<{PEER}>")
+    monkeypatch.setattr(pgp.time, "time", lambda: arrived + 2 * day)
+    pgp.learn_autocrypt(_mail_from_peer(new, date="Fri, 13 Nov 2026 10:00:00 +0100"))
+    assert pgp.peer_cert(PEER).fingerprint == new.extract_certificate().fingerprint
+
+
 def test_own_secret_key_is_not_stored_in_clear():
     tsk = pgp.own_key(ME)
     raw = db_path(pgp.DB_NAME).read_bytes()
@@ -211,11 +224,14 @@ def test_status_names_the_recipients_without_key(peer):
 
 # ── decrypt ─────────────────────────────────────────────────────────
 
-def _encrypted_from_peer(peer, subject="Offer", body="Our best price."):
+def _encrypted_from_peer(peer, subject="Offer", body="Our best price.",
+                         inner_from=""):
     """A mail the correspondent encrypted for us, as it arrives."""
     inner = MIMEMultipart("mixed")
     inner.set_param("protected-headers", "v1")
     inner["Subject"] = subject
+    if inner_from:
+        inner["From"] = inner_from
     inner.attach(MIMEText(body, "plain", "utf-8"))
     me_cert = pgp.own_key(ME).extract_certificate()
     ct = pysequoia.encrypt(bytes=inner.as_bytes(), recipients=[me_cert],
@@ -238,6 +254,17 @@ def test_incoming_encrypted_mail_is_opened_and_signature_checked(peer):
     assert inner["Subject"] == "Offer"
     assert inner["From"] == PEER
     assert inner.get_payload()[0].get_payload(decode=True) == b"Our best price."
+
+
+def test_a_signature_does_not_vouch_for_another_sender_named_inside(peer):
+    """The From shown is the one inside the encryption. A correspondent
+    who signs a mail naming someone else there is not "signed by" them."""
+    other = "luigi.verdi@example.com"
+    raw = _encrypted_from_peer(peer, inner_from=other)
+    inner, info = pgp.open_message(email.message_from_bytes(raw), ME)
+    assert inner["From"] == other
+    assert info["signature_valid"] is True and info["signer"] == PEER
+    assert info["signer_matches_from"] is False
 
 
 def test_mail_for_someone_else_stays_closed(peer):
@@ -340,7 +367,35 @@ def test_router_passes_encrypt_down_to_smtp(monkeypatch):
     assert seen["encrypt"] is True
 
 
+@pytest.mark.parametrize("encryption, expected", [
+    ({"encrypted": True, "decrypted": True}, True),
+    (None, False),
+])
+def test_a_reply_to_an_encrypted_mail_leaves_encrypted(monkeypatch, encryption, expected):
+    """The agent and the rules reply through reply_message, with no
+    "Encrypt" button in front of anyone."""
+    monkeypatch.setattr(mail_router, "_account", lambda account_id=None: {
+        "id": 1, "type": "imap", "email": ME, "data": {}})
+    monkeypatch.setattr(mail_router, "get_message", lambda *a, **k: {
+        "from": {"emailAddress": {"address": PEER}}, "subject": "Offer",
+        "encryption": encryption})
+    seen = {}
+    monkeypatch.setattr(mail_router, "send_message",
+                        lambda **k: seen.update(k) or {"success": True})
+    mail_router.reply_message(1, "5", "Thank you.")
+    assert seen["to"] == PEER and seen["encrypt"] is expected
+
+
 # ── archive ─────────────────────────────────────────────────────────
+
+def test_an_opened_mail_shows_the_sender_named_inside(archive, peer):
+    """The same sender as when the mail is read from the server."""
+    other = "luigi.verdi@example.com"
+    rowid, _ = archive.store().salva(
+        1, _encrypted_with_id(peer, inner_from=other), folder="INBOX", provider_id="5")
+    m = archive.leggi(1, f"arch-{rowid}", keep_opened=True)
+    assert m["from"]["emailAddress"]["address"] == other
+    assert m["encryption"]["signer_matches_from"] is False
 
 def test_archived_encrypted_mail_is_opened_when_read(peer):
     from gigamail.core import archivio

@@ -436,6 +436,11 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
     risposta_a = message_id
     if str(message_id).startswith(archivio.PREFISSO_ID):
         risposta_a = msg.get('provider_id') or None
+    # A reply to a mail that arrived encrypted leaves encrypted, or not at
+    # all: this is the path of the agent and of the rules, where nobody
+    # sees an "Encrypt" button, and answering a secret in clear undoes it.
+    if (msg.get('encryption') or {}).get('decrypted'):
+        encrypt = True
     result = send_message(
         account_id=account_id,
         to=to_addr,

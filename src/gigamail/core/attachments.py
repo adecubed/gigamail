@@ -295,6 +295,13 @@ def is_path(name: Any) -> bool:
     return os.path.isabs(str(name or "").strip())
 
 
+def _is_network_path(raw: str) -> bool:
+    r"""\\server\share\file, in any spelling Windows takes (//server/share,
+    \\?\UNC\server\share). A mapped drive letter is the user's own choice
+    and stays a normal path."""
+    return raw.replace("/", chr(92)).startswith(chr(92) * 2)
+
+
 def _is_gigamail_data(real: str) -> bool:
     from gigamail.core.data_paths import app_root, data_root
     target = Path(real)
@@ -312,10 +319,16 @@ def resolve_outside(account_id: Optional[int],
     """One file by its absolute path -> (resolved, "") or (None, why not).
     Like resolve() it fixes the content (sha256, size) at request time.
     Marked "outside" unless the path is one of the registered files.
-    Refused: what is not a file, a program, anything past MAX_ADDED_BYTES
-    and GigaMail's own data (tokens, approvals, logs)."""
+    Refused: what is not a file, a program, anything past MAX_ADDED_BYTES,
+    GigaMail's own data (tokens, approvals, logs) and a path on another
+    machine (\\\\server\\share)."""
     from gigamail.core import mail_guard
     raw = str(path or "").strip()
+    # Before anything touches the disk: looking at a path on another
+    # machine already makes Windows sign in to it, and this runs when the
+    # agent asks, before anyone approved.
+    if _is_network_path(raw):
+        return None, f"{raw} (a file on a network path is never attached by path)"
     real = os.path.realpath(raw)
     if not is_path(raw) or not os.path.isfile(real):
         return None, f"{raw} (no such file)"

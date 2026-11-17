@@ -45,8 +45,9 @@
   says who signed it. Once opened it is kept decrypted in the archive, so
   losing the key later does not lose the mail you have read, and search
   finds it; the server keeps the encrypted copy. The button turns on only
-  when every recipient has a key, a reply to an encrypted mail starts encrypted, and a mail asked to
-  be encrypted is never sent in clear: a missing key, a Bcc recipient or a
+  when every recipient has a key, a reply to an encrypted mail starts
+  encrypted (one sent by the agent or by a rule is always encrypted), and
+  a mail asked to be encrypted is never sent in clear: a missing key, a Bcc recipient or a
   Microsoft account stops the send with the reason. IMAP/SMTP accounts
   only for now. New dependency: `pysequoia`.
 - **The agent can attach a file you name by its full path.** By name it

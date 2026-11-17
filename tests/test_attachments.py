@@ -61,6 +61,20 @@ def test_a_full_path_is_taken_and_marked_outside(identity, tmp_path):
         server._attachments_payload([outside])
 
 
+def test_a_network_path_is_refused_before_the_disk_is_touched(identity, monkeypatch):
+    """Looking at \\\\server\\share makes Windows sign in to that server,
+    and the path is resolved when the agent asks, before any approval."""
+    touched = []
+    monkeypatch.setattr(att.os.path, "realpath", lambda p: touched.append(p) or p)
+    monkeypatch.setattr(att.os.path, "isfile", lambda p: touched.append(p) or True)
+    for path in ("\\\\files.example.com\\share\\offer.pdf",
+                 "//files.example.com/share/offer.pdf",
+                 "\\\\?\\UNC\\files.example.com\\share\\offer.pdf"):
+        found, why = att.resolve_outside(2, path)
+        assert found is None and "network path" in why, path
+    assert touched == []
+
+
 def test_what_a_full_path_never_reaches(identity, tmp_path):
     from gigamail.core.data_paths import app_root
     program = tmp_path / "setup.exe"

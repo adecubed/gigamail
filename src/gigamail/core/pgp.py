@@ -234,10 +234,14 @@ def learn_autocrypt(msg: Message) -> Optional[str]:
 
 
 def _mail_time(msg: Message) -> float:
+    """When the mail was sent, never later than now: a Date in the future
+    (a wrong clock, or written on purpose) would keep every later mail
+    from updating that correspondent's key."""
+    now = time.time()
     try:
-        return parsedate_to_datetime(str(msg.get("Date", ""))).timestamp()
+        return min(parsedate_to_datetime(str(msg.get("Date", ""))).timestamp(), now)
     except Exception:
-        return time.time()
+        return now
 
 
 def peer_cert(address: str):
@@ -434,15 +438,20 @@ def open_message(msg: Message, account_address: str = "") -> Tuple[Message, Opti
         return msg, info
     inner = message_from_bytes(decrypted.bytes)
     info["decrypted"] = True
+    opened = _restore_headers(msg, inner)
     sigs = list(decrypted.valid_sigs or [])
     if sigs:
         info["signed"] = info["signature_valid"] = True
         fpr = str(sigs[0].certificate).lower()
         signer = _address_of(fpr, keys)
         info["signer"] = signer
+        # Against the From the reader is shown, which is the protected one
+        # from inside the encryption: checked against the outer From, a
+        # correspondent could sign a mail that names someone else as its
+        # sender and still get "signed by" under that name.
         info["signer_matches_from"] = bool(
-            signer and signer == normalize(str(msg.get("From", ""))))
-    return _restore_headers(msg, inner), info
+            signer and signer == normalize(str(opened.get("From", ""))))
+    return opened, info
 
 
 def open_raw(raw: bytes, account_address: str = "") -> Tuple[bytes, Optional[Dict]]:
