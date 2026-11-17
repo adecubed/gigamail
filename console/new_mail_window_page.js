@@ -235,6 +235,20 @@ ctxBadge.addEventListener('click', () => {
   ctxBadge.textContent = '';
 });
 
+// ── ENCRYPT (OpenPGP, core/pgp.py) ────────────────────────────────────────────
+const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
+  button: document.getElementById('btnEncrypt'),
+  status: document.getElementById('status'),
+  api: API,
+  getAccountId: () => accountId,
+  getRecipients: () => ({ to: document.getElementById('mailTo').value.trim(),
+                          cc: document.getElementById('mailCc').value.trim() }),
+  T,
+}) : null;
+for (const id of ['mailTo', 'mailCc']) {
+  document.getElementById(id).addEventListener('change', () => encryptToggle && encryptToggle.recheck());
+}
+
 // ── FOLLOW-UP ─────────────────────────────────────────────────────────────────
 const btnFollowup      = document.getElementById('btnFollowup');
 const followupDropdown = document.getElementById('followupDropdown');
@@ -345,7 +359,8 @@ async function execSend() {
     const attachmentsClean = attachments.map(({dataUrl, isImage, ...rest}) => rest);
     const response = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean})
+      body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean,
+                            encrypt: !!(encryptToggle && encryptToggle.isOn())})
     });
     let result = {};
     try { result = await response.json(); } catch {}

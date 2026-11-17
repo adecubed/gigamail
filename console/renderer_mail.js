@@ -95,6 +95,7 @@ const MailView = (() => {
         <div class="mail-detail-header">
           <div class="mail-detail-subject">${esc(msg.subject || T('no_subject','(nessun oggetto)'))}</div>
           <div class="mail-detail-meta">${T('from_label','Da')}: ${esc(senderName)} &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime || msg.sentDateTime))}</div>
+          ${window.MailRender ? MailRender.encryptionBadgeHtml(msg.encryption, T, esc) : ''}
           ${(msg.toRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">${T('to_label','A:')} ${addressList(msg.toRecipients)}</div>` : ''}
           ${(msg.ccRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">${T('cc_label','CC:')} ${addressList(msg.ccRecipients)}</div>` : ''}
           <div class="mail-detail-actions">
@@ -332,6 +333,8 @@ async function openMail(id, overrideFolder = null) {
     const rawHtml    = msg.body?.content || '';
     const bodyText   = msg.body_text || msg.bodyPreview || '';
     window._currentMailBodyText = bodyText;  // cache per smart_draft — evita IMAP lento
+    // A reply to an encrypted mail starts encrypted (reply_window_page.js).
+    window._currentMailEncrypted = !!(msg.encryption && msg.encryption.decrypted);
     const isHtmlBody = MailView.isHtmlBody(msg);
     const effectiveHtml = isHtmlBody && !rawHtml ? `<html><body style="font-family:sans-serif;font-size:13px;line-height:1.7;padding:16px;color:#333;">${bodyText}</body></html>` : rawHtml;
     const bodyHtml   = isHtmlBody ? null : formatMailBodyHtml(bodyText);
@@ -670,6 +673,7 @@ async function openMail(id, overrideFolder = null) {
           account_id:  activeAccountId,
           instruction: '',
           body_text:   window._currentMailBodyText || '',
+          encrypted:   !!window._currentMailEncrypted,
           replyAll:    true,
           ccAddrs,
         });

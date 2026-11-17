@@ -4,7 +4,7 @@
 # nome `ade_mail_agent` resta come alias (src/ade_mail_agent): import,
 # `python -m ade_mail_agent.cli` e le registrazioni gia' fatte funzionano.
 name = "gigamail"
-version = "0.6.7"
+version = "0.6.8"
 description = "GigaMail — mail for your AI agent: MCP server giving agents safe, permission-controlled access to email (Microsoft Graph + IMAP), calendar and knowledge files."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,9 @@ dependencies = [
     "msal>=1.28",
     "requests>=2.31",
     "cryptography>=42",
+    # OpenPGP end-to-end mail encryption (core/pgp.py): Sequoia, Rust, with
+    # wheels for Windows, macOS and Linux.
+    "pysequoia>=0.1.35",
     "python-dotenv>=1.0",
     # Reads Codex's config.toml; in the standard library from Python 3.11.
     "tomli>=2.0; python_version < '3.11'",

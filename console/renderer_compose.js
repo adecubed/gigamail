@@ -93,6 +93,7 @@ function openNativeReplyWindow(to, subject, instruction = '') {
       instruction: instruction || '',
       // Passa body già in memoria — evita IMAP lento nel backend
       body_text:   window._currentMailBodyText || '',
+      encrypted:   !!window._currentMailEncrypted,
     });
   } else {
     openReplyModal(to, subject);

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-async function sendPopup(file, response, { followupFails = false } = {}) {
+async function sendPopup(file, response, { followupFails = false, encrypt = false } = {}) {
   // The page's script lives in <page>_page.js (the CSP forbids inline scripts).
   const html = fs.readFileSync(path.join(__dirname, '..', file.replace(/\.html$/, '_page.js')), 'utf8');
   function handler(name) {
@@ -42,6 +42,8 @@ async function sendPopup(file, response, { followupFails = false } = {}) {
     window: { newMailWindowAPI: api, replyWindowAPI: api },
     API: 'http://fixture.invalid', accountId: 7, mailData: { account_id: 7, id: '42' },
     attachments: [attachment], followupHours: 24,
+    // the Encrypt button (encrypt_toggle.js)
+    encryptToggle: { isOn: () => encrypt },
     draftId: 'draft:1', draftTimer: 123, mailSent: false,
     sendTimer: null, sendRafId: null,
     setTimeout(fn) { fn(); },
@@ -148,12 +150,20 @@ for (const file of ['new_mail_window.html', 'reply_window.html']) {
     assert.equal(state.requests[0].body.body, 'La bozza da conservare');
     assert.equal(state.requests[0].body.attachments[0].data_b64, 'cGRm');
     assert.equal(state.requests[0].body.attachments[0].dataUrl, undefined);
+    assert.equal(state.requests[0].body.encrypt, false);
     if (file === 'new_mail_window.html') {
       assert.equal(context.mailSent, true);
       assert.equal(context.draftTimer, null);
       assert.deepEqual(state.clearedTimers, [123]);
       assert.deepEqual(state.draftDeletes, ['http://fixture.invalid/mail/draft/local/draft%3A1']);
     }
+  });
+
+  test(`${file}: "Cifra" acceso manda encrypt: true`, async () => {
+    const { state } = await sendPopup(file, {
+      ok: true, status: 200, json: async () => ({ success: true }),
+    }, { encrypt: true });
+    assert.equal(state.requests[0].body.encrypt, true);
   });
 
   test(`${file}: follow-up fallito dopo invio non segnala errore invio o riabilita il bottone`, async () => {

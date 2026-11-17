@@ -174,19 +174,19 @@ def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict
     from . import archivio
     aid = a.get('id')
     if str(message_id).startswith(archivio.PREFISSO_ID):
-        m = archivio.leggi(aid, message_id)
+        m = archivio.leggi(aid, message_id, keep_opened=True)
         if not m:
             raise ValueError(f"Messaggio non trovato nell'archivio: {message_id}")
         return m
     try:
         m = _get_message_provider(a, account_id, message_id, folder)
     except Exception:
-        m = archivio.leggi(aid, message_id, folder)
+        m = archivio.leggi(aid, message_id, folder, keep_opened=True)
         if m:
             return m
         raise
     if not m:
-        m = archivio.leggi(aid, message_id, folder) or {}
+        m = archivio.leggi(aid, message_id, folder, keep_opened=True) or {}
     return m
 
 
@@ -199,7 +199,17 @@ def _get_message_provider(a, account_id, message_id: str, folder: str) -> Dict:
             raise ValueError(f"ID numerico '{message_id}' non valido per account Microsoft (account_id={account_id})")
         return ms_mail.get_message(message_id)
     imap_host, imap_port, email_addr, password = _imap_credentials(a)
-    return imap.get_message(imap_host, imap_port, email_addr, password, message_id, folder=folder or "INBOX")
+
+    # An encrypted mail is kept decrypted in the archive the first time it
+    # is opened: losing the key later does not lose the mails already read.
+    def keep_opened(encrypted_raw, opened_raw, info):
+        from . import archivio
+        archivio.store().keep_opened(
+            a.get('id'), encrypted_raw, opened_raw, info,
+            folder=folder or "INBOX", provider_id=str(message_id))
+
+    return imap.get_message(imap_host, imap_port, email_addr, password, message_id,
+                            folder=folder or "INBOX", on_opened=keep_opened)
 def get_message_headers(account_id=None, message_id: str = '', folder: str = '') -> Optional[Dict]:
     """Intestazioni complete ({nome-minuscolo: [valori]}) per le barriere
     anti-spam delle regole (mail_guard). None = non recuperabili."""
@@ -227,6 +237,7 @@ def send_message(
     cc: list = None,
     bcc: list = None,
     auto_submitted: bool = False,
+    encrypt: bool = False,
 ) -> Dict:
     """Invia, e con gli appuntamenti accesi (`gigamail extensions enable
     appointments`) porta in agenda quelli di cui la mail parla.
@@ -241,7 +252,7 @@ def send_message(
     esito = _send_backend(
         account_id=account_id, to=to, subject=subject, body=body,
         reply_to_id=reply_to_id, attachments=attachments, cc=cc, bcc=bcc,
-        auto_submitted=auto_submitted)
+        auto_submitted=auto_submitted, encrypt=encrypt)
     try:
         if isinstance(esito, dict) and esito.get('success'):
             a = _account(account_id)
@@ -283,6 +294,7 @@ def _send_backend(
     cc: list = None,
     bcc: list = None,
     auto_submitted: bool = False,
+    encrypt: bool = False,
 ) -> Dict:
     a = _account(account_id)
     if not a:
@@ -309,6 +321,21 @@ def _send_backend(
             'error': (f"Destinatario non valido: {names}. Niente è stato inviato."
                       if policy.user_lang() == 'it' else
                       f'Not a valid recipient: {names}. Nothing was sent.'),
+        }
+    if encrypt and (_demo(a) or a.get('type', 'microsoft') == 'microsoft'):
+        # OpenPGP needs the whole MIME message in our hands, and Graph's
+        # sendMail builds it on Microsoft's side: refused, never sent in clear.
+        from . import pgp
+        return {
+            'success': False,
+            'provider': None,
+            'sent_copy_saved': False,
+            'warning': None,
+            'error': pgp.say(
+                "La cifratura per ora funziona solo con gli account IMAP/SMTP. "
+                "Niente è stato inviato.",
+                "Encryption works only with IMAP/SMTP accounts for now. "
+                "Nothing was sent."),
         }
     if _demo(a):
         return _normalize_send_result(demo.send_message(
@@ -350,11 +377,32 @@ def _send_backend(
         imap_port=imap_port,
         imap_password=imap_password,
         extra_headers=extra,
+        encrypt=encrypt,
     ))
+def encryption_status(account_id=None, recipients: list = None) -> Dict:
+    """Can a mail from this account be encrypted for these recipients?
+    {available, can_encrypt, missing, own_fingerprint, reason}. Only
+    IMAP/SMTP accounts can encrypt (see _send_backend)."""
+    from . import pgp
+    from .addresses import split_addresses
+    recips = []
+    for r in recipients or []:
+        recips += split_addresses(r)
+    a = _account(account_id)
+    if not a or _demo(a) or a.get('type', 'microsoft') == 'microsoft':
+        return {'available': False, 'can_encrypt': False,
+                'missing': recips, 'own_fingerprint': None,
+                'reason': 'account'}
+    out = pgp.status(a.get('email', ''), recips)
+    out['reason'] = None if out['can_encrypt'] else (
+        'library' if not out['available'] else 'keys')
+    return out
+
+
 def reply_message(account_id=None, message_id: str = '', body: str = '',
                   auto_submitted: bool = False,
                   attachments: list = None, cc: list = None,
-                  folder: str = '') -> Dict:
+                  folder: str = '', encrypt: bool = False) -> Dict:
     """
     Risponde a una mail esistente.
     Recupera mittente e oggetto originale, poi invia la risposta
@@ -397,6 +445,7 @@ def reply_message(account_id=None, message_id: str = '', body: str = '',
         auto_submitted=auto_submitted,
         attachments=attachments,
         cc=cc,
+        encrypt=encrypt,
     )
     return result if isinstance(result, dict) else {'success': bool(result)}
 

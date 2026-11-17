@@ -257,8 +257,35 @@
     return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
   }
 
+  /** The line under the sender for an OpenPGP mail (msg.encryption from
+   * core/pgp.py), or null for a clear mail. tone: ok | warn | bad.
+   * "Signed by" is only said when the signature checks out AND its key is
+   * the one we know for the From address. */
+  function encryptionLabel(enc, T) {
+    T = T || ((k, it) => it);
+    if (!enc || !enc.encrypted) return null;
+    if (!enc.decrypted) {
+      return { tone: 'bad', text: T('enc_cannot_open', 'Mail cifrata: nessuna tua chiave può aprirla') };
+    }
+    if (enc.signature_valid && enc.signer_matches_from) {
+      return { tone: 'ok', text: `${T('enc_opened_signed', 'Cifrata · firmata da')} ${enc.signer}` };
+    }
+    if (enc.signature_valid && enc.signer) {
+      return { tone: 'warn', text: `${T('enc_signed_other', 'Cifrata · firmata da un altro indirizzo:')} ${enc.signer}` };
+    }
+    return { tone: 'warn', text: T('enc_opened_unsigned', 'Cifrata · mittente non verificato') };
+  }
+
+  /** The same line as HTML; esc escapes text. Empty for a clear mail. */
+  function encryptionBadgeHtml(enc, T, esc) {
+    const label = encryptionLabel(enc, T);
+    if (!label) return '';
+    const colors = { ok: '#1f7a3a', warn: '#9a6400', bad: '#b3261e' };
+    return `<div class="mail-encryption mail-encryption-${label.tone}" style="font-size:11.5px;margin-top:3px;color:${colors[label.tone]}">🔒 ${esc(label.text)}</div>`;
+  }
+
   const MailRender = { sanitizeHtml, renderMailHtml, matchAttachment, htmlToText, BLANK_GIF, IFRAME_CSP,
-    shouldMarkRead, markReadTarget, markReadUrl, printableHtml };
+    shouldMarkRead, markReadTarget, markReadUrl, printableHtml, encryptionLabel, encryptionBadgeHtml };
   if (typeof window !== 'undefined') window.MailRender = MailRender;
   if (typeof module !== 'undefined' && module.exports) module.exports = MailRender;
 })();

@@ -32,6 +32,7 @@ import email
 import email.header
 import gzip
 import hashlib
+import json
 import logging
 import re
 import sqlite3
@@ -358,6 +359,14 @@ class ArchiveStore:
                     UNIQUE (account_id, message_key)
                 )
             """)
+            # An encrypted mail opened once is kept decrypted: this holds
+            # what the decryption found (signer, signature), as JSON. Empty
+            # for every other mail. A column, never a header of the mail,
+            # so a sender cannot write it.
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(messages)")}
+            if "opened_encryption" not in cols:
+                conn.execute("ALTER TABLE messages ADD COLUMN"
+                             " opened_encryption TEXT NOT NULL DEFAULT ''")
             conn.execute("CREATE INDEX IF NOT EXISTS ix_msg_provider"
                          " ON messages(account_id, provider_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS ix_msg_date"
@@ -461,11 +470,14 @@ class ArchiveStore:
         chiave = campi["message_key"]
         with self._conn() as conn:
             riga = conn.execute(
-                "SELECT id, source, raw_path FROM messages"
+                "SELECT id, source, raw_path, opened_encryption FROM messages"
                 " WHERE account_id=? AND message_key=?",
                 (int(account_id), chiave)).fetchone()
             if riga:
-                meglio = _PRIORITA[source] > _PRIORITA.get(riga["source"], 0)
+                # A mail kept decrypted is never replaced by the encrypted
+                # copy the server still has: that would lose it again.
+                meglio = (not riga["opened_encryption"]
+                          and _PRIORITA[source] > _PRIORITA.get(riga["source"], 0))
                 if meglio:
                     percorso = Path(riga["raw_path"])
                     percorso.write_bytes(gzip.compress(raw))
@@ -498,6 +510,48 @@ class ArchiveStore:
                  campi["attachment_names"], campi["body_text"],
                  campi["size"], str(percorso), source, time.time()))
             return int(cur.lastrowid), True
+
+    def keep_opened(self, account_id: int, encrypted_raw: bytes,
+                    opened_raw: bytes, info: Dict[str, Any], *,
+                    folder: str = "", provider_id: str = "",
+                    source: str = "imap") -> Optional[int]:
+        """An encrypted mail was just opened: keep it decrypted, so it
+        stays readable (and searchable) even if the key is lost later. The
+        server keeps the encrypted copy. A mail not archived yet is archived
+        first. Returns the row id."""
+        if not (info and info.get("decrypted")):
+            return None
+        chiave = analizza(encrypted_raw)["message_key"]
+        with self._conn() as conn:
+            r = conn.execute("SELECT id FROM messages WHERE account_id=?"
+                             " AND message_key=?",
+                             (int(account_id), chiave)).fetchone()
+        rowid = int(r["id"]) if r else self.salva(
+            account_id, encrypted_raw, folder=folder,
+            provider_id=provider_id, source=source)[0]
+        self._store_opened(rowid, opened_raw, info)
+        return rowid
+
+    def _store_opened(self, rowid: int, opened_raw: bytes,
+                      info: Dict[str, Any]) -> None:
+        # The executables check runs again: inside the encryption it could
+        # not see the attachments.
+        campi = analizza(opened_raw)
+        clean = without_executables(opened_raw)
+        with self._conn() as conn:
+            r = conn.execute("SELECT raw_path FROM messages WHERE id=?",
+                             (int(rowid),)).fetchone()
+            if not r:
+                return
+            Path(r["raw_path"]).write_bytes(gzip.compress(clean))
+            conn.execute(
+                "UPDATE messages SET subject=?, to_addrs=?, cc_addrs=?,"
+                " has_attachments=?, attachment_names=?, body_text=?, size=?,"
+                " opened_encryption=? WHERE id=?",
+                (campi["subject"], campi["to_addrs"], campi["cc_addrs"],
+                 campi["has_attachments"], campi["attachment_names"],
+                 campi["body_text"], campi["size"], json.dumps(info),
+                 int(rowid)))
 
     def remove_executables(self) -> int:
         """Take the executable attachments out of mail archived before the
@@ -755,6 +809,12 @@ def _sommario(r: Dict[str, Any]) -> Dict[str, Any]:
 
 def messaggio(riga: Dict[str, Any], raw: bytes) -> Dict[str, Any]:
     """Il messaggio completo nella stessa forma di read_message."""
+    # An encrypted mail is opened here, unless it was kept decrypted the
+    # first time it was opened.
+    encryption = _opened_info(riga)
+    if encryption is None:
+        from . import pgp
+        raw, encryption = pgp.open_raw(raw)
     msg = email.message_from_bytes(raw, policy=email_policy.default)
     grezzo = email.message_from_bytes(raw)
     try:
@@ -783,7 +843,9 @@ def messaggio(riga: Dict[str, Any], raw: bytes) -> Dict[str, Any]:
     return {
         "id": f"{PREFISSO_ID}{riga['id']}",
         "provider_id": riga.get("provider_id") or "",
-        "subject": riga.get("subject") or "",
+        "subject": (str(msg.get("Subject") or "")
+                    if encryption and encryption.get("decrypted")
+                    else riga.get("subject") or ""),
         "from": {"emailAddress": {"name": riga.get("from_name") or "",
                                   "address": riga.get("from_addr") or ""}},
         "toRecipients": _rec(_h(grezzo, "To")),
@@ -795,11 +857,22 @@ def messaggio(riga: Dict[str, Any], raw: bytes) -> Dict[str, Any]:
         "hasAttachments": bool(allegati),
         "folder": riga.get("folder") or "",
         "source": "archive",
+        "encryption": encryption,
     }
+
+
+def _opened_info(riga: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """What the decryption found, for a mail kept decrypted; else None."""
+    try:
+        return json.loads(riga.get("opened_encryption") or "null")
+    except ValueError:
+        return None
 
 
 def allegato(raw: bytes, filename: str) -> Tuple[bytes, str]:
     """(contenuto, tipo) dell'allegato con quel nome."""
+    from . import pgp
+    raw, _ = pgp.open_raw(raw)
     msg = email.message_from_bytes(raw, policy=email_policy.default)
     for p in _allegati(msg):
         if _nome_allegato(p) == filename:
@@ -876,12 +949,25 @@ def cerca(account_id: Optional[int], query: str, top: int = 20) -> List[Dict[str
         return []
 
 
-def leggi(account_id: Optional[int], message_id: str,
-          folder: str = "") -> Optional[Dict[str, Any]]:
+def leggi(account_id: Optional[int], message_id: str, folder: str = "",
+          keep_opened: bool = False) -> Optional[Dict[str, Any]]:
+    """keep_opened: the user is opening this mail; an encrypted one is
+    then kept decrypted (previews and searches pass False)."""
     riga = store().riga(account_id, message_id, folder)
     if not riga:
         return None
-    return messaggio(riga, store().raw(riga))
+    raw = store().raw(riga)
+    if keep_opened and not riga.get("opened_encryption"):
+        from . import pgp
+        opened, info = pgp.open_raw(raw)
+        if info and info.get("decrypted"):
+            try:
+                store()._store_opened(int(riga["id"]), opened, info)
+                riga = store().riga(account_id, f"{PREFISSO_ID}{riga['id']}") or riga
+                raw = store().raw(riga)
+            except Exception as e:
+                logger.warning("decrypted mail not kept in the archive: %s", e)
+    return messaggio(riga, raw)
 
 
 def leggi_allegato(account_id: Optional[int], message_id: str,

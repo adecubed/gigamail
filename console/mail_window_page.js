@@ -98,6 +98,7 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
     html += `<div class="mail-header">
       <div class="mail-subject">${esc(subjectLabel)}</div>
       <div class="mail-from">${window.i18n?window.i18n.t("from_label"):"Da"}: <strong>${esc(senderName)}</strong> &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime||msg.sentDateTime))}</div>
+      ${window.MailRender ? MailRender.encryptionBadgeHtml(msg.encryption, T, esc) : ''}
       <div class="mail-actions">
         <button class="btn" id="btnAscolta" data-requires="/mail/{message_id}/tts">◉ <span data-i18n="listen_cap">Ascolta</span></button>
         <button class="btn btn-reply" id="btnReply">↩ <span data-i18n="reply_cap">Rispondi</span></button>
@@ -304,6 +305,7 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
         window.mailWindowAPI.openReply({
           id, folder, account_id: accountId,
           sender, senderName, subject,
+          encrypted: !!(msg.encryption && msg.encryption.decrypted),
         });
       }
     }

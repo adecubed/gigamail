@@ -6,6 +6,7 @@ Libero, custom.
 import email
 import email.header
 import imaplib
+import logging
 import os
 import re
 import smtplib
@@ -1409,7 +1410,10 @@ def get_message(
     password: str,
     message_id: str,
     folder: str = "INBOX",
+    on_opened=None,
 ) -> Dict:
+    """on_opened(encrypted_raw, opened_raw, info): called once an
+    encrypted mail is decrypted, so the caller can keep it decrypted."""
     clean_id = "".join(c for c in str(message_id) if c.isdigit())
     if not clean_id:
         raise ValueError(f"message_id non valido per IMAP: '{message_id}'")
@@ -1461,6 +1465,16 @@ def get_message(
                 raise ValueError(f"Messaggio IMAP non trovato per id: '{message_id}'")
             raw = msg_data[0][1]
             msg = email.message_from_bytes(raw)
+            # OpenPGP: an encrypted mail is opened here, with our own key,
+            # on this machine; the rest reads the decrypted message. The
+            # sender's Autocrypt key is learned from any mail.
+            from . import pgp
+            msg, encryption = pgp.open_message(msg, email_addr)
+            if on_opened and encryption and encryption.get("decrypted"):
+                try:
+                    on_opened(raw, msg.as_bytes(), encryption)
+                except Exception as e:
+                    logging.getLogger(__name__).warning("decrypted mail not kept: %s", e)
             body, body_type = _get_body(msg)
             attachments = []
             if msg.is_multipart():
@@ -1511,6 +1525,7 @@ def get_message(
                 "hasAttachments": len(attachments) > 0,
                 "toRecipients": _parse_addr_list(_decode_header(msg.get("To", ""))),
                 "ccRecipients": _parse_addr_list(_decode_header(msg.get("Cc", ""))),
+                "encryption": encryption,
             }
         except imaplib.IMAP4.abort as e:
             _imap_debug_log(f"get_message abort attempt={attempt + 1} id={message_id!r} error={e}")
@@ -1645,6 +1660,7 @@ def send_message(
     imap_password: Optional[str] = None,
     insecure_tls: bool = False,
     extra_headers: Optional[Dict[str, str]] = None,
+    encrypt: bool = False,
 ) -> Dict[str, object]:
     """Invia via SMTP. Ritorna il risultato normalizzato piu' `provider_result`:
     cio' che il server ha DETTO di aver accettato, per destinatario — non
@@ -1693,6 +1709,35 @@ def send_message(
             msg.attach(part)
         except Exception as e:
             print(f'[IMAP] Allegato errore {att.get("name")}: {e}')
+    from . import pgp
+    # Autocrypt: every mail carries the sender's public key, so a
+    # correspondent's GigaMail can encrypt back without anyone handling
+    # keys. A failure here costs the header, never the mail.
+    if pgp.available():
+        try:
+            msg["Autocrypt"] = pgp.autocrypt_header(email_addr)
+        except Exception as e:
+            logging.getLogger(__name__).warning("Autocrypt header skipped: %s", e)
+    if encrypt:
+        # Fail-closed: asked to encrypt and unable to means nothing is sent.
+        if bcc:
+            return {"success": False, "provider": "imap", "sent_copy_saved": False,
+                    "warning": None,
+                    "error": pgp.say(
+                        "La cifratura non funziona con i destinatari in Ccn: "
+                        "la parte cifrata mostrerebbe a tutti le loro chiavi. "
+                        "Niente è stato inviato.",
+                        "Encryption does not work with Bcc recipients: the "
+                        "encrypted part would show everyone their keys. "
+                        "Nothing was sent.")}
+        try:
+            msg = pgp.encrypt_message(msg, email_addr,
+                                      split_addresses(to) + split_addresses(cc))
+        except pgp.PgpError as e:
+            return {"success": False, "provider": "imap", "sent_copy_saved": False,
+                    "warning": None,
+                    "error": pgp.say(f"Mail non cifrata, quindi non inviata: {e.it}.",
+                                     f"Not encrypted, so not sent: {e.en}.")}
     try:
         ctx = ssl.create_default_context()
         if insecure_tls:
@@ -1851,6 +1896,8 @@ def get_attachment(
         if not msg_data or msg_data[0] is None:
             raise ValueError(f"Messaggio IMAP non trovato per id: '{message_id}'")
         raw = msg_data[0][1]
+        from . import pgp
+        raw, _ = pgp.open_raw(raw, email_addr)
         msg = email.message_from_bytes(raw)
         for part in msg.walk():
             fn = part.get_filename()

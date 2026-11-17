@@ -158,6 +158,7 @@
 <script src="file_context.js"></script>
 <script src="attachment_guard.js"></script>
 <script src="attachment_drag.js"></script>
+<script src="encrypt_toggle.js"></script>
 </head>
 <body>
 
@@ -213,6 +214,7 @@
     <span class="ctx-badge" id="ctxBadge"></span>
     <input type="text" id="instruction" class="instruction" data-i18n-ph="ai_instruction_drag_ph" placeholder="Istruzione AI — trascina file per contesto…"/>
   </div>
+  <button class="tool-btn" id="btnEncrypt" data-i18n-title="enc_title" title="Cifra (beta): solo i destinatari potranno leggerla" aria-pressed="false"><span data-icon="shield-check" data-icon-size="16"></span> <span data-i18n="enc_button">Cifra (beta)</span></button>
   <button class="tool-btn" id="btnMask" data-i18n-title="mask_title" title="Maschera dati sensibili (CF, IBAN, email…)"><span data-icon="lock" data-icon-size="16"></span></button>
   <button class="tool-btn ai" id="btnGenerate"><span data-icon="zap" data-icon-size="14"></span> <span data-i18n="generate">GENERA</span></button>
   <button class="send-btn" id="btnSend">

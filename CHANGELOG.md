@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## v0.6.8 — 2026-11-17
 
+- **The README downloads Linux too.** Windows, macOS and Linux (beta)
+  download buttons in the site's style, and the fixed links (site, MCP,
+  plugins, licence) as matching pills, for light and dark themes; the
+  badges with live numbers stay. The desktop-app section lists the `.deb`
+  and the AppImage.
 - **Site: the home's title in search results is "Bring ChatGPT and Claude
   into your email, safely"** (in Italian and Chinese too), instead of
   "open-source AI email agent for Gmail, Outlook & MCP". The description
@@ -29,6 +34,21 @@
   mail (with the same check for orders hidden in it), writes the note for
   the new recipient and puts it above the forwarded mail, which stays as
   it was.
+- **Encrypted mail, end to end (OpenPGP), in beta.** New mail and replies
+  have an "Encrypt (beta)" button: the mail leaves signed and encrypted (PGP/MIME, subject
+  included), and only its recipients can open it; the provider stores
+  ciphertext. Keys need no handling: every mail GigaMail sends over SMTP
+  carries the sender's public key in an `Autocrypt:` header, so after one
+  ordinary exchange the button works for that correspondent, with GigaMail
+  or any Autocrypt client (Thunderbird, Delta Chat). An incoming encrypted
+  mail is opened with your own key when you open it, and the reading view
+  says who signed it. Once opened it is kept decrypted in the archive, so
+  losing the key later does not lose the mail you have read, and search
+  finds it; the server keeps the encrypted copy. The button turns on only
+  when every recipient has a key, a reply to an encrypted mail starts encrypted, and a mail asked to
+  be encrypted is never sent in clear: a missing key, a Bcc recipient or a
+  Microsoft account stops the send with the reason. IMAP/SMTP accounts
+  only for now. New dependency: `pysequoia`.
 - **The agent can attach a file you name by its full path.** By name it
   still reaches only the files registered for the account, and it cannot
   browse the disk; told "attach C:/Documents/offer.pdf", it asks for that

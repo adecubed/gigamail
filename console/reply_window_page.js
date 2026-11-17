@@ -45,6 +45,21 @@ function addressSuggestions(input, box) {
 addressSuggestions(document.getElementById('replyTo'), document.getElementById('replyToAutocomplete'));
 addressSuggestions(document.getElementById('replyCc'), document.getElementById('replyCcAutocomplete'));
 
+// Encrypt (OpenPGP, core/pgp.py). A reply to an encrypted mail starts
+// encrypted: answering a secret in clear would undo it.
+const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
+  button: document.getElementById('btnEncrypt'),
+  status: null,
+  api: API,
+  getAccountId: () => mailData && mailData.account_id,
+  getRecipients: () => ({ to: document.getElementById('replyTo').value.trim(),
+                          cc: document.getElementById('replyCc').value.trim() }),
+  T,
+}) : null;
+for (const id of ['replyTo', 'replyCc']) {
+  document.getElementById(id).addEventListener('change', () => encryptToggle && encryptToggle.recheck());
+}
+
 async function fetchAddressSuggestions(input, box, q) {
   if (!q || q.length < 1) { box.style.display = 'none'; return; }
   try {
@@ -148,6 +163,7 @@ async function applyMailData(data) {
   if (data.replyAll && Array.isArray(data.ccAddrs) && data.ccAddrs.length) {
     document.getElementById('replyCc').value = data.ccAddrs.join(', ');
   }
+  if (data.encrypted && encryptToggle) encryptToggle.set(true);
   if (data.instruction) {
     document.getElementById('instruction').value = data.instruction;
     setTimeout(() => document.getElementById('btnGenerate').click(), 300);
@@ -463,6 +479,7 @@ async function execSend() {
         reply_to_id:    mailData.id,
         cc:             cc ? [cc] : [],
         attachments:    attachmentsClean,
+        encrypt:        !!(encryptToggle && encryptToggle.isOn()),
         original_draft: window._lastGeneratedDraft || '',
         instruction:    document.getElementById('instruction')?.value?.trim() || '',
       })

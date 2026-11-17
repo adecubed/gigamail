@@ -404,10 +404,8 @@ it, and an instruction hidden there is addressed to the agent alone.
   Zero-width, bidi-control, grapheme-joiner and tag characters are
   dropped. Body, `body_text` and `bodyPreview` all come from that one
   reading; when anything was left out the result carries `hidden_text`.
-  *Inheritance, colour forms and font sizes — Unreleased: on `main`, not
-  in a release yet.*
-- **Other selectors only ever hide** (`core/css_select.py`; *Unreleased:
-  on `main`, not in a release yet*). A rule with combinators, attribute or pseudo-class selectors
+  *Inheritance, colour forms and font sizes — since v0.6.8.*
+- **Other selectors only ever hide** (`core/css_select.py`; *since v0.6.8*). A rule with combinators, attribute or pseudo-class selectors
   is matched leaning towards matching too much: the rightmost compound
   exactly, any pseudo-class it does not evaluate dropped, a compound that
   may name what a client wraps around the message (`u`, `body`,
@@ -498,6 +496,57 @@ ground:
   certificate (since v0.5.0); the macOS app is signed with an Apple
   Developer ID and notarized (since v0.5.1). Linux packages are not
   signed. The SHA-256 digests are next to the files on the Release page.
+
+## End-to-end encryption (OpenPGP)
+
+*Since v0.6.8, in beta.*
+
+The "Encrypt" button (`core/pgp.py`) sends RFC 3156 PGP/MIME: one random
+session key per mail, locked with each recipient's public key and the
+sender's own, and the mail signed with the sender's key. Subject, body
+and attachments travel inside the encrypted part ("protected headers").
+
+- **Keys.** One key per sending address, generated on first use. The
+  secret key is stored in `.pgp_keys.db` encrypted with the accounts'
+  Fernet key, which on Windows is DPAPI-protected: copying the data folder
+  to another machine does not give the key away. Correspondents' public
+  keys come from the `Autocrypt:` header of their mail, only when its
+  `addr` is the From address, and only the public half is kept.
+- **Fail-closed.** Asked to encrypt and unable to (no key for a
+  recipient, a Bcc recipient, a Microsoft or demo account, the library
+  missing), the send stops with the reason. A mail the user asked to
+  encrypt never leaves in clear; the console button does not switch
+  itself off when a recipient without a key is added.
+- **Reading.** An encrypted mail is opened on this machine, with our key,
+  when it is read. The first time the user (or the agent) opens it, the
+  archive replaces its encrypted copy with the decrypted one, so a mail
+  already read survives the loss of the key; previews and searches do not
+  count as opening. The server keeps the encrypted copy, and a later sync
+  never puts it back over the decrypted one. Attachments are checked for
+  executables again once decrypted. "Signed by" is shown only when the
+  signature checks out and its key is the one known for the From address;
+  a mail signed by a key we have not met, or not signed, still opens,
+  without that badge. What the decryption found is kept in the archive's
+  database, never in a header a sender could write.
+
+What it does not protect:
+
+- **Metadata.** From, To, Cc, date and size stay readable by the
+  providers; the outer Subject is "...".
+- **Trust on first use.** Autocrypt takes a correspondent's key from
+  their mail. Someone who can send mail with a forged From before the real
+  correspondent writes, or with a newer date afterwards, can put their own
+  key in place. The key change is logged; fingerprints are not yet shown
+  for checking by hand.
+- **The local agent.** Once opened, the text is plain on this machine:
+  the agent that reads it on the user's behalf sees it like any other
+  mail, and so does the AI provider behind that agent.
+- **The decrypted copy.** A mail once opened is plain in the archive, as
+  safe as the rest of the mail on this machine and no more: anyone with
+  this Windows account reads it. Search finds it from then on.
+- **Losing the key.** Mail not opened yet when the key is lost cannot be
+  opened again, and neither can the copies left on the server. There is no
+  export or backup of the key yet.
 
 ## How we test this ourselves
 

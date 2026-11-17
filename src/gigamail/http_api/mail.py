@@ -229,6 +229,15 @@ class SendRequest(BaseModel):
     attachments: Optional[List[AttachmentRequest]] = None
     reply_to_id: Optional[str] = None
     account_id: Optional[int] = None
+    # OpenPGP end to end (core/pgp.py): fail-closed, never sent in clear.
+    encrypt: bool = False
+
+
+@router.get("/encryption/status")
+def encryption_status(to: str = "", cc: str = "", account_id: Optional[int] = None):
+    """For the compose window: can this mail be encrypted, and for whom is a
+    key missing."""
+    return mail_router.encryption_status(account_id or _active_id(), [to, cc])
 
 
 @router.post("/mail/send")
@@ -245,7 +254,7 @@ def send_mail(req: SendRequest, request: Request, account_id: Optional[int] = No
         "send_mail", args,
         f"Inviare dall'account {args['account_id']} a {req.to} "
         f"(CC: {', '.join(req.cc or [])}; Ccn: {', '.join(req.bcc or [])}) "
-        f"la mail {req.subject!r}?",
+        f"la mail {req.subject!r}{' (cifrata)' if req.encrypt else ''}?",
         lambda a: mail_router.send_message(**a),
         request=request,
     )
