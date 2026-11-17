@@ -31,12 +31,13 @@ import logging
 import re
 import sqlite3
 import time
+from contextlib import contextmanager
 from email import message_from_bytes
 from email.message import Message
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.utils import parseaddr, parsedate_to_datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 
 from .data_paths import db_path
 
@@ -91,8 +92,23 @@ def normalize(address: str) -> str:
 
 # ── store ───────────────────────────────────────────────────────────
 
-def _db() -> sqlite3.Connection:
+@contextmanager
+def _db() -> Iterator[sqlite3.Connection]:
+    """One transaction on the key store, and the file closed afterwards.
+
+    `with sqlite3.connect(...)` only commits: the connection stays open
+    until it is garbage collected, and on Windows an open file cannot be
+    deleted or replaced."""
     conn = sqlite3.connect(str(db_path(DB_NAME)), timeout=10)
+    try:
+        with conn:
+            _create_tables(conn)
+            yield conn
+    finally:
+        conn.close()
+
+
+def _create_tables(conn: sqlite3.Connection) -> None:
     conn.execute("""CREATE TABLE IF NOT EXISTS own_keys (
         address TEXT PRIMARY KEY, secret_enc TEXT NOT NULL,
         fingerprint TEXT NOT NULL, created_at REAL NOT NULL)""")
@@ -100,7 +116,6 @@ def _db() -> sqlite3.Connection:
         address TEXT PRIMARY KEY, keydata BLOB NOT NULL,
         fingerprint TEXT NOT NULL, prefer_encrypt TEXT NOT NULL DEFAULT '',
         last_seen REAL NOT NULL)""")
-    return conn
 
 
 def _protect(data: bytes) -> str:

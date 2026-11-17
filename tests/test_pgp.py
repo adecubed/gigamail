@@ -7,6 +7,7 @@ mail. Our own key lives in the store.
 import base64
 import email
 import sqlite3
+from contextlib import closing
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -129,12 +130,32 @@ def test_own_secret_key_is_not_stored_in_clear():
     tsk = pgp.own_key(ME)
     raw = db_path(pgp.DB_NAME).read_bytes()
     assert bytes(tsk) not in raw
-    with sqlite3.connect(str(db_path(pgp.DB_NAME))) as conn:
+    with closing(sqlite3.connect(str(db_path(pgp.DB_NAME)))) as conn:
         (stored,) = conn.execute("SELECT secret_enc FROM own_keys").fetchone()
     assert base64.b64encode(bytes(tsk)).decode() not in stored
     # The same key comes back.
     assert pgp.own_key(ME).extract_certificate().fingerprint == \
         tsk.extract_certificate().fingerprint
+
+
+
+def test_the_key_store_file_is_closed_after_every_use(monkeypatch, peer):
+    """On Windows an open SQLite file cannot be deleted or replaced."""
+    opened = []
+    real_connect = sqlite3.connect
+
+    def tracking_connect(*args, **kwargs):
+        conn = real_connect(*args, **kwargs)
+        opened.append(conn)
+        return conn
+
+    monkeypatch.setattr(pgp.sqlite3, "connect", tracking_connect)
+    pgp.own_key(ME)
+    pgp.open_message(email.message_from_bytes(_encrypted_with_id(peer)))
+    assert opened
+    for conn in opened:
+        with pytest.raises(sqlite3.ProgrammingError):
+            conn.execute("SELECT 1")
 
 
 def test_autocrypt_header_fits_mail_line_limits():
