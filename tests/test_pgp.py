@@ -261,7 +261,7 @@ def test_a_secret_key_in_a_header_is_stored_public_only(peer):
     msg.replace_header("Autocrypt", "addr=%s; keydata=%s" % (
         PEER, base64.b64encode(bytes(peer)).decode()))
     assert pgp.learn_autocrypt(msg) == PEER
-    with sqlite3.connect(str(db_path(pgp.DB_NAME))) as conn:
+    with closing(sqlite3.connect(str(db_path(pgp.DB_NAME)))) as conn:
         (stored,) = conn.execute("SELECT keydata FROM peer_keys").fetchone()
     assert stored == bytes(peer.extract_certificate())
 
