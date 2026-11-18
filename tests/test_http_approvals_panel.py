@@ -414,3 +414,105 @@ def test_added_files_have_a_total_limit_and_stale_copies_are_removed(monkeypatch
     assert attachments.discard_stale(lambda rid: rid == "req_live") == 1
     assert os.path.exists(kept["path"]) and os.path.exists(fresh["path"])
     assert not os.path.exists(gone["path"])
+
+
+VERIFIED_CASES = ("create_rule", "update_identity")
+
+
+@pytest.mark.parametrize("tool", VERIFIED_CASES)
+def test_a_rule_request_always_asks_the_os_prompt_even_with_the_click(client, monkeypatch,
+                                                                      tool):
+    from gigamail import consent
+    from gigamail.http_api import console_click
+    asked = []
+    answer = {"ok": False}
+
+    def _require(reason):
+        asked.append(reason)
+        return answer["ok"]
+
+    monkeypatch.setattr(consent, "require_human", _require)
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        H = {console_click.HEADER: secret}
+        rid = _request(tool=tool)
+        r = client.post(f"/approvals/{rid}/approve", headers=H)
+        assert r.status_code == 403 and len(asked) == 1
+        assert policy.store().get(rid)["status"] == policy.PENDING
+        answer["ok"] = True
+        monkeypatch.setattr("gigamail.completion.complete", lambda rid: {})
+        r = client.post(f"/approvals/{rid}/approve", headers=H)
+        assert r.status_code == 200 and len(asked) == 2
+        assert policy.store().get(rid)["status"] == policy.APPROVED
+    finally:
+        console_click.set_secret("")
+
+
+@pytest.mark.parametrize("tool", VERIFIED_CASES)
+def test_a_rule_request_without_an_os_prompt_on_this_pc_stays_pending(client, monkeypatch,
+                                                                      tool):
+    from gigamail import consent
+    from gigamail.http_api import console_click
+
+    def unavailable(reason):
+        raise consent.ConsentUnavailable("no verification backend")
+    monkeypatch.setattr(consent, "require_human", unavailable)
+    monkeypatch.setattr("gigamail.completion.complete",
+                        lambda rid: (_ for _ in ()).throw(AssertionError("nothing runs")))
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        rid = _request(tool=tool)
+        r = client.post(f"/approvals/{rid}/approve", headers={console_click.HEADER: secret})
+        assert r.status_code == 503
+        assert policy.store().get(rid)["status"] == policy.PENDING
+    finally:
+        console_click.set_secret("")
+
+
+def test_one_request_carries_what_the_window_needs_to_draw_its_buttons(client):
+    rule = client.get(f"/approvals/{_request(tool='create_rule')}").json()
+    assert rule["editable"] is False and rule["verified"] is True
+    delete = client.get(f"/approvals/{_request(tool='delete_rule')}").json()
+    assert delete["editable"] is False and delete["verified"] is False
+    identity = client.get(f"/approvals/{_request(tool='update_identity')}").json()
+    assert identity["editable"] is False and identity["verified"] is True
+    mail = client.get(f"/approvals/{_request()}").json()
+    assert mail["editable"] is True and mail["verified"] is False
+
+
+def test_deleting_a_rule_is_approved_by_the_click_without_the_os_prompt(client, monkeypatch):
+    from gigamail import consent
+    from gigamail.http_api import console_click
+    asked = []
+    monkeypatch.setattr(consent, "require_human", lambda reason: asked.append(reason) or True)
+    monkeypatch.setattr("gigamail.completion.complete", lambda rid: {})
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        rid = _request(tool="delete_rule")
+        r = client.post(f"/approvals/{rid}/approve", headers={console_click.HEADER: secret})
+        assert r.status_code == 200 and asked == []
+        assert policy.store().get(rid)["status"] == policy.APPROVED
+    finally:
+        console_click.set_secret("")
+
+
+@pytest.mark.parametrize("tool", VERIFIED_CASES)
+def test_a_rule_request_cannot_be_saved_amended_or_edited(client, tool):
+    from gigamail.http_api import console_click
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        H = {console_click.HEADER: secret}
+        rid = _request(tool=tool)
+        before = policy.store().get(rid)
+        assert client.post(f"/approvals/{rid}/save", headers=H).status_code == 409
+        assert client.post(f"/approvals/{rid}/amend", json={"body": "x"},
+                           headers=H).status_code == 409
+        assert client.post(f"/approvals/{rid}/edit", json={"note": "x"},
+                           headers=H).status_code == 409
+        assert policy.store().get(rid) == before
+    finally:
+        console_click.set_secret("")

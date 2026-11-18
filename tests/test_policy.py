@@ -267,6 +267,41 @@ def test_audit_non_registra_il_corpo_della_mail():
     assert "body" not in _read_audit()[-1]["args"]
 
 
+def test_the_audit_log_leaves_out_a_rule_instruction_and_keeps_the_rest():
+    policy.audit("update_rule", {
+        "rule_id": "rule_1", "expected": {"reply_style": "old text", "mode": "semi"},
+        "changes": {"reply_style": "new text", "mode": "auto"}}, "approval_requested")
+    policy.audit("create_rule", {"trigger_values": ["a@example.com"], "reply_style": "text",
+                                 "mode": "semi"}, "approval_requested")
+    update, create = _read_audit()[-2:]
+    assert update["args"] == {"rule_id": "rule_1", "changes": {"mode": "auto"}}
+    assert create["args"] == {"trigger_values": ["a@example.com"], "mode": "semi"}
+
+
+def test_the_audit_log_leaves_out_the_identity_texts():
+    policy.audit("update_identity", {
+        "account_id": 1, "expected": {"tone": "old text"},
+        "changes": {"tone": "new text", "key_info": "more"}, "who_am_i": "stray"},
+        "approval_requested")
+    assert _read_audit()[-1]["args"] == {"account_id": 1, "fields": ["key_info", "tone"]}
+    policy.audit("update_identity", {"account_id": 1, "changes": "odd text"}, "error")
+    assert _read_audit()[-1]["args"] == {"account_id": 1, "fields": []}
+
+
+def test_another_tool_keeps_an_argument_named_like_an_identity_text():
+    policy.audit("other_tool", {"tone": "warm", "changes": {"key_info": "k"}},
+                 "approval_requested")
+    assert _read_audit()[-1]["args"] == {"tone": "warm", "changes": {"key_info": "k"}}
+
+
+def test_update_identity_is_verified_pc_only_and_fixed():
+    assert "update_identity" in policy.VERIFIED_TOOLS
+    assert "update_identity" in policy.PC_ONLY_TOOLS
+    assert "update_identity" in policy.FIXED_TOOLS
+    assert policy.pc_only({"tool": "update_identity", "args": {}}) is True
+    assert policy.pc_only_notice("update_identity").endswith("Touch ID.")
+
+
 def test_errore_esecuzione_propagato_e_auditato():
     r = _fase1()
     policy.store().approve(r["request_id"])
@@ -289,3 +324,63 @@ def test_dryrun_blocca_esecuzione_anche_se_approvata(monkeypatch):
     assert out.get("dryrun") is True
     assert executed == []
     assert _read_audit()[-1]["outcome"] == "dryrun_executed"
+
+
+@pytest.mark.parametrize("tool", sorted(policy.VERIFIED_TOOLS))
+def test_a_rule_request_is_not_approved_without_a_verified_human(tool):
+    store = policy.store()
+    rid = store.create(tool, {"rule_id": "rule_1"}, {"subject": "x"})
+    assert store.approve(rid, by="console:mario (console click)") is False
+    assert store.get(rid)["status"] == policy.PENDING
+    assert store.approve(rid, by="console:mario", verified=True) is True
+
+
+@pytest.mark.parametrize("tool", sorted(policy.PC_ONLY_TOOLS))
+def test_a_rule_request_is_never_approved_from_telegram(tool):
+    store = policy.store()
+    rid = store.create(tool, {"rule_id": "rule_1"}, {"subject": "x"})
+    assert store.approve(rid, by="telegram:123", verified=True) is False
+    assert store.get(rid)["status"] == policy.PENDING
+
+
+def test_deleting_a_rule_is_approved_by_a_click():
+    store = policy.store()
+    rid = store.create("delete_rule", {"rule_id": "rule_1"}, {"subject": "x"})
+    assert store.approve(rid, by="console:mario (console click)") is True
+
+
+def test_other_tools_are_approved_as_before():
+    store = policy.store()
+    rid = store.create("send_mail", {"to": "a@example.com"}, {"subject": "x"})
+    assert store.approve(rid, by="telegram:123") is True
+
+
+def test_pc_only_covers_rule_requests_and_files_by_path():
+    assert policy.pc_only({"tool": "update_rule", "args": {}}) is True
+    assert policy.pc_only({"tool": "send_mail",
+                           "args": {"attachments": [{"outside": True}]}}) is True
+    assert policy.pc_only({"tool": "send_mail", "args": {}}) is False
+    assert policy.pc_only(None) is False
+
+
+def test_telegram_buttons_hide_approve_for_a_rule_request(monkeypatch):
+    from gigamail.core import telegram_channel
+    seen = []
+
+    class _TG:
+        approve_enabled = True
+
+        @staticmethod
+        def action_buttons(request_id, lang, can_approve):
+            seen.append(can_approve)
+            return []
+
+    monkeypatch.setattr(telegram_channel, "channel", lambda: _TG)
+    store = policy.store()
+    rule = store.create("create_rule", {"rule_id": "r"}, {"subject": "x"})
+    mail = store.create("send_mail", {"to": "a@example.com"}, {"subject": "x"})
+    identity = store.create("update_identity", {"account_id": 1}, {"subject": "x"})
+    policy.telegram_buttons(rule)
+    policy.telegram_buttons(mail)
+    policy.telegram_buttons(identity)
+    assert seen == [False, True, False]

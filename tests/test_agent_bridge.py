@@ -452,9 +452,73 @@ def test_claude_gets_the_gigamail_server_without_any_setup(monkeypatch, tmp_ade_
     assert "mcp__gigamail" in cmd[cmd.index("--allowedTools") + 1]
 
 
+def test_claude_gets_only_the_servers_gigamail_hands_it(monkeypatch, tmp_ade_root):
+    monkeypatch.delenv("ADE_AGENT_CMD", raising=False)
+    with open(agent_bridge._config_path(), "w", encoding="utf-8") as f:
+        json.dump({"agent": "claude"}, f)
+    monkeypatch.setattr(agent_bridge, "_find_claude", lambda: PY)
+    seen = _capture_spawn(monkeypatch)
+    try:
+        assert agent_bridge.run("summarise") == "ok"
+    finally:
+        os.unlink(agent_bridge._config_path())
+    cmd = seen["cmd"]
+    assert "--strict-mcp-config" in cmd
+    # --allowedTools only pre-approves: the built-in tools must be removed
+    assert "--tools" in cmd
+    assert cmd[cmd.index("--tools") + 1] == ""
+
+
+@pytest.mark.parametrize("agent,expected", [
+    ("claude", True), ("codex", True), ("antigravity", False), ("custom", False)])
+def test_isolated_says_which_agents_have_only_gigamail_tools(agent, expected):
+    assert agent_bridge.is_isolated(agent) is expected
+
+
+def test_status_reports_a_custom_command_as_not_isolated(monkeypatch):
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(["claude", "-p", "{prompt}"]))
+    assert agent_bridge.status()["isolated"] is False
+
+
+def test_available_agents_flag_each_one_as_isolated_or_not(monkeypatch):
+    monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(["claude", "-p", "{prompt}"]))
+    flags = {a["id"]: a["isolated"] for a in agent_bridge.available_agents()}
+    assert flags == {"claude": True, "codex": True, "antigravity": False,
+                     "custom": False}
+
+
 def test_a_custom_command_runs_as_the_user_wrote_it(monkeypatch):
     monkeypatch.setenv("ADE_AGENT_CMD", json.dumps(["claude", "-p", "{prompt}"]))
     monkeypatch.setattr(agent_bridge, "_found", lambda exe: True)
     seen = _capture_spawn(monkeypatch)
     agent_bridge.run("x")
     assert "--mcp-config" not in seen["cmd"]
+    assert "--strict-mcp-config" not in seen["cmd"]
+    assert "--tools" not in seen["cmd"]
+
+
+def test_codex_runs_without_the_users_config():
+    cmd = agent_bridge.AGENTS["codex"]["command"]("codex")
+    assert "--ignore-user-config" in cmd
+    overrides = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-c"]
+    assert 'web_search="disabled"' in overrides
+    for name in agent_bridge.CODEX_FEATURES_OFF:
+        assert f"features.{name}=false" in overrides
+    assert {"shell_tool", "unified_exec", "apps", "plugins", "js_repl"} <= set(agent_bridge.CODEX_FEATURES_OFF)
+
+
+def test_codex_carries_gigamail_server_in_its_command(monkeypatch):
+    import tomllib
+
+    from gigamail.core import codex_config
+    monkeypatch.setattr(codex_config, "desired", lambda: {
+        "command": r"C:\Program Files\Gi'ga Màil\python.exe", "args": ["-m", "gigamail.server"],
+        "env": {"GIGAMAIL_ROOT": r"C:\Users\mario rossi\AppData\Roaming\ADE"},
+        "default_tools_approval_mode": "approve"})
+    pairs = agent_bridge._codex_mcp_overrides()
+    assert pairs[0::2] == ["-c"] * (len(pairs) // 2)
+    parsed = tomllib.loads("\n".join(pairs[1::2]))["mcp_servers"]["gigamail"]
+    assert parsed["command"] == r"C:\Program Files\Gi'ga Màil\python.exe"
+    assert parsed["args"] == ["-m", "gigamail.server"]
+    assert parsed["env"] == {"GIGAMAIL_ROOT": r"C:\Users\mario rossi\AppData\Roaming\ADE"}
+    assert parsed["default_tools_approval_mode"] == "approve"

@@ -320,6 +320,16 @@
   }
 
   // ── passo agente ───────────────────────────────────────────────────
+  // Warns when the chosen agent keeps its own tools (isolated === false).
+  let agentList = [];
+  function showIsolationNote(agents, id) {
+    if (Array.isArray(agents)) agentList = agents;
+    const cur = agentList.find((a) => a.id === id);
+    const open = !!cur && cur.isolated === false;
+    if (open) setText('obAgentIsolationNote', T('agent_not_isolated', 'Questo agente tiene i suoi strumenti: può leggere i file di questo computer e usare internet senza chiedertelo. Le approvazioni di GigaMail coprono solo gli strumenti di GigaMail.'));
+    setHidden('obAgentIsolationNote', !open);
+  }
+
   function renderAgentChoice(ag) {
     const sel = $('obAgentSelect');
     if (sel) {
@@ -332,6 +342,7 @@
       });
       if (ag.agent) sel.value = ag.agent;
     }
+    showIsolationNote(ag.agents, sel ? sel.value : ag.agent);
     const isCodex = ag.agent === 'codex';
     currentSnippet = isCodex ? codexSnippet(ag) : mcpSnippet(ag);
     setText('obMcpSnippet', currentSnippet);
@@ -418,6 +429,7 @@
     on('obPickDocs', 'click', pickDocs);
     on('obCopyMcp', 'click', (e) => copy(currentSnippet, e.currentTarget));
     on('obAgentSelect', 'change', async (e) => {
+      showIsolationNote(null, e.target.value);
       try {
         await apiJson('/agent/select', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: e.target.value }) });
         await loadAgent();

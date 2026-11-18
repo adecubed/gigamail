@@ -12,10 +12,13 @@ questo stile. `mode` decide il finale:
         la pre-approvazione E' la regola, che l'umano ha creato dietro
         Windows Hello / Touch ID, con scadenza e tetto giornaliero.
 
-Chi puo' creare o riattivare una regola: SOLO la CLI o la console, dietro
-verifica dell'utente fisico (consent.require_human). Nessun tool MCP tocca
-questo modulo: un'istruzione iniettata in una mail non puo' dire all'agente
-"attiva l'automode" — l'agente non ha il tool.
+Who can create or reactivate a rule: the user, from the CLI or the console,
+behind verification of the physical user (consent.require_human); or the
+user approving at the PC a request the agent made (the tools in
+tools_automations, approved behind Windows Hello / Touch ID). No tool creates,
+changes or reactivates a rule without that approval (pausing is free). That
+is why a hidden instruction in a mail can make the agent ASK for a rule, but
+can never make one exist.
 
 Lo stato vive in .rules.db sotto app_root(), accanto ad approvals.db:
 processi diversi (watcher, CLI, console) condividono SQLite, non memoria.
@@ -208,9 +211,11 @@ class RuleStore:
                attachments: Optional[List[str]] = None) -> str:
         """Registra una regola. `hello_verified_at` e' l'istante in cui il
         chiamante ha superato consent.require_human: DEVE essere valorizzato
-        (il chiamante e' la CLI/console, mai un tool MCP). Qui e' un dato,
-        non un controllo: il controllo sta nel fatto che solo codice con
-        accesso a questo modulo — e al prompt OS — puo' arrivarci."""
+        (the caller is the CLI or the console, or the executor of an agent
+        request that a human just approved at the PC: never a tool call that
+        was not approved). Qui e' un dato, non un controllo: il controllo
+        sta nel fatto che solo codice con accesso a questo modulo — e al
+        prompt OS — puo' arrivarci."""
         if trigger_kind not in TRIGGER_KINDS:
             raise ValueError(f"trigger_kind '{trigger_kind}' non valido")
         if mode not in MODES:

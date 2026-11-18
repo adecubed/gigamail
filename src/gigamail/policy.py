@@ -72,6 +72,17 @@ APPROVED = "approved"
 REJECTED = "rejected"
 EXECUTED = "executed"
 
+# A rule is a standing pre-approval, and the identity enters every draft
+# (those of automatic rules too), so a request to create or change a rule,
+# or to change the identity, is approved only by a human verified at the PC
+# (Windows Hello / Touch ID), whatever the channel; deleting a rule is a
+# click at the PC, never Telegram.
+VERIFIED_TOOLS = frozenset({"create_rule", "update_rule", "resume_rule", "renew_rule",
+                            "update_identity"})
+PC_ONLY_TOOLS = VERIFIED_TOOLS | {"delete_rule"}
+# Such a request cannot be edited or saved for later: reject it and ask again.
+FIXED_TOOLS = PC_ONLY_TOOLS
+
 
 _ADDR_RE = None
 
@@ -122,6 +133,29 @@ def _audit_path() -> Path:
     return _ade_root() / "agent_audit.jsonl"
 
 
+# Left out of the log like a mail body: a rule's instruction (free text,
+# long, possibly copied from a mail) and the snapshot of the rule a request
+# keeps, which repeats it. A change keeps its other fields.
+_AUDIT_LEFT_OUT = ("body", "reply_style", "expected")
+# Tools whose changes are texts that never reach the log: their texts are
+# left out wherever they appear, and a change is logged as the sorted names
+# of its fields. update_identity: the identity texts describe the user and
+# the business.
+_AUDIT_TEXTS_OF = {"update_identity": ("who_am_i", "what_i_do", "tone", "key_info")}
+
+
+def _audit_args(tool: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    texts = _AUDIT_TEXTS_OF.get(tool, ())
+    out = {k: v for k, v in args.items() if k not in _AUDIT_LEFT_OUT and k not in texts}
+    if texts and "changes" in out:
+        changes = out.pop("changes")
+        out["fields"] = sorted(str(k) for k in changes) if isinstance(changes, dict) else []
+    elif isinstance(out.get("changes"), dict):
+        out["changes"] = {k: v for k, v in out["changes"].items()
+                          if k not in _AUDIT_LEFT_OUT}
+    return out
+
+
 def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
           provider_result: Optional[Dict[str, Any]] = None) -> None:
     """Una riga nel log. `args` e' cio' che e' stato CHIESTO (il payload
@@ -136,7 +170,7 @@ def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
         # stessa), NON la request_id: senza, una riga "approved" non dice
         # COSA e' stato approvato, e ricostruire chi ha deciso cosa
         # diventa impossibile proprio nel log che esiste per quello.
-        "args": {k: v for k, v in args.items() if k != "body"},
+        "args": _audit_args(tool, args),
         "outcome": outcome,
     }
     if detail:
@@ -380,11 +414,26 @@ class ApprovalStore:
             )
             return cur.rowcount == 1
 
-    def approve(self, request_id: str, by: str = "unknown") -> bool:
+    def approve(self, request_id: str, by: str = "unknown",
+                verified: bool = False) -> bool:
         """Chiamata SOLO dalla console o dalla CLI — mai da un tool MCP.
-        `by` identifica il canale e l'utente di sistema che ha approvato."""
+        `by` identifica il canale e l'utente di sistema che ha approvato.
+        `verified` says the caller has just passed the OS human
+        verification; a tool in VERIFIED_TOOLS is not approved without it."""
         rec = self.get(request_id)
-        if str(by).startswith("telegram:") and outside_files((rec or {}).get("args")):
+        tool = (rec or {}).get("tool")
+        from_telegram = str(by).startswith("telegram:")
+        if from_telegram and tool in PC_ONLY_TOOLS:
+            audit("approval", {"request_id": request_id, "by": by,
+                               "for_tool": tool},
+                  "approve_failed", detail="only at the PC")
+            return False
+        if tool in VERIFIED_TOOLS and not verified:
+            audit("approval", {"request_id": request_id, "by": by,
+                               "for_tool": tool},
+                  "approve_failed", detail="needs a verified human at the PC")
+            return False
+        if from_telegram and outside_files((rec or {}).get("args")):
             # A file from outside the registered ones leaves only with a
             # yes given at the PC, where the whole path is on screen.
             audit("approval", {"request_id": request_id, "by": by,
@@ -642,6 +691,14 @@ def _notify_command() -> Optional[List[str]]:
         return None
 
 
+def pc_only(rec: Optional[Dict[str, Any]]) -> bool:
+    """True when a request may be approved only at the PC: a rule or
+    identity request (PC_ONLY_TOOLS) or a mail that attaches a file by path. The channels
+    that cannot verify a human (Telegram) use this, not outside_files."""
+    rec = rec or {}
+    return rec.get("tool") in PC_ONLY_TOOLS or bool(outside_files(rec.get("args")))
+
+
 def outside_files(holder: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """The attachments of a request (its args or its preview) that the
     agent asked for by path, outside the files registered for the account."""
@@ -674,6 +731,18 @@ def outside_warning(preview: Optional[Dict[str, Any]]) -> str:
                 + ". Si approva solo dal PC.")
     return ("⚠ Attaches a file from OUTSIDE the account's files: " + ", ".join(paths)
             + ". It can be approved only at the PC.")
+
+
+def pc_only_notice(tool: str) -> str:
+    """The line a notification carries for a request that is approved only
+    at the PC (a rule or identity request); empty for any other tool."""
+    if tool not in PC_ONLY_TOOLS:
+        return ""
+    if tool in VERIFIED_TOOLS:
+        return ("Si approva solo dal PC, con Windows Hello / Touch ID."
+                if user_lang() == "it"
+                else "Approved only at the PC, with Windows Hello / Touch ID.")
+    return "Si approva solo dal PC." if user_lang() == "it" else "Approved only at the PC."
 
 
 def _summarize_preview(preview: Dict[str, Any], limit: int = 160) -> str:
@@ -862,8 +931,10 @@ def telegram_buttons(request_id: str):
         tg = telegram_channel.channel()
         if not tg:
             return None
-        return tg.action_buttons(request_id, user_lang(),
-                                 bool(getattr(tg, "approve_enabled", False)))
+        can_approve = bool(getattr(tg, "approve_enabled", False))
+        if (store().get(request_id) or {}).get("tool") in PC_ONLY_TOOLS:
+            can_approve = False
+        return tg.action_buttons(request_id, user_lang(), can_approve)
     except Exception:
         return None
 
@@ -1007,6 +1078,11 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
             text = f"{text}\n{line}"
             if message:
                 message = text
+    at_the_pc = pc_only_notice(tool)
+    if at_the_pc:
+        text = f"{text}\n{at_the_pc}"
+        if message:
+            message = text
 
     fired = False
     try:
@@ -1039,6 +1115,8 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
             # per la toast, che pero' ha Leggi. Se una regola ha gia'
             # scritto il suo messaggio (`message`), quello vince.
             lungo = text if message else full_preview_text(tool, preview)
+            if at_the_pc and not message:
+                lungo = f"{lungo}\n\n{at_the_pc}"
             testo_tg = telegram_channel.Telegram.safe_html(lungo)
 
             def _send_tg():

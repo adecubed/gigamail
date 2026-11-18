@@ -31,6 +31,9 @@
     return {
       id: rec.request_id,
       tool: rec.tool || '',
+      // a rule or identity request cannot be edited nor saved (the backend answers 409);
+      // a record without the field is editable
+      editable: rec.editable !== false,
       status: rec.status || 'pending',
       completedBy: rec.completed_by === 'watcher' ? 'watcher' : 'agent',
       to: addressOf(p.to) || (replying ? addressOf(replying.from) : ''),
@@ -138,8 +141,8 @@
           <span class="ai-card-status ${s.expiresIn < 120 ? 'warn' : ''}">${fmtEta(s.expiresIn, t)}</span>
           ${notifyFailed(s) ? `<span class="ai-card-status warn">${esc(t('notify_failed_tag', 'notifica non arrivata'))}</span>` : ''}
           <span style="flex:1"></span>
-          <button class="chip-btn" data-act="edit" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pencil', 12) : '')} ${esc(t('aw_edit', 'Modifica'))}</button>
-          ${s.saved ? '' : `<button class="chip-btn" data-act="save" data-id="${esc(s.id)}" title="${esc(t('aw_save_hint', 'Decidi dopo: resta in “Richieste in attesa” per 7 giorni'))}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('clock', 12) : '')} ${esc(t('aw_save', 'Salva'))}</button>`}
+          ${s.editable ? `<button class="chip-btn" data-act="edit" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('pencil', 12) : '')} ${esc(t('aw_edit', 'Modifica'))}</button>` : ''}
+          ${s.saved || !s.editable ? '' : `<button class="chip-btn" data-act="save" data-id="${esc(s.id)}" title="${esc(t('aw_save_hint', 'Decidi dopo: resta in “Richieste in attesa” per 7 giorni'))}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('clock', 12) : '')} ${esc(t('aw_save', 'Salva'))}</button>`}
           <button class="chip-btn" data-act="approve" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('check', 12) : '')} ${esc(t('pending_approve', 'Approva'))}</button>
           <button class="chip-btn danger" data-act="reject" data-id="${esc(s.id)}">${(typeof GMIcons !== 'undefined' ? GMIcons.svg('x', 12) : '')} ${esc(t('pending_reject', 'Rifiuta'))}</button>
         </div>

@@ -65,6 +65,11 @@ function canAmend(rec) {
 function isOpen(rec) {
   return !!rec && rec.status === 'pending' && stateOf(rec).cls !== 'err';
 }
+// A rule request (editable === false) cannot be edited, noted or saved for
+// later: it is approved as shown or rejected, and asked again.
+function isFixed(rec) {
+  return !!rec && rec.editable === false;
+}
 function textChanged() {
   return editing && canAmend(current) && $('bodyEdit').value !== bodyText(current);
 }
@@ -89,14 +94,18 @@ function updateButtons() {
   const approveOn = open && (!editing || (hasChanges() && !noteTyped));
   $('btnApprove').disabled = !approveOn;
   $('btnApprove').textContent = (editing && hasChanges()) ? T('aw_send_edited', 'Invia modificata') : T('aw_approve', 'Approva');
-  $('btnSave').disabled = !open || editing;
+  const fixed = isFixed(current);
+  $('btnSave').disabled = fixed || !open || editing;
   $('btnReject').disabled = !open && current.status !== 'approved';
-  $('btnEdit').disabled = !open && current.status !== 'approved';
+  $('btnEdit').disabled = fixed || (!open && current.status !== 'approved');
   $('btnEdit').textContent = editing ? T('aw_edit_cancel', 'Annulla modifica') : T('aw_edit', 'Modifica');
-  $('btnNote').disabled = !noteTyped || $('btnEdit').disabled;
+  $('btnNote').disabled = fixed || !noteTyped || $('btnEdit').disabled;
+  $('btnSave').style.display = fixed ? 'none' : '';
+  $('btnEdit').style.display = fixed ? 'none' : '';
 }
 
 function setEditing(on) {
+  if (on && isFixed(current)) on = false;
   editing = !!on;
   const box = $('editBox');
   box.classList.toggle('visible', editing);
@@ -205,6 +214,13 @@ function render(rec) {
   row('rowAtt', att.join(', '), 'attachments');
   const body = bodyText(rec);
   $('body').textContent = body || summaryOf(p);
+  // the same line as the agent bar's card: approving a rule or an identity change asks the OS check
+  const hello = $('helloHint');
+  if (hello) {
+    hello.style.display = rec.verified === true ? '' : 'none';
+    hello.textContent = T('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID.');
+  }
+  if (isFixed(rec) && editing) setEditing(false);
   // what the mail reveals that the agent only saw masked
   if (p.reveals_warning && !$('status').textContent) say(String(p.reveals_warning), 'warn');
   if (editing && !canAmend(rec) && $('bodyEdit').style.display !== 'none') setEditing(true);
@@ -298,7 +314,7 @@ async function doReject() {
 // "Save": decide later. The request stays pending, for days instead of
 // minutes, and comes back from the "waiting for you" page.
 async function doSave() {
-  if (!current) return;
+  if (!current || isFixed(current)) return;
   $('btnSave').disabled = true;
   try {
     await api(`/approvals/${encodeURIComponent(current.request_id)}/save`, { method: 'POST' });
@@ -322,6 +338,7 @@ function doEdit() {
 // The note for the agent: this request is closed and a new draft comes
 // later, so Approve stays off from here on. The window says so and goes.
 async function doNote() {
+  if (!current || isFixed(current)) return;
   const note = $('note').value.trim();
   if (!note) { $('note').focus(); return; }
   $('btnNote').disabled = true;
@@ -353,7 +370,7 @@ async function load(data) {
     return;
   }
   if (action === 'reject' && current.status === 'pending') await doReject();
-  else if (action === 'edit') setEditing(true);
+  else if (action === 'edit' && !isFixed(current)) setEditing(true);
   else if (action === 'approve') $('btnApprove').focus();
 }
 

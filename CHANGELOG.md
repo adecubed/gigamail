@@ -82,6 +82,109 @@
   gigamail.ai/llms.txt, with the key facts and links to every page, for
   AI assistants that read the site.
 
+- **The console's agent runs with GigaMail's tools only, and the console
+  says when it does not.** With Codex as the console's agent, the run
+  inherited the user's whole Codex configuration: its command runner, its
+  other MCP servers, the account's connectors, plugins and web search. A
+  probe showed that agent reading a file outside its working folder and
+  searching the web without any approval; Claude Code already refused
+  both. Now the Codex run ignores the user's configuration
+  (`--ignore-user-config`), gets GigaMail's MCP server on its command
+  line, and has shell, connectors, plugins, image viewing, browser and web
+  search switched off, and the Claude Code run loads only the MCP server
+  GigaMail hands it (`--strict-mcp-config`) and starts without Claude
+  Code's built-in tools (`--tools ""`), so it no longer depends on the
+  permissions in the user's own Claude Code settings (before, a user who
+  had allowed file reading or web access there gave them to the console's
+  agent too). The same probe now gets: file refused, web refused, mail
+  tools working. Side effect for Codex users: the console's Codex run no
+  longer follows `model`, `model_provider`, reasoning effort or
+  custom-provider settings from the user's config.toml; the model can be
+  set with `codex_model` in agent.json, and a user who needs their own
+  provider can use a custom command, which the console then marks as not
+  isolated. Antigravity and custom
+  commands are not verified: choosing one shows a warning under the agent
+  picker, in Automations and in the first-run guide, in all three
+  languages. GigaMail's approvals cover GigaMail's tools; an MCP client
+  outside the console (a desktop chat app, an IDE) keeps its own tools.
+  The status of the agent now reports `isolated` for each one.
+
+- **Tools now tell the agent why they failed.** An agent had reported that
+  reading a mail failed and could not say why: the MCP layer passed on only
+  "Error executing tool". Now a failure GigaMail expected (a folder or
+  message that does not exist, a refused permission, a mail server that
+  does not answer) reaches the agent with its own message, and any failure
+  is written to `logs/mcp.log` in the data folder, with its stack for the
+  unexpected ones. The log holds the tool's name, the kind of error, the
+  stack, the first 300 characters of the error message with addresses
+  masked, and a fixed short list of arguments (ids and folders); never the
+  body of a mail.
+- **The agent can now prepare reply rules, and you still decide.** Nine new
+  tools let your agent look at and manage reply rules: see
+  them, what they did and whether the automation runs (`list_rules`,
+  `rule_activity`, `automation_status`), pause one at once (`pause_rule`,
+  free: pausing only reduces what GigaMail does on its own, and you get a
+  notification saying which rule the agent paused), and ask to
+  create, change, resume, renew or delete one. Those requests only store a
+  preview of exactly what the rule will do; nothing changes until you
+  approve it. Approval is stricter than for sending mail: creating,
+  changing, resuming or renewing a rule is approved only at the PC and
+  always with Windows Hello / Touch ID, even from a click in the console;
+  deleting one is approved at the PC with a click; none of the five can be
+  approved from Telegram (the Telegram message says so), and these requests
+  cannot be edited or saved for later, in the agent bar or in the window a
+  notification opens (reject and ask again). The approval text of a new rule shows every field; a change
+  says which rule it is (its senders or folder and its current mode) and
+  shows what changes, before and after; the title says AUTO or SEMI for a
+  request to create, resume, renew or delete a rule, and a change that
+  makes a rule automatic starts with a warning line. The command line
+  (`gigamail approvals approve`) prints the whole text of a rule request,
+  uncut, before Windows Hello asks, and the agent bar's card shows it whole
+  too, whatever its length; a change lists what changes first. A rule still exists only after you
+  were verified: a hidden instruction in a mail can make the agent ask for
+  a rule, not make one exist. The agent is limited to 50 senders, 10 cc, 20
+  documents and 20 fixed attachments, each at most 200 characters and
+  6000 in all as stored (a document as the path it resolves to), one
+  address per item, and an instruction of 2000 characters
+  in at most 60 lines; nothing with control characters, bidirectional
+  controls or other invisible format characters (the zero-width joiner and
+  non-joiner are fine), and a preview shows such a character found in
+  stored text as "�". Attachments only among the files registered for the account;
+  documents only registered knowledge files or a full path, never in a
+  folder or file whose name starts with a dot, an `AppData` folder, a
+  system or program folder (on macOS also `/private` and `~/Library`),
+  GigaMail's own data or a network path, checked on the real path a link
+  leads to. A change, resume, renewal or deletion is refused if the rule
+  changed after the request (in the console, or by another approved
+  request), and a resume also if the rule is no longer paused. No tool
+  starts or stops the watcher, and the console's own rule form is
+  unchanged.
+
+- **The agent can ask to change your identity, and you decide.** One new
+  tool, `update_identity` (41 tools in all), lets your agent ask to change
+  the four texts of an account's identity: who you are, what you do, the
+  tone and the key information. They enter every draft GigaMail writes,
+  those of automatic reply rules too, so the request is as strict as one
+  for a rule: it only stores a preview, and it is approved only at the PC,
+  always with Windows Hello / Touch ID, even from a click in the console;
+  Telegram cannot approve it (its message says so), and the request cannot
+  be edited or saved for later: reject it and ask again. The approval text
+  shows each field that changes, before and after, whole, and lists the
+  fields that stay as they are; the command line prints it uncut before
+  Windows Hello asks, and the agent bar's card and the approval window
+  show it whole too. The agent sends only the fields to change, each at
+  most 4000 characters and 120 lines, with no control characters other
+  than newline and tab, no bidirectional controls and no other invisible
+  format characters (the zero-width joiner and non-joiner are fine), and a
+  preview shows such a character found in stored text as "�".
+  Emptying a field is a change. If you edit the identity in the console
+  after the request, the request is refused and the agent must ask again;
+  files you add meanwhile are kept. The knowledge files, the folder
+  identities, the signature and the masking switch cannot be changed by
+  any tool, and the audit log never holds the old or the new text, only
+  the names of the fields. A hidden instruction in a mail can make the
+  agent ask for a change, not make it happen.
+
 ## v0.6.8 — 2026-11-17
 
 - **The README downloads Linux too.** Windows, macOS and Linux (beta)

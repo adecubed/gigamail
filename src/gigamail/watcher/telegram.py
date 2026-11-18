@@ -259,7 +259,26 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
                 "GigaMail: approve on the PC (Hello). From here "
                 "you can only reject or ask for changes.")
             return
-        if policy.outside_files(rec.get("args")):
+        if rec.get("tool") == "delete_rule":
+            say(tg,
+                "Eliminare una regola si approva solo dal PC. Da qui puoi rifiutare.",
+                "Deleting a rule is approved only at the PC. From here you can reject it.")
+            return
+        if rec.get("tool") == "update_identity":
+            say(tg,
+                "La modifica dell'identità si approva solo dal PC, con "
+                "Windows Hello / Touch ID. Da qui puoi rifiutare.",
+                "A change to the identity is approved only at the PC, with "
+                "Windows Hello / Touch ID. From here you can reject it.")
+            return
+        if rec.get("tool") in policy.PC_ONLY_TOOLS:
+            say(tg,
+                "Una regola si approva solo dal PC, con Windows Hello / "
+                "Touch ID. Da qui puoi rifiutare.",
+                "A rule is approved only at the PC, with Windows Hello / "
+                "Touch ID. From here you can reject it.")
+            return
+        if policy.pc_only(rec):
             say(tg,
                 "\u26a0 Questa mail allega un file fuori dai file "
                 "dell'account: si approva solo dal PC, dove vedi il percorso "

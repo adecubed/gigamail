@@ -142,6 +142,70 @@ test('the approval card shows the recipient and the full text to approve', async
   assert.equal(card.querySelectorAll('.agent-appr-sum').length, 1);
 });
 
+async function ruleCardFor(approval) {
+  const { w } = load();
+  w.electronAPI.agentCommand = async () => ({ answer: 'Ready.', approvals: [approval] });
+  await ready(w);
+  const ta = w.document.getElementById('agentInput');
+  ta.value = 'x';
+  ta.dispatchEvent(new w.Event('input'));
+  w.document.getElementById('agentSend').click();
+  await new Promise((r) => setTimeout(r, 20));
+  return w.document.querySelector('.agent-msg.approval');
+}
+
+test('a card for a mail has Edit and no Hello line', async () => {
+  const card = await ruleCardFor({ request_id: 'req_m', tool: 'send_mail', subject: 'Hi', editable: true, verified: false });
+  assert.ok(card.querySelector('[data-act="edit"]'));
+  assert.equal(card.querySelector('.agent-appr-hello'), null);
+});
+
+test('a card for a rule has no Edit and says approving asks for Hello', async () => {
+  const card = await ruleCardFor({ request_id: 'req_r', tool: 'create_rule', subject: 'New rule', editable: false, verified: true });
+  assert.equal(card.querySelector('[data-act="edit"]'), null);
+  assert.ok(card.querySelector('[data-act="approve"]') && card.querySelector('[data-act="reject"]'));
+  assert.match(card.querySelector('.agent-appr-hello').textContent, /Windows Hello/);
+});
+
+test('a card for an identity change has no Edit, shows the whole text and a Hello line that does not say rule', async () => {
+  const before = 'Before:\n  | ' + 'x'.repeat(4000);
+  const body = 'Who I am\n' + before + '\nAfter:\n  | ' + 'y'.repeat(4000) + '\nLAST-LINE';
+  assert.ok(body.length > 8000);
+  const card = await ruleCardFor({ request_id: 'req_i', tool: 'update_identity', subject: 'Change the identity of info@example.com', editable: false, verified: true, body });
+  assert.equal(card.querySelector('[data-act="edit"]'), null);
+  assert.ok(card.querySelector('[data-act="approve"]') && card.querySelector('[data-act="reject"]'));
+  assert.equal(card.querySelector('.agent-appr-body pre').textContent, body);
+  const hello = card.querySelector('.agent-appr-hello').textContent;
+  assert.match(hello, /Windows Hello/);
+  assert.doesNotMatch(hello, /regola|rule/i);
+});
+
+test('a card for deleting a rule has no Edit and no Hello line', async () => {
+  const card = await ruleCardFor({ request_id: 'req_d', tool: 'delete_rule', subject: 'Delete rule', editable: false, verified: false });
+  assert.equal(card.querySelector('[data-act="edit"]'), null);
+  assert.equal(card.querySelector('.agent-appr-hello'), null);
+});
+
+test('a card restored after a restart keeps its buttons; an entry saved before the fields existed stays editable', async () => {
+  const dom = new JSDOM(`<!DOCTYPE html><body>${BAR}</body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
+  const w = dom.window;
+  const entry = (id, a) => ({ k: 'appr', a: { request_id: id, tool: 't', subject: 's', summary: '', to: '', body: '', attachments: [], ...a }, q: '', s: 'pending' });
+  w.localStorage.setItem('gm-agent-thread-v1', JSON.stringify({ history: [], log: [
+    entry('req_r', { editable: false, verified: true }),
+    entry('req_old', {}),
+  ] }));
+  w.electronAPI = { agentCommand: async () => ({ answer: '' }) };
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'renderer_agent.js'), 'utf-8'), dom.getInternalVMContext());
+  await ready(w);
+  const rule = w.document.querySelector('[data-request-id="req_r"]');
+  const old = w.document.querySelector('[data-request-id="req_old"]');
+  assert.ok(rule && old);
+  assert.equal(rule.querySelector('[data-act="edit"]'), null);
+  assert.ok(rule.querySelector('.agent-appr-hello'));
+  assert.ok(old.querySelector('[data-act="edit"]'));
+  assert.equal(old.querySelector('.agent-appr-hello'), null);
+});
+
 test('in a merged view of several accounts the mail opens in its own window', async () => {
   const { w, calls } = load({ activeAccount: 6, group: 'g1' });
   await ready(w);
@@ -319,4 +383,22 @@ test('a request rejected in its window reads as rejected', async () => {
   w.dispatchEvent(new w.Event('focus'));
   await new Promise((r) => setTimeout(r, 20));
   assert.ok(w.document.querySelector('.rejected'));
+});
+
+test('a card for a request that cannot be edited shows a very long text whole, also after a restart', async () => {
+  const long = 'Senders:\n' + Array.from({ length: 1500 }, (_, i) => `  • s${i}@example.com`).join('\n') + '\nLAST-LINE';
+  assert.ok(long.length > 30000);
+  const card = await ruleCardFor({ request_id: 'req_l', tool: 'update_rule', subject: 'Change rule', editable: false, verified: true, body: long });
+  assert.equal(card.querySelector('.agent-appr-body pre').textContent, long);
+
+  const dom = new JSDOM(`<!DOCTYPE html><body>${BAR}</body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
+  const w = dom.window;
+  const saved = { request_id: 'req_l', tool: 'update_rule', subject: 's', summary: '', to: '', body: long, attachments: [], editable: false, verified: true };
+  w.localStorage.setItem('gm-agent-thread-v1', JSON.stringify({ history: [], log: [{ k: 'appr', a: saved, q: '', s: 'pending' }] }));
+  w.electronAPI = { agentCommand: async () => ({ answer: '' }) };
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'renderer_agent.js'), 'utf-8'), dom.getInternalVMContext());
+  await ready(w);
+  assert.equal(w.document.querySelector('[data-request-id="req_l"] .agent-appr-body pre').textContent, long);
+  const stored = JSON.parse(w.localStorage.getItem('gm-agent-thread-v1') || '{"log":[]}');
+  assert.ok(!stored.log.length || stored.log[0].a.body === long, 'the saved entry is not cut');
 });

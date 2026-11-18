@@ -163,14 +163,27 @@
     rejected: ['rejected', 'agent_rejected', 'Rifiutata: non verrà eseguita'],
   };
 
+  // The text a card keeps. A mail's is capped (it can be edited in its
+  // window); a request that cannot be edited (a reply rule) is kept whole,
+  // whatever its length: what is cut off could be the change itself, and a
+  // card restored after a restart must still show all of it. The <pre>
+  // scrolls (theme.css), so the card does not grow with it.
+  const CARD_BODY_MAX = 20000;
+  function cardBody(a, body) {
+    const text = String(body || '');
+    return a && a.editable === false ? text : text.slice(0, CARD_BODY_MAX);
+  }
+
   // `question` is the request that opened the approval: the confirmation
   // after it comes back in the language the user wrote it in. `entry` is
   // its saved form: the card keeps its state across a restart.
   function approvalCard(a, question, entry) {
     entry = entry || remember({ k: 'appr', a: {
       request_id: a.request_id, tool: a.tool, subject: a.subject, summary: a.summary,
-      to: a.to || '', body: String(a.body || '').slice(0, 20000),
+      to: a.to || '', body: cardBody(a, a.body),
       attachments: (a.attachments || []).map(String),
+      // an entry saved before these existed has neither: editable, no Hello line
+      editable: a.editable !== false, verified: a.verified === true,
     }, q: question || '', s: 'pending' });
     // What is being approved, in full: the recipient and the text itself,
     // not just the one-line summary (the user could not read the reply
@@ -185,9 +198,10 @@
         : (a.summary ? `<div class="agent-appr-sum">${escHtml(a.summary)}</div>` : '')}
       <div class="agent-appr-actions">
         <button class="agent-btn ghost" data-act="reject">${escHtml(L('agent_reject', 'Rifiuta'))}</button>
-        <button class="agent-btn ghost" data-act="edit">${escHtml(L('aw_edit', 'Modifica'))}</button>
+        ${a.editable === false ? '' : `<button class="agent-btn ghost" data-act="edit">${escHtml(L('aw_edit', 'Modifica'))}</button>`}
         <button class="agent-btn primary" data-act="approve">${escHtml(L('agent_approve', 'Approva'))}</button>
-      </div>`);
+      </div>
+      ${a.verified === true ? `<div class="agent-appr-sum agent-appr-hello">${escHtml(L('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID.'))}</div>` : ''}`);
     el.dataset.requestId = a.request_id;
     const state = (name) => {
       const [cls, key, it] = STATES[name];
@@ -195,6 +209,7 @@
       el.classList.add(cls);
       el.querySelector('.agent-appr-head').textContent = L(key, it);
       el.querySelector('.agent-appr-actions').innerHTML = '';
+      el.querySelector('.agent-appr-hello')?.remove();
       entry.s = name;
       save();
     };
@@ -267,7 +282,7 @@
     // The request's own window, the one of the approvals page: the text
     // to correct, a note for the agent, Save. The card catches up when the
     // console gets the focus back.
-    el.querySelector('[data-act="edit"]').addEventListener('click', () => {
+    el.querySelector('[data-act="edit"]')?.addEventListener('click', () => {
       window.electronAPI.openApprovalWindow?.(a.request_id, 'edit');
     });
     el.querySelector('[data-act="reject"]').addEventListener('click', async () => {
@@ -298,7 +313,7 @@
       const pre = el.querySelector('.agent-appr-body pre');
       if (body && pre && body !== pre.textContent) {
         pre.textContent = body;
-        entry.a.body = body.slice(0, 20000);
+        entry.a.body = cardBody(entry.a, body);
         save();
       }
       return;

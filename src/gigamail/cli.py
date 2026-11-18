@@ -352,7 +352,17 @@ def cmd_approvals_approve(args) -> int:
     if not rec:
         _spiega_richiesta_assente(args.request_id)
         return 1
-    print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
+    if rec["tool"] in policy.PC_ONLY_TOOLS:
+        # A rule or identity request: the user verifies having read ALL of it, so the
+        # title and the whole text, uncut. It carries │ → ⚠ •, which a
+        # cp1252 console cannot print: a replaced character, never a crash
+        # before the prompt.
+        _console_utf8()
+        preview = rec.get("preview") or {}
+        _print_safe(f"Tool: {rec['tool']}\n{preview.get('subject') or ''}\n\n"
+                    f"{preview.get('body') or ''}\n")
+    else:
+        print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
     reason = f"GigaMail: approvare {rec['tool']} ({args.request_id})?"
     try:
         ok = consent.require_human(reason)
@@ -365,7 +375,7 @@ def cmd_approvals_approve(args) -> int:
               + (f": {motivo}." if motivo else " o annullata.")
               + " La richiesta resta in attesa e non e' partito nulla.")
         return 1
-    if not policy.store().approve(args.request_id, by=_cli_who()):
+    if not policy.store().approve(args.request_id, by=_cli_who(), verified=True):
         print("Non approvabile: gia' decisa o scaduta.")
         return 1
     from gigamail import completion
@@ -1135,6 +1145,16 @@ def _console_utf8() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
+
+
+def _print_safe(text: str) -> None:
+    """print, or, on a stream that still cannot encode the text, the same
+    text with the characters it cannot show replaced."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(enc, errors="replace").decode(enc, errors="replace"))
 
 
 def _tr(it: str, en: str) -> str:

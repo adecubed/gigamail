@@ -24,7 +24,7 @@ HEADINGS = {
     "it": ("## Riepilogo tool esposti ({n} — generato dal server)", "due fasi"),
 }
 
-WRITE_SAFE_TOOLS = {"mark_read", "create_folder", "save_draft"}
+WRITE_SAFE_TOOLS = {"mark_read", "create_folder", "save_draft", "pause_rule"}
 
 
 def _mappa_path() -> Path:

@@ -447,6 +447,19 @@
   }
 
   // ------------------------------------------------------------ notifiche
+  // Warns under the picker when the chosen agent keeps its own tools
+  // (isolated === false): GigaMail's approvals cover only its own tools.
+  let agentList = [];
+  function showIsolationNote(agents, id) {
+    if (Array.isArray(agents)) agentList = agents;
+    const note = $('agentIsolationNote');
+    if (!note) return;
+    const cur = agentList.find((a) => a.id === id);
+    const open = !!cur && cur.isolated === false;
+    if (open) note.textContent = L('agent_not_isolated', 'Questo agente tiene i suoi strumenti: può leggere i file di questo computer e usare internet senza chiedertelo. Le approvazioni di GigaMail coprono solo gli strumenti di GigaMail.');
+    note.hidden = !open;
+  }
+
   async function refreshNotify() {
     try {
       const st = await api('/notify/status');
@@ -462,6 +475,7 @@
         });
         if (ag.agent) sel.value = ag.agent;
       }
+      showIsolationNote(ag.agents, sel ? sel.value : ag.agent);
       set('agentStatus', ag.available ? 'ok' : 'err',
         ag.available ? T(`pronto: ${ag.command}`, `ready: ${ag.command}`, `就绪：${ag.command}`) + (ag.codex_model ? ` · ${ag.codex_model}` : '')
                      : T('agente non trovato: installa Claude Code, l\'app Codex / ChatGPT o Antigravity (agy), o configura agent.json',
@@ -647,6 +661,7 @@
     // a popup opened by a notification asks the main window for the list
     if (window.electronAPI?.onShowPending) window.electronAPI.onShowPending(showPendingView);
     $('agentSelect')?.addEventListener('change', async (e) => {
+      showIsolationNote(null, e.target.value);
       try {
         await api('/agent/select', { method: 'POST', body: JSON.stringify({ agent: e.target.value }) });
       } catch (err) {

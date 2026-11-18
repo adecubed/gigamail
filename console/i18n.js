@@ -12,7 +12,7 @@
 (function () {
   const DICT = {
     it: {
-      agentbar_title: "Agente", agent_hello_wait: "In attesa della verifica di Windows Hello: se non la vedi, è dietro le finestre (Alt+Tab).", agent_stop: "Ferma", agent_stopped: "Fermato: l'agente non ha finito il lavoro.", agent_clear: "Pulisci", agent_ph: "Chiedi qualsiasi cosa all'agente…",
+      agentbar_title: "Agente", agent_rule_needs_hello: "Questa approvazione chiede Windows Hello / Touch ID.", agent_hello_wait: "In attesa della verifica di Windows Hello: se non la vedi, è dietro le finestre (Alt+Tab).", agent_stop: "Ferma", agent_stopped: "Fermato: l'agente non ha finito il lavoro.", agent_clear: "Pulisci", agent_ph: "Chiedi qualsiasi cosa all'agente…",
       agent_this_mail: "Questa mail", agent_thinking: "L'agente sta lavorando…",
       agent_waiting: "In attesa della tua approvazione", agent_approve: "Approva", agent_reject: "Rifiuta",
       agent_approved: "Approvata", agent_executed: "Approvata ed eseguita", agent_not_run: "Approvata, ma non eseguita: GigaMail non ha registrato l'esecuzione", agent_run_failed: "Approvata, ma l'esecuzione è fallita: vedi Automazioni > Decise di recente", agent_rejected: "Rifiutata: non verrà eseguita",
@@ -123,6 +123,7 @@
       watch_start: "▶ Avvia", watch_stop: "■ Ferma",
       notify_title: "Notifiche e agente", agent_title: "Agente che scrive le bozze",
       agent_desc: "GigaMail non ha un LLM interno: le bozze le scrive il tuo agente. Scegli Claude Code (`claude -p`) o Codex (`codex exec`, anche quello dell'app ChatGPT); un comando tuo va in agent.json.",
+      agent_not_isolated: "Questo agente tiene i suoi strumenti: può leggere i file di questo computer e usare internet senza chiedertelo. Le approvazioni di GigaMail coprono solo gli strumenti di GigaMail.",
       consent_title: "Verifica umana (Hello / Touch ID)", desktop_title: "Notifiche sul PC",
       desktop_setup: "Attiva bottoni (UAC)",
       telegram_hint: "Si configura dal terminale (il token del bot non passa da questa finestra): <code>gigamail telegram setup</code>, con <code>--approve</code> per approvare dal telefono (Hello).",
@@ -572,7 +573,7 @@
       by_cli: "terminale",
     },
     en: {
-      agentbar_title: "Agent", agent_hello_wait: "Waiting for the Windows Hello check: if you do not see it, it is behind the windows (Alt+Tab).", agent_stop: "Stop", agent_stopped: "Stopped: the agent did not finish.", agent_clear: "Clear", agent_ph: "Ask the agent anything…",
+      agentbar_title: "Agent", agent_rule_needs_hello: "This approval asks for Windows Hello / Touch ID.", agent_hello_wait: "Waiting for the Windows Hello check: if you do not see it, it is behind the windows (Alt+Tab).", agent_stop: "Stop", agent_stopped: "Stopped: the agent did not finish.", agent_clear: "Clear", agent_ph: "Ask the agent anything…",
       agent_this_mail: "This mail", agent_thinking: "The agent is working…",
       agent_waiting: "Waiting for your approval", agent_approve: "Approve", agent_reject: "Reject",
       agent_approved: "Approved", agent_executed: "Approved and run", agent_not_run: "Approved, but not run: GigaMail recorded no execution", agent_run_failed: "Approved, but it failed: see Automations > Recently decided", agent_rejected: "Rejected: it will not run",
@@ -686,6 +687,7 @@
       watch_start: "▶ Start", watch_stop: "■ Stop",
       notify_title: "Notifications and agent", agent_title: "Agent that writes the drafts",
       agent_desc: "GigaMail has no built-in LLM: drafts are written by your agent. Pick Claude Code (`claude -p`) or Codex (`codex exec`, the ChatGPT app's one too); a command of your own goes in agent.json.",
+      agent_not_isolated: "This agent keeps its own tools: it can read files on this computer and use the internet without asking you. GigaMail's approvals cover GigaMail's tools only.",
       consent_title: "Human verification (Hello / Touch ID)", desktop_title: "Desktop notifications",
       desktop_setup: "Enable buttons (UAC)",
       telegram_hint: "Configured from the terminal (the bot token never goes through this window): <code>gigamail telegram setup</code>, with <code>--approve</code> to approve from your phone (Hello).",
@@ -1116,7 +1118,7 @@
       by_cli: "terminal",
     },
     zh: {
-      agentbar_title: "智能体", agent_hello_wait: "正在等待 Windows Hello 验证：如果看不到，它在其他窗口后面（Alt+Tab）。", agent_stop: "停止", agent_stopped: "已停止：智能体未完成任务。", agent_clear: "清空", agent_ph: "向智能体提问任何问题…",
+      agentbar_title: "智能体", agent_rule_needs_hello: "此批准需要通过 Windows Hello / Touch ID 验证。", agent_hello_wait: "正在等待 Windows Hello 验证：如果看不到，它在其他窗口后面（Alt+Tab）。", agent_stop: "停止", agent_stopped: "已停止：智能体未完成任务。", agent_clear: "清空", agent_ph: "向智能体提问任何问题…",
       agent_this_mail: "这封邮件", agent_thinking: "智能体正在处理…",
       agent_waiting: "等待你的批准", agent_approve: "批准", agent_reject: "拒绝",
       agent_approved: "已批准", agent_executed: "已批准并执行", agent_not_run: "已批准，但未执行：GigaMail 没有执行记录", agent_run_failed: "已批准，但执行失败：见 自动化 > 最近处理", agent_rejected: "已拒绝：不会执行",
@@ -1218,6 +1220,7 @@
       watch_start: "▶ 启动", watch_stop: "■ 停止",
       notify_title: "通知与代理", agent_title: "起草邮件的代理",
       agent_desc: "GigaMail 不内置 LLM：草稿由你自己的代理撰写。可选 Claude Code（`claude -p`）或 Codex（`codex exec`，也可用 ChatGPT 应用自带的）；自定义命令写在 agent.json。",
+      agent_not_isolated: "该代理保留自己的工具：它可以读取这台电脑上的文件并访问互联网，而不会征求你的同意。GigaMail 的审批只涵盖 GigaMail 自己的工具。",
       consent_title: "人工验证（Hello / Touch ID）", desktop_title: "桌面通知",
       desktop_setup: "启用按钮（UAC）",
       telegram_hint: "在终端配置（机器人 token 不经过此窗口）：<code>gigamail telegram setup</code>，加 <code>--approve</code> 可在手机上批准（Hello）。",

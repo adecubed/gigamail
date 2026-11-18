@@ -29,6 +29,10 @@ def _completed_by(request_id: str) -> str:
 
 def _with_origin(rec):
     rec["completed_by"] = _completed_by(rec["request_id"])
+    # what the console needs to draw the buttons: a rule request cannot be
+    # edited nor saved, and approving it asks the OS verification
+    rec["editable"] = rec["tool"] not in policy.FIXED_TOOLS
+    rec["verified"] = rec["tool"] in policy.VERIFIED_TOOLS
     return rec
 
 
@@ -66,7 +70,8 @@ def get_approval(request_id: str):
     rec = policy.store().get(request_id)
     if not rec:
         raise HTTPException(404, "Richiesta inesistente")
-    return rec
+    # the approval window draws its buttons from these, like the list
+    return _with_origin(rec)
 
 
 
@@ -89,8 +94,11 @@ def approve_request(request_id: str, request: Request = None):
     rec = policy.store().get(request_id)
     if not rec:
         raise HTTPException(404, "Richiesta inesistente")
+    # A rule request never takes the click: it always asks the OS prompt.
     clic = (request is not None and console_click.is_console_click(request.headers)
-            and not console_click.send_requires_hello())
+            and not console_click.send_requires_hello()
+            and rec["tool"] not in policy.VERIFIED_TOOLS)
+    verified = False
     if not clic:
         reason = f"GigaMail: approvare {rec['tool']} ({request_id})?"
         try:
@@ -99,8 +107,9 @@ def approve_request(request_id: str, request: Request = None):
             raise HTTPException(503, str(e)) from e
         if not ok:
             raise HTTPException(403, "Verifica utente non superata o annullata")
+        verified = True
     by = f"{_who()} (console click)" if clic else _who()
-    if not policy.store().approve(request_id, by=by):
+    if not policy.store().approve(request_id, by=by, verified=verified):
         raise HTTPException(409, "Richiesta non approvabile (già decisa o scaduta)")
     out = {"success": True, "request_id": request_id, "status": "approved",
            "completed_by": _completed_by(request_id)}
@@ -134,6 +143,9 @@ def save_request(request_id: str, request: Request = None):
     from . import console_click
     if not console_click.is_console_click(request.headers if request else {}):
         raise HTTPException(403, "only from the console")
+    if (policy.store().get(request_id) or {}).get("tool") in policy.FIXED_TOOLS:
+        raise HTTPException(409, "this request cannot be saved for later: "
+                                 "reject it and ask again")
     if not policy.store().save_for_later(request_id, by=f"{_who()} (console click)"):
         raise HTTPException(409, "Richiesta non salvabile (già decisa o scaduta)")
     rec = policy.store().get(request_id) or {}
@@ -179,6 +191,9 @@ def amend_request(request_id: str, req: AmendRequest, request: Request = None):
     rec = policy.store().get(request_id)
     if not rec:
         raise HTTPException(404, "Richiesta inesistente")
+    if rec["tool"] in policy.FIXED_TOOLS:
+        raise HTTPException(409, "this request cannot be changed: "
+                                 "reject it and ask again")
     changes = {k: v for k, v in {"body": req.body, "subject": req.subject}.items()
                if v is not None}
     files = [f.model_dump() for f in req.attachments or []]
@@ -228,6 +243,9 @@ def edit_request(request_id: str, req: EditRequest, request: Request = None):
     rec = policy.store().get(request_id)
     if not rec:
         raise HTTPException(404, "Richiesta inesistente")
+    if rec["tool"] in policy.FIXED_TOOLS:
+        raise HTTPException(409, "this request cannot be changed: "
+                                 "reject it and ask again")
     note = (req.note or "").strip()[:500]
     if not note:
         raise HTTPException(400, "nota vuota")

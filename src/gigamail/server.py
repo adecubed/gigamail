@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import tempfile
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
@@ -46,6 +46,7 @@ from gigamail.core import (
     reply_guard,
     scan_mask,
     signature,
+    tool_errors,
     zoom,
 )
 from gigamail.policy import audit
@@ -74,9 +75,30 @@ mcp = MCPServer(
         "chose to mask personal data, it reaches you as placeholders such "
         "as [IBAN_1a2b3c4d]: to use one in a mail, write it exactly as "
         "given and GigaMail puts the real value back for the human to "
-        "approve."
+        "approve. Requests "
+        "about reply rules (create_rule, update_rule, resume_rule, "
+        "renew_rule, delete_rule) and about the identity (update_identity) "
+        "are approved only at the PC, never from Telegram."
     ),
 )
+
+
+# Single point where every tool becomes readable to the agent: the SDK gets
+# readable(fn), but the module keeps the plain function, so callers inside
+# GigaMail (and the tests) still see the original exceptions.
+_sdk_tool = mcp.tool
+
+
+def _readable_tool(*args, **kwargs):
+    register = _sdk_tool(*args, **kwargs)
+
+    def decorator(fn):
+        register(tool_errors.readable(fn))
+        return fn
+    return decorator
+
+
+mcp.tool = _readable_tool
 
 # ---------------------------------------------------------------- annotations
 # Tre classi, tre profili. open_world_hint=True su tutto cio' che parla con
@@ -108,6 +130,16 @@ RequestId = Annotated[Optional[str], Field(
                 "call again with the same request_id to execute. The agent "
                 "cannot approve; repeating the call without approval just "
                 "returns awaiting_approval.")]
+# The same for the requests approved only at the PC (reply rules, the
+# identity): RequestId offers Telegram among the channels.
+PcOnlyRequestId = Annotated[Optional[str], Field(
+    description="Omit on the first call. On the first call the tool does "
+                "NOT execute: it returns status=approval_required, a preview "
+                "and a request_id. A human must approve that request_id at "
+                "the PC (GigaMail console or `gigamail approvals approve`, "
+                "never Telegram). Then call again with the same request_id to "
+                "execute. The agent cannot approve; repeating the call "
+                "without approval just returns awaiting_approval.")]
 
 TWO_PHASE = (
     " TWO-PHASE, HUMAN-APPROVED: the first call (no request_id) executes "
@@ -122,13 +154,36 @@ TWO_PHASE = (
 )
 
 
-def _two_phase(what: str, detail: str) -> str:
+# The same contract for the tools whose requests are approved only at the
+# PC (reply rules): no Telegram, and the verification is said per tool.
+TWO_PHASE_AT_THE_PC = (
+    " TWO-PHASE, HUMAN-APPROVED: the first call (no request_id) executes "
+    "nothing — it returns status=approval_required with a preview of "
+    "exactly what would happen and a request_id. A human approves out of "
+    "band, only at the PC (GigaMail console or CLI, never Telegram); the "
+    "second call with that request_id executes the payload that was "
+    "approved (the approved arguments, not the ones passed the second "
+    "time). Requests expire (default 15 min); identical pending requests "
+    "are deduplicated; more than 20 requests/hour per tool are refused "
+    "(status=rate_limited). Every phase is written to the audit log."
+)
+# Who approves such a request, said in each of those tools' descriptions.
+AT_THE_PC = (
+    "The request can be approved only by the user at the PC, with Windows "
+    "Hello / Touch ID (never from Telegram or by you). You cannot approve "
+    "it: show the preview and ask the user to approve it in the GigaMail "
+    "console, then call again with the request_id.")
+
+
+def _two_phase(what: str, detail: str, at_the_pc: bool = False) -> str:
     """Descrizione di un tool DANGEROUS: cosa fa + il contratto a due fasi
     (identico per tutti) + i dettagli specifici. Un docstring composto con
-    `+` non e' un docstring: per questo passa dal decoratore."""
+    `+` non e' un docstring: per questo passa dal decoratore.
+    `at_the_pc`: the variant for requests approved only at the PC."""
     def norm(t: str) -> str:
         return " ".join(t.split())
-    return norm(what) + TWO_PHASE + " " + norm(detail)
+    contract = TWO_PHASE_AT_THE_PC if at_the_pc else TWO_PHASE
+    return norm(what) + contract + " " + norm(detail)
 
 
 def _safe_account(a: dict) -> dict:
@@ -140,6 +195,18 @@ def _safe_account(a: dict) -> dict:
         "type": a.get("type", "microsoft"),
         "active": bool(a.get("active")),
     }
+
+
+def account_label(account_id: Any) -> str:
+    """The account's email address for a preview, or "" when unknown (the
+    preview then shows the account id)."""
+    try:
+        for a in core_accounts.get_accounts():
+            if a.get("id") == account_id:
+                return str(a.get("email") or "")
+    except Exception:
+        pass
+    return ""
 
 
 # ---------------------------------------------------------------- READ
@@ -166,7 +233,8 @@ def get_identity(account_id: AccountId = None) -> dict:
     Returns {who_am_i, what_i_do, tone, key_info, file_paths}; fields may
     be empty strings if the user never filled them. `file_paths` are the
     knowledge files/folders the user registered (see list_knowledge_files).
-    Read-only, local. Returns {} if no account exists."""
+    Read-only, local. Returns {} if no account exists. To ask for a change
+    to the four texts, use update_identity."""
     aid = account_id or (core_accounts.get_active_account() or {}).get("id")
     if not aid:
         return {}
@@ -1721,6 +1789,16 @@ def drive_delete_file(
         preview_fn=_preview,
         execute_fn=_exec_drive_delete_file,
     )
+
+
+import sys as _sys  # noqa: E402
+
+# Run as `python -m gigamail.server` this module is __main__: the tools module
+# must find THIS module (and its mcp), not import a second copy of it.
+if __name__ == "__main__":
+    _sys.modules.setdefault("gigamail.server", _sys.modules["__main__"])
+# Each registers its tools on mcp.
+from gigamail import tools_automations  # noqa: E402,F401
 
 
 def _announce_update() -> None:

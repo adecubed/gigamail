@@ -302,7 +302,7 @@ def _is_network_path(raw: str) -> bool:
     return raw.replace("/", chr(92)).startswith(chr(92) * 2)
 
 
-def _is_gigamail_data(real: str) -> bool:
+def is_gigamail_data(real: str) -> bool:
     from gigamail.core.data_paths import app_root, data_root
     target = Path(real)
     for root in (app_root(), data_root()):
@@ -312,6 +312,10 @@ def _is_gigamail_data(real: str) -> bool:
         except (OSError, ValueError):
             continue
     return False
+
+
+is_network_path = _is_network_path
+_is_gigamail_data = is_gigamail_data
 
 
 def resolve_outside(account_id: Optional[int],

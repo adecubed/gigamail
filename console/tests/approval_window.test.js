@@ -290,3 +290,72 @@ test('an old notification: the request is gone and the buttons are off', async (
   assert.match(w.document.getElementById('state').textContent, /non trovata/);
   assert.equal(w.document.getElementById('btnApprove').disabled, true);
 });
+
+const RULE_REQ = {
+  request_id: 'req_r', tool: 'create_rule', status: 'pending', expires_at: NOW + 600,
+  editable: false, verified: true, args: { trigger_kind: 'senders', trigger_values: ['mario.rossi@example.com'] },
+  preview: { subject: 'Nuova regola AUTO per mario.rossi@example.com', body: 'Account: info@example.com\nMittenti:\n  • mario.rossi@example.com' },
+};
+
+test('a rule request cannot be edited, noted or saved, and says it asks Windows Hello', async () => {
+  const { w, calls, load, tick } = open((p) => (p === '/approvals/req_r'
+    ? { status: 200, body: RULE_REQ } : { status: 404, body: { detail: 'no' } }));
+  await load({ request_id: 'req_r', action: 'edit' });
+  const d = w.document;
+  assert.ok(!d.getElementById('editBox').classList.contains('visible'), 'Edit from the toast opens nothing');
+  for (const id of ['btnEdit', 'btnSave', 'btnNote']) {
+    assert.equal(d.getElementById(id).disabled, true, id);
+  }
+  assert.equal(d.getElementById('btnEdit').style.display, 'none');
+  assert.equal(d.getElementById('btnSave').style.display, 'none');
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'it can still be approved');
+  assert.equal(d.getElementById('btnReject').disabled, false, 'and rejected');
+  assert.equal(d.getElementById('helloHint').style.display, '');
+  assert.match(d.getElementById('helloHint').textContent, /Windows Hello/);
+  d.getElementById('btnSave').click();
+  d.getElementById('btnEdit').click();
+  await tick();
+  assert.ok(!calls.some((c) => c.includes('/save') || c.includes('/edit') || c.includes('/amend')));
+  assert.ok(!d.getElementById('editBox').classList.contains('visible'));
+});
+
+test('an identity change request is fixed like a rule and its Windows Hello line does not say rule', async () => {
+  const rec = {
+    request_id: 'req_r', tool: 'update_identity', status: 'pending', expires_at: NOW + 600,
+    editable: false, verified: true, args: { account_id: 1, changes: { tone: 'Warm' } },
+    preview: { action: 'identity_update', subject: 'Change the identity of info@example.com [Tone]', body: 'Tone\n  Before:\n    | Formal\n  After:\n    | Warm', account_id: 1 },
+  };
+  const { w, calls, load, tick } = open((p) => (p === '/approvals/req_r'
+    ? { status: 200, body: rec } : { status: 404, body: { detail: 'no' } }));
+  await load({ request_id: 'req_r', action: 'edit' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnEdit').style.display, 'none');
+  assert.equal(d.getElementById('btnSave').style.display, 'none');
+  assert.equal(d.getElementById('btnApprove').disabled, false);
+  assert.equal(d.getElementById('helloHint').style.display, '');
+  assert.match(d.getElementById('helloHint').textContent, /Windows Hello/);
+  assert.doesNotMatch(d.getElementById('helloHint').textContent, /regola|rule/i);
+  assert.ok(d.getElementById('body').textContent.includes('| Warm'));
+  await tick();
+  assert.ok(!calls.some((c) => c.includes('/save') || c.includes('/edit') || c.includes('/amend')));
+});
+
+test('deleting a rule is not editable either, and has no Windows Hello line', async () => {
+  const rec = { ...RULE_REQ, tool: 'delete_rule', verified: false };
+  const { w, load } = open((p) => (p === '/approvals/req_r' ? { status: 200, body: rec } : { status: 404, body: {} }));
+  await load({ request_id: 'req_r', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnEdit').disabled, true);
+  assert.equal(d.getElementById('helloHint').style.display, 'none');
+});
+
+test('a mail request keeps Edit and Save, without the Windows Hello line', async () => {
+  const { w, load } = open((p) => (p === '/approvals/req_1'
+    ? { status: 200, body: { ...REQ, editable: true, verified: false } } : { status: 404, body: {} }));
+  await load({ request_id: 'req_1', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnEdit').disabled, false);
+  assert.equal(d.getElementById('btnSave').disabled, false);
+  assert.equal(d.getElementById('btnEdit').style.display, '');
+  assert.equal(d.getElementById('helloHint').style.display, 'none');
+});

@@ -175,16 +175,19 @@ reply, and asks you before sending.
 
 ## Tools
 
-31 typed tools, generated from the server itself:
+41 typed tools, generated from the server itself:
 
-- **Read (18)** — accounts, identity, knowledge files and search inside them, messages, unread,
+- **Read (21)** — accounts, identity, knowledge files and search inside them, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
-  their text
-- **Safe writes (3, audited)** — mark read, create folder, save a draft
-- **Dangerous (10, human approval out of band)** — move message, send,
+  their text, reply rules and what they did, automation status
+- **Safe writes (4, audited)** — mark read, create folder, save a draft, pause a reply rule
+- **Dangerous (16, human approval out of band)** — move message, send,
   reply, delete message, delete folder, create/delete calendar event, create a Zoom
-  meeting, upload a file to Drive, move a Drive file to the trash
+  meeting, upload a file to Drive, move a Drive file to the trash,
+  create/change/resume/renew/delete a reply rule, change the identity
+  texts (these only at the PC, never from Telegram: with Windows Hello /
+  Touch ID, a delete with a click)
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the
@@ -234,9 +237,13 @@ a dry-run guard so confirmed actions are audited but never executed.
 You can tell GigaMail: *mail from these senders (or in this folder) gets a
 reply drafted from these documents*. Rules are created from the CLI —
 `gigamail rules add` — behind the same Windows Hello / Touch ID prompt as
-approvals, and `gigamail watch` is the process that applies them. The MCP
-server stays passive and **there is no MCP tool that touches rules**: an
-injected instruction cannot enable autopilot.
+approvals, and `gigamail watch` is the process that applies them. Your agent
+can also *ask* for a rule, through the MCP tools `create_rule`,
+`update_rule`, `resume_rule`, `renew_rule` and `delete_rule`: the request
+only stores a preview, and it is approved at the PC, never from Telegram:
+with Windows Hello / Touch ID to create, change, resume or renew a rule,
+with a click to delete one. So an injected instruction can make the agent
+ask for autopilot but cannot enable it.
 
 - **semi** (default): the draft becomes a normal approval request — you get
   the notification, you approve with Hello, it goes out.
@@ -466,17 +473,20 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-31 tool tipizzati, generati dal server stesso:
+41 tool tipizzati, generati dal server stesso:
 
-- **Lettura (18)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
+- **Lettura (21)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi, file di Drive e il
-  loro testo
-- **Scritture sicure (3, con audit)** — segna letto, crea cartella, salva una bozza
-- **Pericolose (10, approvazione umana fuori banda)** — spostamento,
+  loro testo, regole di risposta e cosa hanno fatto, stato delle automazioni
+- **Scritture sicure (4, con audit)** — segna letto, crea cartella, salva una bozza, metti in pausa una regola di risposta
+- **Pericolose (16, approvazione umana fuori banda)** — spostamento,
   invio, risposta, cancellazione messaggio, cancellazione cartella, creazione/cancellazione
   evento, creazione di una riunione Zoom, caricamento di un file su Drive,
-  cestinamento di un file di Drive
+  cestinamento di un file di Drive, creazione/modifica/ripresa/rinnovo/
+  cancellazione di una regola di risposta, modifica dei testi dell'identità
+  (solo al PC, mai da Telegram: con Windows Hello / Touch ID, la
+  cancellazione con un clic)
 
 Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
 quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo
@@ -527,8 +537,12 @@ Puoi dire a GigaMail: *le mail da questi mittenti (o in questa cartella)
 ricevono una risposta preparata da questi documenti*. Le regole si creano
 dalla CLI — `gigamail rules add` — dietro lo stesso prompt Windows Hello /
 Touch ID delle approvazioni, e `gigamail watch` è il processo che le
-applica. Il server MCP resta passivo e **nessun tool MCP tocca le regole**:
-un'istruzione iniettata non può accendere l'autopilota.
+applica. Il tuo agente può anche *chiedere* una regola, con i tool MCP
+`create_rule`, `update_rule`, `resume_rule`, `renew_rule` e `delete_rule`:
+la richiesta salva solo un'anteprima e si approva al PC, mai da Telegram:
+con Windows Hello / Touch ID per creare, modificare, riattivare o rinnovare
+una regola, con un clic per cancellarla. Quindi un'istruzione iniettata può
+far chiedere l'autopilota all'agente ma non può accenderlo.
 
 - **semi** (default): la bozza diventa una normale richiesta di
   approvazione — arriva la notifica, approvi con Hello, parte.

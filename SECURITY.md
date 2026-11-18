@@ -38,7 +38,9 @@ to know:
 - **The approval gate.** A destructive tool (`send_mail`, `reply_mail`,
   `move_message`, `delete_message`, `delete_folder`, `create_event`,
   `delete_event`, `create_zoom_meeting`, `drive_upload_file`,
-  `drive_delete_file`)
+  `drive_delete_file`, the five that manage reply rules: `create_rule`,
+  `update_rule`, `resume_rule`, `renew_rule`, `delete_rule`, and
+  `update_identity`)
   executing without a human approval given out of band — or executing with
   arguments other than the ones the human saw. In particular: **any path by
   which the agent can approve its own request**, or any secret reaching the
@@ -177,11 +179,85 @@ Semi-auto and auto reply look like the opposite of everything above — an
 action leaving without a per-send approval. The properties that make it
 compatible:
 
-- **A rule is created and reactivated only behind the OS prompt** (Windows
-  Hello / Touch ID), only from the CLI or console. **No MCP tool can touch
-  rules**: an injected instruction cannot say "enable automode" — the agent
-  has no tool for it. Pausing a rule needs no prompt (saying stop is always
-  safe); resuming does.
+- **A rule exists only after the person at the machine was verified.**
+  Creating, changing, resuming or renewing a rule needs the OS prompt
+  (Windows Hello / Touch ID), from the console, the CLI, or — since the
+  agent can now prepare the request — an approval of a stored request at
+  the PC. The agent has tools for rules (`create_rule`, `update_rule`,
+  `resume_rule`, `renew_rule`, `delete_rule`), but the first call only
+  stores a request with a preview of exactly what the rule will do; the
+  rule is written when a human approves it and GigaMail executes the stored
+  arguments. Those four are approved only at the PC and always with the OS
+  verification, even from a click in the console (a click is not enough
+  here, unlike sending mail); `delete_rule` is approved at the PC with a
+  click. None of the five can be approved from Telegram, and the requests
+  cannot be edited or saved for later: reject and ask again. The guarantee
+  lives in the approval store (`ApprovalStore.approve`), which every
+  channel passes through, not in each channel. What changed is that an
+  injected instruction can make the agent *ask* for a rule — the user sees
+  the request (a new rule with every field; a change with which rule it is,
+  by its senders or folder and current mode, and what changes, before and
+  after; AUTO or SEMI in the title of a request to create, resume, renew
+  or delete a rule, and a warning line first on a change that makes a rule
+  automatic) — not make one exist. What is shown is all of what is stored:
+  the CLI prints the whole text before the OS prompt, and the agent bar's
+  card and the approval window show a rule request whole, whatever its
+  length (a rule written in the console has no limits; the card scrolls).
+  Telegram's message, which cannot approve one, still says where it is cut. An update lists what changes first and the
+  rule's unchanged senders or folder last. The limits below bound what the
+  agent can ask for, and they are measured on what is stored: a document
+  by its resolved path, refused when that path is too long to be shown
+  whole. A change, resume,
+  renewal or deletion is refused if the rule changed after the request was
+  made (in the console, or by another approved request), and a resume also
+  if the rule is no longer paused. The agent can name at most 50 senders,
+  10 cc, 20 documents and 20 fixed attachments, each item at most 200
+  characters (what the approval text shows) and 6000 in all, one address
+  per item in senders and cc, with an instruction of 2000 characters in at
+  most 60 lines; an item with a control character, a line break or a
+  bidirectional control, or an instruction with a control character other
+  than newline and tab, is refused. Fixed attachments only by name among the
+  files registered for the account; a document by the name of a registered
+  knowledge file or by a full path. A path is resolved first (links
+  followed) and the real path is checked and stored: refused when it is on
+  a network path, is a program, is GigaMail's own data, has a folder or
+  file name starting with a dot, has a folder named `AppData`, or lies in
+  a system folder — on Windows `%SystemRoot%`, `%ProgramFiles%`,
+  `%ProgramFiles(x86)%`, `%ProgramData%`; elsewhere `/etc`, `/usr`, `/bin`,
+  `/sbin`, `/var`, `/private`, `/System`, `/Library` — or in the `Library`
+  folder right under the user's home. The console's own rule form is
+  unchanged. No tool starts or stops the watcher.
+- **The identity is approved the same way.** The identity (who the user
+  is, what they do, tone, key information) enters every draft, those of
+  automatic rules too, so `update_identity` is held to the same standard as
+  a rule: the first call only stores a request, which is approved only at
+  the PC and always with the OS verification, never from Telegram, and
+  cannot be edited or saved for later. The approval text shows each field
+  that changes before and after, whole, in the console, the approval window
+  and the CLI (which prints it uncut before the prompt): a field value is
+  never cut, and every line of it is shown quoted, so it cannot pass for
+  the structure of the preview. The request is refused if the identity was
+  edited after it was made; only the four texts can change (the knowledge
+  files, folder identities, signature and masking cannot be changed by any
+  tool). Each field is at most 4000 characters and 120 lines, with no
+  control characters other than newline and tab, no bidirectional controls
+  and no other invisible format characters (the zero-width joiner and
+  non-joiner excepted). The audit log keeps the account and the names of
+  the fields, never the old or the new text.
+- **Pausing is free, by design.** `pause_rule` needs no approval (saying
+  stop is always safe: it only reduces what GigaMail does on its own), so
+  an injected instruction can make the agent pause rules. That is an
+  annoyance, not a breach: it is written to the audit log with who did it,
+  and the user gets one notification naming the rule, through the same
+  channels as a rule that paused itself. A rule already paused stays as it
+  is, with its reason (a burst pause keeps saying it was a burst). Reading
+  rules (`list_rules`, `rule_activity`, `automation_status`) is free too.
+- **What the audit log keeps of a rule request**: the tool, the rule id,
+  the trigger, mode, limits, documents, attachments and cc asked for, who
+  approved, and the outcome of each phase. Not the instruction
+  (`reply_style`), before or after a change, nor the snapshot of the rule a
+  request keeps to detect a later change: like a mail body, it is free text
+  that may be long and copied from a mail.
 - **Scope is narrow and declared**: specific senders or one folder, only
   the documents attached to the rule as content sources, a daily cap, a
   per-sender cooldown, and a **mandatory expiry**. Never "everything".
@@ -359,6 +435,42 @@ What this does not stop, stated plainly:
   something other than GigaMail" above. If you connect GigaMail to an agent
   that runs commands, keep its command approvals on, or run its commands in
   a container that cannot see GigaMail's data folder.
+
+## What the console's agent can reach
+
+The agent that answers in the console (the agent bar and the draft
+button) is a program GigaMail starts on your machine, and it brings
+whatever tools that program has. GigaMail therefore starts the two it can
+control with GigaMail's tools only:
+
+- **Claude Code** is started with no built-in tools (`--tools ""`) and
+  only the MCP server GigaMail hands it (`--strict-mcp-config`), so none of
+  your other servers, and the run does not depend on the permissions in
+  your own Claude Code settings.
+- **Codex** ignores your own Codex configuration
+  (`--ignore-user-config`), gets GigaMail's MCP server on its command
+  line, and has its shell, connectors, plugins, image viewing, browser and
+  web search switched off. The closure is a list of features switched off
+  plus ignoring your configuration, verified with a probe on Codex 0.167: a
+  later Codex that adds a tool feature switched on by default would need
+  the list extended.
+
+Before this, a Codex run inherited your whole Codex configuration: its
+command runner, its other MCP servers, the account's connectors, plugins
+and web search. A probe showed that agent reading a file outside its
+working folder and searching the web without any approval; Claude Code
+already refused both. The same probe now gets the file refused, the web
+refused and the mail tools working.
+
+What this does not cover, stated plainly:
+
+- **Antigravity and custom commands are not verified.** GigaMail cannot
+  say what such an agent can reach, so the console says so under the agent
+  picker when one of them is chosen: it can read files on the computer and
+  use the internet without asking.
+- **An MCP client outside the console keeps its own tools.** A desktop
+  chat app or an IDE connected to GigaMail decides for itself what else it
+  can do. GigaMail's approvals cover GigaMail's tools, not those.
 
 ## Links that fetch themselves
 

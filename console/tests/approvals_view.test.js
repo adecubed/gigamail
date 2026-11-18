@@ -68,6 +68,22 @@ test('Save on the list too: decide later, offered until the request is saved', (
   assert.ok(saved.includes('salvata'));
 });
 
+test('a rule request on the list has neither Edit nor Save (the backend answers 409)', () => {
+  const html = V.pendingCard({ ...AGENT_SEND, tool: 'create_rule', editable: false, verified: true }, t, NOW);
+  assert.ok(!html.includes('data-act="edit"') && !html.includes('data-act="save"'));
+  assert.match(html, /data-act="approve"/);
+  assert.match(html, /data-act="reject"/);
+});
+
+test('an identity request on the list has neither Edit nor Save and shows its text whole', () => {
+  const body = 'Tone\n  Before:\n    | Formal\n  After:\n    | ' + 'w'.repeat(4000);
+  const html = V.pendingCard({ ...AGENT_SEND, tool: 'update_identity', editable: false, verified: true,
+    preview: { action: 'identity_update', subject: 'Change the identity of info@example.com [Tone]', body, account_id: 1 } }, t, NOW);
+  assert.ok(!html.includes('data-act="edit"') && !html.includes('data-act="save"'));
+  assert.match(html, /data-act="approve"/);
+  assert.ok(html.includes('w'.repeat(4000)), 'the text is not cut');
+});
+
 test('the watcher card names the rule mode, the recipient source and the expiry', () => {
   const html = V.pendingCard(WATCHER_REPLY, t, NOW);
   assert.ok(html.includes('bozza del watcher'));

@@ -565,3 +565,83 @@ def test_tap_approva_una_richiesta_dell_agente_la_esegue(world, monkeypatch):
     w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid2}"))
     assert "SMTP down" in world["tg"].sent[-1]["text"]
     assert policy.store().get(rid2)["execution_outcome"] == "failed"
+
+
+def test_a_rule_request_is_not_approved_from_telegram(world):
+    """A rule is a standing pre-approval: only at the PC, with the OS prompt."""
+    rid = policy.store().create("update_rule", {"rule_id": "rule_1"}, {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    # the rule wording, not the older one for a file from outside
+    assert world["tg"].sent[-1]["text"] == (
+        "Una regola si approva solo dal PC, con Windows Hello / Touch ID. "
+        "Da qui puoi rifiutare.")
+
+
+def test_an_identity_request_is_not_approved_from_telegram(world):
+    rid = policy.store().create("update_identity", {"account_id": 1}, {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    # its own wording: it is not a rule
+    assert world["tg"].sent[-1]["text"] == (
+        "La modifica dell'identità si approva solo dal PC, con Windows Hello / "
+        "Touch ID. Da qui puoi rifiutare.")
+
+
+def test_an_identity_request_refusal_is_in_english_when_the_user_speaks_english(world, monkeypatch):
+    monkeypatch.setenv("GIGAMAIL_LANG", "en")
+    rid = policy.store().create("update_identity", {"account_id": 1}, {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert world["tg"].sent[-1]["text"] == (
+        "A change to the identity is approved only at the PC, with Windows Hello / "
+        "Touch ID. From here you can reject it.")
+
+
+def test_deleting_a_rule_from_telegram_says_pc_without_hello(world):
+    rid = policy.store().create("delete_rule", {"rule_id": "rule_1"}, {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    text = world["tg"].sent[-1]["text"]
+    assert "solo dal PC" in text and "Hello" not in text
+
+
+def test_the_pin_does_not_approve_a_rule_request(world):
+    """Even with the PIN wait somehow open on it, a rule request is not
+    approved from Telegram: the store refuses the channel."""
+    rs = _con_pin()
+    rid = policy.store().create("create_rule", {"trigger_kind": "senders"}, {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert rs.kv_get("tg_await_pin", "") == ""          # the tap does not ask the PIN
+    rs.kv_set("tg_await_pin", rid)
+    w.handle_telegram_event(world["tg"], _ev_text("739104", message_id=43))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert 43 in world["tg"].deleted
+    assert "non approvabile" in world["tg"].sent[-1]["text"]
+
+
+@pytest.mark.parametrize("tool,line", [
+    ("create_rule", "Si approva solo dal PC, con Windows Hello / Touch ID."),
+    ("delete_rule", "Si approva solo dal PC."),
+    ("update_identity", "Si approva solo dal PC, con Windows Hello / Touch ID."),
+])
+def test_the_telegram_message_of_a_rule_request_says_it_is_approved_at_the_pc(world, tool, line):
+    preview = {"subject": "Nuova regola SEMI per mario.rossi@example.com",
+               "body": "Account: info@example.com\nMittenti:\n  • mario.rossi@example.com"}
+    policy._notify_now("req_x", tool, preview)
+    deadline = time.time() + 3
+    while not world["tg"].sent and time.time() < deadline:
+        time.sleep(0.02)
+    text = world["tg"].sent[-1]["text"]
+    assert text.rstrip().endswith(line)
+    assert ("Hello" in text) is (tool != "delete_rule")
+
+
+def test_a_mail_request_carries_no_pc_line(world):
+    assert policy.pc_only_notice("send_mail") == ""
+    assert policy.pc_only_notice("update_rule").endswith("Touch ID.")

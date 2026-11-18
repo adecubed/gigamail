@@ -4,7 +4,9 @@ Codex CLI, the Codex IDE extension and the ChatGPT desktop app (ChatGPT
 Work included) read their MCP servers from the same file,
 $CODEX_HOME/config.toml (default ~/.codex/config.toml). The plugin from the
 OpenAI Plugins Directory brings only the skill; without a server entry the
-agent has no GigaMail tools. Typing `codex mcp add` with the right paths is
+user's own Codex and the ChatGPT desktop app have no GigaMail tools. (The
+console's own Codex run does not depend on this file: it ignores the user's
+configuration and carries GigaMail's server on its command line.) Typing `codex mcp add` with the right paths is
 not something a desktop user should have to do, so the console writes it.
 
 The entry starts this installation's Python with -m gigamail.server

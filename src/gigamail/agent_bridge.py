@@ -272,14 +272,59 @@ def _claude_mcp_file() -> str:
     return path
 
 
+# Codex features switched off for the agent bar: it must only read and write
+# the draft and talk to the GigaMail server, nothing else on the machine.
+CODEX_FEATURES_OFF = (
+    "shell_tool", "unified_exec", "apps", "plugins", "view_image",
+    "multi_agent", "js_repl", "browser_use", "browser_use_external",
+    "computer_use", "image_generation", "in_app_browser", "goals",
+    "web_search_request", "web_search_cached", "standalone_web_search",
+    "skill_search", "tool_suggest", "remote_plugin",
+)
+
+
+def _toml_str(value: str) -> str:
+    # A JSON string is a valid TOML basic string.
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _codex_mcp_overrides() -> list:
+    """`-c key=value` pairs (TOML values) that give Codex this installation's
+    GigaMail server and switch off everything else it could use."""
+    from gigamail.core import codex_config
+    want = codex_config.desired()
+    env = ", ".join(f"{_toml_str(k)} = {_toml_str(str(v))}"
+                    for k, v in (want.get("env") or {}).items())
+    args = ", ".join(_toml_str(str(a)) for a in want.get("args") or [])
+    values = [
+        f"mcp_servers.gigamail.command={_toml_str(str(want['command']))}",
+        f"mcp_servers.gigamail.args=[{args}]",
+        "mcp_servers.gigamail.default_tools_approval_mode="
+        + _toml_str(str(want["default_tools_approval_mode"])),
+        f"mcp_servers.gigamail.env={{{env}}}",
+        'web_search="disabled"',
+    ]
+    values += [f"features.{name}=false" for name in CODEX_FEATURES_OFF]
+    pairs: list = []
+    for v in values:
+        pairs += ["-c", v]
+    return pairs
+
+
 def _cmd_codex(exe: str) -> list:
-    # exec = non interattivo. Sandbox in sola lettura: l'agente scrive la
-    # bozza, non tocca il disco; --skip-git-repo-check perche' la cartella di
-    # lavoro della console non e' un repository. La risposta finale va in un
-    # file ({output}): su stdout Codex stampa anche il resto della sessione.
-    # -m: il modello scelto (agent.json "codex_model"), quando c'e': batte un
-    # `model = ...` in config.toml che l'account non ha piu' (vedi run()).
-    cmd = [exe, "exec", "--skip-git-repo-check", "-s", "read-only", "--color", "never"]
+    # exec = non-interactive. Read-only sandbox: the agent writes the draft,
+    # it does not touch the disk; --skip-git-repo-check because the console's
+    # working folder is not a repository. The final answer goes to a file
+    # ({output}): on stdout Codex also prints the rest of the session.
+    # --ignore-user-config: the user's own Codex setup (their MCP servers,
+    # connectors, plugins, shell, web search) must not reach a run that reads
+    # client mail, so the config is ignored and the GigaMail server plus a
+    # fixed list of disabled features travel on the command line instead.
+    # -m: the model in agent.json ("codex_model"), when set; otherwise the
+    # build's default, which the account may still refuse (see run()).
+    cmd = [exe, "exec", "--skip-git-repo-check", "--ignore-user-config",
+           "-s", "read-only", "--color", "never"]
+    cmd += _codex_mcp_overrides()
     model = codex_model()
     if model:
         cmd += ["-m", model]
@@ -442,6 +487,16 @@ AGENTS = {
                     "cwd": lambda: _antigravity_workspace()},
 }
 
+# Agents that run with GigaMail's tools only: the user's own MCP servers and
+# plugins are not loaded. Antigravity is left out because that has not been
+# verified with a live run; a custom command runs as written, so it is never
+# isolated.
+ISOLATED_AGENTS = ("claude", "codex")
+
+
+def is_isolated(agent_id: str) -> bool:
+    return agent_id in ISOLATED_AGENTS
+
 
 def _config_path() -> str:
     from gigamail.core.data_paths import app_root
@@ -490,11 +545,13 @@ def available_agents() -> list:
     for agent_id, spec in AGENTS.items():
         exe = spec["find"]()
         out.append({"id": agent_id, "label": spec["label"], "found": _found(exe),
-                    "exe": exe, "mcp": spec["mcp"]})
+                    "exe": exe, "mcp": spec["mcp"],
+                    "isolated": is_isolated(agent_id)})
     cfg = get_config()
     if cfg["agent"] == "custom":
         out.append({"id": "custom", "label": "Custom (agent.json)", "found": _found(cfg["command"][0]),
-                    "exe": cfg["command"][0], "mcp": "json"})
+                    "exe": cfg["command"][0], "mcp": "json",
+                    "isolated": False})
     return out
 
 
@@ -524,6 +581,7 @@ def status() -> dict:
         "command": exe,
         "timeout": cfg["timeout"],
         "agent": cfg["agent"],
+        "isolated": is_isolated(cfg["agent"]),
         "agents": available_agents(),
         "root": str(app_root()),
         # The Python running this backend: in the desktop app the bundled
@@ -640,7 +698,15 @@ def run(prompt: str, timeout: int | None = None, run_id: str | None = None,
     cfg = get_config()
     cmd = list(cfg["command"])
     if cfg.get("agent") == "claude":   # a custom command runs as written
-        cmd += ["--mcp-config", _claude_mcp_file()]
+        # --strict-mcp-config: only the server GigaMail hands over, none
+        # of the user's own MCP servers or plugins.
+        # --tools "": --allowedTools only pre-approves tools, it does not
+        # remove the others, so Read, Bash, WebFetch... would still be there,
+        # allowed or refused by the user's own Claude Code settings. An empty
+        # list removes the built-in tools: the run does not depend on those
+        # permissions and has only the mcp__gigamail__* tools.
+        cmd += ["--mcp-config", _claude_mcp_file(), "--strict-mcp-config",
+                "--tools", ""]
     da_stdin = None
     spec = AGENTS.get(cfg.get("agent"))
     if spec and spec.get("stdin"):
@@ -695,8 +761,9 @@ def run(prompt: str, timeout: int | None = None, run_id: str | None = None,
     try:
         returncode, stdout, stderr = _spawn(
             cmd, da_stdin, timeout or cfg["timeout"], _env_for_child(cfg, quiet_desktop), run_id, cwd)
-        # Codex refused the model: a `model = ...` pinned in config.toml (or
-        # the default of this build) that the ChatGPT account cannot use.
+        # Codex refused the model: the run does not read config.toml, so it
+        # used the model in agent.json ("codex_model") or the build's default,
+        # which the ChatGPT account may not have.
         # Codex keeps the account's own list in models_cache.json: try those,
         # and remember the one that works, so the next run starts with it.
         if returncode != 0 and _agent_of(cfg) == "codex":
