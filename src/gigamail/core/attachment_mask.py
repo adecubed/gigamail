@@ -9,8 +9,8 @@ settings is older than the first.
 
 An agent gets an attachment only through the read_attachment tool. With
 the account's switch on, what the masker recognises (tax code, VAT
-number, IBAN, email, phone, company name, plus the masks the user saved
-for that account) is replaced by a placeholder before the text leaves
+number, IBAN, payment card, email, phone, street address, company name,
+US and EU identifiers, plus the masks the user saved for that account) is replaced by a placeholder before the text leaves
 GigaMail. The switch is off by default and is set by the user (console);
 no MCP tool can change it, so an agent cannot read in clear what the
 user chose to hide.
@@ -27,7 +27,10 @@ the same invented name, in every attachment, so an agent reading a
 hundred files can tell that two of them name the same person without
 learning who. They are derived from the value with a secret kept on this
 machine, so a placeholder cannot be checked against a guessed value.
-Nothing maps a replacement back: this is one-way. Invented names are for
+Placeholders and invented names are remembered on this machine
+(core/mask_vault), so what an agent writes with them can be restored to
+the real values before the human approves it; fixed texts cannot be
+restored. Invented names are for
 reading, not for counting: there are about 3.8 million of them, so two
 people in a few hundred hardly ever share one, but it is not impossible
 (about one chance in eight among a thousand people). Placeholders are
@@ -47,7 +50,7 @@ import re
 import secrets
 from typing import Dict, List, NamedTuple, Tuple
 
-from gigamail.core import accounts, ade_masker
+from gigamail.core import accounts, ade_masker, mask_vault
 
 _ENABLED_KEY = "mask_attachments_account_{}"
 _FIELDS_KEY = "mask_attachment_fields_account_{}"
@@ -57,7 +60,10 @@ _TYPES_KEY = "mask_types_account_{}"
 
 # What the masker recognises by its shape (ade_masker's detector types).
 # All of them are masked unless the user takes some out.
-TYPES = ("CODICE_FISCALE", "PARTITA_IVA", "IBAN", "EMAIL", "TELEFONO", "AZIENDA")
+TYPES = ("CODICE_FISCALE", "PARTITA_IVA", "IBAN", "EMAIL", "TELEFONO", "AZIENDA",
+         "INDIRIZZO", "CREDIT_CARD", "EU_VAT", "INTL_PHONE",
+         "SSN", "ITIN", "EIN", "US_ROUTING", "US_BANK_ACCOUNT", "US_PHONE",
+         "US_ADDRESS")
 ACTIONS = ("placeholder", "fake_name", "fixed")
 MAX_RULES = 30
 MAX_LABEL_CHARS = 80
@@ -71,8 +77,9 @@ NOTE = (
     "[EMAIL_1a2b3c4d]: the user chose to mask what agents read. The same "
     "placeholder always stands for the same value, in every mail and "
     "attachment. "
-    "The real values are not available to you: do not guess them, and "
-    "refer to them by their placeholder."
+    "The real values are not available to you: do not guess them. To use "
+    "one in a mail, write its placeholder exactly as it appears: GigaMail "
+    "puts the real value back before the user approves the mail."
 )
 NOTE_INVENTED = (
     "Some values, such as people's names, were replaced by invented ones: "
@@ -251,6 +258,15 @@ def _replacement(key: bytes, rule: Dict[str, str], value: str) -> str:
     return _placeholder(key, rule["label"], value)
 
 
+def _vault_entry(rule: Dict[str, str], replacement: str, value: str):
+    """What mask_vault keeps to restore this replacement; None for a fixed
+    text, which many values share."""
+    if rule["action"] == "fixed":
+        return None
+    kind = "fake_name" if rule["action"] == "fake_name" else "placeholder"
+    return (replacement, value, rule["label"], kind)
+
+
 def _spaced(text: str) -> str:
     """`text` as a pattern that does not mind how its words are spaced."""
     return r"[ \t]+".join(re.escape(word) for word in text.split())
@@ -293,6 +309,7 @@ def apply(account_id, text: str) -> Masked:
         return Masked(text or "", 0, False, [r["label"] for r in rules])
     key = _secret()
     spans = []            # (start, end, replacement, invented)
+    vault = []            # (replacement, value, label, kind) for mask_vault
 
     def free(start, end):
         return not any(start < e and end > s for s, e, _r, _i in spans)
@@ -302,8 +319,9 @@ def apply(account_id, text: str) -> Masked:
     for start, end, rule in by_label:
         value = text[start:end]
         if free(start, end):
-            spans.append((start, end, _replacement(key, rule, value),
-                          rule["action"] == "fake_name"))
+            replacement = _replacement(key, rule, value)
+            spans.append((start, end, replacement, rule["action"] == "fake_name"))
+            vault.append(_vault_entry(rule, replacement, value))
         values.setdefault(re.sub(r"\s+", "", value).casefold(), (value, rule))
     # The same value elsewhere in the attachment (a signature at the
     # bottom) is the same person.
@@ -313,8 +331,10 @@ def apply(account_id, text: str) -> Masked:
         again = re.compile(r"(?<!\w)" + _spaced(value) + r"(?!\w)", re.IGNORECASE)
         for m in again.finditer(text):
             if free(m.start(), m.end()):
-                spans.append((m.start(), m.end(), _replacement(key, rule, value),
+                replacement = _replacement(key, rule, value)
+                spans.append((m.start(), m.end(), replacement,
                               rule["action"] == "fake_name"))
+                vault.append(_vault_entry(rule, replacement, m.group(0)))
 
     user_masks = ade_masker.get_user_masks(int(account_id)) if account_id else []
     wanted = set(types(account_id))
@@ -329,9 +349,11 @@ def apply(account_id, text: str) -> Masked:
         start += len(raw) - len(raw.lstrip())
         end -= len(raw) - len(raw.rstrip())
         if end > start and free(start, end):
-            spans.append((start, end,
-                          _placeholder(key, item["label_prefix"], text[start:end]), False))
+            replacement = _placeholder(key, item["label_prefix"], text[start:end])
+            spans.append((start, end, replacement, False))
+            vault.append((replacement, text[start:end], item["type"], "placeholder"))
 
+    mask_vault.remember(account_id, [v for v in vault if v])
     if not spans:
         return Masked(text, 0, False, unmatched)
     out, pos = [], 0

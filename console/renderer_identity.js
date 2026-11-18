@@ -284,6 +284,11 @@ async function openIdentityModal(accountId, accountName) {
       CODICE_FISCALE: T('mask_type_CODICE_FISCALE','Codice fiscale'), PARTITA_IVA: T('mask_type_PARTITA_IVA','Partita IVA'),
       IBAN: 'IBAN', EMAIL: T('mask_type_EMAIL','Email'), TELEFONO: T('mask_type_TELEFONO','Telefono'),
       AZIENDA: T('mask_type_AZIENDA','Ragione sociale'),
+      INDIRIZZO: T('mask_type_INDIRIZZO','Indirizzo'), CREDIT_CARD: T('mask_type_CREDIT_CARD','Carta di credito'),
+      EU_VAT: T('mask_type_EU_VAT','Partita IVA UE'), INTL_PHONE: T('mask_type_INTL_PHONE','Telefono internazionale'),
+      SSN: 'SSN (USA)', ITIN: 'ITIN (USA)', EIN: 'EIN (USA)',
+      US_ROUTING: T('mask_type_US_ROUTING','Routing number (USA)'), US_BANK_ACCOUNT: T('mask_type_US_BANK_ACCOUNT','Conto bancario (USA)'),
+      US_PHONE: T('mask_type_US_PHONE','Telefono (USA)'), US_ADDRESS: T('mask_type_US_ADDRESS','Indirizzo (USA)'),
     };
     box.innerHTML = maskAllTypes.map(t => `
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">

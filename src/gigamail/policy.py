@@ -999,10 +999,14 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
     else:
         text = f"GigaMail: {tool} awaiting approval — {summary}"
     warning = outside_warning(preview)
-    if warning:
-        text = f"{text}\n{warning}"
-        if message:
-            message = text
+    # A mail that puts back values the agent only saw masked says so in
+    # every notification (see server._reveal_preview).
+    reveals = str(preview.get("reveals_warning") or "") if isinstance(preview, dict) else ""
+    for line in (warning, reveals):
+        if line:
+            text = f"{text}\n{line}"
+            if message:
+                message = text
 
     fired = False
     try:

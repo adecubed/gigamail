@@ -205,6 +205,8 @@ function render(rec) {
   row('rowAtt', att.join(', '), 'attachments');
   const body = bodyText(rec);
   $('body').textContent = body || summaryOf(p);
+  // what the mail reveals that the agent only saw masked
+  if (p.reveals_warning && !$('status').textContent) say(String(p.reveals_warning), 'warn');
   if (editing && !canAmend(rec) && $('bodyEdit').style.display !== 'none') setEditing(true);
   updateButtons();
 }
@@ -212,7 +214,7 @@ function render(rec) {
 function summaryOf(p) {
   // a move, a delete, an event: no body, the fields say it
   return Object.entries(p || {})
-    .filter(([k, v]) => v && !['body', 'to', 'from', 'subject', 'replying_to', 'attachments', 'recipients'].includes(k))
+    .filter(([k, v]) => v && !['body', 'to', 'from', 'subject', 'replying_to', 'attachments', 'recipients', 'reveals', 'reveals_warning'].includes(k))
     .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
     .join('\n');
 }

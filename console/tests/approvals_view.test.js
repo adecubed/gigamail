@@ -288,3 +288,15 @@ test('a file from outside the registered ones is listed with its whole path', ()
   ] } }, NOW);
   assert.deepEqual(s.attachments, ['A.1.pdf', 'offer.pdf (⚠ C:/elsewhere/offer.pdf)']);
 });
+
+test('a mail that puts back masked values says so on its card', () => {
+  const rec = {
+    ...AGENT_SEND,
+    preview: { ...AGENT_SEND.preview, reveals: [{ placeholder: '[IBAN_1a2b3c4d]', label: 'IBAN' }],
+      reveals_warning: 'This mail reveals data the agent only saw masked (1 IBAN) <b>' },
+  };
+  const html = V.pendingCard(rec, t, NOW);
+  assert.match(html, /reveals-warning/);
+  assert.match(html, /only saw masked \(1 IBAN\) &lt;b&gt;/);
+  assert.doesNotMatch(V.pendingCard(AGENT_SEND, t, NOW), /reveals-warning/);
+});

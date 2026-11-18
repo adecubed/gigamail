@@ -113,7 +113,7 @@
     <article class="card pad"><h3>一次只操作一个账号</h3><p>每个工具都会指明它操作的账号。请求某个邮箱的智能体无法读取或写入另一个邮箱。</p></article>
     <article class="card pad"><h3>只限你登记过的文件</h3><p>智能体只能引用你添加为知识文件的文档。不在该列表中的路径一律拒绝，链接和快捷方式也不例外。</p></article>
   </div>
-  <div class="card pad" style="margin-top:14px"><h3><span class="chip-c c-safe">桌面应用</span>敏感字段已隐藏</h3><p>邮件交给智能体起草之前，脱敏器会替换税号、增值税号、IBAN 和电话号码，并在草稿中把它们还原。靠规则和校验和，不用 AI。面向 MCP 智能体的同款过滤器已在<a href="#planned">计划</a>中。</p></div>
+  <div class="card pad" style="margin-top:14px"><h3><span class="chip-c c-safe">桌面应用</span>敏感字段已隐藏</h3><p>邮件交给智能体起草之前，脱敏器会替换税号、增值税号、IBAN 和电话号码，并在草稿中把它们还原。靠规则和校验和，不用 AI。面向 MCP 智能体的同款过滤器将随<a href="#planned">下个版本</a>推出。</p></div>
 </div></section>
 
 <section id="mail" aria-labelledby="s-mail"><div class="wrap narrow">
@@ -154,7 +154,7 @@
   <div class="card tbl"><table>
     <thead><tr><th>内容</th><th>原因</th><th>状态</th></tr></thead>
     <tbody>
-      <tr><td>面向 MCP 智能体的脱敏器</td><td>目前只有桌面应用向智能体请求草稿时才会隐藏敏感字段。同样的过滤器将用于通过 MCP 连接的智能体。</td><td><span class="chip-c c-read">计划中</span></td></tr>
+      <tr><td>面向 MCP 智能体的脱敏器</td><td>每个账户一个开关，默认关闭，只能在控制台里打开：邮件、主题和附件交给智能体时，税号、IBAN、银行卡、邮箱、电话、地址以及美国和欧盟的识别号都会换成占位符。智能体用占位符写的内容，会在你批准之前还原成真实值，并提示这封邮件会透露哪些数据。</td><td><span class="chip-c c-danger">下个版本</span></td></tr>
       <tr><td>Telegram 批准仅限手机</td><td>目前任何已登录的 Telegram 客户端点一下都能批准。批准将改到一个要求手机生物识别的 Telegram 小程序中，桌面和网页客户端将无法批准。</td><td><span class="chip-c c-read">计划中</span></td></tr>
       <tr><td>更严格的隐藏文字识别</td><td>继承的样式、更多颜色写法和字号，以及只可能用来隐藏文字的复杂样式规则。</td><td><span class="chip-c c-danger">下个版本</span></td></tr>
     </tbody>

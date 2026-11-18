@@ -42,6 +42,8 @@
       ruleMode: String(p.rule_mode || ''),
       toSource: String(p.to_source || ''),
       attachments,
+      // what the mail reveals that the agent only saw masked
+      reveals: String(p.reveals_warning || ''),
       decidedBy: String(rec.decided_by || ''),
       decidedAt: rec.decided_at || null,
       outcome: String(rec.execution_outcome || ''),
@@ -129,6 +131,7 @@
     return `
       <div class="ai-card pending-card" data-request="${esc(s.id)}">
         ${head(s, t)}
+        ${s.reveals ? `<div class="ai-card-sub reveals-warning" style="color:#B45309">${esc(s.reveals)}</div>` : ''}
         ${bodyBlock(s, t)}
         <div class="ai-card-row" style="margin-top:8px">
           ${s.saved ? `<span class="ai-card-status">${esc(t('pending_saved', 'salvata'))}</span>` : ''}

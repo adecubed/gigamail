@@ -553,10 +553,14 @@ def _prepare(w, tg, row: Dict[str, Any], feedback: Optional[str] = None,
               "no mail of theirs to reply to")
         return False
     try:
-        body = (agent_bridge.run(_prompt(row, message, feedback, previous),
-                                 timeout=drafting._DRAFT_TIMEOUT_SECONDS) or "").strip()
+        feedback, previous = drafting._masked_for_redraft(
+            int(row["account_id"]), feedback, previous)
+        prompt = _prompt(row, message, feedback, previous)
+        body = (agent_bridge.run(prompt, timeout=drafting._DRAFT_TIMEOUT_SECONDS)
+                or "").strip()
         if not body:
             raise agent_bridge.AgentUnavailable("empty draft")
+        body = drafting.restore_draft(body, prompt)
     except Exception as e:
         # Retried later, not on every tick: an agent that is down must not
         # cost one process a minute.

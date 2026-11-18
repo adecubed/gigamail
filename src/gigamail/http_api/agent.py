@@ -82,8 +82,12 @@ def _agent_error(e: Exception) -> HTTPException:
 
 
 def _run_agent(prompt: str) -> dict:
+    # The draft goes to the user's editor: placeholders the masked prompt
+    # carried come back as the real values (core/mask_vault).
+    from gigamail.watcher.drafting import restore_draft
     try:
-        return {"draft": agent_bridge.run(prompt), "engine": "agent"}
+        return {"draft": restore_draft(agent_bridge.run(prompt) or "", prompt),
+                "engine": "agent"}
     except agent_bridge.AgentUnavailable as e:
         raise _agent_error(e) from e
 
