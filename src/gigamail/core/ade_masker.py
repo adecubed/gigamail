@@ -93,11 +93,21 @@ _IBAN_RE = re.compile(
     re.IGNORECASE
 )
 
-# Lunghezze IBAN per paese (principali SEPA)
+# IBAN length per country (ISO 13616 registry). A country missing here
+# is still checked with mod-97.
 _IBAN_LEN = {
-    'IT': 27, 'DE': 22, 'FR': 27, 'ES': 24, 'NL': 18, 'BE': 16, 'AT': 20,
-    'PT': 25, 'IE': 22, 'FI': 18, 'GR': 27, 'LU': 20, 'CH': 21, 'GB': 22,
-    'SE': 24, 'DK': 18, 'NO': 15, 'PL': 28, 'CZ': 24, 'SK': 24,
+    'AD': 24, 'AE': 23, 'AL': 28, 'AT': 20, 'AZ': 28, 'BA': 20, 'BE': 16,
+    'BG': 22, 'BH': 22, 'BR': 29, 'BY': 28, 'CH': 21, 'CR': 22, 'CY': 28,
+    'CZ': 24, 'DE': 22, 'DK': 18, 'DO': 28, 'EE': 20, 'EG': 29, 'ES': 24,
+    'FI': 18, 'FO': 18, 'FR': 27, 'GB': 22, 'GE': 22, 'GI': 23, 'GL': 18,
+    'GR': 27, 'GT': 28, 'HR': 21, 'HU': 28, 'IE': 22, 'IL': 23, 'IQ': 23,
+    'IS': 26, 'IT': 27, 'JO': 30, 'KW': 30, 'KZ': 20, 'LB': 28, 'LC': 32,
+    'LI': 21, 'LT': 20, 'LU': 20, 'LV': 21, 'LY': 25, 'MC': 27, 'MD': 24,
+    'ME': 22, 'MK': 19, 'MR': 27, 'MT': 31, 'MU': 30, 'NL': 18, 'NO': 15,
+    'PK': 24, 'PL': 28, 'PS': 29, 'PT': 25, 'QA': 29, 'RO': 24, 'RS': 22,
+    'SA': 24, 'SC': 31, 'SD': 18, 'SE': 24, 'SI': 19, 'SK': 24, 'SM': 27,
+    'ST': 25, 'SV': 28, 'TL': 23, 'TN': 24, 'TR': 26, 'UA': 29, 'VA': 22,
+    'VG': 24, 'XK': 20,
 }
 
 
@@ -156,6 +166,148 @@ def _tel_valid(tel: str) -> bool:
     if len(digits) < 6 or len(digits) > 11:
         return False
     return True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNITED STATES AND INTERNATIONAL
+# Shapes that are ordinary numbers too (a 9-digit routing number, an
+# account number) are taken only after the word that names them.
+# ─────────────────────────────────────────────────────────────────────────────
+# Social Security Number, written with separators: 123-45-6789. Never
+# 000, 666 or 9xx in the area, 00 in the group, 0000 in the serial.
+_SSN_RE = re.compile(r'(?<![\w-])\d{3}[- ]\d{2}[- ]\d{4}(?![\w-])')
+
+
+def _ssn_parts(raw: str):
+    return re.split(r'[- ]', raw.strip())
+
+
+def _ssn_valid(raw: str) -> bool:
+    area, group, serial = _ssn_parts(raw)
+    return (area not in ('000', '666') and not area.startswith('9')
+            and group != '00' and serial != '0000')
+
+
+# ITIN: written like an SSN, area 9xx, group 50-65, 70-88, 90-92, 94-99.
+def _itin_valid(raw: str) -> bool:
+    area, group, _serial = _ssn_parts(raw)
+    g = int(group)
+    return area.startswith('9') and (50 <= g <= 65 or 70 <= g <= 88
+                                     or 90 <= g <= 92 or 94 <= g <= 99)
+
+
+# Employer Identification Number: 12-3456789, with a prefix the IRS assigns.
+_EIN_RE = re.compile(r'(?<![\w-])\d{2}-\d{7}(?![\w-])')
+_EIN_BAD_PREFIX = {'00', '07', '08', '09', '17', '18', '19', '28', '29', '49',
+                   '69', '70', '78', '79', '89', '96', '97'}
+
+
+def _ein_valid(raw: str) -> bool:
+    return raw.strip()[:2] not in _EIN_BAD_PREFIX
+
+
+# ABA routing number, after "routing", "ABA" or "RTN": 9 digits, a valid
+# Federal Reserve prefix and the 3-7-1 checksum.
+_ABA_RE = re.compile(
+    r'\b(?:routing|aba|rtn)\b(?:[\s#:.]|number|no\b|num\b|transit)*?(?P<v>\d{9})(?!\d)',
+    re.IGNORECASE)
+
+
+def _aba_valid(raw: str) -> bool:
+    d = [int(c) for c in re.sub(r'\D', '', raw)]
+    if len(d) != 9:
+        return False
+    prefix = d[0] * 10 + d[1]
+    if not (prefix <= 12 or 21 <= prefix <= 32 or 61 <= prefix <= 72 or prefix == 80):
+        return False
+    total = 3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8])
+    return total % 10 == 0
+
+
+# A US bank account number, only after "account number", "acct", ...:
+# 6 to 17 digits.
+_US_ACCOUNT_RE = re.compile(
+    r'\b(?:account|acct)\b\.?(?:[\s#:.]|number|no\b|num\b)*?(?P<v>\d{6,17})(?!\d)',
+    re.IGNORECASE)
+
+
+# Payment card: 13-19 digits, in groups or not, a known issuer prefix and
+# the Luhn check.
+_CARD_RE = re.compile(r'(?<![\d-])\d(?:[ -]?\d){12,18}(?![\d-])')
+
+
+def _luhn(digits: str) -> bool:
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        n = int(ch)
+        if i % 2 == 1:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
+
+
+def _card_valid(raw: str) -> bool:
+    digits = re.sub(r'\D', '', raw)
+    if not 13 <= len(digits) <= 19 or not _luhn(digits):
+        return False
+    two, three, four = int(digits[:2]), int(digits[:3]), int(digits[:4])
+    return (digits[0] == '4'                                  # Visa
+            or 51 <= two <= 55 or 2221 <= four <= 2720        # Mastercard
+            or two in (34, 37)                                # American Express
+            or four == 6011 or two == 65 or 644 <= three <= 649  # Discover
+            or two == 35                                      # JCB
+            or two in (36, 38, 39) or 300 <= three <= 305     # Diners
+            or two == 62)                                     # UnionPay
+
+
+# EU VAT number with its country prefix (the Italian one is PARTITA_IVA).
+_EU_VAT_RE = re.compile(
+    r'\b(?:ATU\d{8}|BE[01]\d{9}|BG\d{9,10}|CY\d{8}[A-Z]|CZ\d{8,10}|DE\d{9}'
+    r'|DK\d{8}|EE\d{9}|EL\d{9}|ES[A-Z0-9]\d{7}[A-Z0-9]|FI\d{8}'
+    r'|FR[A-HJ-NP-Z0-9]{2}\d{9}|HR\d{11}|HU\d{8}|IE\d[A-Z0-9+*]\d{5}[A-Z]{1,2}'
+    r'|LT(?:\d{12}|\d{9})|LU\d{8}|LV\d{11}|MT\d{8}|NL\d{9}B\d{2}|PL\d{10}'
+    r'|PT\d{9}|RO\d{2,10}|SE\d{12}|SI\d{8}|SK\d{10})\b')
+
+
+# US / NANP phone, with separators: (415) 555-0132, +1 415 555 0132.
+_US_PHONE_RE = re.compile(
+    r'(?<![\w+])(?:\+?1[\s.-]?)?(?:\([2-9]\d{2}\)\s?|[2-9]\d{2}[\s.-])'
+    r'[2-9]\d{2}[\s.-]\d{4}(?![\w-])')
+
+
+# Any other number with an international prefix (E.164: 8-15 digits).
+# Every group after the first starts with a separator or a bracket, so a
+# long run of digits has one way to match (no backtracking blow-up).
+_INTL_PHONE_RE = re.compile(
+    r'(?<![\w+])\+[1-9]\d{0,14}(?:[\s.-]?\(\d{1,5}\)|[\s.-]\d{1,10}){0,6}(?![\w(])')
+
+
+def _intl_phone_valid(raw: str) -> bool:
+    return 8 <= len(re.sub(r'\D', '', raw)) <= 15
+
+
+# Street address, heuristic. Italian: "Via Roma 10", "Piazza Duomo, 3",
+# with the postcode and the town when they follow. US: "1600 Main Street",
+# "42 Oak Ave, Apt 5", with "Springfield, IL 62701" when it follows.
+# A word of a street name: capitalised ("Roma", "XX", "4"), a linking
+# word ("della"), or "dell'Orso". Words are split by blanks only, so a
+# name has one way to match.
+_IT_STREET_WORD = (r"(?:[A-ZÀ-Ý0-9][\wà-ÿ'.]*|d[aei]|del|dei|degli|della|delle|dello"
+                   r"|dell'[A-ZÀ-Ý][\wà-ÿ]*)")
+_IT_ADDRESS_RE = re.compile(
+    r'\b(?i:via|viale|piazza|piazzale|p\.zza|corso|c\.so|largo|vicolo|strada|'
+    r'lungomare|contrada|borgo)\s+'
+    + _IT_STREET_WORD.join([r"(?:", r"\s+){0,4}", r""]) +
+    r',?\s*\d{1,4}(?:\s?[A-Za-z]\b)?(?:/[A-Za-z0-9]{1,4})?\b'
+    r"(?:,?\s+\d{5}\s+[A-ZÀ-Ý][\wà-ÿ']+(?:\s+[A-ZÀ-Ý][\wà-ÿ']+)?(?:\s+\(?[A-Z]{2}\)?)?)?")
+_US_ADDRESS_RE = re.compile(
+    r'(?<![\w-])\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:[A-Z][a-z]+\s+){1,4}'
+    r'(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|'
+    r'Way|Place|Pl|Terrace|Ter|Parkway|Pkwy|Highway|Hwy|Circle|Cir)\b\.?'
+    r'(?:,?\s+(?:Apt|Suite|Ste|Unit|#)\.?\s*[\w-]+)?'
+    r'(?:,\s*(?:[A-Z][a-z]+\s?){1,3},\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?)?')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -220,12 +372,24 @@ def _soc_finditer(text: str):
 # Ordine importante: i più specifici/lunghi prima, per evitare che IBAN/CF
 # vengano spezzati da match di telefono o piva.
 _DETECTORS = [
-    # (tipo, prefisso_placeholder, regex, funzione_validazione_opzionale)
+    # (type, placeholder prefix, regex, optional validator). A regex with a
+    # group named "v" masks that group only (the keyword before it stays).
     ('CODICE_FISCALE', 'CF',    _CF_RE,    _cf_valid),
     ('IBAN',           'IBAN',  _IBAN_RE,  _iban_valid),
+    ('CREDIT_CARD',    'CARD',  _CARD_RE,  _card_valid),
     ('EMAIL',          'EMAIL', _EMAIL_RE, None),
+    ('US_ROUTING',     'ROUTING', _ABA_RE, _aba_valid),
+    ('US_BANK_ACCOUNT', 'ACCOUNT', _US_ACCOUNT_RE, None),
+    ('SSN',            'SSN',   _SSN_RE,   _ssn_valid),
+    ('ITIN',           'ITIN',  _SSN_RE,   _itin_valid),
+    ('EIN',            'EIN',   _EIN_RE,   _ein_valid),
     ('PARTITA_IVA',    'PIVA',  _PIVA_RE,  _piva_valid),
+    ('EU_VAT',         'VAT',   _EU_VAT_RE, None),
     ('TELEFONO',       'TEL',   _TEL_RE,   _tel_valid),
+    ('US_PHONE',       'PHONE', _US_PHONE_RE, None),
+    ('INTL_PHONE',     'PHONE', _INTL_PHONE_RE, _intl_phone_valid),
+    ('INDIRIZZO',      'ADDRESS', _IT_ADDRESS_RE, None),
+    ('US_ADDRESS',     'ADDRESS', _US_ADDRESS_RE, None),
 ]
 
 
@@ -276,9 +440,10 @@ def detect(text: str, user_masks: Optional[List[Dict]] = None) -> List[Dict]:
 
     # L1: validator deterministici
     for typ, prefix, rx, validator in _DETECTORS:
+        group = 'v' if 'v' in rx.groupindex else 0
         for m in rx.finditer(text):
-            s, e = m.start(), m.end()
-            raw = m.group(0)
+            s, e = m.start(group), m.end(group)
+            raw = m.group(group)
             if _overlaps(s, e):
                 continue
             if validator and not validator(raw):

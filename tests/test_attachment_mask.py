@@ -157,7 +157,9 @@ def test_a_field_becomes_a_placeholder_wherever_its_value_appears(settings):
     assert f"Full name {ph}\n" in r.text
     assert f"Signed by {ph}\n" in r.text          # other case, other spacing
     assert "Best film Candidate B" in r.text
-    assert (r.hidden, r.invented, r.unmatched) == (2, False, [])
+    # the two names, and the street address the masker recognises itself
+    assert "Via Roma 10" not in r.text
+    assert (r.hidden, r.invented, r.unmatched) == (3, False, [])
 
 
 def test_a_field_can_get_an_invented_name_always_the_same(settings):

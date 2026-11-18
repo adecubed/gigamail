@@ -9,7 +9,7 @@ Key facts:
 - Works with: Claude Code, Claude Desktop, Codex, OpenClaw, Hermes Agent, Google Antigravity and any MCP client.
 - Price: free forever, for personal and business use.
 - Approval model: reads are free; sending, deleting and other actions with effects outside the computer wait for a human approval from the console, the CLI, a desktop notification or Telegram. The agent only gets an inert request id and cannot approve itself through the MCP channel.
-- Privacy: no GigaMail server receives mail or credentials. Mail the agent reads is handled by that agent's model provider. A masker can hide tax codes, IBANs, emails and phone numbers before the agent sees them.
+- Privacy: no GigaMail server receives mail or credentials. Mail the agent reads is handled by that agent's model provider. A masker can hide tax codes, IBANs, emails and phone numbers when the desktop app asks an agent for a draft; the same masking for agents connected over MCP (off by default, switched on per account) comes with the next release.
 - Features: hybrid search (provider + local index), a local archive of every account with attachments, sender memory and contact notes, calendar-aware drafts that only propose free times, knowledge files per account (price lists, terms), signed automation rules.
 - MCP tools: 31 (18 reads, 3 audited writes, 10 actions behind human approval).
 - How it differs: unlike AgentMail it uses your existing mailbox, not new hosted inboxes; unlike Composio it runs on your computer, not through a cloud that holds your logins; unlike Copilot in Outlook it is free, works with any IMAP mailbox and lets you choose the agent.

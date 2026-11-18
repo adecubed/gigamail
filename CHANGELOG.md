@@ -6,9 +6,11 @@
   new switch in the account's identity, off by default: with it on, the
   body of every mail the agent reads (`read_message`, and the previews of
   archive search results) and the text of every attachment
-  (`read_attachment`) has tax codes, VAT
-  numbers, IBANs, email addresses, phone numbers, company names and the
-  masks saved for that account replaced by placeholders such as
+  (`read_attachment`, and Drive files) has tax codes, VAT numbers,
+  IBANs, payment cards, email addresses, phone numbers, street addresses,
+  company names, US Social Security, ITIN and EIN numbers, US routing and
+  account numbers, EU VAT numbers and the masks saved for that account
+  replaced by placeholders such as
   `[EMAIL_1a2b3c4d]`. The same value gives the same placeholder in every
   attachment, so the agent can summarise or count across many files and
   still tell that two of them name the same person, without learning who.
@@ -26,17 +28,38 @@
   placeholder, an invented name or a fixed text. The value is replaced
   wherever it appears in the attachment, the same person always gets the
   same invented name, and the agent is told which values are invented and
-  which fields it did not find. Limits: without a field rule or a saved
-  mask people's names stay; subject, sender, recipients and attachment
-  names are not masked, or the agent could not answer the mail; a draft
-  the agent writes can only quote the placeholders; replacements cannot
-  be turned back into the values; invented names are for reading, not
+  which fields it did not find. Subjects are masked too, in
+  `read_message`, `list_messages`, `list_unread` and `search_mail`.
+  Limits: without a field rule or a saved mask people's names stay;
+  sender, recipients and attachment names are not masked, or the agent
+  could not tell who wrote; US routing and account numbers are taken only
+  after the words that name them ("routing number", "account no."), and
+  addresses are recognised by their shape, so an unusual one can stay;
+  invented names are for reading, not
   for counting (there are about 3.8 million, so two people in a few
   hundred hardly ever share one, but among a thousand it happens about
   one time in eight); with the appointments extension on, a mail that
   seems to be about a meeting is still given to the agent in clear to
   read its date and place; and a scanned document still has no text to
   read.
+
+- **The agent can write the values it only saw masked, and you see them
+  before the mail leaves.** When the agent writes `[IBAN_1a2b3c4d]` in a
+  mail (`send_mail`, `reply_mail`, `save_draft`, `create_event`, the
+  recipients included), GigaMail puts the real IBAN back before the
+  approval request is made: you approve the mail exactly as it will
+  leave, and the approval (console, approval window, notifications,
+  Telegram) adds "this mail reveals data the agent only saw masked (1
+  IBAN): check that the recipient should get it", because a hostile mail
+  could ask the agent to send it someone else's data. What goes back to
+  the agent stays masked, and a placeholder GigaMail does not know stops
+  the mail with an error instead of sending it as it is. Invented names
+  are put back too; fixed texts are not. The drafts of watch rules, of
+  the follow-up after an appointment and of the console's draft button
+  get back only the values their own mail carried, and a rejected draft
+  goes back to the agent masked. The values are kept on this computer,
+  next to the mail archive, in `mask_vault.db`, created by the first
+  masked read.
 
 - **Scanned forms get a copy with their fields covered.** A form filled in
   by hand and scanned has no text, so the masking above had nothing to

@@ -374,11 +374,45 @@ def draft_reply(rule: Dict[str, Any], account_id: int,
         raise MailConOrdini(verdetto.reasons, verdetto.passage)
     # Timeout piu' largo del default (180 s): misurato dal vivo, claude -p
     # con i server MCP da avviare supera i 180 s sotto carico.
-    out = agent_bridge.run(build_draft_prompt(rule, account_id, message,
-                                              feedback=feedback,
-                                              previous_body=previous_body),
-                           timeout=_DRAFT_TIMEOUT_SECONDS)
+    feedback, previous_body = _masked_for_redraft(account_id, feedback, previous_body)
+    prompt = build_draft_prompt(rule, account_id, message, feedback=feedback,
+                                previous_body=previous_body)
+    out = agent_bridge.run(prompt, timeout=_DRAFT_TIMEOUT_SECONDS)
     out = (out or "").strip()
     if not out:
         raise agent_bridge.AgentUnavailable("bozza vuota")
-    return out[:_DRAFT_CHARS_MAX]
+    return restore_draft(out, prompt)[:_DRAFT_CHARS_MAX]
+
+
+def _masked_for_redraft(account_id: int, feedback, previous_body):
+    """The user's correction and the rejected draft hold the real values
+    (the draft was restored before the user saw it): on a masking account
+    they go back to the agent masked, like the mail. A masking that fails
+    raises MailConOrdini(["mask_failed"])."""
+    from gigamail.core import attachment_mask
+    if not attachment_mask.enabled(account_id):
+        return feedback, previous_body
+    try:
+        if feedback:
+            feedback = attachment_mask.apply(account_id, feedback).text
+        if previous_body:
+            previous_body = attachment_mask.apply(account_id, previous_body).text
+    except Exception as e:
+        logger.error("redraft not masked: %s", type(e).__name__)
+        raise MailConOrdini(["mask_failed"]) from e
+    return feedback, previous_body
+
+
+def restore_draft(draft: str, prompt: str) -> str:
+    """A draft written from a masked prompt, with its placeholders back to
+    the real values (core/mask_vault). Only the placeholders the prompt
+    carried: a rule that sends on its own must not reveal a value its mail
+    did not hold. Anything else stays as written, for the human to see."""
+    from gigamail.core import mask_vault
+    if not mask_vault.exists():
+        return draft
+    try:
+        return mask_vault.restore(draft, allowed=mask_vault.in_text(prompt)).text
+    except Exception as e:
+        logger.error("draft placeholders not restored: %s", type(e).__name__)
+        return draft
