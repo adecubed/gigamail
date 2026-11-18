@@ -39,6 +39,9 @@ dependencies = [
 [project.optional-dependencies]
 # estrazione testo da allegati/knowledge (pdf, docx, xlsx)
 documents = ["pdfplumber>=0.11", "python-docx>=1.1", "openpyxl>=3.1", "xlrd>=2.0"]
+# reading the printed labels of scanned forms, to cover their fields
+# (core/scan_mask); local models, not part of `all` because of its size
+scans = ["rapidocr-onnxruntime>=1.3", "pdfplumber>=0.11"]
 # calendario CalDAV (Aruba, iCloud, ...)
 caldav = ["caldav>=1.3", "icalendar>=5.0"]
 # ricerca semantica nell'indice locale (embeddings)

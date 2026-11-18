@@ -257,7 +257,13 @@ def rispondi(w, tg, chiave: str, istruzione: str,
     try:
         corpo = drafting.draft_reply(regola, aid, messaggio, feedback=feedback,
                                      previous_body=previous_body)
-    except drafting.MailConOrdini:
+    except drafting.MailConOrdini as e:
+        if e.reasons == ["mask_failed"]:
+            _say(tg, "⚠️ Questa casella maschera i dati personali per l'agente e "
+                     "la mascheratura non e' riuscita: nessuna bozza, rispondi tu.",
+                 "⚠️ This account masks personal data for the agent and the "
+                 "masking failed: no draft, reply yourself.")
+            return None
         _say(tg, "⚠️ La mail contiene istruzioni rivolte all'assistente: per "
                  "sicurezza rispondi dal PC.",
              "⚠️ The mail contains instructions aimed at the assistant: reply "

@@ -2,6 +2,59 @@
 
 ## Unreleased
 
+- **Mail and attachments can be masked before the agent reads them.** A
+  new switch in the account's identity, off by default: with it on, the
+  body of every mail the agent reads (`read_message`, and the previews of
+  archive search results) and the text of every attachment
+  (`read_attachment`) has tax codes, VAT
+  numbers, IBANs, email addresses, phone numbers, company names and the
+  masks saved for that account replaced by placeholders such as
+  `[EMAIL_1a2b3c4d]`. The same value gives the same placeholder in every
+  attachment, so the agent can summarise or count across many files and
+  still tell that two of them name the same person, without learning who.
+  The agent cannot switch it off, and if the masking fails it gets no text
+  at all. The mail text GigaMail puts in a prompt itself is masked the
+  same way: the drafts written by watch rules, the follow-up after an
+  appointment and the console's draft button; if the masking fails there,
+  no draft is written and you are told to reply yourself. Switching it on
+  opens **What do you want to mask?**: the
+  recognised types start all ticked and each can be taken out, and exact
+  words or names can be added to the account's saved masks or removed
+  from them. For what has no recognisable shape, such as the name on a form,
+  the same place lists **fields of a form**: type the label as the
+  document prints it ("Full name") and choose what its value becomes, a
+  placeholder, an invented name or a fixed text. The value is replaced
+  wherever it appears in the attachment, the same person always gets the
+  same invented name, and the agent is told which values are invented and
+  which fields it did not find. Limits: without a field rule or a saved
+  mask people's names stay; subject, sender, recipients and attachment
+  names are not masked, or the agent could not answer the mail; a draft
+  the agent writes can only quote the placeholders; replacements cannot
+  be turned back into the values; invented names are for reading, not
+  for counting (there are about 3.8 million, so two people in a few
+  hundred hardly ever share one, but among a thousand it happens about
+  one time in eight); with the appointments extension on, a mail that
+  seems to be about a meeting is still given to the agent in clear to
+  read its date and place; and a scanned document still has no text to
+  read.
+
+- **Scanned forms get a copy with their fields covered.** A form filled in
+  by hand and scanned has no text, so the masking above had nothing to
+  work on. On an account that masks and lists **fields of a form**, when
+  the agent reads such a PDF GigaMail now finds the printed labels on the
+  page ("Full name"), paints the area next to each one white and prints
+  the replacement on it, without ever reading the handwriting. The copy
+  is saved in GigaMail's data folder under `covered_documents`, named by
+  a number (`document-0001.pdf`) and never by the original file name; the
+  placeholders carry the same number (`FULL_NAME_1`), which stays the
+  same if the file is read again. The agent still gets no text and no
+  picture, only where the copy is. A form where one of the labels is not
+  found is not released. Limits: the covered area is an estimate, from
+  the label to the opposite margin, and writing that spills out of it
+  stays visible; the number is the document's, so two forms from the same
+  person cannot be told apart. Needs the new optional `scans` component
+  (`pip install "gigamail[scans]"`), not in the installers yet.
+
 - **Site: `llms.txt`.** A plain-text summary of GigaMail at
   gigamail.ai/llms.txt, with the key facts and links to every page, for
   AI assistants that read the site.

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from gigamail.core import (
     account_groups,
+    attachment_mask,
     identity_reader,
     signature,
 )
@@ -206,6 +207,47 @@ def set_signature(account_id: int, req: SignatureRequest):
     if req.sent_via is not None:
         signature.set_sent_via(account_id, req.sent_via)
     return {"signature": saved, "sent_via": signature.sent_via_enabled(account_id)}
+
+
+class AttachmentMaskRequest(BaseModel):
+    # None leaves the switch, or the field rules, as they are.
+    enabled: Optional[bool] = None
+    fields: Optional[List[dict]] = None
+    types: Optional[List[str]] = None
+
+
+def _attachment_mask_state(account_id: int) -> dict:
+    try:
+        fields = attachment_mask.field_rules(account_id)
+    except Exception:
+        fields = []
+    return {"enabled": attachment_mask.enabled(account_id), "fields": fields,
+            "types": attachment_mask.types(account_id),
+            "all_types": list(attachment_mask.TYPES)}
+
+
+@router.get("/accounts/{account_id}/attachment-mask")
+def get_attachment_mask(account_id: int):
+    return _attachment_mask_state(account_id)
+
+
+@router.post("/accounts/{account_id}/attachment-mask")
+def set_attachment_mask(account_id: int, req: AttachmentMaskRequest):
+    if not core_accounts.get_account_by_id(account_id):
+        raise HTTPException(404, "Account not found")
+    try:
+        if req.fields is not None:
+            # Checked before anything is stored: a refused request changes nothing.
+            attachment_mask._clean_rules(req.fields)
+        if req.types is not None:
+            attachment_mask.save_types(account_id, req.types)
+        if req.fields is not None:
+            attachment_mask.save_field_rules(account_id, req.fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if req.enabled is not None:
+        attachment_mask.set_enabled(account_id, req.enabled)
+    return _attachment_mask_state(account_id)
 
 
 @router.get("/accounts/{account_id}/identity/files")

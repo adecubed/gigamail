@@ -427,6 +427,30 @@ contextBridge.exposeInMainWorld('ademail', {
       body: JSON.stringify(sentVia === undefined ? { signature } : { signature, sent_via: !!sentVia }),
     }),
 
+  getAttachmentMask: (accountId) =>
+    apiJson(`${API}/accounts/${accountId}/attachment-mask`),
+
+  // `fields` and `types` left out stay as they are on the server.
+  setAttachmentMask: (accountId, enabled, fields, types) =>
+    apiJson(`${API}/accounts/${accountId}/attachment-mask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !!enabled, fields, types }),
+    }),
+
+  getMasks: (accountId) =>
+    apiJson(`${API}/masks?account_id=${accountId}`),
+
+  addMask: (accountId, value, labelType) =>
+    apiJson(`${API}/masks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, label_type: labelType || 'MASK', account_id: accountId }),
+    }),
+
+  deleteMask: (accountId, maskId) =>
+    apiJson(`${API}/masks/${maskId}?account_id=${accountId}`, { method: 'DELETE' }),
+
   readLocalFile: (path) =>
     apiJson(`${API}/files/local?path=${encodeURIComponent(path)}`),
 
