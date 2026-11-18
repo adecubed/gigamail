@@ -109,6 +109,30 @@ async function openIdentityModal(accountId, accountName) {
     sentVia = sigInfo.sent_via !== false;
     sentViaText = sigInfo.sent_via_text || '';
   } catch(e) {}
+  // Unknown (the request failed) is not "off": saving then leaves the
+  // switch as it is instead of turning a mask off by accident.
+  let attachmentMask = null;
+  // Field rules: [{label, action, value}], what a named field of a form
+  // becomes before the agent reads the attachment.
+  let maskFields = [];
+  // The recognised types (tax code, IBAN...) the account masks, out of all.
+  let maskAllTypes = [];
+  let maskTypes = [];
+  // Exact words or names the user saved as masks: a row without an id is
+  // new, the ids in maskWordsRemoved go when the modal is saved.
+  let maskWords = [];
+  const maskWordsRemoved = [];
+  try {
+    const maskInfo = await api.getAttachmentMask(accountId);
+    attachmentMask = !!maskInfo.enabled;
+    maskFields = Array.isArray(maskInfo.fields) ? maskInfo.fields.map(f => ({ ...f })) : [];
+    maskAllTypes = Array.isArray(maskInfo.all_types) ? maskInfo.all_types : [];
+    maskTypes = Array.isArray(maskInfo.types) ? [...maskInfo.types] : [...maskAllTypes];
+  } catch(e) {}
+  try {
+    const saved = await api.getMasks(accountId);
+    maskWords = Array.isArray(saved) ? saved.map(m => ({ id: m.id, value: m.value, label_type: m.label_type })) : [];
+  } catch(e) {}
 
   const overlay = document.createElement('div');
   overlay.id = 'identityModal';
@@ -156,6 +180,35 @@ async function openIdentityModal(accountId, accountName) {
             <span>${T('sent_via_toggle','Aggiungi in fondo')} «${esc(sentViaText)}»</span>
           </label>
         </div>
+        ${attachmentMask === null ? '' : `
+        <div>
+          <label class="field-label">${T('attachment_mask','PRIVACY')}</label>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="idAttachmentMask" ${attachmentMask ? 'checked' : ''}/>
+            <span>${T('attachment_mask_toggle','Maschera i dati personali nelle mail e negli allegati letti dall\'agente')}</span>
+          </label>
+          <div id="idMaskOptions" style="margin-top:10px;padding:10px 12px;border-left:3px solid #2B5CE6;background:#FAF8F5;${attachmentMask ? '' : 'display:none;'}">
+            <div style="font-size:12px;font-weight:600;">${T('mask_what','Cosa vuoi mascherare?')}</div>
+            <div style="font-size:12px;margin-top:10px;">${T('mask_auto','Riconosciuti in automatico')}</div>
+            <div id="idMaskTypes" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;"></div>
+            <div style="font-size:12px;margin-top:12px;">${T('mask_words','Parole o nomi precisi')} <span style="color:#8A8280">${T('mask_words_sub','(mascherati ovunque compaiano)')}</span></div>
+            <div id="idMaskWords" style="display:flex;flex-direction:column;gap:6px;margin:6px 0;"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <input id="idMaskWordInput" type="text" maxlength="200" placeholder="${T('mask_word_ph','Es: Mario Rossi')}"
+                style="flex:2;min-width:140px;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:6px 8px;font-size:12px;outline:none;box-sizing:border-box;"/>
+              <select id="idMaskWordLabel" style="flex:1;min-width:110px;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:6px 8px;font-size:12px;outline:none;box-sizing:border-box;">
+                <option value="NOME">${T('mask_label_NOME','Nome')}</option>
+                <option value="AZIENDA">${T('mask_label_AZIENDA','Azienda')}</option>
+                <option value="INDIRIZZO">${T('mask_label_INDIRIZZO','Indirizzo')}</option>
+                <option value="MASK">${T('mask_label_MASK','Altro')}</option>
+              </select>
+              <button class="btn btn-secondary" id="btnAddMaskWord" type="button">+ ${T('mask_word_add','AGGIUNGI')}</button>
+            </div>
+            <div style="font-size:12px;margin-top:12px;">${T('mask_fields','Caselle di un modulo')} <span style="color:#8A8280">${T('mask_fields_sub','(scrivi l\'etichetta come compare nel documento)')}</span></div>
+            <div id="idMaskFields" style="display:flex;flex-direction:column;gap:6px;margin:6px 0;"></div>
+            <button class="btn btn-secondary" id="btnAddMaskField" type="button">+ ${T('mask_field_add','CASELLA')}</button>
+          </div>
+        </div>`}
         <div>
           <label class="field-label">${T('extract_url','ESTRAI DA URL')} <span style="font-weight:400;color:#8A8280">${T('extract_url_sub','(sito, LinkedIn, pagina prodotto...)')}</span></label>
           <div style="display:flex;gap:8px;margin-top:5px;">
@@ -187,6 +240,110 @@ async function openIdentityModal(accountId, accountName) {
     </div>`;
 
   document.body.appendChild(overlay);
+
+  function renderMaskFields() {
+    const list = document.getElementById('idMaskFields');
+    if (!list) return;
+    const box = 'background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:6px 8px;font-size:12px;outline:none;box-sizing:border-box;';
+    const actions = [
+      ['placeholder', T('mask_action_placeholder','Segnaposto')],
+      ['fake_name', T('mask_action_fake','Nome inventato')],
+      ['fixed', T('mask_action_fixed','Testo fisso')],
+    ];
+    list.innerHTML = maskFields.map((f, i) => `
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <input data-idx="${i}" class="idMaskLabel" type="text" maxlength="80" value="${esc(f.label||'')}"
+          placeholder="${T('mask_field_label_ph','Es: Nome e cognome')}" style="flex:2;min-width:140px;${box}"/>
+        <select data-idx="${i}" class="idMaskAction" style="flex:1;min-width:120px;${box}">
+          ${actions.map(([v, name]) => `<option value="${v}" ${f.action === v ? 'selected' : ''}>${esc(name)}</option>`).join('')}
+        </select>
+        <input data-idx="${i}" class="idMaskValue" type="text" maxlength="200" value="${esc(f.value||'')}"
+          placeholder="${T('mask_field_fixed_ph','Testo da mettere')}"
+          style="flex:2;min-width:140px;${box}${f.action === 'fixed' ? '' : 'display:none;'}"/>
+        <button data-idx="${i}" class="idMaskRemove" type="button" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+      </div>`).join('');
+    list.querySelectorAll('.idMaskLabel').forEach(el => {
+      el.addEventListener('input', () => { maskFields[parseInt(el.dataset.idx)].label = el.value; });
+    });
+    list.querySelectorAll('.idMaskValue').forEach(el => {
+      el.addEventListener('input', () => { maskFields[parseInt(el.dataset.idx)].value = el.value; });
+    });
+    list.querySelectorAll('.idMaskAction').forEach(el => {
+      el.addEventListener('change', () => { maskFields[parseInt(el.dataset.idx)].action = el.value; renderMaskFields(); });
+    });
+    list.querySelectorAll('.idMaskRemove').forEach(el => {
+      el.addEventListener('click', () => { maskFields.splice(parseInt(el.dataset.idx), 1); renderMaskFields(); });
+    });
+  }
+  renderMaskFields();
+
+  function renderMaskTypes() {
+    const box = document.getElementById('idMaskTypes');
+    if (!box) return;
+    const names = {
+      CODICE_FISCALE: T('mask_type_CODICE_FISCALE','Codice fiscale'), PARTITA_IVA: T('mask_type_PARTITA_IVA','Partita IVA'),
+      IBAN: 'IBAN', EMAIL: T('mask_type_EMAIL','Email'), TELEFONO: T('mask_type_TELEFONO','Telefono'),
+      AZIENDA: T('mask_type_AZIENDA','Ragione sociale'),
+    };
+    box.innerHTML = maskAllTypes.map(t => `
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" class="idMaskType" value="${esc(t)}" ${maskTypes.includes(t) ? 'checked' : ''}/>
+        <span>${esc(names[t] || t)}</span>
+      </label>`).join('');
+    box.querySelectorAll('.idMaskType').forEach(el => {
+      el.addEventListener('change', () => {
+        maskTypes = maskAllTypes.filter(t => t === el.value ? el.checked : maskTypes.includes(t));
+      });
+    });
+  }
+  renderMaskTypes();
+
+  function renderMaskWords() {
+    const list = document.getElementById('idMaskWords');
+    if (!list) return;
+    list.innerHTML = maskWords.map((w, i) => `
+      <div style="display:flex;align-items:center;gap:8px;background:#F4F2EE;border:1px solid #E2DDD6;border-radius:2px;padding:5px 10px;">
+        <span style="flex:1;font-size:12px;word-break:break-all;">${esc(w.value)}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:#8A8280;">${esc(w.label_type || 'MASK')}</span>
+        <button data-idx="${i}" class="idMaskWordRemove" type="button" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+      </div>`).join('');
+    list.querySelectorAll('.idMaskWordRemove').forEach(el => {
+      el.addEventListener('click', () => {
+        const [gone] = maskWords.splice(parseInt(el.dataset.idx), 1);
+        if (gone && gone.id != null) maskWordsRemoved.push(gone.id);
+        renderMaskWords();
+      });
+    });
+  }
+  renderMaskWords();
+
+  function addMaskWord() {
+    const inp = document.getElementById('idMaskWordInput');
+    const value = (inp?.value || '').trim();
+    if (!value) return;
+    if (!maskWords.some(w => w.value === value)) {
+      maskWords.push({ value, label_type: document.getElementById('idMaskWordLabel')?.value || 'MASK' });
+      renderMaskWords();
+    }
+    inp.value = '';
+    inp.focus();
+  }
+  document.getElementById('btnAddMaskWord')?.addEventListener('click', addMaskWord);
+  document.getElementById('idMaskWordInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addMaskWord(); }
+  });
+  // The choices show only while the masker is on.
+  document.getElementById('idAttachmentMask')?.addEventListener('change', e => {
+    const options = document.getElementById('idMaskOptions');
+    if (options) options.style.display = e.target.checked ? '' : 'none';
+  });
+
+  document.getElementById('btnAddMaskField')?.addEventListener('click', () => {
+    maskFields.push({ label: '', action: 'placeholder', value: '' });
+    renderMaskFields();
+    const labels = document.querySelectorAll('#idMaskFields .idMaskLabel');
+    labels[labels.length - 1]?.focus();
+  });
 
   let filePaths = Array.isArray(identity.file_paths) ? [...identity.file_paths] : [];
 
@@ -413,6 +570,20 @@ async function openIdentityModal(accountId, accountName) {
       });
       await api.setSignature(accountId, document.getElementById('idSignature')?.value || '',
                              !!document.getElementById('idSentVia')?.checked);
+      const maskBox = document.getElementById('idAttachmentMask');
+      if (maskBox) {
+        // A row left without a label is a row the user did not fill in.
+        const fields = maskFields
+          .filter(f => (f.label || '').trim())
+          .map(f => ({ label: f.label.trim(), action: f.action, value: f.action === 'fixed' ? (f.value || '').trim() : '' }));
+        // A word typed and not yet added is still what the user asked for.
+        addMaskWord();
+        await api.setAttachmentMask(accountId, maskBox.checked, fields, maskTypes);
+        for (const id of maskWordsRemoved) await api.deleteMask(accountId, id);
+        for (const w of maskWords) {
+          if (w.id == null) await api.addMask(accountId, w.value, w.label_type);
+        }
+      }
       showToast(T('id_saved','Identità salvata!'));
       close();
     } catch(err) {

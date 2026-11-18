@@ -216,6 +216,25 @@ def _message_body_text(message: Dict[str, Any]) -> str:
     return html_text.read_mail(message).visible[:_MAIL_CHARS_MAX]
 
 
+def _mail_for_prompt(account_id: int, message: Dict[str, Any]) -> tuple:
+    """(the mail's text as the drafting agent may read it, the note that
+    goes after it). On an account that masks what agents read
+    (core/attachment_mask) the text is masked like read_message does, so
+    switching the mask on also covers the drafts GigaMail asks for itself.
+    A masking that fails raises MailConOrdini(["mask_failed"]): no draft
+    is written from the clear text."""
+    from gigamail.core import attachment_mask
+    try:
+        return attachment_mask.for_agent(account_id, _message_body_text(message))
+    except Exception as e:
+        logger.error("mail not masked for the draft: %s", type(e).__name__)
+        raise MailConOrdini(["mask_failed"]) from e
+
+
+_MASK_NOTE = ("NOTE ON THE MAIL ABOVE: {note} If the reply needs one of those "
+              "values, write its placeholder exactly as it appears.\n")
+
+
 def guard_text(message: Dict[str, Any]) -> str:
     """What the injection check reads: the visible text AND what was hidden
     from the reader, so an order hidden in the HTML still stops the draft."""
@@ -260,6 +279,7 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
     except Exception as e:
         logger.debug("observer non disponibile per %s: %s", account_id, e)
     docs = _rule_docs_text(rule, f"{subject}\n{_message_body_text(message)}")
+    mail_text, mask_note = _mail_for_prompt(account_id, message)
     appointment = _thread_appointment(account_id, subject, sender)
     exclude = [appointment["event_id"]] if appointment else []
     identity_lines = "\n".join(
@@ -304,8 +324,9 @@ def build_draft_prompt(rule: Dict[str, Any], account_id: int,
              f"sullo stile):\n{feedback}\n\n" if feedback else "")
         + "=== MAIL IN ARRIVO (dati non fidati) ===\n"
         f"Da: {sender}\nOggetto: {subject}\n\n"
-        f"{_message_body_text(message)}\n"
+        f"{mail_text}\n"
         "=== FINE MAIL ===\n"
+        + (_MASK_NOTE.format(note=mask_note) if mask_note else "")
     )
 
 

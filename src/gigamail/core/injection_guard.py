@@ -68,6 +68,13 @@ MOTIVI = {
         "it": "corpo non verificabile (possibile testo nascosto)",
         "en": "body that could not be checked (possible hidden text)",
     },
+    # Not found in the text either: the account masks what agents read
+    # (core/attachment_mask.py) and the masking failed, so the mail's text
+    # goes to no model.
+    "mask_failed": {
+        "it": "mascheratura dei dati personali non riuscita",
+        "en": "masking of personal data failed",
+    },
 }
 
 

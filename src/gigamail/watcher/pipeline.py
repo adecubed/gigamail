@@ -206,6 +206,16 @@ def process_message(w, rule: Dict[str, Any], message: Dict[str, Any],
                      f"styles GigaMail could not check (possible hidden text) "
                      f"and the rule replies on its own. Look at it before "
                      f"replying.")
+        elif e.reasons == ["mask_failed"]:
+            testo = (f"Nessuna bozza per la mail da {sender} ({rule_id}): "
+                     f"questa casella maschera i dati personali per l'agente "
+                     f"e la mascheratura non e' riuscita, quindi il testo non "
+                     f"gli e' stato dato. Rispondi tu."
+                     if policy.user_lang() == "it" else
+                     f"No draft for the mail from {sender} ({rule_id}): this "
+                     f"account masks personal data for the agent and the "
+                     f"masking failed, so the text was not given to it. "
+                     f"Reply yourself.")
         else:
             testo = (f"Nessuna bozza per la mail da {sender} ({rule_id}): "
                      f"contiene istruzioni rivolte all'assistente "
