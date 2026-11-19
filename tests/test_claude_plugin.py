@@ -43,10 +43,12 @@ def test_marketplace_points_at_the_plugin_folder():
 
 
 def test_mcp_json_starts_the_same_server_as_the_codex_one():
-    """Claude passes its whole environment, so no env_vars list here."""
+    """Claude passes its whole environment, so no env_vars list here. Claude
+    expands ${GIGAMAIL_SERVER:-...}; Codex runs the command as written, so
+    its file names the server directly."""
     claude = _load(PLUGIN / ".mcp.json")["mcpServers"]["gigamail"]
     codex = _load(ROOT / ".mcp.json")["mcpServers"]["gigamail"]
-    assert claude["command"] == codex["command"]
+    assert claude["command"] == "${GIGAMAIL_SERVER:-%s}" % codex["command"]
     assert claude.get("args", []) == codex.get("args", [])
 
 

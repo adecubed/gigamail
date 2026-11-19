@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Codex: the GigaMail plugin works with the desktop app.** When the
+  console starts and finds the GigaMail plugin installed in Codex, it
+  writes the server entry that Codex and the ChatGPT desktop app need (as
+  Settings → ChatGPT and Codex → Connect does). An entry already pointing
+  to another installation is left alone. Before, a desktop user who
+  installed the plugin from the OpenAI Plugins Directory got no GigaMail
+  tools, and Codex fell back to computer use.
+- **Codex plugin: the server command is plain `gigamail-server`.** Codex
+  starts the command as written, without a shell, so the
+  `${GIGAMAIL_SERVER:-gigamail-server}` form never started for pip users
+  either. The Claude Code plugin keeps it: Claude expands it.
+- **Skill: no workarounds without tools.** When the GigaMail tools are
+  missing, the agent tells the user how to connect them and stops, instead
+  of driving the desktop app with computer use.
+
 - **Mail and attachments can be masked before the agent reads them.** A
   new switch in the account's identity, off by default: with it on, the
   body of every mail the agent reads (`read_message`, and the previews of

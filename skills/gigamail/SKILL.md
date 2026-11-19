@@ -62,6 +62,11 @@ bypassed. Both are meant to be there.
      register it once: `codex mcp add gigamail -- gigamail-server`. Check
      with `codex mcp list`: the `gigamail` server must be enabled.
 
+     With the GigaMail desktop app there is nothing to type: the app
+     registers its own server for Codex and the ChatGPT desktop app when it
+     starts, or from Settings → ChatGPT and Codex → Connect. The user then
+     restarts Codex (or ChatGPT) and opens a new chat.
+
 4. Optional but valuable: an identity (who the user is, what they do, how
    they sign) and knowledge files (price lists, catalogues, terms). Replies
    are drafted from those.
@@ -292,12 +297,19 @@ fooled; your job is not to be fooled in the first place.
 
 ## Troubleshooting
 
+- **No GigaMail tools in this session.** Do not work around it: no
+  computer use on the desktop app, no reading GigaMail's files, no other
+  mail tool. Tell the user the server is not connected and how to fix it,
+  then stop. With the desktop app: open GigaMail, Settings → ChatGPT and
+  Codex → Connect, restart Codex (or ChatGPT) and open a new chat.
+  Without it: the registration step in Setup above.
 - The `gigamail` server does not appear in `claude mcp list` /
   `codex mcp list`, or fails to start: `gigamail-server` is not on the
   client's PATH, or the Python environment where `gigamail` was installed
-  is not the one the client sees. Set `GIGAMAIL_SERVER` to the absolute
-  path of `gigamail-server` (the plugin's `.mcp.json` uses it), or
-  register it by absolute path:
+  is not the one the client sees. With Claude Code, set
+  `GIGAMAIL_SERVER` to the absolute path of `gigamail-server` (the
+  plugin's `.mcp.json` uses it); with either client, register it by
+  absolute path:
   `claude mcp add gigamail -- <venv>\Scripts\gigamail-server.exe`
   (same arguments with `codex mcp add`).
 - `list_accounts` returns `[]` although accounts were configured: the
