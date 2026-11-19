@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Email checker: known bad sites and popular look-alikes.** Senders and
+  links are looked up in public lists of phishing and malware sites
+  (Phishing.Database, curben's phishing filter, URLhaus) and compared with
+  the 10,000 most visited sites (Tranco): popular sites are no longer
+  called look-alikes, and imitations of any of them are spotted
+  (paypa1.com, wikipedla.org). A daily workflow rebuilds the lists on the
+  `checker-data` branch; the page fetches only the hashed pieces it needs,
+  so no name leaves the browser. Credits and privacy policy say so.
 - **Email checker: check a single file.** Drop or open any file, not only
   a saved mail: a PDF, a Word or Excel file, a zip is checked on its own,
   as an attachment, with its own verdict. A saved mail (.eml) is still

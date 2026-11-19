@@ -242,9 +242,10 @@ function isBrandDomain(host, brand) {
 
 // The brand a host imitates, or ''. "paypal.com.example.net",
 // "paypa1-secure.com" and "micros0ft.com" all name a brand they are not.
-export function lookalike(host) {
+export function lookalike(host, top) {
   const h = String(host || '').toLowerCase().replace(/\.$/, '');
   if (!h || /^\d{1,3}(\.\d{1,3}){3}$/.test(h)) return '';
+  if (top && top.set.has(baseDomain(h))) return '';   // a popular site is not a look-alike
   const split = labels => labels.flatMap(l => [l, ...l.split('-')]).map(deobfuscate).filter(Boolean);
   const base = baseDomain(h);
   const own = split(base.split('.').slice(0, 1));            // the name the domain was registered as
@@ -270,8 +271,113 @@ export function brandInName(name, domain) {
   return '';
 }
 
+// ---- Popular sites and known bad hosts ----------------------------------------
+//
+// Both lists are rebuilt every day from public sources by
+// scripts/build_checker_lists.py and published on the checker-data branch.
+// The page downloads the popular list, and of the bad list only the shards
+// (1/256 each) of the hosts in the mail it checks: no host name leaves the
+// browser.
+
+export const DATA_URL = 'https://raw.githubusercontent.com/adecubed/gigamail/checker-data/';
+
+// The ranking, as {set, labels, near}: `labels` maps a registered name
+// ("paypal") to its domain; `near` holds the names of the top 1,000, for
+// one-letter typos.
+export function parseTop(text) {
+  const domains = String(text || '').split(/\s+/).filter(Boolean);
+  const labels = new Map(), near = [];
+  domains.forEach((d, i) => {
+    const label = baseDomain(d).split('.')[0];
+    if (label.length < 5 || labels.has(label)) return;
+    labels.set(label, d);
+    if (i < 1000 && label.length >= 7) near.push(label);
+  });
+  return { set: new Set(domains), labels, near };
+}
+
+// A popular site this host imitates, or ''. Only the registered name is
+// compared: "paypa1.com" against "paypal", "amazom.co" against "amazon".
+export function popularLookalike(host, top) {
+  if (!top) return { domain: '', level: '' };
+  const base = baseDomain(host);
+  if (!base || top.set.has(base) || /^\d+(\.\d+){3}$/.test(base)) return { domain: '', level: '' };
+  const label = base.split('.')[0];
+  const plain = deobfuscate(label);
+  if (plain !== label && label.length >= 5 && top.labels.has(plain)) return { domain: top.labels.get(plain), level: 'high' };
+  if (label.length >= 7) {
+    const hit = top.near.find(n => n !== label && editDistance(label, n) === 1);
+    if (hit) return { domain: top.labels.get(hit), level: 'medium' };
+  }
+  return { domain: '', level: '' };
+}
+
+// The names worth looking up for a host: itself and its parents down to
+// the registered domain (a.b.example.com, b.example.com, example.com).
+export function hostsToCheck(host) {
+  const h = String(host || '').toLowerCase().replace(/\.$/, '');
+  if (!h) return [];
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) return [h];
+  const base = baseDomain(h);
+  const parts = h.split('.');
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    const name = parts.slice(i).join('.');
+    out.push(name);
+    if (name === base) break;
+  }
+  return out;
+}
+
+export async function sha256(text) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+}
+
+// Whether a shard holds a host's hash: rows of 9 bytes (hash bytes 1-8 and
+// a flag), sorted. Returns the flag, 0 when absent.
+export function findInShard(shard, digest) {
+  let lo = 0, hi = Math.floor(shard.length / 9) - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    let cmp = 0;
+    for (let k = 0; k < 8 && !cmp; k++) cmp = shard[mid * 9 + k] - digest[k + 1];
+    if (!cmp) return shard[mid * 9 + 8];
+    if (cmp < 0) lo = mid + 1; else hi = mid - 1;
+  }
+  return 0;
+}
+
+// Hosts found on the bad lists: Map host -> 'phishing' | 'malware'.
+// `getShard(hex)` returns a shard's bytes.
+export async function knownBad(hosts, getShard) {
+  const found = new Map();
+  const names = [...new Set(hosts.flatMap(hostsToCheck))];
+  const digests = await Promise.all(names.map(sha256));
+  const shards = new Map();
+  for (const d of digests) {
+    const hex = d[0].toString(16).padStart(2, '0');
+    if (!shards.has(hex)) shards.set(hex, getShard(hex));
+  }
+  const loaded = await Promise.all([...shards.values()]);  // one failure fails the lookup, none left unhandled
+  [...shards.keys()].forEach((hex, i) => shards.set(hex, loaded[i]));
+  names.forEach((name, i) => {
+    const d = digests[i];
+    const flag = findInShard(shards.get(d[0].toString(16).padStart(2, '0')), d);
+    if (flag) found.set(name, flag & 1 ? 'phishing' : 'malware');
+  });
+  return found;
+}
+
+// Every host a mail names: sender, Reply-To, bounce address and links.
+export function hostsOf(parsed, links) {
+  const hs = parsed.headers || [];
+  const out = ['from', 'reply-to', 'return-path', 'sender'].map(n => addressOf(header(hs, n)).domain);
+  for (const l of links) out.push(hostOf(l.href));
+  return [...new Set(out.filter(Boolean))];
+}
+
 // One finding per suspicious link. `text` is what the reader sees.
-export function checkLink(href, text) {
+export function checkLink(href, text, top) {
   const out = [];
   const h = String(href || '').trim();
   if (/^(javascript|data|vbscript):/i.test(h)) {
@@ -283,8 +389,12 @@ export function checkLink(href, text) {
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) out.push({ level: 'high', id: 'ip-link', detail: host });
   if (host.split('.').some(p => p.startsWith('xn--'))) out.push({ level: 'high', id: 'punycode', detail: host });
   if (SHORTENERS.has(host)) out.push({ level: 'medium', id: 'shortener', detail: host });
-  const imitates = lookalike(host);
+  const imitates = lookalike(host, top);
   if (imitates) out.push({ level: 'high', id: 'lookalike-link', detail: `${host} (${imitates}?)` });
+  else {
+    const pop = popularLookalike(host, top);
+    if (pop.domain) out.push({ level: pop.level, id: 'lookalike-link', detail: `${host} (${pop.domain}?)` });
+  }
   const shown = String(text || '').trim();
   const shownHost = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?$/i.test(shown)
     ? hostOf(/^https?:/i.test(shown) ? shown : 'https://' + shown) : '';
@@ -332,7 +442,7 @@ export function invisibleCharacters(text) {
 
 // ---- Headers ---------------------------------------------------------------
 
-export function headerSignals(headers) {
+export function headerSignals(headers, top) {
   const out = [];
   if (!headers || !headers.length) return out;
   const from = addressOf(header(headers, 'from'));
@@ -349,8 +459,10 @@ export function headerSignals(headers) {
     out.push({ level: 'high', id: 'display-name', detail: `${shownAddr[0]} → ${from.address}` });
   }
   for (const [who, addr] of [['from', from], ['reply-to', reply]]) {
-    const imitates = lookalike(addr.domain);
-    if (imitates) out.push({ level: 'high', id: 'lookalike-sender', detail: `${who}: ${addr.domain} (${imitates}?)` });
+    const imitates = lookalike(addr.domain, top);
+    if (imitates) { out.push({ level: 'high', id: 'lookalike-sender', detail: `${who}: ${addr.domain} (${imitates}?)` }); continue; }
+    const pop = popularLookalike(addr.domain, top);
+    if (pop.domain) out.push({ level: pop.level, id: 'lookalike-sender', detail: `${who}: ${addr.domain} (${pop.domain}?)` });
   }
   const claimed = brandInName(from.name, from.domain);
   if (claimed) out.push({ level: 'medium', id: 'brand-name', detail: `"${from.name}" <${from.address}>` });
@@ -376,9 +488,15 @@ export function verdict(findings) {
 
 // Everything that does not need a browser. `hidden` comes from
 // findHiddenText (or is empty when there is no HTML).
-export function analyse(parsed, hidden, visibleText, links, reports) {
-  const findings = [...headerSignals(parsed.headers)];
-  for (const l of links) findings.push(...checkLink(l.href, l.text));
+// `intel` (optional): {top: parseTop(...), bad: knownBad(...)}.
+export function analyse(parsed, hidden, visibleText, links, reports, intel) {
+  const top = intel && intel.top;
+  const findings = [];
+  for (const [host, kind] of (intel && intel.bad) || []) {
+    findings.push({ level: 'high', id: 'known-bad', detail: `${host} (${kind})` });
+  }
+  findings.push(...headerSignals(parsed.headers, top));
+  for (const l of links) findings.push(...checkLink(l.href, l.text, top));
   const hiddenText = hidden.map(h => h.text).join('\n');
   if (hidden.length) {
     // Newsletters hide a short preview line as a matter of course: alone, a
