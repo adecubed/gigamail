@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Email checker: check a single file.** Drop or open any file, not only
+  a saved mail: a PDF, a Word or Excel file, a zip is checked on its own,
+  as an attachment, with its own verdict. A saved mail (.eml) is still
+  checked whole, attachments included.
 - **Site: free email checker.** gigamail.ai/email-check.html: paste an
   email and see its phishing signs (sender and Reply-To, SPF/DKIM/DMARC,
   links that open another address, pressure words, risky attachments) and

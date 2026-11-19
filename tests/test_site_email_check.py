@@ -105,9 +105,11 @@ def test_pressure_words_and_shorteners_in_plain_text():
 def test_the_page_loads_the_checker_and_is_listed():
     page = (DOCS / "email-check.html").read_text(encoding="utf-8")
     assert 'src="./email-check-page.js' in page
-    assert 'id="ec-file"' in page  # a saved .eml can be opened, not only pasted
+    assert 'id="ec-file"' in page  # a saved mail or a single attachment can be opened
     assert "https://gigamail.ai/email-check.html" in (DOCS / "sitemap.xml").read_text(encoding="utf-8")
     script = (DOCS / "email-check-page.js").read_text(encoding="utf-8")
+    # a file that is not a mail is checked on its own, as an attachment
+    assert "inspectAttachment({ name: file.name" in script
     # the mail is rendered with no scripts and no network
     assert "setAttribute('sandbox', 'allow-same-origin')" in script
     assert "default-src 'none'" in script

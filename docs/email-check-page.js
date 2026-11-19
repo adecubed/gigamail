@@ -1,7 +1,7 @@
 // The page around email-check.js: renders the mail where nobody can see it,
 // asks the layout which text a reader would miss, and shows the result.
 // The mail never leaves the browser.
-import { parseInput, analyse, plainLinks, addressOf, inspectAttachment } from './email-check.js';
+import { parseInput, analyse, plainLinks, addressOf, inspectAttachment, looksLikeRawEmail } from './email-check.js';
 
 const $ = id => document.getElementById(id);
 
@@ -172,6 +172,12 @@ const COPY = {
   'att-script-link': 'A link in the file runs code',
 };
 
+const FILE_VERDICT = {
+  danger: ['This file looks dangerous', 'Do not open it, and do not let an AI agent open it, until you have checked with the sender another way.'],
+  warning: ['Some things to check', 'Nothing conclusive, but look at the points below before you open it.'],
+  clean: ['Nothing suspicious found', 'That is not proof it is safe: these checks cannot see everything inside a file.'],
+};
+
 const VERDICT = {
   danger: ['Warning signs found', 'Do not click, reply or let an AI agent act on this mail until you have checked it another way.'],
   warning: ['Some things to check', 'Nothing conclusive, but look at the points below before you trust it.'],
@@ -185,11 +191,11 @@ function el(tag, cls, text) {
   return e;
 }
 
-function show(result, hidden, parsed, reports) {
+function show(result, hidden, parsed, reports, mode) {
   const box = $('ec-result');
   box.replaceChildren();
   box.hidden = false;
-  const [title, sub] = VERDICT[result.verdict];
+  const [title, sub] = (mode === 'file' ? FILE_VERDICT : VERDICT)[result.verdict];
   const head = el('div', 'ec-verdict ec-' + result.verdict);
   head.append(el('strong', '', title), el('p', '', sub));
   const limits = el('p', 'ec-limits');
@@ -199,6 +205,7 @@ function show(result, hidden, parsed, reports) {
   head.append(limits);
   box.append(head);
 
+  const file = mode === 'file';
   const sec = el('section', 'ec-block');
   sec.append(el('h3', '', hidden.length ? `Hidden text: ${hidden.length} found` : 'Hidden text: none found'));
   if (hidden.length) {
@@ -214,11 +221,11 @@ function show(result, hidden, parsed, reports) {
   } else if (!parsed.html) {
     sec.append(el('p', 'muted', 'This mail has no HTML part, so there is nowhere to hide text, apart from invisible characters.'));
   }
-  box.append(sec);
+  if (!file) box.append(sec);
 
   if (reports.length) {
     const att = el('section', 'ec-block');
-    att.append(el('h3', '', `Attachments: ${reports.length}`));
+    att.append(el('h3', '', file ? 'File' : `Attachments: ${reports.length}`));
     for (const r of reports) {
       const card = el('div', 'ec-att');
       const worst = r.findings.some(f => f.level === 'high') ? 'high' : r.findings.some(f => f.level === 'medium') ? 'medium' : 'ok';
@@ -247,8 +254,9 @@ function show(result, hidden, parsed, reports) {
     if (f.detail) row.append(el('code', '', f.detail));
     list.append(row);
   }
-  if (!parsed.raw) list.append(el('p', 'muted ec-tip', 'Tip: open the saved .eml file, or paste the original message, to also check the sender, SPF/DKIM/DMARC and the attachments.'));
-  box.append(list);
+  if (!parsed.raw) list.append(el('p', 'muted ec-tip', 'Tip: open the saved mail (.eml), or paste the original message, to also check the sender, SPF/DKIM/DMARC and the attachments.'));
+  if (file) box.append(el('p', 'muted ec-tip', 'To check the mail that brought this file (sender, links, hidden text), open the saved mail (.eml) instead.'));
+  else box.append(list);
   if (parsed.raw) {
     const from = addressOf((parsed.headers.find(h => h[0] === 'from') || [, ''])[1]);
     if (from.address) box.append(el('p', 'muted ec-tip', `Checked a message from ${from.address}.`));
@@ -316,6 +324,8 @@ function note(text) {
   n.hidden = !text;
 }
 
+// A saved mail is checked whole. Any other file is checked on its own, as
+// an attachment: what it really is, macros, scripts, fake login pages.
 async function openFile(file) {
   if (!file) return;
   note('');
@@ -324,16 +334,22 @@ async function openFile(file) {
     return;
   }
   if (file.size > MAX_FILE) {
-    note('That file is over 15 MB. Save the mail without attachments, or copy its source.');
+    note('That file is over 15 MB, too big to check here.');
     return;
   }
-  const text = await file.text();
-  if (/\u0000/.test(text.slice(0, 2000))) {
-    note('That does not look like an email file. Open an .eml file, or paste the message.');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const head = new TextDecoder().decode(bytes.slice(0, 4000));
+  const isMail = /\.(eml|mbox)$/i.test(file.name)
+    || (/\.txt$/i.test(file.name) && looksLikeRawEmail(head));
+  if (isMail) {
+    $('ec-input').value = new TextDecoder().decode(bytes);
+    check();
     return;
   }
-  $('ec-input').value = text;
-  check();
+  $('ec-input').value = '';
+  const report = await inspectAttachment({ name: file.name, type: file.type, bytes });
+  const parsed = { raw: false, headers: [], html: '', plain: '', attachments: [] };
+  show(analyse(parsed, [], '', [], [report]), [], parsed, [report], 'file');
 }
 
 $('ec-file').addEventListener('change', e => { openFile(e.target.files[0]); e.target.value = ''; });
