@@ -20,7 +20,7 @@ def _run(body: str):
         "console.log(JSON.stringify(out));\n"
     )
     res = subprocess.run([NODE, "--input-type=module", "-e", script],
-                         capture_output=True, text=True, timeout=30)
+                         capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert res.returncode == 0, res.stderr
     return json.loads(res.stdout)
 
