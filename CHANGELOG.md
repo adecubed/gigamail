@@ -11,7 +11,10 @@
   paypal.com.example.net) and checks attachments for what they really
   are: programs disguised as documents, double extensions, Office macros
   and remote templates, PDFs with JavaScript, password-asking web pages,
-  archives hiding programs or locked with a password. Paste the message or open its .eml file
+  archives hiding programs or locked with a password. A section and a
+  note under every result say what it can get wrong: false alarms on
+  unknown senders, mailing services and forwarded mail, and scams it
+  misses (new sites, brands it does not list, text in images). Paste the message or open its .eml file
   (Gmail: Download message). It runs in the browser: the mail is not
   uploaded, and its remote images are blocked. A pink "Email check" link
   after Security in the top menu of every page leads to it.

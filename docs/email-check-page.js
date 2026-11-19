@@ -192,6 +192,11 @@ function show(result, hidden, parsed, reports) {
   const [title, sub] = VERDICT[result.verdict];
   const head = el('div', 'ec-verdict ec-' + result.verdict);
   head.append(el('strong', '', title), el('p', '', sub));
+  const limits = el('p', 'ec-limits');
+  const link = el('a', '', 'what this check can get wrong');
+  link.href = '#s-limits';
+  limits.append('Automatic rules, not a judgement on the sender: they can flag honest mail and miss new scams. See ', link, '.');
+  head.append(limits);
   box.append(head);
 
   const sec = el('section', 'ec-block');
