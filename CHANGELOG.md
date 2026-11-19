@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Email checker: clearer page for search.** The title, description and
+  FAQ now use the words people search with ("phishing email checker",
+  "is this email a scam", "how to spot a phishing email").
 - **Email checker: known bad sites and popular look-alikes.** Senders and
   links are looked up in public lists of phishing and malware sites
   (Phishing.Database, curben's phishing filter, URLhaus) and compared with
