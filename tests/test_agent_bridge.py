@@ -508,7 +508,10 @@ def test_codex_runs_without_the_users_config():
 
 
 def test_codex_carries_gigamail_server_in_its_command(monkeypatch):
-    import tomllib
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10: the parser codex_config falls back on
+        import tomli as tomllib
 
     from gigamail.core import codex_config
     monkeypatch.setattr(codex_config, "desired", lambda: {

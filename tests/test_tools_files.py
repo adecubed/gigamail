@@ -52,6 +52,19 @@ def world(tmp_path, monkeypatch):
 
     monkeypatch.setattr(rule_requests, "excluded_reason", mapped)
 
+    # Where pytest put tmp_path, a folder above it can be hidden (AppData on
+    # the CI's Windows runners): tmp_path and what is above it read as plain.
+    original_attrs = file_search.read_attributes
+
+    def attrs(path):
+        norm = os.path.normcase(path)
+        for base in bases:
+            if norm == base or base.startswith(norm.rstrip(os.sep) + os.sep):
+                return 0
+        return original_attrs(path)
+
+    monkeypatch.setattr(file_search, "read_attributes", attrs)
+
     tree = tmp_path / "docs"
     tree.mkdir()
     monkeypatch.setattr(file_search, "_candidate_roots", lambda: [str(tree)])
