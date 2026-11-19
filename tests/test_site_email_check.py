@@ -201,6 +201,8 @@ def test_list_parsing_handles_plain_and_hosts_files():
     b = _build_module()
     text = "# comment\nphish.example.net\n0.0.0.0 bad.example.org\n127.0.0.1\tmal.example.com # x\nlocalhost\n\nnot a host\n192.0.2.7\n"
     assert b.parse_hosts(text) == ["phish.example.net", "bad.example.org", "mal.example.com", "192.0.2.7"]
+    urls = "# URLhaus online URLs\nhttp://198.51.100.4:8080/i.sh\nhttps://Mal.Example.net/x/y.exe\n"
+    assert b.parse_hosts(urls) == ["198.51.100.4", "mal.example.net"]
 
 
 def test_popular_sites_and_big_platforms_are_never_listed():
