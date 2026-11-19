@@ -227,7 +227,7 @@ class RuleStore:
         if not hello_verified_at:
             raise ValueError(
                 "hello_verified_at mancante: una regola nasce solo dietro "
-                "verifica dell'utente fisico (Windows Hello / Touch ID)")
+                "verifica dell'utente fisico (Windows Hello / Touch ID / PIN su Linux)")
         rule_id = "rule_" + secrets.token_hex(4)
         now = time.time()
         with self._conn() as conn:

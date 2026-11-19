@@ -218,7 +218,7 @@ function render(rec) {
   const hello = $('helloHint');
   if (hello) {
     hello.style.display = rec.verified === true ? '' : 'none';
-    hello.textContent = T('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID.');
+    hello.textContent = T('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID / PIN su Linux.');
   }
   if (isFixed(rec) && editing) setEditing(false);
   // what the mail reveals that the agent only saw masked

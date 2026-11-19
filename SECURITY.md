@@ -181,7 +181,7 @@ compatible:
 
 - **A rule exists only after the person at the machine was verified.**
   Creating, changing, resuming or renewing a rule needs the OS prompt
-  (Windows Hello / Touch ID), from the console, the CLI, or — since the
+  (Windows Hello / Touch ID / Linux PIN), from the console, the CLI, or — since the
   agent can now prepare the request — an approval of a stored request at
   the PC. The agent has tools for rules (`create_rule`, `update_rule`,
   `resume_rule`, `renew_rule`, `delete_rule`), but the first call only
@@ -412,7 +412,7 @@ the program is not something the agent can get from it:
 - **The local API releases it only to a person.** The console token is in a
   file any process of the user can read; for an executable,
   `GET /mail/{id}/attachment/{name}` needs the console's click secret or
-  Windows Hello / Touch ID, and is audited either way.
+  Windows Hello / Touch ID / Linux PIN, and is audited either way.
 - **The console never opens one.** "Open" on a program means running it;
   the console's main process refuses it whichever window asks. "Save as"
   still works.

@@ -7,7 +7,7 @@ provider) and your calendar to Claude as 41 typed MCP tools. Reading,
 searching, attachment text, sender history, free-slot computation and
 drafting are free. Send, reply, delete and calendar writes return an inert
 request id and run only after you approve them out of band, from the
-GigaMail desktop console or CLI behind Windows Hello / Touch ID, with the
+GigaMail desktop console or CLI behind Windows Hello / Touch ID / Linux PIN, with the
 arguments stored at request time. Mail content is treated as data, never
 as instructions.
 

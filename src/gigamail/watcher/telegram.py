@@ -267,16 +267,16 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
         if rec.get("tool") == "update_identity":
             say(tg,
                 "La modifica dell'identità si approva solo dal PC, con "
-                "Windows Hello / Touch ID. Da qui puoi rifiutare.",
+                "Windows Hello / Touch ID / PIN su Linux. Da qui puoi rifiutare.",
                 "A change to the identity is approved only at the PC, with "
-                "Windows Hello / Touch ID. From here you can reject it.")
+                "Windows Hello / Touch ID / Linux PIN. From here you can reject it.")
             return
         if rec.get("tool") in policy.PC_ONLY_TOOLS:
             say(tg,
                 "Una regola si approva solo dal PC, con Windows Hello / "
-                "Touch ID. Da qui puoi rifiutare.",
+                "Touch ID / PIN su Linux. Da qui puoi rifiutare.",
                 "A rule is approved only at the PC, with Windows Hello / "
-                "Touch ID. From here you can reject it.")
+                "Touch ID / Linux PIN. From here you can reject it.")
             return
         if policy.pc_only(rec):
             say(tg,

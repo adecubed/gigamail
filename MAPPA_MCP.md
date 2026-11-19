@@ -84,7 +84,7 @@ an approved request that has not run yet can be revoked.
 | Current endpoint | MCP tool | Class | Notes |
 |---|---|---|---|
 | `POST /mail/{id}/read` / `unread` | `mark_read` | WRITE_SAFE | `is_read` parameter |
-| `POST /mail/{id}/move` | `move_message` | DANGEROUS | MCP two-phase; from the console, Windows Hello / Touch ID check |
+| `POST /mail/{id}/move` | `move_message` | DANGEROUS | MCP two-phase; from the console, Windows Hello / Touch ID / Linux PIN check |
 | `POST /mail/folders` | `create_folder` | WRITE_SAFE | |
 | `POST /drafts` (console) | `save_draft` | WRITE_SAFE | A draft in the mailbox's Drafts folder; sends nothing. A reply draft goes to the original's From address |
 | `DELETE /mail/folders/{id}` | `delete_folder` | DANGEROUS | Two-phase confirmation |
@@ -248,7 +248,7 @@ una richiesta approvata e non ancora eseguita si può revocare.
 | Endpoint attuale | Tool MCP | Classe | Note |
 |---|---|---|---|
 | `POST /mail/{id}/read` / `unread` | `mark_read` | WRITE_SAFE | Parametro `is_read` |
-| `POST /mail/{id}/move` | `move_message` | DANGEROUS | Due fasi MCP; dalla console verifica Windows Hello / Touch ID |
+| `POST /mail/{id}/move` | `move_message` | DANGEROUS | Due fasi MCP; dalla console verifica Windows Hello / Touch ID / PIN su Linux |
 | `POST /mail/folders` | `create_folder` | WRITE_SAFE | |
 | `POST /drafts` (console) | `save_draft` | WRITE_SAFE | Una bozza nella cartella Bozze della casella; non invia nulla. Una bozza di risposta va al mittente dell'originale |
 | `DELETE /mail/folders/{id}` | `delete_folder` | DANGEROUS | Conferma a due fasi |

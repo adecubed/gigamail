@@ -299,7 +299,8 @@ def test_update_identity_is_verified_pc_only_and_fixed():
     assert "update_identity" in policy.PC_ONLY_TOOLS
     assert "update_identity" in policy.FIXED_TOOLS
     assert policy.pc_only({"tool": "update_identity", "args": {}}) is True
-    assert policy.pc_only_notice("update_identity").endswith("Touch ID.")
+    assert "Touch ID" in policy.pc_only_notice("update_identity")
+    assert "Linux" in policy.pc_only_notice("update_identity")
 
 
 def test_errore_esecuzione_propagato_e_auditato():

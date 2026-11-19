@@ -30,9 +30,9 @@ API bound to 127.0.0.1.)
 configuration **on your machine** — we run no service and receive nothing.
 Mail content your agent reads is, of course, handled by that agent and its
 model provider under their own data policies. Choose your agent
-accordingly; the masker lets you hide sensitive fields (tax codes, VAT
-numbers, IBANs, emails, phone numbers — validated deterministically, no AI)
-before the agent ever sees them.
+accordingly; with masking switched on for an account, sensitive data in
+mail and attachments is replaced by placeholders before the agent ever
+sees it (see below).
 
 
 
@@ -67,6 +67,23 @@ before the agent ever sees them.
 - **Credentials never touch the agent channel**: login and account management
   live in the CLI only — a prompt injection inside an email cannot add
   accounts or read secrets
+- **Masking before the agent reads**: a switch per account, off by
+  default. With it on, the subject and body of a mail and the text of its
+  attachments reach the agent with tax codes, VAT numbers, IBANs, payment
+  cards, email addresses, phone numbers, street addresses, company names
+  and US and EU identifiers replaced by placeholders such as
+  `[IBAN_1a2b3c4d]` — recognised by rules, no AI. You pick the types, add
+  your own words and name the fields of a form; a scanned form gets a copy
+  with those fields covered. When the agent writes a placeholder in a
+  mail, GigaMail puts the real value back before you approve, and the
+  approval says the mail reveals it. The agent cannot switch masking off,
+  and if masking fails it gets no text. Sender, recipients and attachment
+  names stay in clear
+- **Encrypted mail (OpenPGP, beta)**: end to end between IMAP/SMTP
+  accounts, signed and encrypted, subject included. Keys travel by
+  themselves (Autocrypt), so after one ordinary exchange the "Encrypt"
+  button works with GigaMail, Thunderbird or Delta Chat. A mail asked to
+  be encrypted is never sent in clear
 
 ## Quick start
 
@@ -119,6 +136,10 @@ gigamail identity set                       # who am I, what I do, tone
 gigamail identity add-file C:\docs\pricelist.xlsx
 gigamail identity add-file C:\docs\catalog\   # whole folder
 ```
+
+Your agent can also *propose* a change to those texts (`update_identity`):
+you see each one before and after, whole, and approve at the PC. Knowledge
+files, the signature and masking stay yours alone: no tool changes them.
 
 Register in Claude Desktop / Claude Code (`mcpServers`):
 
@@ -187,7 +208,7 @@ reply, and asks you before sending.
   meeting, upload a file to Drive, move a Drive file to the trash,
   create/change/resume/renew/delete a reply rule, change the identity
   texts (these only at the PC, never from Telegram: with Windows Hello /
-  Touch ID, a delete with a click)
+  Touch ID / Linux PIN, a delete with a click)
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the
@@ -215,6 +236,11 @@ filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
 (append-only: GigaMail never rewrites past entries — it is not, and does not
 claim to be, tamper-proof storage).
 
+In the desktop console, the agent bar runs Claude Code or Codex with
+GigaMail's tools only: no shell, no access to your files, no web, none of
+your other connectors, whatever your own settings allow. The console says
+so when the agent you picked cannot be closed this way.
+
 We red-team this: hostile emails ordering exfiltration, mass deletion, and
 the agent to approve itself — fed to a real agent with every mail tool
 enabled.
@@ -232,16 +258,16 @@ The structural half of that suite runs in CI on every push
 opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) and runs with
 a dry-run guard so confirmed actions are audited but never executed.
 
-## Reply rules (0.2): semi-auto and auto reply, fenced
+## Reply rules: semi-auto and auto reply, fenced
 
 You can tell GigaMail: *mail from these senders (or in this folder) gets a
-reply drafted from these documents*. Rules are created from the CLI —
-`gigamail rules add` — behind the same Windows Hello / Touch ID prompt as
+reply drafted from these documents*. Rules are created from the console or
+from the CLI — `gigamail rules add` — behind the same Windows Hello / Touch ID / Linux PIN prompt as
 approvals, and `gigamail watch` is the process that applies them. Your agent
 can also *ask* for a rule, through the MCP tools `create_rule`,
 `update_rule`, `resume_rule`, `renew_rule` and `delete_rule`: the request
 only stores a preview, and it is approved at the PC, never from Telegram:
-with Windows Hello / Touch ID to create, change, resume or renew a rule,
+with Windows Hello / Touch ID / Linux PIN to create, change, resume or renew a rule,
 with a click to delete one. So an injected instruction can make the agent
 ask for autopilot but cannot enable it.
 
@@ -301,7 +327,7 @@ trade lives outside it and is off until you turn it on:
 
 ```bash
 gigamail extensions list
-gigamail extensions enable appointments   # asks for Windows Hello / Touch ID
+gigamail extensions enable appointments   # asks for Windows Hello / Touch ID / Linux PIN
 gigamail extensions install real_estate   # into the data folder: survives app updates
 gigamail extensions enable real_estate
 ```
@@ -341,10 +367,9 @@ opzionale, aggiunge una API HTTP locale su 127.0.0.1.)
 e configurazione **sul tuo computer** — noi non gestiamo alcun servizio e
 non riceviamo nulla. Il contenuto delle mail che il tuo agente legge è
 ovviamente trattato da quell'agente e dal suo fornitore di modello secondo
-le loro policy. Scegli l'agente di conseguenza; il masker permette di
-nascondere i dati sensibili (codici fiscali, partite IVA, IBAN, email,
-telefoni — validati in modo deterministico, senza AI) prima che l'agente
-li veda.
+le loro policy. Scegli l'agente di conseguenza; con il mascheramento
+acceso su un account, i dati sensibili di mail e allegati sono sostituiti
+da segnaposto prima che l'agente li veda (vedi sotto).
 
 <p align="center"><img src="docs/brand/gigamail-banner.gif" alt="GigaMail" width="720"></p>
 
@@ -377,6 +402,24 @@ li veda.
 - **Credenziali fuori dal canale agente**: login e gestione account solo via
   CLI — una prompt injection dentro una mail non può aggiungere account né
   leggere segreti
+- **Mascheramento prima che l'agente legga**: un interruttore per account,
+  spento di default. Acceso, l'oggetto e il testo di una mail e il testo
+  degli allegati arrivano all'agente con codici fiscali, partite IVA, IBAN,
+  carte di pagamento, indirizzi email, telefoni, indirizzi, nomi di aziende
+  e identificativi USA e UE sostituiti da segnaposto come
+  `[IBAN_1a2b3c4d]` — riconosciuti con regole, senza AI. Scegli tu i tipi,
+  aggiungi le tue parole e indichi le caselle di un modulo; di un modulo
+  scansionato viene fatta una copia con quelle caselle coperte. Quando
+  l'agente scrive un segnaposto in una mail, GigaMail rimette il valore
+  vero prima che tu approvi, e l'approvazione dice che la mail lo rivela.
+  L'agente non può spegnere il mascheramento, e se il mascheramento
+  fallisce non riceve alcun testo. Mittente, destinatari e nomi degli
+  allegati restano in chiaro
+- **Posta cifrata (OpenPGP, beta)**: da un capo all'altro tra account
+  IMAP/SMTP, firmata e cifrata, oggetto compreso. Le chiavi viaggiano da
+  sole (Autocrypt): dopo un normale scambio di mail il pulsante «Cifra»
+  funziona con GigaMail, Thunderbird o Delta Chat. Una mail che hai chiesto
+  di cifrare non parte mai in chiaro
 
 ## Setup rapido
 
@@ -432,6 +475,11 @@ gigamail identity add-file C:\docs\listino.xlsx
 gigamail identity add-file C:\docs\catalogo\   # intera cartella
 ```
 
+Il tuo agente può anche *proporre* una modifica a quei testi
+(`update_identity`): vedi ognuno prima e dopo, per intero, e approvi al PC.
+File di conoscenza, firma e mascheramento restano solo tuoi: nessun tool li
+cambia.
+
 Registrazione in Claude Desktop / Claude Code (`mcpServers`):
 
 ```json
@@ -485,7 +533,7 @@ risposta e ti chiede conferma prima di inviare.
   evento, creazione di una riunione Zoom, caricamento di un file su Drive,
   cestinamento di un file di Drive, creazione/modifica/ripresa/rinnovo/
   cancellazione di una regola di risposta, modifica dei testi dell'identità
-  (solo al PC, mai da Telegram: con Windows Hello / Touch ID, la
+  (solo al PC, mai da Telegram: con Windows Hello / Touch ID / PIN su Linux, la
   cancellazione con un clic)
 
 Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
@@ -512,6 +560,12 @@ azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
 GigaMail non riscrive mai le voci passate — non è, e non pretende di essere,
 un archivio a prova di manomissione).
 
+Nella console desktop, la barra dell'agente fa girare Claude Code o Codex
+con i soli tool di GigaMail: niente shell, niente accesso ai tuoi file,
+niente web, nessuno dei tuoi altri connettori, qualunque cosa permettano le
+tue impostazioni. La console lo dice quando l'agente che hai scelto non si
+può chiudere così.
+
 Lo mettiamo alla prova: mail ostili che ordinano esfiltrazione,
 cancellazione di massa e all'agente di approvarsi da solo, date a un agente
 reale con tutti i tool attivi.
@@ -531,16 +585,16 @@ reale è opt-in ([scripts/injection_e2e.py](scripts/injection_e2e.py)) e usa
 una modalità dry-run, così le azioni confermate finiscono nell'audit ma non
 vengono mai eseguite.
 
-## Regole di risposta (0.2): semi-auto e auto reply, con recinto
+## Regole di risposta: semi-auto e auto reply, con recinto
 
 Puoi dire a GigaMail: *le mail da questi mittenti (o in questa cartella)
 ricevono una risposta preparata da questi documenti*. Le regole si creano
-dalla CLI — `gigamail rules add` — dietro lo stesso prompt Windows Hello /
-Touch ID delle approvazioni, e `gigamail watch` è il processo che le
+dalla console o dalla CLI — `gigamail rules add` — dietro lo stesso prompt Windows Hello /
+Touch ID / PIN su Linux delle approvazioni, e `gigamail watch` è il processo che le
 applica. Il tuo agente può anche *chiedere* una regola, con i tool MCP
 `create_rule`, `update_rule`, `resume_rule`, `renew_rule` e `delete_rule`:
 la richiesta salva solo un'anteprima e si approva al PC, mai da Telegram:
-con Windows Hello / Touch ID per creare, modificare, riattivare o rinnovare
+con Windows Hello / Touch ID / PIN su Linux per creare, modificare, riattivare o rinnovare
 una regola, con un clic per cancellarla. Quindi un'istruzione iniettata può
 far chiedere l'autopilota all'agente ma non può accenderlo.
 
@@ -601,7 +655,7 @@ vive fuori ed e' spento finche' non lo accendi:
 
 ```bash
 gigamail extensions list
-gigamail extensions enable appointments   # chiede Windows Hello / Touch ID
+gigamail extensions enable appointments   # chiede Windows Hello / Touch ID / PIN su Linux
 gigamail extensions install real_estate   # nella cartella dati: resiste agli aggiornamenti
 gigamail extensions enable real_estate
 ```
@@ -638,7 +692,9 @@ titolare del copyright.
 
 **关于你的数据**：GigaMail 把邮件索引、凭据、记忆和配置全部保存在**你自己
 的机器上** —— 我们不运行任何服务，也收不到任何数据。代理读取的邮件内容当
-然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理。
+然会经过该代理及其模型提供商，适用他们各自的数据政策。请据此选择你的代理；
+为某个账户开启脱敏后，邮件和附件中的敏感数据会在代理读取之前被替换为占位符
+（见下文）。
 
 <p align="center"><img src="docs/brand/gigamail-banner.gif" alt="GigaMail" width="720"></p>
 
@@ -662,6 +718,17 @@ titolare del copyright.
   是人当时看到的那份参数。每次写操作都会记入只追加的审计日志
 - **凭据永远不经过代理通道**：登录与账户管理只存在于 CLI —— 邮件里的提示
   注入无法添加账户或读取任何机密
+- **代理读取前先脱敏**：每个账户一个开关，默认关闭。开启后，邮件的主题与正文
+  以及附件文本在到达代理之前，其中的税号、增值税号、IBAN、支付卡号、邮箱地址、
+  电话、街道地址、公司名称以及美国和欧盟的各类证件号都会被替换为
+  `[IBAN_1a2b3c4d]` 这样的占位符 —— 按规则识别，不使用 AI。你可以选择类型、
+  添加自己的词语、指定表单中的字段；扫描的表单会生成一份遮盖了这些字段的副本。
+  代理在邮件中写入占位符时，GigaMail 会在你批准之前换回真实值，并在批准界面
+  提示这封邮件会透露该数据。代理无法关闭脱敏；脱敏失败时，代理拿不到任何文本。
+  发件人、收件人和附件名保持明文
+- **加密邮件（OpenPGP，测试版）**：IMAP/SMTP 账户之间端到端加密并签名，主题
+  也在其中。密钥自动交换（Autocrypt）：正常往来一封邮件之后，"加密"按钮即可
+  用于 GigaMail、Thunderbird 或 Delta Chat。要求加密的邮件绝不会以明文发出
 
 ## 快速开始
 
@@ -701,6 +768,10 @@ gigamail check                # 搜索、等待你批准的草稿、给自己发
 gigamail identity set                       # 我是谁、做什么、语气
 gigamail identity add-file C:\docs\pricelist.xlsx
 ```
+
+你的代理也可以*提议*修改这些文字（`update_identity`）：你会完整看到每一处
+修改前后的内容，并在电脑上批准。知识文件、签名和脱敏设置只属于你：没有任何
+工具能更改它们。
 
 在 Claude Desktop / Claude Code 中注册（`mcpServers`）：
 
@@ -746,13 +817,16 @@ codex plugin add gigamail@gigamail
 
 ## 工具
 
-29 个类型化工具，由服务器本身生成：
+41 个类型化工具，由服务器本身生成：
 
-- **读取（17）** —— 账户、身份、知识文件、邮件、未读、文件夹、混合搜索、
-  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本
-- **安全写入（2，有审计）** —— 标记已读、新建文件夹
-- **危险操作（10，需带外人工批准）** —— 移动邮件、发送、回复、删除邮件、删除文件夹、
-  创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站
+- **读取（21）** —— 账户、身份、知识文件及其内部搜索、邮件、未读、文件夹、混合搜索、
+  附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本、
+  回复规则及其执行记录、自动化状态
+- **安全写入（4，有审计）** —— 标记已读、新建文件夹、保存草稿、暂停回复规则
+- **危险操作（16，需带外人工批准）** —— 移动邮件、发送、回复、删除邮件、删除文件夹、
+  创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站、
+  创建/修改/恢复/续期/删除回复规则、修改身份文字（这几项只能在电脑上批准，
+  不能通过 Telegram：需要 Windows Hello / Touch ID / Linux PIN，删除只需点击）
 
 日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；
 工具完全相同。Drive 使用 `drive.file` 权限，只能看到 GigaMail 自己创建的
@@ -770,16 +844,22 @@ codex plugin add gigamail@gigamail
 每次写操作都记入只追加的审计日志（GigaMail 从不改写历史条目 —— 它不是、
 也不自称是防篡改存储）。
 
+在桌面控制台中，代理栏运行的 Claude Code 或 Codex 只能使用 GigaMail 的工具：
+没有 shell，不能访问你的文件，不能上网，也用不到你的其他连接器，无论你自己的
+设置允许什么。如果你选择的代理无法这样隔离，控制台会明确告知。
+
 我们对此做红队测试：让恶意邮件命令真实代理外泄数据、批量删除、自我批准 ——
 在所有邮件工具全开的情况下，零破坏性操作。
 
-## 回复规则（0.2）：带栅栏的半自动与全自动回复
+## 回复规则：带栅栏的半自动与全自动回复
 
 你可以告诉 GigaMail：*来自这些发件人（或这个文件夹）的邮件，用这些文档起草
-回复*。规则只能从 CLI（`gigamail rules add`）或控制台创建，且要经过与批准
-相同的 Windows Hello / Touch ID 验证；`gigamail watch` 是执行规则的进程。
-MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：被注入的指令无法
-打开自动驾驶。
+回复*。规则从控制台或 CLI（`gigamail rules add`）创建，且要经过与批准
+相同的 Windows Hello / Touch ID / Linux PIN 验证；`gigamail watch` 是执行规则的进程。
+你的代理也可以*请求*一条规则，通过 MCP 工具 `create_rule`、`update_rule`、
+`resume_rule`、`renew_rule` 和 `delete_rule`：请求只保存一份预览，且只能在电脑上
+批准，不能通过 Telegram —— 创建、修改、恢复或续期需要 Windows Hello / Touch ID /
+Linux PIN，删除只需点击。因此被注入的指令可以让代理请求自动驾驶，却无法打开它。
 
 - **semi**（默认）：草稿成为一个普通的批准请求 —— 你收到通知，用 Hello
   批准后才会发出。
@@ -824,7 +904,7 @@ MCP 服务器保持被动，**不存在任何能触碰规则的 MCP 工具**：�
 
 ```bash
 gigamail extensions list
-gigamail extensions enable appointments   # 需要 Windows Hello / Touch ID
+gigamail extensions enable appointments   # 需要 Windows Hello / Touch ID / Linux PIN
 gigamail extensions install real_estate   # 装在数据目录中：应用更新后仍然保留
 gigamail extensions enable real_estate
 ```

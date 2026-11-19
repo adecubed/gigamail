@@ -10,7 +10,7 @@ account's own address, and only after you approve it:
     gigamail check                   # active account
     gigamail check --account-id 2
 
-While it waits, approve from another terminal (Windows Hello / Touch ID)
+While it waits, approve from another terminal (Windows Hello / Touch ID / Linux PIN)
 or from the console:
 
     gigamail approvals approve <request_id>

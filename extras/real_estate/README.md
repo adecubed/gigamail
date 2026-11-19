@@ -20,7 +20,7 @@ What it adds on top of the core:
 ## Install
 
 ```bash
-gigamail extensions install real_estate    # asks for Windows Hello / Touch ID
+gigamail extensions install real_estate    # asks for Windows Hello / Touch ID / Linux PIN
 gigamail extensions enable real_estate     # asks again: it changes what the watcher does
 gigamail extensions list
 ```

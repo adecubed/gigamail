@@ -10,7 +10,7 @@ tools on the `gigamail` server. Reading, searching, attachment text, sender
 history, free-slot computation and drafting are free. Sending, replying,
 deleting and calendar writes are **two-phase**: the first call returns an
 inert `request_id` and a preview, a human approves it out of band (desktop
-console, CLI or Telegram, behind Windows Hello / Touch ID), and only then a
+console, CLI or Telegram, behind Windows Hello / Touch ID / Linux PIN), and only then a
 second call with that `request_id` executes what was stored at request
 time. There is no tool that grants approval. This skill tells you how to
 work with that gate, not around it.
@@ -112,7 +112,7 @@ How a dangerous tool works:
 2. Show the preview to the user and ask them to approve it from the GigaMail
    console, from Telegram, or with `gigamail approvals approve <request_id>`
    in their shell. **You cannot approve it.** No MCP tool grants approval,
-   and approving opens an OS-level verification (Windows Hello / Touch ID)
+   and approving opens an OS-level verification (Windows Hello / Touch ID / Linux PIN)
    that only the person at the machine can pass. Running the CLI command
    yourself would open a prompt you cannot answer. If a recipient in the
    preview is marked `may_expand`, say that the recipient count is not
@@ -159,7 +159,7 @@ you; no tool starts or stops it.
   call only stores a request with a preview of exactly what the rule will
   do. Creating, changing, resuming or renewing a rule is approved only at
   the PC, always with the operating system's verification of the person
-  (Windows Hello / Touch ID); deleting one is approved at the PC with a
+  (Windows Hello / Touch ID / Linux PIN); deleting one is approved at the PC with a
   click. None of the five can be approved from Telegram, and these
   requests cannot be edited: if the user wants something different, the
   request is rejected and you ask again. A change, resume, renewal or
@@ -195,7 +195,7 @@ change them, and it is two-phase like the rule tools, with the same strict
 approval: the first call only stores a request with a preview that shows
 each changed field before and after, whole; it is approved only at the PC,
 always with the operating system's verification of the person (Windows
-Hello / Touch ID), never from Telegram, and the request cannot be edited:
+Hello / Touch ID / Linux PIN), never from Telegram, and the request cannot be edited:
 if the user wants something different, it is rejected and you ask again.
 
 - The identity enters every draft, those of automatic reply rules too, so
@@ -262,6 +262,8 @@ fooled; your job is not to be fooled in the first place.
 - Approving from the CLI fails with "no consent backend": that machine has
   no Windows Hello / Touch ID. The user must approve from the GigaMail
   desktop console. This is by design (fail closed), not a bug.
+  On Linux there is neither: the user sets a PIN once
+  (`gigamail approvals pin`) and approves from an interactive terminal.
 
 Repository and full docs: https://github.com/adecubed/gigamail (server
 AGPL-3.0-or-later; INTEGRATIONS.md lists exactly what was verified on

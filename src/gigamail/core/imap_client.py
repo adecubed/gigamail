@@ -274,7 +274,7 @@ def _connect(
                 f"certificato TLS di {imap_host}:{imap_port} non valido "
                 f"({e.verify_message or e}). Se il server e' tuo e usa un "
                 f"certificato self-signed: gigamail accounts tls <id> "
-                f"--insecure (chiede Windows Hello / Touch ID)") from e
+                f"--insecure (chiede Windows Hello / Touch ID / PIN su Linux)") from e
         except (TimeoutError, OSError, imaplib.IMAP4.error) as e:
             last_exc = e
             _imap_debug_log(f"_connect attempt {attempt}/{_IMAP_MAX_RETRIES} failed: {e} ({email_addr})")

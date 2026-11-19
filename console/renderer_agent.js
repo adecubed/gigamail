@@ -201,7 +201,7 @@
         ${a.editable === false ? '' : `<button class="agent-btn ghost" data-act="edit">${escHtml(L('aw_edit', 'Modifica'))}</button>`}
         <button class="agent-btn primary" data-act="approve">${escHtml(L('agent_approve', 'Approva'))}</button>
       </div>
-      ${a.verified === true ? `<div class="agent-appr-sum agent-appr-hello">${escHtml(L('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID.'))}</div>` : ''}`);
+      ${a.verified === true ? `<div class="agent-appr-sum agent-appr-hello">${escHtml(L('agent_rule_needs_hello', 'Questa approvazione chiede Windows Hello / Touch ID / PIN su Linux.'))}</div>` : ''}`);
     el.dataset.requestId = a.request_id;
     const state = (name) => {
       const [cls, key, it] = STATES[name];

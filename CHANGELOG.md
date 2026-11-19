@@ -129,7 +129,7 @@
   preview of exactly what the rule will do; nothing changes until you
   approve it. Approval is stricter than for sending mail: creating,
   changing, resuming or renewing a rule is approved only at the PC and
-  always with Windows Hello / Touch ID, even from a click in the console;
+  always with Windows Hello / Touch ID / Linux PIN, even from a click in the console;
   deleting one is approved at the PC with a click; none of the five can be
   approved from Telegram (the Telegram message says so), and these requests
   cannot be edited or saved for later, in the agent bar or in the window a
@@ -166,7 +166,7 @@
   tone and the key information. They enter every draft GigaMail writes,
   those of automatic reply rules too, so the request is as strict as one
   for a rule: it only stores a preview, and it is approved only at the PC,
-  always with Windows Hello / Touch ID, even from a click in the console;
+  always with Windows Hello / Touch ID / Linux PIN, even from a click in the console;
   Telegram cannot approve it (its message says so), and the request cannot
   be edited or saved for later: reject it and ask again. The approval text
   shows each field that changes, before and after, whole, and lists the
@@ -184,6 +184,14 @@
   any tool, and the audit log never holds the old or the new text, only
   the names of the fields. A hidden instruction in a mail can make the
   agent ask for a change, not make it happen.
+
+- **The texts name the Linux PIN too.** Where an approval asks for a
+  check of the person at the machine, the console, the notifications, the
+  command line's help and the tools' descriptions said "Windows Hello /
+  Touch ID", which is not what Linux has. They now say "Windows Hello /
+  Touch ID / Linux PIN": on Linux the check is the PIN set with
+  `gigamail approvals pin`, typed in an interactive terminal. Nothing
+  changes in how approvals work.
 
 ## v0.6.8 — 2026-11-17
 

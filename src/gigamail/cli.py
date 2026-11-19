@@ -1711,7 +1711,7 @@ def main(argv=None) -> int:
     p_tls.add_argument("account_id", type=int)
     grp = p_tls.add_mutually_exclusive_group(required=True)
     grp.add_argument("--insecure", action="store_true",
-                     help="accetta un certificato self-signed (chiede Hello / Touch ID)")
+                     help="accetta un certificato self-signed (chiede Hello / Touch ID / PIN)")
     grp.add_argument("--verify", action="store_true", help="torna a verificarlo")
     p_tls.set_defaults(fn=cmd_accounts_tls)
 
@@ -1759,7 +1759,7 @@ def main(argv=None) -> int:
     p_apin.set_defaults(fn=cmd_approvals_pin)
     p_ok = appr_sub.add_parser(
         "approve",
-        help="approva una richiesta (richiede Windows Hello / Touch ID)")
+        help="approva una richiesta (richiede Windows Hello / Touch ID / PIN su Linux)")
     p_ok.add_argument("request_id")
     p_ok.set_defaults(fn=cmd_approvals_approve)
     p_achk = appr_sub.add_parser(
@@ -1780,7 +1780,7 @@ def main(argv=None) -> int:
         "rules", help="regole di risposta semi-auto/auto (creazione dietro Hello)")
     rules_sub = p_rules.add_subparsers(dest="subcommand", required=True)
     p_radd = rules_sub.add_parser(
-        "add", help="crea una regola (richiede Windows Hello / Touch ID)")
+        "add", help="crea una regola (richiede Windows Hello / Touch ID / PIN su Linux)")
     p_radd.add_argument("--senders", help="indirizzi trigger, separati da virgola")
     p_radd.add_argument("--folder", help="cartella trigger (alternativa a --senders)")
     p_radd.add_argument("--style", help="stile/istruzioni per la risposta")
@@ -1809,11 +1809,11 @@ def main(argv=None) -> int:
     p_pause.add_argument("rule_id")
     p_pause.set_defaults(fn=cmd_rules_pause)
     p_resume = rules_sub.add_parser(
-        "resume", help="riattiva una regola (richiede Windows Hello / Touch ID)")
+        "resume", help="riattiva una regola (richiede Windows Hello / Touch ID / PIN su Linux)")
     p_resume.add_argument("rule_id")
     p_resume.set_defaults(fn=cmd_rules_resume)
     p_renew = rules_sub.add_parser(
-        "renew", help="renew a rule for another period of its length (Windows Hello / Touch ID)")
+        "renew", help="renew a rule for another period of its length (Windows Hello / Touch ID / Linux PIN)")
     p_renew.add_argument("rule_id")
     p_renew.set_defaults(fn=cmd_rules_renew)
     p_rrm = rules_sub.add_parser("remove")
@@ -1832,12 +1832,12 @@ def main(argv=None) -> int:
     ext_sub = p_ext.add_subparsers(dest="subcommand", required=True)
     ext_sub.add_parser("list").set_defaults(fn=cmd_extensions_list)
     p_exin = ext_sub.add_parser(
-        "install", help="installa nella cartella dati (chiede Hello / Touch ID)")
+        "install", help="installa nella cartella dati (chiede Hello / Touch ID / PIN)")
     p_exin.add_argument("name", help="real_estate, oppure un requisito pip")
     p_exin.add_argument("--ref", help="branch o tag da cui prenderla (default: "
                                       "il tag della versione installata)")
     p_exin.set_defaults(fn=cmd_extensions_install)
-    p_exon = ext_sub.add_parser("enable", help="accende (chiede Hello / Touch ID)")
+    p_exon = ext_sub.add_parser("enable", help="accende (chiede Hello / Touch ID / PIN)")
     p_exon.add_argument("name")
     p_exon.set_defaults(fn=cmd_extensions_enable)
     p_exoff = ext_sub.add_parser("disable")

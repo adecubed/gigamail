@@ -24,7 +24,7 @@ itself is checked two ways:
 - **On your own account, Graph or IMAP:** `gigamail check` searches,
   prepares a mail to your own address, waits for YOU to approve it
   (`gigamail approvals approve <id>` from another terminal, with Windows
-  Hello / Touch ID, or from the console), sends it and finds it again. It
+  Hello / Touch ID / Linux PIN, or from the console), sends it and finds it again. It
   sends nothing else. The last line is a one-line result to record here.
 
 | Date | Version | Provider | OS | Result |
@@ -56,7 +56,7 @@ its own.
 - Off: Telegram, Zoom, site form, all extensions
   (`gigamail extensions list` shows everything off).
 - Approvals: console or `gigamail approvals approve <id>` (Windows Hello /
-  Touch ID) only.
+  Touch ID / Linux PIN) only.
 - Flow exercised every day: search, a semi-auto rule on one sender or
   folder, the draft reaching the approval queue, human approval, the
   send landing in the IMAP Sent folder.
@@ -395,7 +395,7 @@ way.
 
 Since 0.1.4, GigaMail can run a command of your choice every time a new
 approval request is created — notification only; approving still needs
-the OS prompt (Windows Hello / Touch ID). Set
+the OS prompt (Windows Hello / Touch ID / Linux PIN). Set
 `GIGAMAIL_APPROVAL_NOTIFY_CMD` in the server's `env` block to a JSON argv
 with `{request_id}`, `{tool}`, `{summary}` placeholders. OpenClaw users
 running over Telegram:

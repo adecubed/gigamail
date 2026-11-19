@@ -575,7 +575,7 @@ def test_a_rule_request_is_not_approved_from_telegram(world):
     assert policy.store().get(rid)["status"] == policy.PENDING
     # the rule wording, not the older one for a file from outside
     assert world["tg"].sent[-1]["text"] == (
-        "Una regola si approva solo dal PC, con Windows Hello / Touch ID. "
+        "Una regola si approva solo dal PC, con Windows Hello / Touch ID / PIN su Linux. "
         "Da qui puoi rifiutare.")
 
 
@@ -587,7 +587,7 @@ def test_an_identity_request_is_not_approved_from_telegram(world):
     # its own wording: it is not a rule
     assert world["tg"].sent[-1]["text"] == (
         "La modifica dell'identità si approva solo dal PC, con Windows Hello / "
-        "Touch ID. Da qui puoi rifiutare.")
+        "Touch ID / PIN su Linux. Da qui puoi rifiutare.")
 
 
 def test_an_identity_request_refusal_is_in_english_when_the_user_speaks_english(world, monkeypatch):
@@ -598,7 +598,7 @@ def test_an_identity_request_refusal_is_in_english_when_the_user_speaks_english(
     assert policy.store().get(rid)["status"] == policy.PENDING
     assert world["tg"].sent[-1]["text"] == (
         "A change to the identity is approved only at the PC, with Windows Hello / "
-        "Touch ID. From here you can reject it.")
+        "Touch ID / Linux PIN. From here you can reject it.")
 
 
 def test_deleting_a_rule_from_telegram_says_pc_without_hello(world):
@@ -626,9 +626,9 @@ def test_the_pin_does_not_approve_a_rule_request(world):
 
 
 @pytest.mark.parametrize("tool,line", [
-    ("create_rule", "Si approva solo dal PC, con Windows Hello / Touch ID."),
+    ("create_rule", "Si approva solo dal PC, con Windows Hello / Touch ID / PIN su Linux."),
     ("delete_rule", "Si approva solo dal PC."),
-    ("update_identity", "Si approva solo dal PC, con Windows Hello / Touch ID."),
+    ("update_identity", "Si approva solo dal PC, con Windows Hello / Touch ID / PIN su Linux."),
 ])
 def test_the_telegram_message_of_a_rule_request_says_it_is_approved_at_the_pc(world, tool, line):
     preview = {"subject": "Nuova regola SEMI per mario.rossi@example.com",
@@ -644,4 +644,5 @@ def test_the_telegram_message_of_a_rule_request_says_it_is_approved_at_the_pc(wo
 
 def test_a_mail_request_carries_no_pc_line(world):
     assert policy.pc_only_notice("send_mail") == ""
-    assert policy.pc_only_notice("update_rule").endswith("Touch ID.")
+    assert "Touch ID" in policy.pc_only_notice("update_rule")
+    assert "Linux" in policy.pc_only_notice("update_rule")

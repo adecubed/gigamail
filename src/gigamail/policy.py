@@ -739,9 +739,9 @@ def pc_only_notice(tool: str) -> str:
     if tool not in PC_ONLY_TOOLS:
         return ""
     if tool in VERIFIED_TOOLS:
-        return ("Si approva solo dal PC, con Windows Hello / Touch ID."
+        return ("Si approva solo dal PC, con Windows Hello / Touch ID / PIN su Linux."
                 if user_lang() == "it"
-                else "Approved only at the PC, with Windows Hello / Touch ID.")
+                else "Approved only at the PC, with Windows Hello / Touch ID / Linux PIN.")
     return "Si approva solo dal PC." if user_lang() == "it" else "Approved only at the PC."
 
 
