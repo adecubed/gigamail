@@ -91,7 +91,11 @@ p { margin: 0; }
 /* Seven links, two languages and two buttons need about 1150px: below that the
    links go, and below 860px the GitHub label too. */
 .topnav a { white-space: nowrap; }
-@media (max-width: 1180px) { .topnav { display: none; } }
+/* the top bar holds nine links: give it more room than the page body */
+.topbar .wrap { max-width: 1260px; }
+.topnav { gap: 0; }
+.topnav a { padding: 7px 9px; }
+@media (max-width: 1240px) { .topnav { display: none; } }
 @media (max-width: 860px) { .topbar .gh-text { display: none; } }
 @media (max-width: 480px) { .topbar .wrap { gap: 10px; } .brand img { height: 28px; } .topbar .btn { padding: 8px 12px; } .lang { padding: 7px 6px; } }
 

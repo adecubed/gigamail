@@ -8,7 +8,8 @@
   any hidden text an AI agent would read (white on white, zero size, off
   screen, clipped, comments). Paste the message or open its .eml file
   (Gmail: Download message). It runs in the browser: the mail is not
-  uploaded, and its remote images are blocked.
+  uploaded, and its remote images are blocked. A pink "Email check" link
+  after Security in the top menu of every page leads to it.
 - **IMAP: HTML mails with a single part show as HTML.** A mail made of one
   `text/html` part that starts with `<div>`, with no `<html>` tag or
   doctype, was read as plain text, and the console showed its raw markup.
