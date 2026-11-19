@@ -10,6 +10,8 @@
   (paypa1.com, wikipedla.org). A daily workflow rebuilds the lists on the
   `checker-data` branch; the page fetches only the hashed pieces it needs,
   so no name leaves the browser. Credits and privacy policy say so.
+  URLhaus is read from curben's list built from it, or from abuse.ch's
+  list of online URLs: its old host file is gone.
 - **Email checker: check a single file.** Drop or open any file, not only
   a saved mail: a PDF, a Word or Excel file, a zip is checked on its own,
   as an attachment, with its own verdict. A saved mail (.eml) is still

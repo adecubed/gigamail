@@ -24,6 +24,7 @@ import io
 import json
 import re
 import sys
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -42,8 +43,13 @@ SOURCES = {
     },
     "urlhaus": {
         "kind": "malware",
-        "urls": ["https://urlhaus.abuse.ch/downloads/hostfile/"],
-        "license": "CC0, https://urlhaus.abuse.ch",
+        # abuse.ch retired its host file (410 Gone, November 2026): curben's
+        # list built from the URLhaus database, then abuse.ch's own list of
+        # online URLs, whose hosts parse_hosts takes.
+        "urls": ["https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-domains-online.txt",
+                 "https://curbengh.github.io/malware-filter/urlhaus-filter-domains-online.txt",
+                 "https://urlhaus.abuse.ch/downloads/text_online/"],
+        "license": "CC0, https://urlhaus.abuse.ch (via https://gitlab.com/malware-filter/urlhaus-filter, CC0 and MIT)",
     },
 }
 TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
@@ -84,6 +90,11 @@ def parse_hosts(text: str) -> list[str]:
     for line in text.splitlines():
         line = line.split("#", 1)[0].strip().lower()
         if not line:
+            continue
+        if "://" in line:  # a URL list: keep its host
+            host = urllib.parse.urlsplit(line.split()[0]).hostname or ""
+            if HOST.match(host) or IPV4.match(host):
+                out.append(host)
             continue
         fields = line.split()
         host = fields[-1] if len(fields) > 1 and IPV4.match(fields[0]) else fields[0]
