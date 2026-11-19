@@ -6,7 +6,12 @@
   email and see its phishing signs (sender and Reply-To, SPF/DKIM/DMARC,
   links that open another address, pressure words, risky attachments) and
   any hidden text an AI agent would read (white on white, zero size, off
-  screen, clipped, comments). Paste the message or open its .eml file
+  screen, clipped, comments). It spots look-alike domains of the brands
+  phishing imitates most (paypa1.com, micros0ft-support.com,
+  paypal.com.example.net) and checks attachments for what they really
+  are: programs disguised as documents, double extensions, Office macros
+  and remote templates, PDFs with JavaScript, password-asking web pages,
+  archives hiding programs or locked with a password. Paste the message or open its .eml file
   (Gmail: Download message). It runs in the browser: the mail is not
   uploaded, and its remote images are blocked. A pink "Email check" link
   after Security in the top menu of every page leads to it.

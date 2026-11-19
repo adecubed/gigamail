@@ -45,7 +45,7 @@ JS_RAW = json.dumps(RAW)
 
 
 def test_raw_message_is_parsed_and_decoded():
-    out = _run(f'const p = ec.parseInput({JS_RAW}); return {{raw: p.raw, html: p.html, plain: p.plain.trim(), att: p.attachments}};')
+    out = _run(f'const p = ec.parseInput({JS_RAW}); return {{raw: p.raw, html: p.html, plain: p.plain.trim(), att: p.attachments.map(a => a.name)}};')
     assert out == {"raw": True, "html": "<p>Città</p>", "plain": "Città di Milano", "att": ["invoice.zip"]}
 
 
@@ -111,3 +111,74 @@ def test_the_page_loads_the_checker_and_is_listed():
     # the mail is rendered with no scripts and no network
     assert "setAttribute('sandbox', 'allow-same-origin')" in script
     assert "default-src 'none'" in script
+
+
+# ---- look-alike domains and attachments -------------------------------------
+
+def test_lookalike_domains():
+    hosts = {
+        "paypal.com": "", "paypa1.com": "paypal", "paypal.com.example.net": "paypal",
+        "secure-paypal.net": "paypal", "micros0ft.com": "microsoft", "rnicrosoft.com": "microsoft",
+        "login.microsoftonline.com": "", "amazon.it": "", "amazon.com.br": "", "arnazon.com": "amazon",
+        "apple.example.edu": "", "applebees.com": "", "apple-id.com": "apple", "startups.com": "",
+        "ups-tracking.net": "ups", "poste.it": "", "poste-italiane.info": "poste", "example.com": "",
+    }
+    out = _run(f"const h = {json.dumps(list(hosts))}; return Object.fromEntries(h.map(x => [x, ec.lookalike(x)]));")
+    assert out == hosts
+
+
+def test_brand_in_display_name():
+    raw = json.dumps('From: "PayPal" <service@example.net>\nSubject: x\nTo: a@example.com\n\nhi')
+    out = _run(f"return ec.headerSignals(ec.parseInput({raw}).headers).map(f => f.id);")
+    assert out == ["brand-name"]
+
+
+def _zip(files, encrypted=False):
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in files.items():
+            z.writestr(name, data)
+    data = bytearray(buf.getvalue())
+    if encrypted:  # set the "encrypted" flag on every entry
+        i = 0
+        while (i := data.find(b"PK\x01\x02", i)) >= 0:
+            data[i + 8] |= 1
+            i += 4
+    return bytes(data)
+
+
+def _inspect(name, data):
+    import base64
+    b64 = base64.b64encode(data).decode()
+    return _run(f"""const r = await ec.inspectAttachment({{name: {json.dumps(name)},
+        bytes: new Uint8Array(Buffer.from({json.dumps(b64)}, 'base64'))}});
+        return r.findings.map(f => f.id);""")
+
+
+DOCX_TEMPLATE_RELS = (
+    '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate"'
+    ' Target="https://example.net/t.dotm" TargetMode="External"/></Relationships>'
+)
+
+
+@pytest.mark.parametrize("name,data,expected", [
+    ("invoice.pdf.exe", b"MZ\x90\x00rest", {"att-double-ext", "att-program"}),
+    ("invoice.pdf", b"MZ\x90\x00rest", {"att-program", "att-mismatch"}),
+    ("login.html", b"<html><form><input type=password></form><script>location.href='x'</script></html>",
+     {"att-page", "att-password-form", "att-script", "att-redirect"}),
+    ("doc.pdf", b"%PDF-1.7\n1 0 obj<</OpenAction 2 0 R>>\n2 0 obj<</S/JavaScript/JS(app.alert(1))>>\n"
+     b"3 0 obj<</URI(http://192.0.2.10/x)>>", {"att-pdf-js", "att-pdf-autoaction", "att-ip-link", "att-pdf-links"}),
+    ("clean.pdf", b"%PDF-1.7\n1 0 obj<</Type/Page>>", set()),
+    ("report.docx", _zip({"[Content_Types].xml": "<Types/>", "word/document.xml": "<w/>"}), set()),
+    ("report.docx", _zip({"[Content_Types].xml": "<Types/>", "word/vbaProject.bin": "x"}), {"att-macros"}),
+    ("report.docx", _zip({"[Content_Types].xml": "<Types/>", "word/_rels/settings.xml.rels": DOCX_TEMPLATE_RELS}),
+     {"att-remote-template"}),
+    ("files.zip", _zip({"invoice.pdf.js": "WScript.Run()", "readme.txt": "hi"}), {"att-zip-risky"}),
+    ("files.zip", _zip({"a.txt": "hi"}, encrypted=True), {"att-encrypted"}),
+    ("photo.jpg", b"\xff\xd8\xff\xe0rest", set()),
+])
+def test_attachment_findings(name, data, expected):
+    assert set(_inspect(name, data)) == expected

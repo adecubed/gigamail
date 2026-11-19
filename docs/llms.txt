@@ -36,7 +36,7 @@ Key facts:
 
 ## Free tools
 
-- [Email checker](https://gigamail.ai/email-check.html): paste an email to see its phishing signs and any hidden text an AI agent would read; runs in the browser, nothing is uploaded
+- [Email checker](https://gigamail.ai/email-check.html): paste an email to see its phishing signs, look-alike domains, dangerous attachments and any hidden text an AI agent would read; runs in the browser, nothing is uploaded
 
 ## Optional
 
