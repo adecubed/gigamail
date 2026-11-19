@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **IMAP: HTML mails with a single part show as HTML.** A mail made of one
+  `text/html` part that starts with `<div>`, with no `<html>` tag or
+  doctype, was read as plain text, and the console showed its raw markup.
+  The part's Content-Type now decides.
 - **The agent can search the internet, when you approve.** A new tool,
   `web_search` (44 tools in all), for the questions that are not in the
   mail or in your files. The agent writes one question; you see it word
