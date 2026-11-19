@@ -1,7 +1,10 @@
 // The page around email-check.js: renders the mail where nobody can see it,
 // asks the layout which text a reader would miss, and shows the result.
 // The mail never leaves the browser.
-import { parseInput, analyse, plainLinks, addressOf, inspectAttachment, looksLikeRawEmail } from './email-check.js';
+import {
+  parseInput, analyse, plainLinks, addressOf, inspectAttachment, looksLikeRawEmail,
+  DATA_URL, parseTop, knownBad, hostsOf,
+} from './email-check.js';
 
 const $ = id => document.getElementById(id);
 
@@ -125,7 +128,50 @@ function linksOf(doc) {
   return [...doc.querySelectorAll('a[href]')].map(a => ({ href: a.getAttribute('href'), text: a.textContent.replace(/\s+/g, ' ').trim() }));
 }
 
+// ---- Lists of popular and known bad sites ----------------------------------
+// Fetched from the checker-data branch (scripts/build_checker_lists.py). If
+// they cannot be loaded, every other check still runs.
+
+let topPromise = null;
+let metaPromise = null;
+const shards = new Map();
+
+function getText(path) {
+  return fetch(DATA_URL + path).then(r => (r.ok ? r : Promise.reject(new Error(path + ': ' + r.status))));
+}
+
+function loadTop() {
+  if (!topPromise) topPromise = getText('top.txt').then(r => r.text()).then(parseTop).catch(e => { topPromise = null; throw e; });
+  return topPromise;
+}
+
+function loadMeta() {
+  if (!metaPromise) metaPromise = getText('meta.json').then(r => r.json()).catch(() => { metaPromise = null; return null; });
+  return metaPromise;
+}
+
+function getShard(hex) {
+  if (!shards.has(hex)) {
+    shards.set(hex, getText(`bad/${hex}.bin`).then(r => r.arrayBuffer()).then(b => new Uint8Array(b))
+      .catch(e => { shards.delete(hex); throw e; }));
+  }
+  return shards.get(hex);
+}
+
+async function loadIntel(parsed, links) {
+  const hosts = hostsOf(parsed, links);
+  const timeout = new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 8000));
+  try {
+    const [top, bad, meta] = await Promise.race([
+      Promise.all([loadTop(), hosts.length ? knownBad(hosts, getShard) : new Map(), loadMeta()]), timeout]);
+    return { top, bad, meta };
+  } catch {
+    return { error: true };
+  }
+}
+
 const COPY = {
+  'known-bad': 'On a public list of phishing or malware sites',
   'reply-to': 'Replies go to a different domain than the sender',
   'return-path': 'Bounces go to a different domain than the sender',
   'display-name': 'The sender name shows a different address',
@@ -191,7 +237,7 @@ function el(tag, cls, text) {
   return e;
 }
 
-function show(result, hidden, parsed, reports, mode) {
+function show(result, hidden, parsed, reports, mode, intel) {
   const box = $('ec-result');
   box.replaceChildren();
   box.hidden = false;
@@ -255,6 +301,14 @@ function show(result, hidden, parsed, reports, mode) {
     list.append(row);
   }
   if (!parsed.raw) list.append(el('p', 'muted ec-tip', 'Tip: open the saved mail (.eml), or paste the original message, to also check the sender, SPF/DKIM/DMARC and the attachments.'));
+  if (!file && intel) {
+    if (intel.error) {
+      list.append(el('p', 'muted ec-tip', 'The lists of known bad and popular sites could not be loaded: every other check ran.'));
+    } else if (intel.meta) {
+      const n = Number(intel.meta.bad_hosts || 0).toLocaleString('en-US');
+      list.append(el('p', 'muted ec-tip', `Senders and links were also looked up among ${n} known phishing and malware sites (lists updated ${String(intel.meta.built || '').slice(0, 10)}), without sending them anywhere.`));
+    }
+  }
   if (file) box.append(el('p', 'muted ec-tip', 'To check the mail that brought this file (sender, links, hidden text), open the saved mail (.eml) instead.'));
   else box.append(list);
   if (parsed.raw) {
@@ -283,7 +337,8 @@ async function check() {
     }
     const reports = [];
     for (const a of parsed.attachments.slice(0, 20)) reports.push(await inspectAttachment(a));
-    show(analyse(parsed, hidden, visible, links, reports), hidden, parsed, reports);
+    const intel = await loadIntel(parsed, links);
+    show(analyse(parsed, hidden, visible, links, reports, intel), hidden, parsed, reports, '', intel);
   } finally { btn.disabled = false; }
 }
 

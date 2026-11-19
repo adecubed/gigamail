@@ -184,3 +184,66 @@ DOCX_TEMPLATE_RELS = (
 ])
 def test_attachment_findings(name, data, expected):
     assert set(_inspect(name, data)) == expected
+
+
+# ---- lists of popular and known bad sites -----------------------------------
+
+def _build_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "build_checker_lists", Path(__file__).resolve().parents[1] / "scripts" / "build_checker_lists.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_list_parsing_handles_plain_and_hosts_files():
+    b = _build_module()
+    text = "# comment\nphish.example.net\n0.0.0.0 bad.example.org\n127.0.0.1\tmal.example.com # x\nlocalhost\n\nnot a host\n192.0.2.7\n"
+    assert b.parse_hosts(text) == ["phish.example.net", "bad.example.org", "mal.example.com", "192.0.2.7"]
+
+
+def test_popular_sites_and_big_platforms_are_never_listed():
+    b = _build_module()
+    protected, big = {"example.com", "popular.example"}, {"example.com"}
+    assert not b.keep("popular.example", protected, big)
+    assert not b.keep("sites.example.com", protected, big)      # a page under a big site
+    assert b.keep("evil.weebly.com", protected, big)            # one customer of a hosting platform
+    assert not b.keep("weebly.com", protected, big)
+    assert b.keep("phish.example.net", protected, big)
+
+
+def test_build_writes_shards_the_page_can_search(tmp_path):
+    b = _build_module()
+    tranco = ["example.com", "popular.example"] + [f"pad{i}.example" for i in range(10)]
+    meta = b.build({"phishing-database": ["phish.example.net", "popular.example"], "urlhaus": ["mal.example.org"]},
+                   tranco, tmp_path, {})
+    assert meta["bad_hosts"] == 2
+    assert (tmp_path / "top.txt").read_text().split() == tranco
+    assert "CC BY-SA 4.0" in (tmp_path / "NOTICE.md").read_text()
+    shards = tmp_path / "bad"
+    out = _run(f"""
+      const fs = await import('node:fs');
+      const get = hex => Promise.resolve(new Uint8Array(fs.readFileSync({json.dumps(str(shards))} + '/' + hex + '.bin')));
+      const found = await ec.knownBad(['www.phish.example.net', 'mal.example.org', 'popular.example', 'clean.example'], get);
+      return Object.fromEntries(found);""")
+    assert out == {"phish.example.net": "phishing", "mal.example.org": "malware"}
+
+
+def test_popular_lookalikes():
+    out = _run("""
+      const top = ec.parseTop('example.com\\npaypal.com\\nwikipedia.org\\ninstagram.com\\nbooking.com\\n');
+      const r = h => ec.popularLookalike(h, top);
+      return {a: r('paypa1.com'), b: r('wikipedla.org'), c: r('paypal.com'), d: r('mail.example.com'),
+              e: ec.lookalike('paypal.com.example.net', top), f: ec.lookalike('booking.com', top)};""")
+    assert out["a"] == {"domain": "paypal.com", "level": "high"}
+    assert out["b"] == {"domain": "wikipedia.org", "level": "medium"}
+    assert out["c"]["domain"] == out["d"]["domain"] == ""
+    assert out["e"] == "paypal" and out["f"] == ""
+
+
+def test_the_workflow_publishes_the_lists():
+    wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "checker-lists.yml").read_text(encoding="utf-8")
+    assert "scripts/build_checker_lists.py" in wf and "checker-data" in wf
+    js = (DOCS / "email-check.js").read_text(encoding="utf-8")
+    assert "/adecubed/gigamail/checker-data/" in js
