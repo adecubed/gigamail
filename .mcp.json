@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "gigamail": {
-      "command": "${GIGAMAIL_SERVER:-gigamail-server}",
+      "command": "gigamail-server",
       "args": [],
       "env_vars": [
         "APPDATA",

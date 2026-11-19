@@ -145,3 +145,39 @@ def test_the_agent_bar_with_codex_connects_it_first(codex_home, tmp_path, monkey
     finally:
         console_click.set_secret("")
         policy.set_store(None)
+
+
+def _install_plugin(home, marketplace="openai-curated"):
+    (home / "plugins" / "cache" / marketplace / "gigamail" / "0.6.8").mkdir(parents=True)
+
+
+def test_plugin_installed_reads_codex_plugin_cache(codex_home):
+    assert codex_config.plugin_installed() is False
+    (codex_home / "plugins" / "cache" / "openai-curated" / "other" / "1.0").mkdir(parents=True)
+    assert codex_config.plugin_installed() is False
+    _install_plugin(codex_home)
+    assert codex_config.plugin_installed() is True
+
+
+def test_connect_for_plugin_does_nothing_without_the_plugin(codex_home):
+    assert codex_config.connect_for_plugin() == "no plugin"
+    assert not (codex_home / "config.toml").exists()
+
+
+def test_connect_for_plugin_writes_the_missing_entry(codex_home):
+    _install_plugin(codex_home)
+    (codex_home / "config.toml").write_text('model = "gpt-5"\n', encoding="utf-8")
+    assert codex_config.connect_for_plugin() == "connected"
+    cfg = _cfg(codex_home)
+    assert cfg["model"] == "gpt-5"
+    assert cfg["mcp_servers"]["gigamail"]["command"] == sys.executable
+    assert codex_config.connect_for_plugin() == "already connected"
+
+
+def test_connect_for_plugin_leaves_another_installation_alone(codex_home):
+    """A pip install the user registered by hand is theirs to keep."""
+    _install_plugin(codex_home)
+    original = '[mcp_servers.gigamail]\ncommand = "/home/me/venv/bin/gigamail-server"\n'
+    (codex_home / "config.toml").write_text(original, encoding="utf-8")
+    assert codex_config.connect_for_plugin() == "entry points to another GigaMail: left alone"
+    assert (codex_home / "config.toml").read_text(encoding="utf-8") == original

@@ -134,6 +134,40 @@ def status() -> dict:
     return out
 
 
+def plugin_installed() -> bool:
+    """Whether Codex holds a GigaMail plugin from any marketplace: Codex
+    keeps installed plugins in $CODEX_HOME/plugins/cache/<marketplace>/<name>/."""
+    cache = config_path() / "plugins" / "cache"
+    try:
+        return any((m / NAME).is_dir() for m in cache.iterdir() if m.is_dir())
+    except OSError:
+        return False
+
+
+def connect_for_plugin() -> str:
+    """Write our entry when the user has installed the GigaMail plugin in
+    Codex and config.toml has no gigamail server yet.
+
+    The plugin from the OpenAI Plugins Directory brings only the skill, and
+    the one from the repository marketplace starts `gigamail-server`, which
+    is on no desktop user's PATH: either way Codex has no GigaMail tools
+    until something writes the entry, and installing the plugin is the user
+    asking for them. An entry that is already there, ours or another
+    installation's (a pip install, a hand-written one), is left alone.
+    Returns what happened, for the log."""
+    if not plugin_installed():
+        return "no plugin"
+    st = status()
+    if st["error"]:
+        return f"config.toml unreadable: {st['error']}"
+    if st["connected"]:
+        return "already connected"
+    if st["entry"]:
+        return "entry points to another GigaMail: left alone"
+    connect()
+    return "connected"
+
+
 def connect() -> dict:
     """Write (or replace) our entry. Raises ValueError, writing nothing, when
     the result would change anything else in the file."""
