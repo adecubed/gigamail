@@ -411,3 +411,73 @@ test('a card for a request that cannot be edited shows a very long text whole, a
   const stored = JSON.parse(w.localStorage.getItem('gm-agent-thread-v1') || '{"log":[]}');
   assert.ok(!stored.log.length || stored.log[0].a.body === long, 'the saved entry is not cut');
 });
+
+// An internet search runs while the approve call is open, up to two minutes:
+// the card says so, keeps its buttons off and ends as done or failed.
+const WEB_CARD = { request_id: 'req_w', tool: 'web_search', subject: 'Search the internet: «town hall hours»',
+  editable: false, verified: false, body: 'town hall hours\nNo search starts until you approve.' };
+
+async function askWithApproval(approval, approveRequest) {
+  const { w } = load();
+  w.electronAPI.agentCommand = async () => ({ answer: 'Ready.', approvals: [approval] });
+  w.electronAPI.approveRequest = approveRequest;
+  w.electronAPI.agentComplete = async () => { throw new Error('the agent must not be called again'); };
+  await ready(w);
+  await ask(w, 'search the town hall hours');
+  return w;
+}
+
+test('a card for an internet search shows the whole question and no Edit', async () => {
+  const card = await ruleCardFor(WEB_CARD);
+  assert.equal(card.querySelector('[data-act="edit"]'), null);
+  assert.equal(card.querySelector('.agent-appr-body pre').textContent, WEB_CARD.body);
+  assert.equal(card.querySelector('.agent-appr-hello'), null, 'a click approves it: no OS check is announced');
+});
+
+test('approving an internet search shows that it is searching, with the buttons off, then done', async () => {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  const w = await askWithApproval(WEB_CARD, () => held);
+  const card = w.document.querySelector('.agent-msg.approval');
+  card.querySelector('[data-act="approve"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  const wait = card.querySelector('.agent-appr-wait');
+  assert.ok(wait, 'a waiting line is shown');
+  assert.match(wait.textContent, /Ricerca su internet in corso/);
+  assert.doesNotMatch(wait.textContent, /Windows Hello/);
+  assert.ok([...card.querySelectorAll('button')].every((b) => b.disabled), 'every button is off');
+  release({ success: true, status: 'executed', outcome: 'ok' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(card.querySelector('.agent-appr-wait'), null);
+  assert.ok(card.classList.contains('approved'));
+  assert.match(card.querySelector('.agent-appr-head').textContent, /eseguita/);
+});
+
+test('a failed internet search says why', async () => {
+  const w = await askWithApproval(WEB_CARD, async () => ({
+    success: true, status: 'executed', outcome: 'failed', error: 'Codex gave no answer.' }));
+  const card = w.document.querySelector('.agent-msg.approval');
+  card.querySelector('[data-act="approve"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(card.classList.contains('not-run'));
+  assert.match(w.document.getElementById('agentThread').textContent, /Codex gave no answer\./);
+  assert.equal(card.querySelector('.agent-appr-wait'), null);
+});
+
+test('an internet search that cannot be approved gives the buttons back', async () => {
+  const w = await askWithApproval(WEB_CARD, async () => { throw new Error('Request not approvable'); });
+  const card = w.document.querySelector('.agent-msg.approval');
+  card.querySelector('[data-act="approve"]').click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(card.querySelector('.agent-appr-wait'), null);
+  assert.ok([...card.querySelectorAll('button')].every((b) => !b.disabled));
+});
+
+test('no timeout of the console cuts the approve call short', () => {
+  for (const f of ['renderer_agent.js', 'preload.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf-8');
+    assert.doesNotMatch(src, /AbortController|AbortSignal|signal\s*:/, f);
+  }
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf-8');
+  assert.match(preload, /approveRequest:\s*\(id\)\s*=>\s*apiJson\(/, 'the approve call is a plain fetch');
+});

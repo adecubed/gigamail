@@ -535,6 +535,24 @@ def test_joiners_and_emoji_presentation_are_accepted(emoji):
     rule_requests.check_agent_limits({"reply_style": "Thanks " + emoji})
 
 
+FILLERS = [0x3164, 0x115F, 0x1160, 0xFFA0, 0x2800, 0x034F, 0x17B4, 0x17B5, 0x16FE4]
+
+
+@pytest.mark.parametrize("code", FILLERS)
+def test_a_blank_looking_filler_is_refused(code):
+    """Neither whitespace nor a format character, but drawn as a space or
+    as nothing: a rule's instruction or item could carry hidden text."""
+    assert rule_requests.bad_char(chr(code))
+    with pytest.raises(ValueError, match="reply_style"):
+        rule_requests.check_agent_limits({"reply_style": "Reply" + chr(code) * 3 + "politely"})
+    with pytest.raises(ValueError, match="cc"):
+        rule_requests.check_agent_limits({"cc": ["a" + chr(code) + "b@example.com"]})
+
+
+def test_a_stored_filler_is_shown_as_a_replacement_character():
+    assert rule_requests.shown("Open" + chr(0x3164) + "9-18" + chr(0x2800)) == "Open�9-18�"
+
+
 def test_a_stored_instruction_with_tag_characters_shows_a_replacement(monkeypatch):
     monkeypatch.setattr(policy, "user_lang", lambda: "en")
     body = rule_requests.describe({"reply_style": TAGS})

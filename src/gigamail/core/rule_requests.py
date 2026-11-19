@@ -228,15 +228,21 @@ def bad_char(ch: str) -> bool:
     refused except the zero-width non-joiner and joiner, which emoji
     sequences and some scripts need; so are the variation selectors
     supplement (U+E0100-U+E01EF), but not U+FE00-U+FE0F (emoji
-    presentation)."""
+    presentation). Also refused: the blank-looking fillers (BLANK_FILLERS),
+    letters or marks that draw as a space or as nothing."""
     cp = ord(ch)
     category = unicodedata.category(ch)
     return (category == "Cc" or ch in "\u2028\u2029" or cp in BIDI
             or (category == "Cf" and cp not in _JOINERS)
-            or 0xE0100 <= cp <= 0xE01EF)
+            or 0xE0100 <= cp <= 0xE01EF or cp in BLANK_FILLERS)
 
 
 _JOINERS = (0x200C, 0x200D)
+# Characters that are neither whitespace nor format characters but show as
+# blank space or nothing: the Hangul fillers, the blank braille cell, the
+# combining grapheme joiner, the Khmer inherent vowels, the Khitan filler.
+BLANK_FILLERS = frozenset({0x3164, 0x115F, 0x1160, 0xFFA0, 0x2800, 0x034F,
+                           0x17B4, 0x17B5, 0x16FE4})
 
 
 def shown(text: str) -> str:

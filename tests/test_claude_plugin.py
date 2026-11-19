@@ -89,12 +89,18 @@ def test_tool_counts_in_the_listing_texts_match_the_server():
     count = len(asyncio.new_event_loop().run_until_complete(mcp.list_tools()))
     texts = {
         "skill": (ROOT / "skills" / "gigamail" / "SKILL.md").read_text(encoding="utf-8"),
+        "plugin skill": (PLUGIN / "skills" / "gigamail" / "SKILL.md").read_text(encoding="utf-8"),
         "plugin README": (PLUGIN / "README.md").read_text(encoding="utf-8"),
         "codex manifest": _load(ROOT / ".codex-plugin" / "plugin.json")["interface"]["longDescription"],
     }
+    # Any whitespace between the words: SKILL.md wraps "43 typed MCP" and
+    # "tools" on two lines, and a single-space pattern missed it.
+    pattern = re.compile(r"\b(\d+)\s+(?:typed\s+MCP\s+)?tools\b")
     for where, text in texts.items():
-        numbers = {int(n) for n in re.findall(r"\b(\d+) (?:typed MCP )?tools\b", text)}
+        numbers = {int(n) for n in pattern.findall(text)}
         assert numbers == {count}, (where, numbers)
+    stale = "GigaMail gives you the user's real mailboxes and calendar as 43 typed MCP\ntools"
+    assert pattern.findall(stale) == ["43"]
 
 
 def _publish_script():

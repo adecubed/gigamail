@@ -341,6 +341,41 @@ def test_the_audit_log_counts_the_found_files_of_a_search_and_keeps_the_rest():
     assert "7c2f" not in json.dumps(entry)
 
 
+def test_web_search_is_pc_only_and_fixed_but_not_verified():
+    assert "web_search" in policy.PC_ONLY_TOOLS
+    assert "web_search" in policy.FIXED_TOOLS
+    assert "web_search" not in policy.VERIFIED_TOOLS
+    assert policy.pc_only({"tool": "web_search", "args": {}}) is True
+
+
+@pytest.mark.parametrize("lang,line", [("it", "Si approva solo dal PC."),
+                                       ("en", "Approved only at the PC.")])
+def test_web_search_notice_says_at_the_pc_without_hello(monkeypatch, lang, line):
+    monkeypatch.setattr(policy, "user_lang", lambda: lang)
+    assert policy.pc_only_notice("web_search") == line
+
+
+def test_an_internet_search_is_approved_by_a_click_and_never_from_telegram():
+    store = policy.store()
+    rid = store.create("web_search", {"question": "Opening hours of the city museum"},
+                       {"subject": "x"})
+    assert store.approve(rid, by="telegram:123", verified=True) is False
+    assert store.get(rid)["status"] == policy.PENDING
+    assert store.approve(rid, by="console:mario (console click)") is True
+    assert store.get(rid)["status"] == policy.APPROVED
+
+
+def test_the_audit_log_keeps_the_length_of_a_web_answer_only():
+    policy.audit("web_search", {"question": "Opening hours of the city museum"}, "executed",
+                 provider_result={"answer": "Open from 9 to 17, 4b1e.", "truncated": False,
+                                  "agent": "claude", "searched_at": 1.5})
+    entry = _read_audit()[-1]
+    assert entry["args"] == {"question": "Opening hours of the city museum"}
+    assert entry["provider_result"] == {"answer_count": 24, "truncated": False,
+                                        "agent": "claude", "searched_at": 1.5}
+    assert "4b1e" not in json.dumps(entry)
+
+
 def test_another_tool_keeps_its_provider_result_whole():
     pr = {"paths": ["x"], "matches": {"x": 1}, "id": "m1"}
     policy.audit("send_mail", {"to": "a@example.com"}, "executed", provider_result=pr)

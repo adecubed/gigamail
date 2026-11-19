@@ -337,3 +337,29 @@ test('a mail that puts back masked values says so on its card', () => {
   assert.match(html, /only saw masked \(1 IBAN\) &lt;b&gt;/);
   assert.doesNotMatch(V.pendingCard(AGENT_SEND, t, NOW), /reveals-warning/);
 });
+
+test('an internet search on the list is fixed, shows its question whole and names its tool', () => {
+  const body = 'town hall hours\nThis question is the only thing that leaves the PC: no mail, no files.\n' + 'q'.repeat(300);
+  const html = V.pendingCard({ ...AGENT_SEND, tool: 'web_search', editable: false, verified: false,
+    preview: { action: 'web_search', subject: 'Search the internet: «town hall hours»', body } }, t, NOW);
+  assert.ok(!html.includes('data-act="edit"') && !html.includes('data-act="save"'));
+  assert.match(html, /data-act="approve"/);
+  assert.match(html, /data-act="reject"/);
+  assert.match(html, /data-tool="web_search"/);
+  assert.ok(html.includes('q'.repeat(300)), 'the question is not cut');
+});
+
+test('a decided internet search is "search done" or "search failed", and while it runs it says so', () => {
+  const rec = { ...AGENT_SEND, tool: 'web_search', editable: false, status: 'executed', execution_outcome: 'ok',
+    provider_result: { answer: 'ANSWER-TEXT-9f2', truncated: false, agent: 'claude', searched_at: 1 } };
+  const s = V.summarize(rec, NOW);
+  assert.equal(V.outcomeOf(s, t).text, 'ricerca eseguita');
+  assert.ok(!V.recentCard(rec, t, NOW).includes('ANSWER-TEXT-9f2'), 'the answer is not on the card');
+  assert.equal(V.outcomeOf(V.summarize({ ...rec, execution_outcome: 'failed' }, NOW), t).text, 'ricerca fallita');
+  assert.equal(V.outcomeOf(V.summarize({ ...rec, execution_outcome: 'failed' }, NOW), t).cls, 'err');
+  const running = V.outcomeOf(V.summarize({ ...rec, status: 'approved', execution_outcome: null }, NOW), t);
+  assert.equal(running.text, 'ricerca su internet in corso');
+  assert.equal(running.cls, 'warn');
+  const midway = V.outcomeOf(V.summarize({ ...rec, execution_outcome: null }, NOW), t);
+  assert.equal(midway.text, 'ricerca su internet in corso');
+});

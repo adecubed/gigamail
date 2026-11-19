@@ -92,6 +92,13 @@
   // One short label for what happened to a decided request. "executed"
   // alone means consumed, not delivered: the outcome says whether it went.
   function outcomeOf(s, t) {
+    if (s.tool === 'web_search' && (s.status === 'executed' || s.status === 'approved')) {
+      // an internet search runs at the approval and can take up to two minutes
+      if (s.status === 'executed' && s.outcome === 'ok') return { cls: 'ok', text: t('st_searched', 'ricerca eseguita') };
+      if (s.status === 'executed' && s.outcome === 'dryrun') return { cls: 'warn', text: t('st_dryrun', 'prova, non inviata') };
+      if (s.status === 'executed' && s.outcome) return { cls: 'err', text: t('st_search_failed', 'ricerca fallita') };
+      return { cls: 'warn', text: t('st_web_searching', 'ricerca su internet in corso') };
+    }
     if (s.status === 'executed') {
       // a file search is not sent anywhere: it ran
       if (s.outcome === 'ok' && s.tool === 'search_files') return { cls: 'ok', text: t('st_searched', 'ricerca eseguita') };
@@ -134,7 +141,7 @@
   function pendingCard(rec, t, now) {
     const s = summarize(rec, now);
     return `
-      <div class="ai-card pending-card" data-request="${esc(s.id)}">
+      <div class="ai-card pending-card" data-request="${esc(s.id)}" data-tool="${esc(s.tool)}">
         ${head(s, t)}
         ${s.reveals ? `<div class="ai-card-sub reveals-warning" style="color:#B45309">${esc(s.reveals)}</div>` : ''}
         ${bodyBlock(s, t)}

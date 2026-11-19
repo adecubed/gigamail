@@ -577,6 +577,22 @@
     b.hidden = !b.innerHTML;
   }
 
+  // Cards whose approve call is still open, by request id. An approved
+  // request is no longer pending, so the 30 s redraw would drop the card of
+  // an internet search, and its "searching" line, in the middle of the
+  // search: the card stays as it is until its call returns.
+  const approving = new Map();
+
+  function keepApprovingCards(box) {
+    if (!approving.size) return;
+    box.querySelectorAll(':scope > .hint').forEach((h) => h.remove());
+    for (const [id, card] of approving) {
+      const fresh = [...box.querySelectorAll('.pending-card')].find((c) => c.dataset.request === id);
+      if (fresh) fresh.replaceWith(card);
+      else box.prepend(card);
+    }
+  }
+
   async function refreshPending() {
     const box = $('pendingList');
     const recentBox = $('recentList');
@@ -589,6 +605,7 @@
       box.innerHTML = pending.length
         ? pending.map((r) => AV().pendingCard(r, L)).join('')
         : `<div class="hint">${L('pending_none', 'Nessuna richiesta in attesa.')}</div>`;
+      keepApprovingCards(box);
       if (recentBox) {
         // the list redraws every 30s: a card the user opened stays open
         const open = new Set([...recentBox.querySelectorAll('details[open]')].map((d) => d.dataset.request));
@@ -620,13 +637,30 @@
       if (window.electronAPI?.openApprovalWindow) window.electronAPI.openApprovalWindow(id, 'edit');
       return;
     }
+    // An internet search runs while the approve call is open, up to two
+    // minutes (no timeout on the call): the row says so and every button of
+    // the card stays off until the call returns.
+    const card = btn.closest('.pending-card');
+    const searching = btn.dataset.act === 'approve' && card?.dataset.tool === 'web_search';
+    const cardButtons = card ? [...card.querySelectorAll('button')] : [btn];
     btn.disabled = true;
+    let waitLine = null;
+    if (searching) {
+      cardButtons.forEach((b) => { b.disabled = true; });
+      waitLine = document.createElement('div');
+      waitLine.className = 'ai-card-sub agent-appr-wait';
+      waitLine.textContent = L('web_searching', 'Ricerca su internet in corso… può richiedere fino a due minuti. Non chiudere la finestra.');
+      card.append(waitLine);
+    }
+    if (btn.dataset.act === 'approve' && card) approving.set(id, card);
     try {
       if (btn.dataset.act === 'approve') {
-        toast(L('pending_confirm_hello', 'Conferma con Windows Hello…'));
+        if (!searching) toast(L('pending_confirm_hello', 'Conferma con Windows Hello…'));
         const r = await api(`/approvals/${encodeURIComponent(id)}/approve`, { method: 'POST' });
         if (r.status === 'executed' && r.outcome === 'failed') {
-          toast(`${L('st_send_failed', 'invio fallito')}: ${r.error || ''}`, 'error');
+          toast(`${searching ? L('st_search_failed', 'ricerca fallita') : L('st_send_failed', 'invio fallito')}: ${r.error || ''}`, 'error');
+        } else if (searching && r.status === 'executed') {
+          toast(L('aw_done_search', 'Fatto: ricerca eseguita.'), 'ok');
         } else if (r.status === 'executed') {
           toast(r.completed_by === 'watcher'
             ? L('pending_approved_watcher', 'Approvata e inviata.')
@@ -644,8 +678,11 @@
       }
     } catch (err) {
       toast(err.message, 'error');
+      cardButtons.forEach((b) => { b.disabled = false; });
       btn.disabled = false;
     }
+    approving.delete(id);
+    waitLine?.remove();
     refreshPending();
   }
 

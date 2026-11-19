@@ -26,7 +26,7 @@ function open(responses) {
   w.fetch = async (url, opts = {}) => {
     const p = String(url).replace('http://127.0.0.1:8002', '');
     calls.push(`${opts.method || 'GET'} ${p}${opts.body ? ' ' + opts.body : ''}`);
-    const r = responses(p, opts);
+    const r = await responses(p, opts);   // a test may hold the answer back
     return { ok: r.status === 200, status: r.status, json: async () => r.body };
   };
   w.GM_CLOSE_DELAY = 0;   // the window closes itself after a decision: at once here
@@ -379,4 +379,70 @@ test('a mail request keeps Edit and Save, without the Windows Hello line', async
   assert.equal(d.getElementById('btnSave').disabled, false);
   assert.equal(d.getElementById('btnEdit').style.display, '');
   assert.equal(d.getElementById('helloHint').style.display, 'none');
+});
+
+// An internet search runs when the request is approved, and the approve call
+// waits for it: up to two minutes. The window says so, keeps every button
+// off meanwhile and does not read as a failure.
+const WEB_REQ = {
+  request_id: 'req_w', tool: 'web_search', status: 'pending', expires_at: NOW + 600,
+  editable: false, verified: false, args: { question: 'opening hours of the town hall' },
+  preview: { action: 'web_search', subject: 'Search the internet: «opening hours of the town hall»',
+    body: 'opening hours of the town hall\nThis question is the only thing that leaves the PC: no mail, no files.' },
+};
+
+function heldApprove() {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  let rec = WEB_REQ;
+  const win = open(async (p) => {
+    if (p === '/approvals/req_w') return { status: 200, body: rec };
+    if (p === '/approvals/req_w/approve') {
+      const answer = await held;
+      rec = { ...rec, status: 'executed', execution_outcome: answer.outcome };
+      return { status: 200, body: { status: 'executed', ...answer } };
+    }
+    return { status: 404, body: { detail: 'no' } };
+  });
+  return { ...win, release };
+}
+
+test('approving an internet search shows that it is searching, with every button off, until it returns', async () => {
+  const { w, calls, load, tick, release } = heldApprove();
+  await load({ request_id: 'req_w', action: 'show' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnApprove').disabled, false);
+  d.getElementById('btnApprove').click();
+  await tick();
+  assert.ok(calls.includes('POST /approvals/req_w/approve'));
+  assert.match(d.getElementById('status').textContent, /Ricerca su internet in corso/);
+  assert.doesNotMatch(d.getElementById('status').textContent, /Windows Hello/);
+  for (const id of ['btnApprove', 'btnReject', 'btnSave', 'btnEdit', 'btnNote']) {
+    assert.equal(d.getElementById(id).disabled, true, `${id} is off while it searches`);
+  }
+  d.getElementById('note').dispatchEvent(new w.Event('input'));   // a stray event does not turn them on
+  assert.equal(d.getElementById('btnApprove').disabled, true);
+  assert.equal(d.getElementById('btnReject').disabled, true);
+  release({ outcome: 'ok' });
+  await tick();
+  assert.match(d.getElementById('status').textContent, /ricerca eseguita/);
+  assert.match(d.getElementById('state').textContent, /ricerca eseguita/);
+  assert.equal(d.getElementById('btnApprove').disabled, true);
+});
+
+test('a search that fails says why and leaves the reason on screen', async () => {
+  const { w, load, tick, release } = heldApprove();
+  await load({ request_id: 'req_w', action: 'show' });
+  const d = w.document;
+  d.getElementById('btnApprove').click();
+  await tick();
+  release({ outcome: 'failed', error: 'Claude Code gave no answer.' });
+  await tick();
+  assert.match(d.getElementById('status').textContent, /ricerca fallita.*Claude Code gave no answer\./);
+  assert.match(d.getElementById('state').textContent, /ricerca fallita/);
+});
+
+test('no timeout of the window cuts the approve call short', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'approval_window_page.js'), 'utf-8');
+  assert.doesNotMatch(src, /AbortController|AbortSignal|signal\s*:/);
 });

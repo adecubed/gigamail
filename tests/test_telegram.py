@@ -643,6 +643,60 @@ def test_a_file_search_gets_no_approve_button_on_telegram(world, monkeypatch):
     assert seen == [False]
 
 
+@pytest.mark.parametrize("lang,wording", [
+    ("it", "La ricerca su internet si approva solo dal PC. Da qui puoi rifiutare."),
+    ("en", "An internet search is approved only at the PC. From here you can reject it."),
+])
+def test_an_internet_search_is_not_approved_from_telegram(world, monkeypatch, lang, wording):
+    monkeypatch.setenv("GIGAMAIL_LANG", lang)
+    rid = policy.store().create("web_search", {"question": "Opening hours of the city museum"},
+                                {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert world["tg"].sent[-1]["text"] == wording
+
+
+def test_an_internet_search_gets_no_approve_button_on_telegram(world, monkeypatch):
+    seen = []
+
+    class _TG:
+        approve_enabled = True
+
+        @staticmethod
+        def action_buttons(request_id, lang, can_approve):
+            seen.append(can_approve)
+            return []
+
+    monkeypatch.setattr(telegram_channel, "channel", lambda: _TG)
+    rid = policy.store().create("web_search", {"question": "Opening hours of the city museum"},
+                                {"subject": "x"})
+    policy.telegram_buttons(rid)
+    assert seen == [False]
+
+
+def test_the_notification_of_an_internet_search_has_the_question_not_the_answer(world,
+                                                                               monkeypatch):
+    from gigamail import server, tools_web
+    marker = "MARKER-3f7a-web-answer"
+    monkeypatch.setattr(agent_bridge, "web_runner",
+                        lambda: (lambda question, timeout: f"Open from nine. {marker}"))
+    monkeypatch.setattr(agent_bridge, "get_config",
+                        lambda: {"agent": "claude", "command": ["agent"], "timeout": 1})
+    monkeypatch.setattr(agent_bridge, "_spawn",
+                        lambda *a, **kw: pytest.fail("a real agent was started"))
+    question = "Opening hours of the city museum 7c2e"
+    rid = tools_web.web_search(question=question)["request_id"]
+    deadline = time.time() + 3
+    while not world["tg"].sent and time.time() < deadline:
+        time.sleep(0.02)
+    assert world["tg"].sent and question in world["tg"].sent[-1]["text"]
+    assert policy.store().approve(rid, by="console:mario (console click)") is True
+    server.execute_approved(rid)
+    assert marker in tools_web.web_search(request_id=rid)["answer"]
+    assert all(marker not in m["text"] for m in world["tg"].sent)
+
+
 def test_the_pin_does_not_approve_a_rule_request(world):
     """Even with the PIN wait somehow open on it, a rule request is not
     approved from Telegram: the store refuses the channel."""

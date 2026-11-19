@@ -75,12 +75,13 @@ EXECUTED = "executed"
 # A rule is a standing pre-approval, and the identity enters every draft
 # (those of automatic rules too), so a request to create or change a rule,
 # or to change the identity, is approved only by a human verified at the PC
-# (Windows Hello / Touch ID), whatever the channel; deleting a rule, and a
-# search of the PC's files (which lets the agent read what it finds), are a
-# click at the PC, never Telegram.
+# (Windows Hello / Touch ID), whatever the channel; deleting a rule, a
+# search of the PC's files (which lets the agent read what it finds) and an
+# internet search (whose question leaves the PC) are a click at the PC,
+# never Telegram.
 VERIFIED_TOOLS = frozenset({"create_rule", "update_rule", "resume_rule", "renew_rule",
                             "update_identity"})
-PC_ONLY_TOOLS = VERIFIED_TOOLS | {"delete_rule", "search_files"}
+PC_ONLY_TOOLS = VERIFIED_TOOLS | {"delete_rule", "search_files", "web_search"}
 # Such a request cannot be edited or saved for later: reject it and ask again.
 FIXED_TOOLS = PC_ONLY_TOOLS
 
@@ -157,10 +158,13 @@ def _audit_args(tool: str, args: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-# Tools whose provider_result lists what the user's files hold: those lists
-# are logged as their length only. search_files: the found paths (the log
-# keeps the query and the folders, from the args).
-_AUDIT_COUNTED_OF = {"search_files": ("paths", "matches", "online_only", "ids")}
+# Tools whose provider_result holds what the user's files or the web hold:
+# those values are logged as their length only. search_files: the found
+# paths (the log keeps the query and the folders, from the args).
+# web_search: the answer, as its number of characters (the log keeps the
+# question, from the args).
+_AUDIT_COUNTED_OF = {"search_files": ("paths", "matches", "online_only", "ids"),
+                     "web_search": ("answer",)}
 
 
 def _audit_result(tool: str, provider_result: Any) -> Any:
@@ -171,7 +175,8 @@ def _audit_result(tool: str, provider_result: Any) -> Any:
     for key in counted:
         if key in provider_result:
             value = provider_result[key]
-            out[f"{key}_count"] = len(value) if isinstance(value, (list, dict)) else 0
+            out[f"{key}_count"] = (len(value) if isinstance(value, (list, dict, str))
+                                   else 0)
     return out
 
 
@@ -712,7 +717,8 @@ def _notify_command() -> Optional[List[str]]:
 
 def pc_only(rec: Optional[Dict[str, Any]]) -> bool:
     """True when a request may be approved only at the PC: a rule or
-    identity request or a PC file search (PC_ONLY_TOOLS) or a mail that attaches a file by path. The channels
+    identity request, a PC file search or an internet search (PC_ONLY_TOOLS)
+    or a mail that attaches a file by path. The channels
     that cannot verify a human (Telegram) use this, not outside_files."""
     rec = rec or {}
     return rec.get("tool") in PC_ONLY_TOOLS or bool(outside_files(rec.get("args")))

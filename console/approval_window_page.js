@@ -31,6 +31,13 @@ async function api(path, opts = {}) {
 function stateOf(rec) {
   const now = Date.now() / 1000;
   const expired = rec.expired || (rec.expires_at && rec.expires_at <= now);
+  if (rec.tool === 'web_search' && (rec.status === 'executed' || rec.status === 'approved')) {
+    // an internet search is not sent: it ran, or it is running (up to two minutes)
+    if (rec.status === 'executed' && rec.execution_outcome === 'ok') return { cls: 'ok', text: T('st_searched', 'ricerca eseguita') };
+    if (rec.status === 'executed' && rec.execution_outcome === 'dryrun') return { cls: 'warn', text: T('st_dryrun', 'prova, non inviata') };
+    if (rec.status === 'executed' && rec.execution_outcome) return { cls: 'err', text: T('st_search_failed', 'ricerca fallita') };
+    return { cls: 'warn', text: T('st_web_searching', 'ricerca su internet in corso') };
+  }
   if (rec.status === 'executed') {
     if (rec.execution_outcome === 'ok') return { cls: 'ok', text: T('st_sent', 'inviata') };
     if (rec.execution_outcome === 'dryrun') return { cls: 'warn', text: T('st_dryrun', 'prova, non inviata') };
@@ -89,6 +96,10 @@ function hasChanges() {
 // Before this, Edit left Approve live and a click sent the old text.
 function updateButtons() {
   if (!current) return;
+  if (approving) {
+    ['btnApprove', 'btnSave', 'btnReject', 'btnEdit', 'btnNote'].forEach((id) => { $(id).disabled = true; });
+    return;
+  }
   const open = isOpen(current);
   const noteTyped = $('note').value.trim().length > 0;
   const approveOn = open && (!editing || (hasChanges() && !noteTyped));
@@ -252,8 +263,14 @@ async function reload() {
   try { render(await api(`/approvals/${encodeURIComponent(current.request_id)}`)); } catch (_) { /* keep what we have */ }
 }
 
+// An internet search runs while the approve call is open, up to two minutes
+// (no timeout here: the call ends when the search does). The window says so
+// and keeps every button off, so the wait does not look like a failure.
+let approving = false;
+
 async function doApprove() {
   if (!current || $('btnApprove').disabled) return;
+  const searching = current.tool === 'web_search';
   $('btnApprove').disabled = true;
   if (hasChanges()) {
     // What is approved is what is on screen: the corrected text and the
@@ -273,15 +290,23 @@ async function doApprove() {
       return;
     }
   }
-  say(T('aw_approving', 'Approvo…'));
-  const hint = setTimeout(() => say(T('aw_slow', 'Ancora un attimo: se Windows Hello è richiesto, il prompt può essere dietro le finestre (Alt+Tab).')), 4000);
+  if (searching) {
+    approving = true;
+    updateButtons();
+    say(T('web_searching', 'Ricerca su internet in corso… può richiedere fino a due minuti. Non chiudere la finestra.'));
+  } else {
+    say(T('aw_approving', 'Approvo…'));
+  }
+  const hint = searching ? null : setTimeout(() => say(T('aw_slow', 'Ancora un attimo: se Windows Hello è richiesto, il prompt può essere dietro le finestre (Alt+Tab).')), 4000);
   let decided = false;
   try {
     const r = await api(`/approvals/${encodeURIComponent(current.request_id)}/approve`, { method: 'POST' });
     clearTimeout(hint);
     decided = true;
     if (r.status === 'executed') {
-      say(r.outcome === 'failed' ? `${T('st_send_failed', 'invio fallito')}: ${r.error || ''}` : T('aw_done', 'Fatto: eseguita.'), r.outcome === 'failed' ? 'err' : 'ok');
+      const failedText = searching ? T('st_search_failed', 'ricerca fallita') : T('st_send_failed', 'invio fallito');
+      const doneText = searching ? T('aw_done_search', 'Fatto: ricerca eseguita.') : T('aw_done', 'Fatto: eseguita.');
+      say(r.outcome === 'failed' ? `${failedText}: ${r.error || ''}` : doneText, r.outcome === 'failed' ? 'err' : 'ok');
       if (r.outcome === 'failed') decided = false;   // leave the reason on screen
     } else {
       say(`${T('aw_approved_watcher', 'Approvata: la invio ora.')}${r.error ? ' ' + r.error : ''}`, 'ok');
@@ -290,6 +315,7 @@ async function doApprove() {
     clearTimeout(hint);
     say(`${T('agent_not_approved', 'Non approvata')}: ${e.message || e}`, 'err');
   }
+  approving = false;
   if (decided) setEditing(false);
   await reload();
   if (decided) closeSoon();

@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from gigamail.core import tool_errors
 
 # Number of tools registered before the wrapper existed.
-TOOL_COUNT = 43
+TOOL_COUNT = 44
 
 
 @pytest.fixture(autouse=True)

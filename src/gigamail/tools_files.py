@@ -14,8 +14,8 @@ found it, for READ_WINDOW_SECONDS after the search, checking the file again
 here writes, moves or copies a file of the user.
 
 This module registers its tools on server.mcp; tools_identity imports it at
-its end, so the registration order does not depend on which module a
-process imported first.
+its end, and it imports tools_web at its own end, so the registration order
+does not depend on which module a process imported first.
 """
 import os
 import threading
@@ -535,3 +535,9 @@ def read_file(
         raise
     policy.audit("read_file", {"request_id": request_id, "path": stored}, "read")
     return result
+
+
+# The internet search comes last, imported here for the reason
+# tools_identity imports this module at its end: the registration order then
+# does not depend on which module a process imported first.
+from gigamail import tools_web  # noqa: E402,F401

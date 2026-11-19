@@ -361,6 +361,12 @@ def cmd_approvals_approve(args) -> int:
         preview = rec.get("preview") or {}
         _print_safe(f"Tool: {rec['tool']}\n{preview.get('subject') or ''}\n\n"
                     f"{preview.get('body') or ''}\n")
+        if rec["tool"] == "web_search":
+            # the search runs at the approval and the command waits for it
+            _print_safe(("Dopo la verifica la ricerca parte e può richiedere fino a due "
+                         "minuti: attendi.\n") if policy.user_lang() == "it" else
+                        "After the check the search starts and can take up to two "
+                        "minutes: wait for it.\n")
     else:
         print(f"Tool: {rec['tool']}\nAnteprima:\n{_fmt_preview(rec['preview'])}\n")
     reason = f"GigaMail: approvare {rec['tool']} ({args.request_id})?"

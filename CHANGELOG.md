@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+- **The agent can search the internet, when you approve.** A new tool,
+  `web_search` (44 tools in all), for the questions that are not in the
+  mail or in your files. The agent writes one question; you see it word
+  for word, on one line, and approve it at the PC: a click in the console,
+  or `gigamail approvals approve` behind Windows Hello / Touch ID / Linux
+  PIN. Telegram only lets you reject it, and the request cannot be edited
+  or saved for later. Nothing is searched before the approval, and the
+  question is the only thing that leaves the PC. At the approval, a
+  separate run of your Claude Code or Codex does the search with web search
+  only: no mail, no files, no GigaMail tools, an empty folder. It can take
+  up to two minutes (the console shows that it is searching, with its
+  buttons off), and the agent decides how many searches to make inside it.
+  The answer is kept with the request, cut at 6000 characters, and handed
+  to the agent every time it asks again, without a new search; a search
+  that fails, times out (120 seconds for the whole run) or comes back empty
+  is reported as failed and needs a new approval. A question with an
+  invisible character is refused (emoji joiners and emoji presentation
+  selectors pass only inside an emoji), so what you read is what leaves.
+  The request names the agent that will search: if you switch agent before
+  approving, nothing is searched and the agent must ask again. Neither
+  agent keeps the search in its saved sessions. The answer is marked as
+  untrusted text from the web. The audit log keeps the question and the
+  length of the answer, never the answer; the tool log keeps the request
+  number and, for a refusal, its fixed reason, never the question. With Antigravity or a custom agent command there is no internet
+  search and the agent is told so. Limits, in SECURITY.md: with Claude Code
+  the run can see the email address of the claude.ai account, and with both
+  agents the Windows user folder name, the operating system and the date;
+  Codex is closed by a list of switched-off features that a later version
+  may need extended. Verified with live runs on Claude Code 2.1.281 and
+  Codex 0.167.
+
+- **Claude Code in the console no longer brings your own Claude Code
+  setup.** A live probe found that the run the console starts to read and
+  write your mail still loaded your installed plugins and their skills'
+  instructions, a CLAUDE.md of its working folder and a Claude Code memory
+  folder. It now reads none of your Claude Code settings files and has
+  auto-memory off, so your own instructions, memory, plugins, skills, hooks
+  and settings stay out; GigaMail's mail tools work as before. The CLI
+  still attaches the claude.ai account's email address from the login.
+  Codex, Antigravity and custom commands are unchanged.
+
 - **Codex: the GigaMail plugin works with the desktop app.** When the
   console starts and finds the GigaMail plugin installed in Codex, it
   writes the server entry that Codex and the ChatGPT desktop app need (as
@@ -166,8 +207,10 @@
   address per item, and an instruction of 2000 characters
   in at most 60 lines; nothing with control characters, bidirectional
   controls or other invisible format characters (the zero-width joiner and
-  non-joiner are fine), and a preview shows such a character found in
-  stored text as "�". Attachments only among the files registered for the account;
+  non-joiner are fine), and no blank-looking filler (the Hangul fillers,
+  the blank braille cell and the like, refused in identity requests too),
+  and a preview shows such a character found in stored text as "�".
+  Attachments only among the files registered for the account;
   documents only registered knowledge files or a full path, never in a
   folder or file whose name starts with a dot, an `AppData` folder, a
   system or program folder (on macOS also `/private` and `~/Library`),

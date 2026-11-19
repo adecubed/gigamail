@@ -276,6 +276,11 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
                 "La ricerca nei file si approva solo dal PC. Da qui puoi rifiutare.",
                 "A file search is approved only at the PC. From here you can reject it.")
             return
+        if rec.get("tool") == "web_search":
+            say(tg,
+                "La ricerca su internet si approva solo dal PC. Da qui puoi rifiutare.",
+                "An internet search is approved only at the PC. From here you can reject it.")
+            return
         if rec.get("tool") in policy.PC_ONLY_TOOLS:
             say(tg,
                 "Una regola si approva solo dal PC, con Windows Hello / "

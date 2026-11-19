@@ -42,9 +42,11 @@ MAX_REASON_CHARS = 300
 _LOG_BYTES = 1024 * 1024
 _LOG_FILES = 3
 MAX_ARG_CHARS = 80
-# The tools that look in the user's own folders log the request id only: the
-# words, the folder and the path say what the user looks for and where.
-LOGGED_ONLY = {"search_files": ("request_id",), "read_file": ("request_id",)}
+# The tools that look in the user's own folders or on the internet log the
+# request id only: the words, the folder, the path and the question say what
+# the user looks for and where (the audit log keeps what the user approved).
+LOGGED_ONLY = {"search_files": ("request_id",), "read_file": ("request_id",),
+               "web_search": ("request_id",)}
 _ADDRESS = re.compile(r"\S+@\S+")
 
 _logger = None

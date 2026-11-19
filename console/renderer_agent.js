@@ -219,14 +219,26 @@
       if (busy) return;
       const btn = ev.currentTarget;
       btn.disabled = true;
+      // An internet search runs while this call is open, up to two minutes
+      // (the call has no timeout of its own): the card says it is searching
+      // and keeps its buttons off until the call returns.
+      const searching = a.tool === 'web_search';
+      const buttons = [...el.querySelectorAll('.agent-appr-actions button')];
+      const showWait = (text) => {
+        const h = document.createElement('div');
+        h.className = 'agent-appr-sum agent-appr-wait';
+        h.textContent = text;
+        el.querySelector('.agent-appr-actions').before(h);
+      };
+      if (searching) {
+        buttons.forEach((b) => { b.disabled = true; });
+        showWait(L('web_searching', 'Ricerca su internet in corso… può richiedere fino a due minuti. Non chiudere la finestra.'));
+      }
       // A click in the console approves at once. If the backend still asks
       // the OS verification (the option in Automations, or a backend that
       // does not know this console), its prompt can sit behind the windows.
-      const hint = setTimeout(() => {
-        const h = document.createElement('div');
-        h.className = 'agent-appr-sum agent-appr-wait';
-        h.textContent = L('agent_hello_wait', 'In attesa della verifica di Windows Hello: se non la vedi, è dietro le finestre (Alt+Tab).');
-        el.querySelector('.agent-appr-actions').before(h);
+      const hint = searching ? null : setTimeout(() => {
+        showWait(L('agent_hello_wait', 'In attesa della verifica di Windows Hello: se non la vedi, è dietro le finestre (Alt+Tab).'));
       }, 3000);
       let approved;
       try {
@@ -234,6 +246,7 @@
       } catch (e) {
         clearTimeout(hint);
         el.querySelector('.agent-appr-wait')?.remove();
+        buttons.forEach((b) => { b.disabled = false; });
         btn.disabled = false;
         say('error', `${L('agent_not_approved', 'Non approvata')}: ${e.message || e}`);
         return;

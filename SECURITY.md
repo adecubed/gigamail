@@ -242,7 +242,9 @@ compatible:
   tool). Each field is at most 4000 characters and 120 lines, with no
   control characters other than newline and tab, no bidirectional controls
   and no other invisible format characters (the zero-width joiner and
-  non-joiner excepted). The audit log keeps the account and the names of
+  non-joiner excepted), and no blank-looking filler (Hangul fillers, the
+  blank braille cell and the like; rule requests refuse them too). The
+  audit log keeps the account and the names of
   the fields, never the old or the new text.
 - **Pausing is free, by design.** `pause_rule` needs no approval (saying
   stop is always safe: it only reduces what GigaMail does on its own), so
@@ -446,11 +448,18 @@ control with GigaMail's tools only:
 - **Claude Code** is started with no built-in tools (`--tools ""`) and
   only the MCP server GigaMail hands it (`--strict-mcp-config`), so none of
   your other servers, and the run does not depend on the permissions in
-  your own Claude Code settings.
+  your own Claude Code settings. It also reads none of your Claude Code
+  settings files (`--setting-sources ""`) and has auto-memory off, so it
+  does not load your own Claude Code instructions (CLAUDE.md), memory,
+  plugins, skills, hooks or settings; a live probe on Claude Code 2.1.281
+  found them in the run before. What still comes through is what the CLI
+  attaches by itself: the claude.ai account's email address, from the
+  login, and the OS, date and working folder.
 - **Codex** ignores your own Codex configuration
   (`--ignore-user-config`), gets GigaMail's MCP server on its command
   line, and has its shell, connectors, plugins, image viewing, browser and
-  web search switched off. The closure is a list of features switched off
+  web search switched off (an internet search the user approves is a separate
+  run: see "Searching the internet"). The closure is a list of features switched off
   plus ignoring your configuration, verified with a probe on Codex 0.167: a
   later Codex that adds a tool feature switched on by default would need
   the list extended.
@@ -557,6 +566,113 @@ What this does not cover, stated plainly:
   user's own request, and the preview is what the user checks.
 - **The old `.doc` format is found by name only**, and a scanned document
   has no text to find.
+
+## Searching the internet
+
+The agent can ask for an internet search with `web_search(question)`. The
+mail run of the agent has no web (see "What the console's agent can reach"):
+a search is a separate run that the person at the PC approves, and it
+receives only the question.
+
+- **Nothing is searched before the approval.** The first call only stores
+  the question and returns a preview that is the question, word for word,
+  on one line (3 to 400 characters; line breaks become spaces). Control and
+  bidirectional characters are refused, and so is any invisible character:
+  zero-width characters, blank-looking fillers, variation selectors,
+  combining marks that sit on no letter of their own script, anything not
+  printable. Emoji joiners and emoji presentation selectors are accepted
+  only inside an emoji ("👩‍💻", "❤️"). So what the user reads is what would
+  leave. A masking placeholder is refused as well: a masked value is never
+  put back into a search. Creating the request starts no process and opens
+  no connection.
+- **The request names the agent that will search.** The preview says which
+  agent runs the search; if the agent selected in GigaMail changes before
+  the approval, the approval searches nothing and fails ("the agent changed
+  after this request: ask again").
+- **The question is the only thing that leaves the PC.** The web run gets a
+  fixed instruction and the approved question: no mail, no identity, no
+  knowledge file, no account name, no conversation.
+- **Approved only at the PC.** A click in the console, or
+  `gigamail approvals approve` (the command line prints the whole question
+  and asks the OS verification, Windows Hello / Touch ID / Linux PIN, as for
+  any approval); Telegram refuses and says so, and the request cannot be
+  edited or saved for later. A click in the console carries the console's
+  click secret instead of the OS check, as the approval of a file search does
+  (see above): the same strength, with the same limit, a program running as
+  you that drives the console's window. An internet search is not one of the
+  requests that always ask the OS check.
+- **The search runs at the approval and can take up to two minutes.** The
+  console shows that it is searching, with its buttons off, until it ends.
+  GigaMail starts a separate, closed run of the agent the user selected,
+  Claude Code or Codex, in a fresh empty temporary folder that is removed
+  afterwards:
+  - **Claude Code** gets one tool, the provider's web search
+    (`--tools WebSearch`), an MCP configuration with no servers
+    (`--strict-mcp-config`), no CLAUDE.md, plugins, hooks or settings of the
+    user (`--safe-mode`, `--setting-sources ""`), and no saved session.
+  - **Codex** ignores the user's own configuration
+    (`--ignore-user-config`), runs in the read-only sandbox, has its shell
+    and other features switched off and no MCP server, has web search on,
+    and writes no session file (`--ephemeral`), so the question and the
+    answer stay out of Codex's own session history.
+  - **Web search only: no page is opened by the agent.** A fetch tool would
+    run on the PC, and a page could tell the agent to open a local address
+    and pass what it read on. Search runs on the provider's side. The agent
+    answers from search results.
+- **Verified with live runs** on Claude Code 2.1.281 and Codex 0.167: the
+  web run searched the web, did not read a file outside its folder (for
+  Claude Code also with settings that allow reading and the shell), listed
+  no mail account, and could not open a local address from the PC.
+- **Where the answer is kept.** The answer (at most 6000 characters, and the
+  result says when it was cut) stays on the approval record. The agent that
+  asked gets it when it calls again with the request id, the same every
+  time, without a second search. The audit log keeps the question and the
+  length of the answer, never the answer; the tool log (`logs/mcp.log`)
+  keeps the request number among the arguments and, for a refusal, its
+  reason, which is a fixed text and never the question (a refused masking
+  placeholder is named by itself, such as `[IBAN_1a2b3c4d]`).
+- **A search that does not end well is never an answer.** A run that fails,
+  times out (120 seconds for the whole run, Codex's retries of a model the
+  account refuses included; the search itself is not retried) or returns
+  nothing is a failed search;
+  the agent says so and must ask again for a new approval. A request that
+  was approved and has no outcome is reported to the agent as still running
+  for a few minutes, then as interrupted.
+- **The answer is untrusted data**, text from the web. Every result says so,
+  and says that links are for the user to see, not for the agent to open or
+  follow. The gate on sending and on the other dangerous tools holds
+  whatever the answer says.
+- **Antigravity and a custom agent command have no web run.** With them the
+  first call is refused ("internet search is not available with this
+  agent") and no request is created.
+
+What this does not cover, stated plainly:
+
+- **Inside the web run the agent decides how many searches to make.**
+  GigaMail controls what it hands over, the approved question, not each
+  search the agent runs with it.
+- **The question is written by the agent that read the mail.** A hostile
+  mail can make the agent ask to search for something it should not. The
+  user must read the question before approving: it is what would leave. The
+  agent is told to ask only on the user's own request and to keep personal
+  data out of it.
+- **The question is part of the request's notification**, so it reaches
+  Telegram when Telegram notifications are on; the answer never does.
+- **The model provider of the agent sees the question**, and the provider's
+  search sees what the agent searches for, as the provider sees everything
+  the agent reads.
+- **What a web run can still see.** With Claude Code, the email address of
+  the claude.ai account: the CLI attaches it from the login and no option
+  removes it, so a hostile page could get it put into a later search. With
+  both agents, the name of the Windows user folder (through the path of the
+  temporary folder), the operating system and the date. No mail, no files, no
+  knowledge files, and nothing of the memory or the personal instructions of
+  the user's own Claude Code setup.
+- **Codex's closure is a list of features switched off plus the read-only
+  sandbox.** It keeps a patch tool (the probes did not exercise it: the model
+  refused without calling it) and its sub-agent tools, which no option
+  removes. A later Codex that adds a tool switched on by default would need
+  the list extended.
 
 ## Links that fetch themselves
 
