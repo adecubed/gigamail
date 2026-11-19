@@ -6,7 +6,8 @@
   email and see its phishing signs (sender and Reply-To, SPF/DKIM/DMARC,
   links that open another address, pressure words, risky attachments) and
   any hidden text an AI agent would read (white on white, zero size, off
-  screen, clipped, comments). It runs in the browser: the mail is not
+  screen, clipped, comments). Paste the message or open its .eml file
+  (Gmail: Download message). It runs in the browser: the mail is not
   uploaded, and its remote images are blocked.
 - **IMAP: HTML mails with a single part show as HTML.** A mail made of one
   `text/html` part that starts with `<div>`, with no `<html>` tag or

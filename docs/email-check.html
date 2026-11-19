@@ -25,7 +25,7 @@
 <meta name="twitter:title" content="Is this email legit? Free phishing and hidden text checker">
 <meta name="twitter:description" content="Paste an email and see in seconds if it shows phishing signs, and if it hides text you can't see but an AI agent would read. Free, nothing to install, and the email never leaves your browser.">
 <meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
-<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "https://gigamail.ai/email-check.html#webpage", "url": "https://gigamail.ai/email-check.html", "name": "Is this email legit? Free phishing and hidden text checker", "description": "Paste an email and see in seconds if it shows phishing signs, and if it hides text you can't see but an AI agent would read. Free, nothing to install, and the email never leaves your browser.", "inLanguage": "en", "dateModified": "2026-11-19", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How can I tell if an email is legit?", "acceptedAnswer": {"@type": "Answer", "text": "Check who it is really from (the address, not the name), where replies go, and whether the links open the address they show. Be wary of pressure: a deadline, a locked account, a request for a password or a payment. This checker looks at all of that for you, and at the sender checks (SPF, DKIM, DMARC) when you paste the original message."}}, {"@type": "Question", "name": "What is hidden text in an email?", "acceptedAnswer": {"@type": "Answer", "text": "Text that is in the message but not on your screen: white on white, a font size of zero, moved off the page, or inside an HTML comment. Spammers use it to fool filters. Now it is also used to give instructions to AI agents that read your mail, which see all of it."}}, {"@type": "Question", "name": "Can an AI agent be tricked by an email?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. An agent reads the whole message, hidden parts included, and may follow instructions written there, such as forwarding mail or deleting a message. This is called prompt injection. GigaMail hands your agent only the text you would see, flags the rest, and asks you before anything is sent or deleted."}}, {"@type": "Question", "name": "Is my email uploaded anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "No. The check runs in your browser. The message is never sent to GigaMail or anyone else, and remote images in it are blocked, so the sender cannot tell you opened it here."}}, {"@type": "Question", "name": "How do I get the original message?", "acceptedAnswer": {"@type": "Answer", "text": "Gmail: open the mail, the three dots menu, Show original, Copy to clipboard. Outlook on the web: the three dots menu, View, View message source. Apple Mail: View, Message, Raw Source. Pasting just the text or the HTML works too, without the sender checks."}}]}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "https://gigamail.ai/email-check.html#webpage", "url": "https://gigamail.ai/email-check.html", "name": "Is this email legit? Free phishing and hidden text checker", "description": "Paste an email and see in seconds if it shows phishing signs, and if it hides text you can't see but an AI agent would read. Free, nothing to install, and the email never leaves your browser.", "inLanguage": "en", "dateModified": "2026-11-19", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How can I tell if an email is legit?", "acceptedAnswer": {"@type": "Answer", "text": "Check who it is really from (the address, not the name), where replies go, and whether the links open the address they show. Be wary of pressure: a deadline, a locked account, a request for a password or a payment. This checker looks at all of that for you, and at the sender checks (SPF, DKIM, DMARC) when you paste the original message."}}, {"@type": "Question", "name": "What is hidden text in an email?", "acceptedAnswer": {"@type": "Answer", "text": "Text that is in the message but not on your screen: white on white, a font size of zero, moved off the page, or inside an HTML comment. Spammers use it to fool filters. Now it is also used to give instructions to AI agents that read your mail, which see all of it."}}, {"@type": "Question", "name": "Can an AI agent be tricked by an email?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. An agent reads the whole message, hidden parts included, and may follow instructions written there, such as forwarding mail or deleting a message. This is called prompt injection. GigaMail hands your agent only the text you would see, flags the rest, and asks you before anything is sent or deleted."}}, {"@type": "Question", "name": "Is my email uploaded anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "No. The check runs in your browser. The message is never sent to GigaMail or anyone else, and remote images in it are blocked, so the sender cannot tell you opened it here."}}, {"@type": "Question", "name": "How do I get the original message?", "acceptedAnswer": {"@type": "Answer", "text": "Easiest: save the mail as a file and open it here. In Gmail, the three dots menu, Download message; in Outlook, drag the mail to your desktop or use Save as. To copy it instead: Gmail, the three dots menu, Show original, Copy to clipboard; Outlook on the web, the three dots menu, View, View message source; Apple Mail, View, Message, Raw Source. Pasting just the text works too, but text copied from the screen leaves out the hidden part and the sender checks."}}]}]}</script>
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
 <link rel="stylesheet" href="./home.css?v=19">
 <link rel="stylesheet" href="./pages.css?v=1">
@@ -34,6 +34,9 @@
 .ec-tool{padding:22px}
 .ec-tool textarea{width:100%;min-height:220px;resize:vertical;font:0.9rem/1.5 var(--mono);padding:14px;border-radius:12px;border:1.5px solid var(--gm-line);background:var(--gm-card2);color:var(--gm-ink)}
 .ec-tool textarea:focus{outline:2px solid var(--gm-pink);outline-offset:1px}
+.ec-tool textarea.ec-drop{outline:2px dashed var(--gm-pink);outline-offset:2px;background:var(--gm-tint)}
+.ec-note{font-size:0.85rem;margin-top:8px;color:var(--gm-amber)}
+.ec-actions label.btn{cursor:pointer}
 .ec-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
 .ec-actions .spacer{flex:1}
 .ec-private{font-size:0.85rem;color:var(--gm-muted);margin-top:10px}
@@ -90,13 +93,16 @@
   <h2 id="s1" class="sr-only">Check an email</h2>
   <div class="card ec-tool">
     <label for="ec-input" class="muted">The original message (best), its HTML, or just its text</label>
-    <textarea id="ec-input" spellcheck="false" autocomplete="off" placeholder="Paste the email here"></textarea>
+    <textarea id="ec-input" spellcheck="false" autocomplete="off" placeholder="Paste the email here, or drop its .eml file"></textarea>
     <div class="ec-actions">
       <button class="btn btn-primary" id="ec-go" type="button">Check this email</button>
+      <label class="btn btn-ghost" for="ec-file">Open an .eml file</label>
+      <input type="file" id="ec-file" accept=".eml,.txt,.html,.htm,message/rfc822,text/plain,text/html" hidden>
       <button class="btn btn-ghost" id="ec-example" type="button">Try an example</button>
       <span class="spacer"></span>
       <button class="btn btn-ghost" id="ec-clear" type="button">Clear</button>
     </div>
+    <p class="ec-note" id="ec-note" hidden></p>
     <p class="ec-private">Runs in your browser: the email is not uploaded, and its remote images are blocked.</p>
     <div id="ec-result" hidden aria-live="polite"></div>
   </div>
@@ -117,10 +123,10 @@
   <h3>Is my email uploaded anywhere?</h3>
   <p class="muted">No. The check runs in your browser. The message is never sent to GigaMail or anyone else, and remote images in it are blocked, so the sender cannot tell you opened it here.</p>
   <h3>How do I get the original message?</h3>
-  <p class="muted">Gmail: open the mail, the three dots menu, Show original, Copy to clipboard. Outlook on the web: the three dots menu, View, View message source. Apple Mail: View, Message, Raw Source. Pasting just the text or the HTML works too, without the sender checks.</p>
+  <p class="muted">Easiest: save the mail as a file and open it here. In Gmail, the three dots menu, Download message; in Outlook, drag the mail to your desktop or use Save as. To copy it instead: Gmail, the three dots menu, Show original, Copy to clipboard; Outlook on the web, the three dots menu, View, View message source; Apple Mail, View, Message, Raw Source. Pasting just the text works too, but text copied from the screen leaves out the hidden part and the sender checks.</p>
 </div></section>
 </main>
-<script type="module" src="./email-check-page.js?v=1"></script>
+<script type="module" src="./email-check-page.js?v=2"></script>
 <footer>
   <div class="wrap">
     <span>GigaMail — Adecubed — AGPL-3.0</span>
