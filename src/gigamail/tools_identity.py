@@ -128,3 +128,9 @@ def update_identity(
 
     return policy.execute_dangerous("update_identity", args, request_id,
                                     preview_fn=_preview, execute_fn=_exec_update_identity)
+
+
+# The PC file tools come last, imported here for the reason tools_automations
+# imports this module at its end: the registration order then does not depend
+# on which module a process imported first.
+from gigamail import tools_files  # noqa: E402,F401

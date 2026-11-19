@@ -6,15 +6,18 @@ import os
 from typing import Tuple
 
 
-def extract_text(file_path: str, original_filename: str = '') -> Tuple[str, str]:
+def extract_text(file_path: str, original_filename: str = '',
+                 max_pdf_pages: int = 0) -> Tuple[str, str]:
     """
     Estrae testo da un file.
     Ritorna (testo_estratto, tipo_file).
+    max_pdf_pages: 0 (default) legge tutte le pagine di un PDF; un numero
+    positivo ne legge al massimo quelle.
     """
     ext = os.path.splitext(original_filename or file_path)[1].lower()
 
     if ext == '.pdf':
-        return _extract_pdf(file_path), 'pdf'
+        return _extract_pdf(file_path, max_pdf_pages), 'pdf'
     elif ext in ('.docx', '.doc'):
         return _extract_word(file_path), 'word'
     elif ext in ('.xlsx', '.xls'):
@@ -29,12 +32,13 @@ def extract_text(file_path: str, original_filename: str = '') -> Tuple[str, str]
             raise ValueError(f'Formato non supportato: {ext}') from None
 
 
-def _extract_pdf(path: str) -> str:
+def _extract_pdf(path: str, max_pages: int = 0) -> str:
     try:
         import pdfplumber
         text = []
         with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
+            pages = pdf.pages[:max_pages] if max_pages > 0 else pdf.pages
+            for page in pages:
                 t = page.extract_text()
                 if t:
                     text.append(t)

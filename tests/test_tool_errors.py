@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from gigamail.core import tool_errors
 
 # Number of tools registered before the wrapper existed.
-TOOL_COUNT = 41
+TOOL_COUNT = 43
 
 
 @pytest.fixture(autouse=True)
@@ -189,3 +189,32 @@ def test_a_logged_argument_is_cut_and_redacted(tmp_path, monkeypatch):
     log = (tmp_path / "logs" / "mcp.log").read_text(encoding="utf-8")
     assert "f" * 81 not in log and "f" * 40 in log
     assert "mario.rossi" not in log
+
+
+@pytest.mark.parametrize("tool", ["search_files", "read_file"])
+def test_a_crash_of_a_file_tool_logs_the_request_id_and_nothing_of_the_pc(tmp_path, monkeypatch, tool):
+    """The words, the folder and the path of a file say what the user looks
+    for and where: the log keeps the request id only."""
+    monkeypatch.setattr(tool_errors, "log_path", lambda: tmp_path / "logs" / "mcp.log")
+
+    def crashing(query: str = "", folder: str = "", path: str = "", request_id: str = ""):
+        raise RuntimeError("boom")
+    crashing.__name__ = tool
+    wrapped = tool_errors.readable(crashing)
+    with pytest.raises(RuntimeError):
+        wrapped(query="tax return 2026", folder="C:/Users/mario/Documents/Taxes",
+                path="C:/Users/mario/Documents/Taxes/return.pdf", request_id="req_1")
+    text = (tmp_path / "logs" / "mcp.log").read_text(encoding="utf-8")
+    assert "request_id='req_1'" in text
+    for secret in ("tax return", "Taxes", "return.pdf", "mario"):
+        assert secret not in text, secret
+
+
+def test_another_tool_still_logs_its_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr(tool_errors, "log_path", lambda: tmp_path / "logs" / "mcp.log")
+
+    def list_messages(folder: str = "", request_id: str = ""):
+        raise RuntimeError("boom")
+    with pytest.raises(RuntimeError):
+        tool_errors.readable(list_messages)(folder="Leads", request_id="req_1")
+    assert "folder='Leads'" in (tmp_path / "logs" / "mcp.log").read_text(encoding="utf-8")

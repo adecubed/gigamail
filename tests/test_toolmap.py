@@ -22,11 +22,16 @@ def test_classificazione_dangerous_da_schema():
     assert gen_toolmap._classify(by_name["delete_message"]) == "DANGEROUS"
     assert gen_toolmap._classify(by_name["mark_read"]) == "WRITE_SAFE"
     assert gen_toolmap._classify(by_name["read_message"]) == "READ"
-    # ogni tool con request_id DEVE essere due-fasi: nessuno sfugge
+    # read_file takes a request_id (the search it reads from) but only reads
+    assert gen_toolmap._classify(by_name["read_file"]) == "READ"
+    assert gen_toolmap._classify(by_name["search_files"]) == "DANGEROUS"
+    # The exemption is exactly read_file; every other tool with a request_id
+    # parameter must be two-phase, so none escapes.
+    assert gen_toolmap.REQUEST_ID_READS == {"read_file"}
     for t in tools:
         props = (t.input_schema or {}).get("properties", {})
-        if "request_id" in props:
-            assert gen_toolmap._classify(t) == "DANGEROUS"
+        if "request_id" in props and t.name not in gen_toolmap.REQUEST_ID_READS:
+            assert gen_toolmap._classify(t) == "DANGEROUS", t.name
 
 
 def test_qualita_descrizioni_tool():
@@ -39,7 +44,7 @@ def test_qualita_descrizioni_tool():
 
     from gigamail.server import mcp
     tools = asyncio.new_event_loop().run_until_complete(mcp.list_tools())
-    assert len(tools) == 41
+    assert len(tools) == 43
     for t in tools:
         desc = (t.description or "").strip()
         assert len(desc) >= 120, f"{t.name}: descrizione troppo corta"

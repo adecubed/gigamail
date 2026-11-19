@@ -303,6 +303,50 @@ def test_update_identity_is_verified_pc_only_and_fixed():
     assert "Linux" in policy.pc_only_notice("update_identity")
 
 
+def test_search_files_is_pc_only_and_fixed_but_not_verified():
+    assert "search_files" in policy.PC_ONLY_TOOLS
+    assert "search_files" in policy.FIXED_TOOLS
+    assert "search_files" not in policy.VERIFIED_TOOLS
+    assert policy.pc_only({"tool": "search_files", "args": {}}) is True
+
+
+@pytest.mark.parametrize("lang,line", [("it", "Si approva solo dal PC."),
+                                       ("en", "Approved only at the PC.")])
+def test_search_files_notice_says_at_the_pc_without_hello(monkeypatch, lang, line):
+    monkeypatch.setattr(policy, "user_lang", lambda: lang)
+    assert policy.pc_only_notice("search_files") == line
+
+
+def test_a_file_search_is_approved_by_a_click_and_never_from_telegram():
+    store = policy.store()
+    rid = store.create("search_files", {"query": "invoice", "roots": ["C:/docs"]},
+                       {"subject": "x"})
+    assert store.approve(rid, by="telegram:123", verified=True) is False
+    assert store.get(rid)["status"] == policy.PENDING
+    assert store.approve(rid, by="console:mario (console click)") is True
+
+
+def test_the_audit_log_counts_the_found_files_of_a_search_and_keeps_the_rest():
+    found = ["C:/docs/a-7c2f.txt", "C:/docs/b-7c2f.pdf"]
+    policy.audit("search_files", {"query": "invoice", "roots": ["C:/docs"]}, "executed",
+                 provider_result={"paths": found,
+                                  "matches": {p: "name" for p in found},
+                                  "online_only": found[:1], "stopped_by": ["time"],
+                                  "roots": ["C:/docs"], "searched_at": 1.5})
+    entry = _read_audit()[-1]
+    assert entry["args"] == {"query": "invoice", "roots": ["C:/docs"]}
+    assert entry["provider_result"] == {
+        "paths_count": 2, "matches_count": 2, "online_only_count": 1,
+        "stopped_by": ["time"], "roots": ["C:/docs"], "searched_at": 1.5}
+    assert "7c2f" not in json.dumps(entry)
+
+
+def test_another_tool_keeps_its_provider_result_whole():
+    pr = {"paths": ["x"], "matches": {"x": 1}, "id": "m1"}
+    policy.audit("send_mail", {"to": "a@example.com"}, "executed", provider_result=pr)
+    assert _read_audit()[-1]["provider_result"] == pr
+
+
 def test_errore_esecuzione_propagato_e_auditato():
     r = _fase1()
     policy.store().approve(r["request_id"])

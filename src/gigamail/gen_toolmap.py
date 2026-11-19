@@ -25,6 +25,8 @@ HEADINGS = {
 }
 
 WRITE_SAFE_TOOLS = {"mark_read", "create_folder", "save_draft", "pause_rule"}
+# The only tools with a request_id that are not two-phase.
+REQUEST_ID_READS = {"read_file"}
 
 
 def _mappa_path() -> Path:
@@ -33,7 +35,10 @@ def _mappa_path() -> Path:
 
 def _classify(tool) -> str:
     props = (tool.input_schema or {}).get("properties", {})
-    if "request_id" in props:
+    # A tool with a request_id is two-phase (DANGEROUS) unless it is named
+    # here: read_file takes the request_id of the search it reads from, and
+    # only reads.
+    if "request_id" in props and tool.name not in REQUEST_ID_READS:
         return "DANGEROUS"
     if tool.name in WRITE_SAFE_TOOLS:
         return "WRITE_SAFE"

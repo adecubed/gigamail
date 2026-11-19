@@ -271,6 +271,11 @@ def action(w, tg, act: str, rid: str, rs, message_id: int = 0) -> None:
                 "A change to the identity is approved only at the PC, with "
                 "Windows Hello / Touch ID / Linux PIN. From here you can reject it.")
             return
+        if rec.get("tool") == "search_files":
+            say(tg,
+                "La ricerca nei file si approva solo dal PC. Da qui puoi rifiutare.",
+                "A file search is approved only at the PC. From here you can reject it.")
+            return
         if rec.get("tool") in policy.PC_ONLY_TOOLS:
             say(tg,
                 "Una regola si approva solo dal PC, con Windows Hello / "

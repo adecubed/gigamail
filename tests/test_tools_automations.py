@@ -553,14 +553,15 @@ def test_the_server_started_as_the_product_starts_it_lists_the_rule_tools(monkey
     from gigamail import server
     started = []
     monkeypatch.setattr(MCPServer, "run", lambda self, *a, **k: started.append(self))
-    from gigamail import tools_identity
+    from gigamail import tools_files, tools_identity
     saved = {k: sys.modules[k] for k in ("gigamail.server", "gigamail.tools_automations",
-                                         "gigamail.tools_identity", "__main__")
+                                         "gigamail.tools_identity", "gigamail.tools_files",
+                                         "__main__")
              if k in sys.modules}
     import gigamail
     try:
         # as in a fresh process: none of the modules imported yet
-        for k in ("server", "tools_automations", "tools_identity"):
+        for k in ("server", "tools_automations", "tools_identity", "tools_files"):
             sys.modules.pop("gigamail." + k, None)
             if hasattr(gigamail, k):
                 delattr(gigamail, k)
@@ -568,15 +569,18 @@ def test_the_server_started_as_the_product_starts_it_lists_the_rule_tools(monkey
         assert len(started) == 1
         names = {t.name for t in asyncio.run(started[0].list_tools())}
     finally:
-        for k in ("gigamail.server", "gigamail.tools_automations", "gigamail.tools_identity"):
+        for k in ("gigamail.server", "gigamail.tools_automations", "gigamail.tools_identity",
+                  "gigamail.tools_files"):
             sys.modules.pop(k, None)
         sys.modules.update(saved)
         gigamail.server = server
         gigamail.tools_automations = tools_automations
         gigamail.tools_identity = tools_identity
+        gigamail.tools_files = tools_files
     assert "create_rule" in names and set(RULE_TOOLS) <= names
     assert "update_identity" in names
-    assert len(names) == len(asyncio.run(server.mcp.list_tools())) == 41
+    assert {"search_files", "read_file"} <= names
+    assert len(names) == len(asyncio.run(server.mcp.list_tools())) == 43
 
 
 # --- the limits are measured on what is stored --------------------------------

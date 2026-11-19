@@ -77,8 +77,9 @@ mcp = MCPServer(
         "given and GigaMail puts the real value back for the human to "
         "approve. Requests "
         "about reply rules (create_rule, update_rule, resume_rule, "
-        "renew_rule, delete_rule) and about the identity (update_identity) "
-        "are approved only at the PC, never from Telegram."
+        "renew_rule, delete_rule), about the identity (update_identity) and "
+        "searches of the PC's files (search_files) are approved only at the "
+        "PC, never from Telegram."
     ),
 )
 

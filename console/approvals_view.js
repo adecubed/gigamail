@@ -93,6 +93,8 @@
   // alone means consumed, not delivered: the outcome says whether it went.
   function outcomeOf(s, t) {
     if (s.status === 'executed') {
+      // a file search is not sent anywhere: it ran
+      if (s.outcome === 'ok' && s.tool === 'search_files') return { cls: 'ok', text: t('st_searched', 'ricerca eseguita') };
       if (s.outcome === 'ok') return { cls: 'ok', text: t('st_sent', 'inviata') };
       if (s.outcome === 'dryrun') return { cls: 'warn', text: t('st_dryrun', 'prova, non inviata') };
       if (s.outcome) return { cls: 'err', text: t('st_send_failed', 'invio fallito') };

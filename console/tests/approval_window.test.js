@@ -349,6 +349,27 @@ test('deleting a rule is not editable either, and has no Windows Hello line', as
   assert.equal(d.getElementById('helloHint').style.display, 'none');
 });
 
+test('a PC file search is fixed, shows its whole text and has no Windows Hello line', async () => {
+  const body = 'Words: invoice 2026\nSearches in: C:/Users/mario/Documents\nNo search starts until you approve.';
+  const rec = {
+    request_id: 'req_f', tool: 'search_files', status: 'pending', expires_at: NOW + 600,
+    editable: false, verified: false, args: { query: 'invoice 2026', roots: ['C:/Users/mario/Documents'] },
+    preview: { action: 'file_search', subject: 'Search the PC files: «invoice 2026»', body },
+  };
+  const { w, calls, load, tick } = open((p) => (p === '/approvals/req_f'
+    ? { status: 200, body: rec } : { status: 404, body: { detail: 'no' } }));
+  await load({ request_id: 'req_f', action: 'edit' });
+  const d = w.document;
+  assert.equal(d.getElementById('btnEdit').style.display, 'none');
+  assert.equal(d.getElementById('btnSave').style.display, 'none');
+  assert.equal(d.getElementById('btnApprove').disabled, false, 'it can be approved');
+  assert.equal(d.getElementById('btnReject').disabled, false);
+  assert.equal(d.getElementById('helloHint').style.display, 'none');
+  assert.equal(d.getElementById('body').textContent, body);
+  await tick();
+  assert.ok(!calls.some((c) => c.includes('/save') || c.includes('/edit') || c.includes('/amend')));
+});
+
 test('a mail request keeps Edit and Save, without the Windows Hello line', async () => {
   const { w, load } = open((p) => (p === '/approvals/req_1'
     ? { status: 200, body: { ...REQ, editable: true, verified: false } } : { status: 404, body: {} }));

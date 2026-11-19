@@ -75,11 +75,12 @@ EXECUTED = "executed"
 # A rule is a standing pre-approval, and the identity enters every draft
 # (those of automatic rules too), so a request to create or change a rule,
 # or to change the identity, is approved only by a human verified at the PC
-# (Windows Hello / Touch ID), whatever the channel; deleting a rule is a
+# (Windows Hello / Touch ID), whatever the channel; deleting a rule, and a
+# search of the PC's files (which lets the agent read what it finds), are a
 # click at the PC, never Telegram.
 VERIFIED_TOOLS = frozenset({"create_rule", "update_rule", "resume_rule", "renew_rule",
                             "update_identity"})
-PC_ONLY_TOOLS = VERIFIED_TOOLS | {"delete_rule"}
+PC_ONLY_TOOLS = VERIFIED_TOOLS | {"delete_rule", "search_files"}
 # Such a request cannot be edited or saved for later: reject it and ask again.
 FIXED_TOOLS = PC_ONLY_TOOLS
 
@@ -156,6 +157,24 @@ def _audit_args(tool: str, args: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+# Tools whose provider_result lists what the user's files hold: those lists
+# are logged as their length only. search_files: the found paths (the log
+# keeps the query and the folders, from the args).
+_AUDIT_COUNTED_OF = {"search_files": ("paths", "matches", "online_only", "ids")}
+
+
+def _audit_result(tool: str, provider_result: Any) -> Any:
+    counted = _AUDIT_COUNTED_OF.get(tool, ())
+    if not counted or not isinstance(provider_result, dict):
+        return provider_result
+    out = {k: v for k, v in provider_result.items() if k not in counted}
+    for key in counted:
+        if key in provider_result:
+            value = provider_result[key]
+            out[f"{key}_count"] = len(value) if isinstance(value, (list, dict)) else 0
+    return out
+
+
 def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
           provider_result: Optional[Dict[str, Any]] = None) -> None:
     """Una riga nel log. `args` e' cio' che e' stato CHIESTO (il payload
@@ -176,7 +195,7 @@ def audit(tool: str, args: Dict[str, Any], outcome: str, detail: str = "",
     if detail:
         entry["detail"] = detail[:500]
     if provider_result is not None:
-        entry["provider_result"] = provider_result
+        entry["provider_result"] = _audit_result(tool, provider_result)
     with open(_audit_path(), "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -693,7 +712,7 @@ def _notify_command() -> Optional[List[str]]:
 
 def pc_only(rec: Optional[Dict[str, Any]]) -> bool:
     """True when a request may be approved only at the PC: a rule or
-    identity request (PC_ONLY_TOOLS) or a mail that attaches a file by path. The channels
+    identity request or a PC file search (PC_ONLY_TOOLS) or a mail that attaches a file by path. The channels
     that cannot verify a human (Telegram) use this, not outside_files."""
     rec = rec or {}
     return rec.get("tool") in PC_ONLY_TOOLS or bool(outside_files(rec.get("args")))

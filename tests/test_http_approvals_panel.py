@@ -482,6 +482,46 @@ def test_one_request_carries_what_the_window_needs_to_draw_its_buttons(client):
     assert mail["editable"] is True and mail["verified"] is False
 
 
+def test_a_file_search_is_fixed_and_not_verified(client):
+    search = client.get(f"/approvals/{_request(tool='search_files')}").json()
+    assert search["editable"] is False and search["verified"] is False
+
+
+def test_a_file_search_cannot_be_saved_amended_or_edited(client):
+    from gigamail.http_api import console_click
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        H = {console_click.HEADER: secret}
+        rid = _request(tool="search_files")
+        before = policy.store().get(rid)
+        assert client.post(f"/approvals/{rid}/save", headers=H).status_code == 409
+        assert client.post(f"/approvals/{rid}/amend", json={"body": "x"},
+                           headers=H).status_code == 409
+        assert client.post(f"/approvals/{rid}/edit", json={"note": "x"},
+                           headers=H).status_code == 409
+        assert policy.store().get(rid) == before
+    finally:
+        console_click.set_secret("")
+
+
+def test_a_file_search_is_approved_by_the_click_without_the_os_prompt(client, monkeypatch):
+    from gigamail import consent
+    from gigamail.http_api import console_click
+    asked = []
+    monkeypatch.setattr(consent, "require_human", lambda reason: asked.append(reason) or True)
+    monkeypatch.setattr("gigamail.completion.complete", lambda rid: {})
+    secret = "s" * 40
+    console_click.set_secret(secret)
+    try:
+        rid = _request(tool="search_files")
+        r = client.post(f"/approvals/{rid}/approve", headers={console_click.HEADER: secret})
+        assert r.status_code == 200 and asked == []
+        assert policy.store().get(rid)["status"] == policy.APPROVED
+    finally:
+        console_click.set_secret("")
+
+
 def test_deleting_a_rule_is_approved_by_the_click_without_the_os_prompt(client, monkeypatch):
     from gigamail import consent
     from gigamail.http_api import console_click

@@ -610,6 +610,39 @@ def test_deleting_a_rule_from_telegram_says_pc_without_hello(world):
     assert "solo dal PC" in text and "Hello" not in text
 
 
+@pytest.mark.parametrize("lang,wording", [
+    ("it", "La ricerca nei file si approva solo dal PC. Da qui puoi rifiutare."),
+    ("en", "A file search is approved only at the PC. From here you can reject it."),
+])
+def test_a_file_search_is_not_approved_from_telegram(world, monkeypatch, lang, wording):
+    monkeypatch.setenv("GIGAMAIL_LANG", lang)
+    rid = policy.store().create("search_files", {"query": "invoice", "roots": ["C:/docs"]},
+                                {"subject": "x"})
+    w = watcher_mod.Watcher()
+    w.handle_telegram_event(world["tg"], _ev_cb(f"a:{rid}"))
+    assert policy.store().get(rid)["status"] == policy.PENDING
+    assert world["tg"].sent[-1]["text"] == wording
+
+
+def test_a_file_search_gets_no_approve_button_on_telegram(world, monkeypatch):
+    from gigamail.core import telegram_channel
+    seen = []
+
+    class _TG:
+        approve_enabled = True
+
+        @staticmethod
+        def action_buttons(request_id, lang, can_approve):
+            seen.append(can_approve)
+            return []
+
+    monkeypatch.setattr(telegram_channel, "channel", lambda: _TG)
+    rid = policy.store().create("search_files", {"query": "invoice", "roots": ["C:/docs"]},
+                                {"subject": "x"})
+    policy.telegram_buttons(rid)
+    assert seen == [False]
+
+
 def test_the_pin_does_not_approve_a_rule_request(world):
     """Even with the PIN wait somehow open on it, a rule request is not
     approved from Telegram: the store refuses the channel."""

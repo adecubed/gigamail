@@ -196,6 +196,51 @@
   `gigamail approvals pin`, typed in an interactive terminal. Nothing
   changes in how approvals work.
 
+- **The agent can search your PC's files, if you approve the search.** Two
+  new tools (43 in all). `search_files` asks to look for 1 to 6 words in
+  the names and the text of your own files, in your Documents, Desktop and
+  Downloads folders and the OneDrive folders, or in one folder you name;
+  `read_file` then reads the text of a file that approved search found.
+  The agent looks in the account's registered knowledge files first; only
+  when they do not answer does it ask whether to search the PC, and the
+  approval is the answer. You approve at the PC, with a click in the
+  console or with `gigamail approvals approve` (the command line asks for
+  Windows Hello / Touch ID / Linux PIN as for any approval); Telegram
+  cannot approve it (its message says so), and the request cannot be
+  edited or saved for later. The approval shows the words and the folders
+  exactly as they will be searched, not the files: they are not known yet,
+  and nothing is searched, read or listed before you approve. The search
+  only reads: it never writes, moves, renames, deletes or copies a file,
+  and what it finds is not stored in GigaMail's data, except the paths of
+  the found files (not their text or excerpts), kept on the approval record
+  so `read_file` can check them. Never searched, even
+  when you name the folder: network paths, system and program folders,
+  `AppData`, `~/Library`, anything whose name starts with a dot, hidden or
+  system items (a hidden or system folder cannot be the searched folder,
+  nor sit above it), programs, GigaMail's own data, and a whole drive;
+  links and junctions are not followed. Text is searched in `.pdf`,
+  `.docx`, `.xlsx`, `.xls`, `.txt`, `.md` and `.csv` files; any other file
+  (an old `.doc` too) is found by its name only, and a OneDrive file that
+  is online only is found by its name and never opened, because opening it
+  would download it. One search stops at 15 seconds, 20000 entries
+  visited, 300 files opened, files over 5 MB and 20 results, and says which
+  limit stopped it. `read_file` reads only a path that search found, only
+  for 15 minutes after the search, and checks the file again before
+  opening it (a file replaced by a link meanwhile is refused); it gives at
+  most 60000 characters and says when it cut the text, and reads a PDF up
+  to 50 pages and a document up to 20 MB once unzipped. On an account that
+  masks what the agent reads, excerpts and file text are masked as
+  attachments are, and if the masking fails there is no text. File names
+  and paths are not masked. What the agent gets from a file is untrusted
+  data, like a mail. The action log keeps the words, the folders and the
+  path of each file read, never the list of files found, an excerpt or a
+  file's text. The tool log does not keep the arguments other than the
+  request number; the reason of a refusal is logged, and may name one
+  path, folder or word, while the list of found files, excerpts and file
+  text never are. A hidden
+  instruction in a mail can make the agent ask for a search, not make it
+  happen.
+
 ## v0.6.8 — 2026-11-17
 
 - **The README downloads Linux too.** Windows, macOS and Linux (beta)

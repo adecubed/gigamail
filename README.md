@@ -59,6 +59,13 @@ sees it (see below).
 - **Knowledge files**: attach your price lists, terms, product sheets to an
   account — the agent reads them to answer mail. Your agent doesn't need to
   know everything: the account carries its own knowledge
+- **Files on your PC, only when you approve**: the agent looks in the
+  registered files first, and when they do not have what you asked for it
+  asks whether to search your PC. You approve at the PC (a click in the
+  console; never from Telegram) and see the words and the folders, not the
+  files; nothing is read before. The search is read-only and lasts at most 15
+  seconds; the agent then reads only the files it found, for 15 minutes. System and program folders, `AppData`,
+  hidden items, network paths and GigaMail's own data are never searched
 - **Agent-aware permissions**: reads are free; send/delete require an
   approval given **out of band** — the agent gets an inert request id, a
   human approves from the console or the CLI, and only then does it execute,
@@ -196,19 +203,21 @@ reply, and asks you before sending.
 
 ## Tools
 
-41 typed tools, generated from the server itself:
+43 typed tools, generated from the server itself:
 
-- **Read (21)** — accounts, identity, knowledge files and search inside them, messages, unread,
+- **Read (22)** — accounts, identity, knowledge files and search inside them, messages, unread,
   folders, hybrid search, attachment text, sender history, learned
   patterns, calendar events, free-slot availability, Drive files and
-  their text, reply rules and what they did, automation status
+  their text, reply rules and what they did, automation status, the text of
+  a PC file that an approved search found
 - **Safe writes (4, audited)** — mark read, create folder, save a draft, pause a reply rule
-- **Dangerous (16, human approval out of band)** — move message, send,
+- **Dangerous (17, human approval out of band)** — move message, send,
   reply, delete message, delete folder, create/delete calendar event, create a Zoom
   meeting, upload a file to Drive, move a Drive file to the trash,
   create/change/resume/renew/delete a reply rule, change the identity
-  texts (these only at the PC, never from Telegram: with Windows Hello /
-  Touch ID / Linux PIN, a delete with a click)
+  texts, search the user's own folders on the PC (these only at the PC,
+  never from Telegram: with Windows Hello / Touch ID / Linux PIN, a delete
+  or a file search with a click)
 
 The calendar is served by Microsoft Graph or Google Calendar, whichever
 the user connected; the tools are the same either way. Drive uses the
@@ -231,13 +240,16 @@ declared so in [SECURITY.md](SECURITY.md). Telegram approval is opt-in and
 the weakest channel of the three. No secret ever
 enters the model context, so an injected instruction has nothing to
 spend. Repeating the id just returns *awaiting approval*. The agent
-can only read files explicitly registered by the user, never the rest of the
-filesystem. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
+reads freely only the files the user registered; any other file only
+through a search of the user's own folders that the user approved at the PC
+(a click in the console, never Telegram), read-only, and only what that
+search found, for 15 minutes. Every write action is logged to `%APPDATA%/ADE/agent_audit.jsonl`
 (append-only: GigaMail never rewrites past entries — it is not, and does not
 claim to be, tamper-proof storage).
 
 In the desktop console, the agent bar runs Claude Code or Codex with
-GigaMail's tools only: no shell, no access to your files, no web, none of
+GigaMail's tools only: no shell, no direct access to your files (only
+GigaMail's own file search, which you approve at the PC), no web, none of
 your other connectors, whatever your own settings allow. The console says
 so when the agent you picked cannot be closed this way.
 
@@ -394,6 +406,13 @@ da segnaposto prima che l'agente li veda (vedi sotto).
 - **File di conoscenza**: collega listini, condizioni, schede prodotto a un
   account — l'agente li legge per rispondere alle mail. Il tuo agente non
   deve sapere tutto: le informazioni che gli servono viaggiano con l'account
+- **I file del tuo PC, solo se approvi**: l'agente guarda prima nei file
+  registrati, e se non hanno ciò che hai chiesto ti domanda se cercare nel
+  PC. Approvi dal PC (un clic nella console; mai da Telegram) e vedi le
+  parole e le cartelle, non i file; prima non si legge nulla. La ricerca è in
+  sola lettura e dura al massimo 15 secondi; poi l'agente legge solo i file trovati, per 15 minuti. Cartelle di
+  sistema e dei programmi, `AppData`, elementi nascosti, percorsi di rete e
+  i dati di GigaMail non si cercano mai
 - **Permessi per agenti**: lettura libera; invio/cancellazione richiedono
   un'approvazione data **fuori banda** — all'agente arriva solo un id
   inerte, un umano approva dalla console o dalla CLI, e solo allora si
@@ -521,20 +540,22 @@ risposta e ti chiede conferma prima di inviare.
 
 ## Tool
 
-41 tool tipizzati, generati dal server stesso:
+43 tool tipizzati, generati dal server stesso:
 
-- **Lettura (21)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
+- **Lettura (22)** — account, identità, file di conoscenza e ricerca al loro interno, messaggi, non
   lette, cartelle, ricerca ibrida, testo degli allegati, storico mittenti,
   pattern appresi, eventi di calendario, slot liberi, file di Drive e il
-  loro testo, regole di risposta e cosa hanno fatto, stato delle automazioni
+  loro testo, regole di risposta e cosa hanno fatto, stato delle automazioni,
+  il testo di un file del PC trovato da una ricerca approvata
 - **Scritture sicure (4, con audit)** — segna letto, crea cartella, salva una bozza, metti in pausa una regola di risposta
-- **Pericolose (16, approvazione umana fuori banda)** — spostamento,
+- **Pericolose (17, approvazione umana fuori banda)** — spostamento,
   invio, risposta, cancellazione messaggio, cancellazione cartella, creazione/cancellazione
   evento, creazione di una riunione Zoom, caricamento di un file su Drive,
   cestinamento di un file di Drive, creazione/modifica/ripresa/rinnovo/
-  cancellazione di una regola di risposta, modifica dei testi dell'identità
-  (solo al PC, mai da Telegram: con Windows Hello / Touch ID / PIN su Linux, la
-  cancellazione con un clic)
+  cancellazione di una regola di risposta, modifica dei testi dell'identità,
+  ricerca nelle cartelle dell'utente sul PC (solo al PC, mai da Telegram: con
+  Windows Hello / Touch ID / PIN su Linux, la cancellazione e la ricerca nei
+  file con un clic)
 
 Il calendario è servito da Microsoft Graph o da Google Calendar, secondo
 quello che l'utente ha collegato: i tool sono gli stessi. Drive usa lo
@@ -554,15 +575,17 @@ dell'utente fisico a livello di sistema operativo (**Windows Hello** /
 prompt ma non superarlo; senza un backend del genere, nulla viene approvato.
 Nessun segreto entra nel contesto del modello, quindi un'istruzione
 iniettata non ha nulla da spendere. Ripetere
-l'id restituisce solo *in attesa di approvazione*. L'agente può leggere solo i file
-registrati esplicitamente dall'utente, mai il resto del filesystem. Ogni
-azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
+l'id restituisce solo *in attesa di approvazione*. L'agente legge liberamente
+solo i file registrati dall'utente; qualsiasi altro file solo attraverso una
+ricerca nelle cartelle dell'utente che l'utente ha approvato dal PC (un clic
+nella console, mai da Telegram), in sola lettura, e solo ciò che quella
+ricerca ha trovato, per 15 minuti. Ogni azione di scrittura finisce in `%APPDATA%/ADE/agent_audit.jsonl` (append-only:
 GigaMail non riscrive mai le voci passate — non è, e non pretende di essere,
 un archivio a prova di manomissione).
 
 Nella console desktop, la barra dell'agente fa girare Claude Code o Codex
-con i soli tool di GigaMail: niente shell, niente accesso ai tuoi file,
-niente web, nessuno dei tuoi altri connettori, qualunque cosa permettano le
+con i soli tool di GigaMail: niente shell, niente accesso diretto ai tuoi
+file (solo la ricerca di GigaMail, che approvi dal PC), niente web, nessuno dei tuoi altri connettori, qualunque cosa permettano le
 tue impostazioni. La console lo dice quando l'agente che hai scelto non si
 può chiudere così.
 
@@ -713,6 +736,11 @@ titolare del copyright.
   即可恢复。代理看到的仍是各自独立的账户
 - **知识文件**：把价目表、条款、产品资料挂到账户上，代理读取它们来回信 ——
   你的代理不需要什么都懂：账户自带知识
+- **电脑上的文件，只有你批准才会动**：代理先查已注册的文件，它们没有你要的内容时，
+  才会问是否搜索你的电脑。你在电脑上批准（在控制台点击；绝不通过 Telegram），
+  看到的是关键词和文件夹，而不是文件；批准之前什么都不会读。搜索只读，最长 15 秒；
+  之后智能体只能在 15 分钟内读取它找到的文件。系统和程序文件夹、`AppData`、隐藏项目、网络路径和
+  GigaMail 自己的数据永远不会被搜索
 - **面向代理的权限**：读取自由；发送/删除需要**带外**给出的人工批准 ——
   代理只拿到一个惰性的请求 id，人从控制台或 CLI 批准后才会执行，且执行的
   是人当时看到的那份参数。每次写操作都会记入只追加的审计日志
@@ -817,16 +845,17 @@ codex plugin add gigamail@gigamail
 
 ## 工具
 
-41 个类型化工具，由服务器本身生成：
+43 个类型化工具，由服务器本身生成：
 
-- **读取（21）** —— 账户、身份、知识文件及其内部搜索、邮件、未读、文件夹、混合搜索、
+- **读取（22）** —— 账户、身份、知识文件及其内部搜索、邮件、未读、文件夹、混合搜索、
   附件文本、发件人历史、学习到的偏好、日历事件、空闲时段、Drive 文件及其文本、
-  回复规则及其执行记录、自动化状态
+  回复规则及其执行记录、自动化状态、已批准搜索所找到的电脑文件的文本
 - **安全写入（4，有审计）** —— 标记已读、新建文件夹、保存草稿、暂停回复规则
-- **危险操作（16，需带外人工批准）** —— 移动邮件、发送、回复、删除邮件、删除文件夹、
+- **危险操作（17，需带外人工批准）** —— 移动邮件、发送、回复、删除邮件、删除文件夹、
   创建/删除日历事件、创建 Zoom 会议、上传文件到 Drive、将 Drive 文件移入回收站、
-  创建/修改/恢复/续期/删除回复规则、修改身份文字（这几项只能在电脑上批准，
-  不能通过 Telegram：需要 Windows Hello / Touch ID / Linux PIN，删除只需点击）
+  创建/修改/恢复/续期/删除回复规则、修改身份文字、搜索用户电脑上自己的文件夹
+  （这几项只能在电脑上批准，不能通过 Telegram：需要 Windows Hello / Touch ID /
+  Linux PIN，删除和文件搜索只需点击）
 
 日历由 Microsoft Graph 或 Google Calendar 提供，取决于用户连接了哪一个；
 工具完全相同。Drive 使用 `drive.file` 权限，只能看到 GigaMail 自己创建的
@@ -840,12 +869,13 @@ codex plugin add gigamail@gigamail
 （**Windows Hello** / **Touch ID**）。任何进程（包括持有 shell 的代理）都能
 弹出这个验证框，却无法通过它；没有此类验证后端时，一律拒绝（fail-closed）。
 没有任何机密进入模型上下文，被注入的指令无物可用。重复提交 id 只会得到
-*等待批准*。代理只能读取用户明确注册的文件，永远碰不到文件系统的其余部分。
-每次写操作都记入只追加的审计日志（GigaMail 从不改写历史条目 —— 它不是、
+*等待批准*。代理只能随意读取用户注册的文件；其他任何文件，只能通过用户在电脑上
+批准的、针对用户自己文件夹的搜索（在控制台点击批准，绝不通过 Telegram），只读，
+且只限该搜索找到的文件，有效 15 分钟。每次写操作都记入只追加的审计日志（GigaMail 从不改写历史条目 —— 它不是、
 也不自称是防篡改存储）。
 
 在桌面控制台中，代理栏运行的 Claude Code 或 Codex 只能使用 GigaMail 的工具：
-没有 shell，不能访问你的文件，不能上网，也用不到你的其他连接器，无论你自己的
+没有 shell，不能直接访问你的文件（只有 GigaMail 自带的文件搜索，需你在电脑上批准），不能上网，也用不到你的其他连接器，无论你自己的
 设置允许什么。如果你选择的代理无法这样隔离，控制台会明确告知。
 
 我们对此做红队测试：让恶意邮件命令真实代理外泄数据、批量删除、自我批准 ——

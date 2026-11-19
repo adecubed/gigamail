@@ -84,6 +84,27 @@ test('an identity request on the list has neither Edit nor Save and shows its te
   assert.ok(html.includes('w'.repeat(4000)), 'the text is not cut');
 });
 
+test('a PC file search on the list has neither Edit nor Save and shows its text whole', () => {
+  const body = 'Words: invoice\nSearches in: C:/Users/mario/Documents\n' + 'z'.repeat(4000);
+  const html = V.pendingCard({ ...AGENT_SEND, tool: 'search_files', editable: false, verified: false,
+    preview: { action: 'file_search', subject: 'Search the PC files', body } }, t, NOW);
+  assert.ok(!html.includes('data-act="edit"') && !html.includes('data-act="save"'));
+  assert.match(html, /data-act="approve"/);
+  assert.match(html, /data-act="reject"/);
+  assert.ok(html.includes('z'.repeat(4000)), 'the text is not cut');
+});
+
+test('a decided file search shows words and folders, never the paths it found, and is not "sent"', () => {
+  const rec = { ...AGENT_SEND, tool: 'search_files', editable: false, status: 'executed', execution_outcome: 'ok',
+    provider_result: { paths: ['C:/Users/mario/Documents/invoice-2026.pdf'], matches: { 'C:/Users/mario/Documents/invoice-2026.pdf': 'name' }, searched_at: 1 } };
+  const s = V.summarize(rec, NOW);
+  assert.equal(s.error, '');
+  assert.equal(s.accepted, undefined);
+  assert.ok(!V.recentCard(rec, t, NOW).includes('invoice-2026.pdf'));
+  assert.equal(V.outcomeOf(s, t).text, 'ricerca eseguita');
+  assert.equal(V.outcomeOf(V.summarize({ ...rec, execution_outcome: 'failed' }, NOW), t).text, 'invio fallito');
+});
+
 test('the watcher card names the rule mode, the recipient source and the expiry', () => {
   const html = V.pendingCard(WATCHER_REPLY, t, NOW);
   assert.ok(html.includes('bozza del watcher'));

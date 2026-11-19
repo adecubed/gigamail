@@ -472,6 +472,92 @@ What this does not cover, stated plainly:
   chat app or an IDE connected to GigaMail decides for itself what else it
   can do. GigaMail's approvals cover GigaMail's tools, not those.
 
+## Searching the user's files
+
+The agent reads freely only the files registered for an account (the
+knowledge files). Any other file of the user's PC it can reach only through
+two tools, `search_files` and `read_file`, and only after the person at the
+PC approved the search.
+
+- **Nothing is searched before the approval.** `search_files` first only
+  stores the words (1 to 6, each at least 2 characters) and the folders
+  (Documents, Desktop, Downloads and OneDrive, or the one the agent named)
+  and returns a preview: no folder is listed and no file is opened. The
+  approval shows exactly those words and folders. The search runs when the
+  request is approved, and approving it accepts that the agent may read
+  what the search finds.
+- **Approved only at the PC.** A click in the console, or
+  `gigamail approvals approve` (the command line asks the OS verification
+  as for any approval); Telegram refuses and says so, and the request
+  cannot be edited or saved for later. A click in the console carries the
+  console's click secret instead of the OS prompt, as the approval of a
+  send or of `delete_rule` does (see above): the same strength, with the
+  same limit, a program running as you that drives the console's window.
+  `search_files` is not one of the requests that always ask the OS check,
+  because it changes nothing and sends nothing out.
+- **Read-only.** Nothing writes, moves, renames, deletes or copies a file,
+  and nothing found is stored in GigaMail's data, only the list of paths
+  on the approved request.
+- **Never searched, also when the user names the folder:** network paths,
+  system and program folders, `AppData`, `~/Library`, any path component
+  starting with a dot (`.ssh` included), hidden or system items, programs,
+  GigaMail's own data, a drive or filesystem root. A hidden or system
+  folder is refused as the searched folder and when it sits above it. Links and junctions are
+  not followed, and a folder or file that is a link into an excluded place
+  is skipped. A OneDrive file that is online only is found by name and
+  never opened: opening it would download it.
+- **`read_file` reads only what the search found**, only for 15 minutes
+  after the search, and only the path that search listed (a path that
+  differs by case, slashes or `..` is accepted only if it resolves to
+  exactly a found file). The file is checked again before it is opened: a
+  file replaced by a link, moved into an excluded place or deleted
+  since is refused. Text is read only from `.pdf .docx .xlsx .xls .txt .md
+  .csv` files, at most 60000 characters come back, and a file is read only
+  within bounds (5 MB, 50 PDF pages, 20 MB once unzipped, 30 seconds); it
+  returns at most 60000 characters of the text and says when it cut it
+  (the first 200000 characters are the bound of the search and of its
+  excerpts). A request of another tool, a pending, rejected
+  or expired one is refused with the reason.
+- **Limits of one search:** 15 seconds, 20000 entries visited, 300 files
+  opened for content, files up to 5 MB, 20 results. The result names the
+  limit that stopped it, so a search that ran out of time says it may have
+  missed files. The words searched and the folders are part of the
+  request's notification, so they reach Telegram when Telegram
+  notifications are on; the found files never do.
+- **Masking applies.** On an account that masks what agents read,
+  excerpts and file text are masked as attachments are; a masking that
+  fails gives no text.
+- **What the audit keeps.** The words and folders of a search and the
+  path of each file read. Never the list of files found, an excerpt or a
+  file's text. The tool log (`logs/mcp.log`) does not keep the arguments
+  other than the request number; the reason of a refusal is logged, and
+  may name one path (a refused read), one folder (a refused folder) or one
+  word (a refused query). The list of found files, excerpts and file text
+  are never logged.
+
+What this does not cover, stated plainly:
+
+- **The approval shows the words and the folders, not the files.** They are
+  not known when the user decides. A broad word in a broad folder can let
+  the agent read many files; the cap is 20 results and 15 minutes, and the
+  user chooses the folder, not the files.
+- **A hard link cannot be told from the file.** A hard link inside a
+  searched folder to a file elsewhere is the same file as far as the
+  system says, so it is read like any other; only symbolic links and
+  junctions are refused.
+- **File names and paths are not masked**, also on an account that masks:
+  they are what the user searches by, and the agent needs them to ask for
+  a file.
+- **A file's text is untrusted data**, like a mail: a PDF can carry an
+  instruction aimed at the agent. Every result says so, and the gate on
+  sending and on the other dangerous tools holds whatever the text says,
+  but a hostile file can still make the agent say or ask something wrong.
+- **A search the agent asks for because of a hostile mail** cannot run by
+  itself: the user must approve it. The agent is told to ask only on the
+  user's own request, and the preview is what the user checks.
+- **The old `.doc` format is found by name only**, and a scanned document
+  has no text to find.
+
 ## Links that fetch themselves
 
 *Since v0.6.7.*

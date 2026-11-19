@@ -42,6 +42,9 @@ MAX_REASON_CHARS = 300
 _LOG_BYTES = 1024 * 1024
 _LOG_FILES = 3
 MAX_ARG_CHARS = 80
+# The tools that look in the user's own folders log the request id only: the
+# words, the folder and the path say what the user looks for and where.
+LOGGED_ONLY = {"search_files": ("request_id",), "read_file": ("request_id",)}
 _ADDRESS = re.compile(r"\S+@\S+")
 
 _logger = None
@@ -92,7 +95,8 @@ def _logged_args(fn: Callable, args: tuple, kwargs: dict) -> str:
         bound = inspect.signature(fn).bind_partial(*args, **kwargs).arguments
     except TypeError:
         bound = kwargs
-    return " ".join(f"{name}={_clean(repr(bound[name]), MAX_ARG_CHARS)}" for name in LOGGED_ARGS if name in bound)
+    names = LOGGED_ONLY.get(fn.__name__, LOGGED_ARGS)
+    return " ".join(f"{name}={_clean(repr(bound[name]), MAX_ARG_CHARS)}" for name in names if name in bound)
 
 
 def _record(name: str, fn: Callable, args: tuple, kwargs: dict, exc: BaseException,

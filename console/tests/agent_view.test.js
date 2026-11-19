@@ -180,6 +180,15 @@ test('a card for an identity change has no Edit, shows the whole text and a Hell
   assert.doesNotMatch(hello, /regola|rule/i);
 });
 
+test('a card for a PC file search shows its whole text, has no Edit and no Hello line', async () => {
+  const body = 'Words: invoice 2026\nSearches in: C:/Users/mario/Documents\n' + 'Always left out: ' + 'x'.repeat(2500) + '\nNo search starts until you approve.';
+  const card = await ruleCardFor({ request_id: 'req_f', tool: 'search_files', subject: 'Search the PC files: «invoice 2026»', editable: false, verified: false, body });
+  assert.equal(card.querySelector('[data-act="edit"]'), null);
+  assert.ok(card.querySelector('[data-act="approve"]') && card.querySelector('[data-act="reject"]'));
+  assert.equal(card.querySelector('.agent-appr-body pre').textContent, body);
+  assert.equal(card.querySelector('.agent-appr-hello'), null, 'a click approves it: no OS check is announced');
+});
+
 test('a card for deleting a rule has no Edit and no Hello line', async () => {
   const card = await ruleCardFor({ request_id: 'req_d', tool: 'delete_rule', subject: 'Delete rule', editable: false, verified: false });
   assert.equal(card.querySelector('[data-act="edit"]'), null);

@@ -353,7 +353,7 @@ def cmd_approvals_approve(args) -> int:
         _spiega_richiesta_assente(args.request_id)
         return 1
     if rec["tool"] in policy.PC_ONLY_TOOLS:
-        # A rule or identity request: the user verifies having read ALL of it, so the
+        # A rule, identity or file search request: the user decides having read ALL of it, so the
         # title and the whole text, uncut. It carries │ → ⚠ •, which a
         # cp1252 console cannot print: a replaced character, never a crash
         # before the prompt.
