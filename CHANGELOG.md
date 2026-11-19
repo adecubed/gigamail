@@ -81,6 +81,9 @@
 - **Site: `llms.txt`.** A plain-text summary of GigaMail at
   gigamail.ai/llms.txt, with the key facts and links to every page, for
   AI assistants that read the site.
+- **Site: new link preview.** The social card shown when gigamail.ai is
+  shared now carries the tagline "your agent inside your mailbox" (Italian
+  pages: "il tuo agente dentro la tua casella").
 
 - **The console's agent runs with GigaMail's tools only, and the console
   says when it does not.** With Codex as the console's agent, the run
