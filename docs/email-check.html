@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is this email legit? Free phishing and hidden text checker</title>
+<meta name="description" content="Paste an email and see in seconds if it shows phishing signs, look-alike domains or dangerous attachments, and if it hides text you can't see but an AI agent would read. Free, and the email never leaves your browser.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/email-check.html">
+<link rel="alternate" hreflang="en" href="https://gigamail.ai/email-check.html">
+<link rel="alternate" hreflang="x-default" href="https://gigamail.ai/email-check.html">
+<link rel="icon" href="brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/email-check.html">
+<meta property="og:title" content="Is this email legit? Free phishing and hidden text checker">
+<meta property="og:description" content="Paste an email and see in seconds if it shows phishing signs, look-alike domains or dangerous attachments, and if it hides text you can't see but an AI agent would read. Free, and the email never leaves your browser.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Is this email legit? Free phishing and hidden text checker">
+<meta name="twitter:description" content="Paste an email and see in seconds if it shows phishing signs, look-alike domains or dangerous attachments, and if it hides text you can't see but an AI agent would read. Free, and the email never leaves your browser.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "https://gigamail.ai/email-check.html#webpage", "url": "https://gigamail.ai/email-check.html", "name": "Is this email legit? Free phishing and hidden text checker", "description": "Paste an email and see in seconds if it shows phishing signs, look-alike domains or dangerous attachments, and if it hides text you can't see but an AI agent would read. Free, and the email never leaves your browser.", "inLanguage": "en", "dateModified": "2026-11-19", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How can I tell if an email is legit?", "acceptedAnswer": {"@type": "Answer", "text": "Check who it is really from (the address, not the name), where replies go, and whether the links open the address they show. Be wary of pressure: a deadline, a locked account, a request for a password or a payment. This checker looks at all of that for you, and at the sender checks (SPF, DKIM, DMARC) when you paste the original message."}}, {"@type": "Question", "name": "What is hidden text in an email?", "acceptedAnswer": {"@type": "Answer", "text": "Text that is in the message but not on your screen: white on white, a font size of zero, moved off the page, or inside an HTML comment. Spammers use it to fool filters. Now it is also used to give instructions to AI agents that read your mail, which see all of it."}}, {"@type": "Question", "name": "Does it check attachments?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, when you open the saved .eml file or paste the original message. It looks at what each file really is, not what its name says: programs disguised as documents, double extensions like invoice.pdf.exe, Office files with macros or that load a template from the internet, PDFs with JavaScript, web pages that ask for a password, and archives that hide programs or are locked with a password. Files are read in your browser and never opened."}}, {"@type": "Question", "name": "Can an AI agent be tricked by an email?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. An agent reads the whole message, hidden parts included, and may follow instructions written there, such as forwarding mail or deleting a message. This is called prompt injection. GigaMail hands your agent only the text you would see, flags the rest, and asks you before anything is sent or deleted."}}, {"@type": "Question", "name": "Can the checker be wrong?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, both ways. It can flag an honest mail, for example from a small company whose domain looks like a brand, a newsletter sent through a mailing service, or a forwarded message that fails the sender checks. And it can miss a scam: it does not open links, has no list of bad sites, knows only the most imitated brands and does not read text inside images. Treat its result as a list of things to look at, and when in doubt contact the sender another way."}}, {"@type": "Question", "name": "Is my email uploaded anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "No. The check runs in your browser. The message is never sent to GigaMail or anyone else, and remote images in it are blocked, so the sender cannot tell you opened it here."}}, {"@type": "Question", "name": "How do I get the original message?", "acceptedAnswer": {"@type": "Answer", "text": "Easiest: save the mail as a file and open it here. In Gmail, the three dots menu, Download message; in Outlook, drag the mail to your desktop or use Save as. To copy it instead: Gmail, the three dots menu, Show original, Copy to clipboard; Outlook on the web, the three dots menu, View, View message source; Apple Mail, View, Message, Raw Source. Pasting just the text works too, but text copied from the screen leaves out the hidden part and the sender checks."}}]}]}</script>
+<link rel="stylesheet" href="./fonts/poppins.css?v=1">
+<link rel="stylesheet" href="./home.css?v=32">
+<link rel="stylesheet" href="./pages.css?v=1">
+<script type="module" src="/business/analytics.js"></script>
+<style>
+.ec-tool{padding:22px}
+.ec-tool textarea{width:100%;min-height:220px;resize:vertical;font:0.9rem/1.5 var(--mono);padding:14px;border-radius:12px;border:1.5px solid var(--gm-line);background:var(--gm-card2);color:var(--gm-ink)}
+.ec-tool textarea:focus{outline:2px solid var(--gm-pink);outline-offset:1px}
+.ec-tool textarea.ec-drop{outline:2px dashed var(--gm-pink);outline-offset:2px;background:var(--gm-tint)}
+.ec-note{font-size:0.85rem;margin-top:8px;color:var(--gm-amber)}
+.ec-actions label.btn{cursor:pointer}
+.ec-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.ec-actions .spacer{flex:1}
+.ec-private{font-size:0.85rem;color:var(--gm-muted);margin-top:10px}
+#ec-result{margin-top:18px;scroll-margin-top:90px}
+.ec-verdict{border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.ec-verdict strong{font-size:1.15rem;display:block}
+.ec-verdict p{margin:4px 0 0}
+.ec-verdict .ec-limits{font-size:0.82rem;opacity:0.85;margin-top:8px}
+.ec-verdict .ec-limits a{color:inherit;text-decoration:underline}
+#s-limits{scroll-margin-top:90px}
+#s-limits ul{padding-left:18px}
+#s-limits li{margin:6px 0;color:var(--gm-muted);font-size:0.92rem}
+.ec-danger{background:#fde8ee;color:#8a1538}
+.ec-warning{background:var(--gm-amber-bg);color:var(--gm-amber)}
+.ec-clean{background:var(--gm-green-bg);color:var(--gm-green)}
+.ec-block{margin-top:16px}
+.ec-block h3{margin-bottom:8px}
+.ec-hidden{border:1.5px solid var(--gm-tint-line);background:var(--gm-tint);border-radius:12px;padding:10px 14px;margin:8px 0}
+.ec-hidden q{display:block;font-style:italic;color:var(--gm-pink-dn);word-break:break-word;margin-top:4px}
+.ec-why{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--gm-muted)}
+.ec-row{display:grid;grid-template-columns:9px 1fr;column-gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--gm-line)}
+.ec-row code{grid-column:2;justify-self:start;margin-top:2px}
+.ec-row code{font-size:0.8rem;color:var(--gm-muted);word-break:break-all}
+.ec-dot{width:9px;height:9px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.ec-high .ec-dot{background:#d12a5c}.ec-medium .ec-dot{background:#e0a000}.ec-low .ec-dot{background:#9aa0b0}
+.ec-tip{font-size:0.85rem;margin-top:10px}
+.ec-cta{margin-top:18px;padding:20px}
+.ec-att{border:1px solid var(--gm-line);border-radius:12px;padding:10px 14px;margin:8px 0}
+.ec-att-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.ec-att-head strong{word-break:break-all}
+.ec-badge{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;border-radius:999px;padding:2px 9px}
+.ec-b-high{background:#fde8ee;color:#8a1538}.ec-b-medium{background:var(--gm-amber-bg);color:var(--gm-amber)}.ec-b-ok{background:var(--gm-green-bg);color:var(--gm-green)}
+.faq h3{margin-top:18px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="GigaMail home"><img src="./brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="./features.html">What it does</a>
+      <a href="./security.html#gate">Approval</a>
+      <a href="./#install">Install</a>
+      <a href="./mcp-map.html">MCP map</a>
+      <a href="./gigamail-vs-agentmail.html">vs AgentMail</a>
+      <a href="./security.html">Security</a>
+      <a href="./email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
+    </nav>
+    <span class="spacer"></span>
+        <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="./#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">Free email checker</p>
+    <h1 id="t">Is this email legit? <em>See what you can't see.</em></h1>
+    <p class="lede">Paste an email or open its file. In a few seconds you see its phishing signs (look-alike senders and links, failed sender checks), what its <strong>attachments</strong> really are, and any <strong>hidden text</strong>: words you would never read, but an AI agent reading your mail would. Nothing to install, and the email never leaves your browser.</p>
+  </div>
+</section>
+<section aria-labelledby="s1"><div class="wrap narrow">
+  <h2 id="s1" class="sr-only">Check an email</h2>
+  <div class="card ec-tool">
+    <label for="ec-input" class="muted">The original message (best), its HTML, or just its text</label>
+    <textarea id="ec-input" spellcheck="false" autocomplete="off" placeholder="Paste the email here, or drop its .eml file"></textarea>
+    <div class="ec-actions">
+      <button class="btn btn-primary" id="ec-go" type="button">Check this email</button>
+      <label class="btn btn-ghost" for="ec-file">Open an .eml file</label>
+      <input type="file" id="ec-file" accept=".eml,.txt,.html,.htm,message/rfc822,text/plain,text/html" hidden>
+      <button class="btn btn-ghost" id="ec-example" type="button">Try an example</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" id="ec-clear" type="button">Clear</button>
+    </div>
+    <p class="ec-note" id="ec-note" hidden></p>
+    <p class="ec-private">Runs in your browser: the email is not uploaded, and its remote images are blocked. The check follows rules and can be wrong both ways: <a href="#s-limits">see what it can get wrong</a>.</p>
+    <div id="ec-result" hidden aria-live="polite"></div>
+  </div>
+  <div class="card ec-cta" id="ec-cta" hidden>
+    <h3>Letting an AI agent read your mail?</h3>
+    <p class="muted">GigaMail brings Claude, ChatGPT or Codex into the mailbox you already have, and hands the agent only what you would see on screen. Hidden text is left out and flagged, and nothing is sent or deleted without your OK. Free desktop app for Windows, macOS and Linux.</p>
+    <p><a class="btn btn-primary" href="./#install">Download GigaMail</a> <a class="btn btn-ghost" href="./security.html">How it protects you</a></p>
+  </div>
+</div></section>
+<section aria-labelledby="s-limits"><div class="wrap narrow">
+  <h2 id="s-limits">What this check can get wrong</h2>
+  <p class="muted">It follows rules, it does not know the sender. Read its result as a list of things to look at, not as a verdict.</p>
+  <div class="grid grid-2 when">
+    <article class="card pad"><h3>False alarms</h3><ul>
+      <li><strong>Unknown senders and small companies.</strong> A real business whose domain looks like a brand (an <code>apple-</code> or <code>poste-</code> something) can be flagged as a look-alike.</li>
+      <li><strong>Mail sent through a service.</strong> Newsletters and invoices often go out through Mailchimp, SendGrid or similar: Reply-To and the bounce address point elsewhere, and that is normal.</li>
+      <li><strong>Forwarded mail.</strong> Forwarding often breaks SPF and sometimes DKIM, so an honest message can show failed sender checks.</li>
+      <li><strong>Brand domains we do not list.</strong> A brand's new or regional domain can look like an imitation.</li>
+      <li><strong>Normal hidden text and forms.</strong> Newsletters hide a preview line; a real company's HTML attachment can contain a form.</li>
+    </ul></article>
+    <article class="card pad"><h3>Things it misses</h3><ul>
+      <li><strong>New or unknown scam sites.</strong> It does not open links and has no list of bad sites: a clean-looking domain can still be a scam.</li>
+      <li><strong>Brands outside its list.</strong> It knows about thirty of the most imitated brands, not your bank or your supplier.</li>
+      <li><strong>Text inside images.</strong> A mail that is only a picture of a message is not read.</li>
+      <li><strong>Some files.</strong> It does not open <code>.rar</code> or <code>.7z</code> archives, and a PDF can hide code in compressed parts it does not unpack.</li>
+      <li><strong>What you did not paste.</strong> Text copied from the screen has no headers, no attachments and no hidden part: open the saved <code>.eml</code> file for the full check.</li>
+    </ul></article>
+  </div>
+  <p class="muted note">When in doubt, contact the sender through a channel you already know, not through the mail itself. This page is a free helper, not a security product, and comes with no guarantee.</p>
+</div></section>
+<section aria-labelledby="s2" class="faq"><div class="wrap narrow">
+  <h2 id="s2">Questions</h2>
+  <h3>How can I tell if an email is legit?</h3>
+  <p class="muted">Check who it is really from (the address, not the name), where replies go, and whether the links open the address they show. Be wary of pressure: a deadline, a locked account, a request for a password or a payment. This checker looks at all of that for you, and at the sender checks (SPF, DKIM, DMARC) when you paste the original message.</p>
+  <h3>What is hidden text in an email?</h3>
+  <p class="muted">Text that is in the message but not on your screen: white on white, a font size of zero, moved off the page, or inside an HTML comment. Spammers use it to fool filters. Now it is also used to give instructions to AI agents that read your mail, which see all of it.</p>
+  <h3>Does it check attachments?</h3>
+  <p class="muted">Yes, when you open the saved .eml file or paste the original message. It looks at what each file really is, not what its name says: programs disguised as documents, double extensions like invoice.pdf.exe, Office files with macros or that load a template from the internet, PDFs with JavaScript, web pages that ask for a password, and archives that hide programs or are locked with a password. Files are read in your browser and never opened.</p>
+  <h3>Can an AI agent be tricked by an email?</h3>
+  <p class="muted">Yes. An agent reads the whole message, hidden parts included, and may follow instructions written there, such as forwarding mail or deleting a message. This is called prompt injection. GigaMail hands your agent only the text you would see, flags the rest, and asks you before anything is sent or deleted.</p>
+  <h3>Can the checker be wrong?</h3>
+  <p class="muted">Yes, both ways. It can flag an honest mail, for example from a small company whose domain looks like a brand, a newsletter sent through a mailing service, or a forwarded message that fails the sender checks. And it can miss a scam: it does not open links, has no list of bad sites, knows only the most imitated brands and does not read text inside images. Treat its result as a list of things to look at, and when in doubt contact the sender another way.</p>
+  <h3>Is my email uploaded anywhere?</h3>
+  <p class="muted">No. The check runs in your browser. The message is never sent to GigaMail or anyone else, and remote images in it are blocked, so the sender cannot tell you opened it here.</p>
+  <h3>How do I get the original message?</h3>
+  <p class="muted">Easiest: save the mail as a file and open it here. In Gmail, the three dots menu, Download message; in Outlook, drag the mail to your desktop or use Save as. To copy it instead: Gmail, the three dots menu, Show original, Copy to clipboard; Outlook on the web, the three dots menu, View, View message source; Apple Mail, View, Message, Raw Source. Pasting just the text works too, but text copied from the screen leaves out the hidden part and the sender checks.</p>
+</div></section>
+</main>
+<script type="module" src="./email-check-page.js?v=5"></script>
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="./privacy.html">Privacy Policy</a>
+    <a href="./terms.html">Terms of Service</a>
+    <a href="./credits.html">Code credits</a>
+    <a href="./mcp-map.html">MCP map</a>
+    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="./changelog.html">What's new</a>
+    <a href="./mail-city.html">Mail City</a>
+    <a href="./email-check.html">Email checker</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+  </div>
+</footer>
+</body>
+</html>

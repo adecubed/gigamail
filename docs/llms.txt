@@ -34,6 +34,10 @@ Key facts:
 - [GigaMail vs Composio](https://gigamail.ai/gigamail-vs-composio.html): your mail on your computer, or a thousand apps through a cloud
 - [GigaMail vs Copilot in Outlook](https://gigamail.ai/gigamail-vs-copilot.html): the agent you choose, or the one Microsoft builds in
 
+## Free tools
+
+- [Email checker](https://gigamail.ai/email-check.html): paste an email to see its phishing signs, look-alike domains, dangerous attachments and any hidden text an AI agent would read; runs in the browser, nothing is uploaded
+
 ## Optional
 
 - [Mail City](https://gigamail.ai/mail-city.html): interactive 3D tour of a mail's journey through GigaMail
