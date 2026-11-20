@@ -1,6 +1,6 @@
-"""The download total under the download buttons (docs/download-count.js):
-its wording per language, and that nothing shows until the backend knows
-the total."""
+"""The download total under the top bar's Download button
+(docs/download-count.js): its digits and label, and that nothing shows until
+the backend knows the total."""
 import json
 import shutil
 import subprocess
@@ -12,21 +12,29 @@ DOCS = Path(__file__).resolve().parents[1] / "docs"
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(NODE is None, reason="node not installed")
 
-FAKE_DOC = """
-function fakeDoc(lang, rows) {
-  const added = [];
-  return {added, documentElement: {lang},
-    querySelectorAll: () => Array.from({length: rows}, () => ({after: p => added.push(p.textContent)})),
-    createElement: () => ({textContent: '', append(...parts) {
-      this.textContent = parts.map(x => typeof x === 'string' ? x : x.textContent).join(''); }})};
-}
+FAKE = """
+const CONFIG = {eventsEndpoint: 'https://api.example.com/event'};
 const reply = body => () => Promise.resolve({ok: true, json: () => Promise.resolve(body)});
+function el(tag) {
+  return {tag, children: [], textContent: '', attrs: {}, className: '',
+    classList: {add() {}, remove() {}, toggle() {}},
+    setAttribute(k, v) { this.attrs[k] = v; },
+    append(...c) { this.children.push(...c); },
+    replaceWith(x) { this.replacedBy = x; }};
+}
+function fakePage(lang, withButton = true) {
+  const button = el('a');
+  return {button, doc: {documentElement: {lang},
+            querySelector: () => (withButton ? button : null), createElement: el}};
+}
+const WIN = {scrollY: 0, addEventListener() {}, setInterval: () => 0, clearInterval() {},
+             matchMedia: () => ({matches: true})};
 """
 
 
 def _run(body: str):
     script = (f"import * as dc from {json.dumps((DOCS / 'download-count.js').as_uri())};\n"
-              + FAKE_DOC + f"const out = await (async () => {{ {body} }})();\n"
+              + FAKE + f"const out = await (async () => {{ {body} }})();\n"
               "console.log(JSON.stringify(out));\n")
     res = subprocess.run([NODE, "--input-type=module", "-e", script],
                          capture_output=True, text=True, encoding="utf-8", timeout=30)
@@ -34,25 +42,23 @@ def _run(body: str):
     return json.loads(res.stdout)
 
 
-def test_wording_per_language():
-    out = _run("return ['en', 'it', 'zh-Hans', 'fr'].map(l => dc.countText(13632, l));")
-    assert out == ["13,632 downloads · desktop app and PyPI",
-                   "13.632 download · app desktop e PyPI",
-                   "13,632 次下载 · 桌面应用和 PyPI",
-                   "13,632 downloads · desktop app and PyPI"]
+def test_labels_and_digits():
+    out = _run("return [['en', 'it', 'zh-Hans', 'fr'].map(dc.labelFor),"
+               " [13632, 0, null, 12.7].map(dc.digitsOf), dc.downloadsUrl(CONFIG)];")
+    assert out == [["downloads", "download", "次下载", "downloads"],
+                   ["13632", "", "", "12"], "https://api.example.com/downloads"]
 
 
-def test_url_comes_from_the_events_endpoint():
-    out = _run("return [dc.downloadsUrl({eventsEndpoint: 'https://api.example.com/event'}),"
-               " dc.downloadsUrl({eventsEndpoint: ''})];")
-    assert out == ["https://api.example.com/downloads", ""]
-
-
-def test_shown_under_every_row_of_buttons():
-    out = _run("const d = fakeDoc('en', 3);"
-               " await dc.showDownloadCount(d, reply({total: 13632}), {eventsEndpoint: 'https://api.example.com/event'});"
-               " return d.added;")
-    assert out == ["13,632 downloads · desktop app and PyPI"] * 3
+def test_board_under_the_download_button():
+    out = _run("""
+      const {doc, button} = fakePage('it');
+      const shown = await dc.showDownloadBoard(doc, WIN, reply({total: 13632}), CONFIG);
+      const wrap = button.replacedBy, board = wrap.children[1];
+      const [tiles, label] = board.children;
+      return [shown, wrap.children[0] === button, board.attrs['aria-label'],
+              tiles.children.map(t => t.textContent).join(''), label.textContent];
+    """)
+    assert out == ["13632", True, "13632 download", "13632", "download"]
 
 
 @pytest.mark.parametrize("fetch", [
@@ -61,7 +67,7 @@ def test_shown_under_every_row_of_buttons():
     "() => Promise.resolve({ok: false})",
 ])
 def test_nothing_shown_without_a_full_total(fetch):
-    out = _run(f"const d = fakeDoc('en', 2);"
-               f" await dc.showDownloadCount(d, {fetch}, {{eventsEndpoint: 'https://api.example.com/event'}});"
-               " return d.added;")
-    assert out == []
+    out = _run(f"const {{doc, button}} = fakePage('en');"
+               f" const shown = await dc.showDownloadBoard(doc, WIN, {fetch}, CONFIG);"
+               " return [shown, button.replacedBy === undefined];")
+    assert out == ["", True]

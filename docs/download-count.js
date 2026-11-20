@@ -1,19 +1,18 @@
-// Download total under each row of download buttons: GitHub release
-// installers plus all-time PyPI downloads, served by the same backend as the
-// visit counter (GET /downloads). Shows nothing until the number is known.
+// Download total under the Download button of the top bar, drawn as a
+// station departure board: the digits flip until they land on the number.
+// The total (GitHub release downloads plus all-time PyPI downloads) comes
+// from the same backend as the visit counter (GET /downloads). Nothing is
+// shown until the number is known.
 import {analyticsConfig} from './business/analytics-config.js';
 
-const LABEL = {
-  en: n => `${n} downloads · desktop app and PyPI`,
-  it: n => `${n} download · app desktop e PyPI`,
-  zh: n => `${n} 次下载 · 桌面应用和 PyPI`,
-};
+const LABEL = {en: 'downloads', it: 'download', zh: '次下载'};
 
-export function countText(total, lang) {
-  if (typeof total !== 'number' || !(total > 0)) return '';
-  const key = (lang || 'en').slice(0, 2).toLowerCase();
-  const locale = key === 'it' ? 'it-IT' : key === 'zh' ? 'zh-CN' : 'en-US';
-  return (LABEL[key] || LABEL.en)(total.toLocaleString(locale));
+export function labelFor(lang) {
+  return LABEL[(lang || 'en').slice(0, 2).toLowerCase()] || LABEL.en;
+}
+
+export function digitsOf(total) {
+  return typeof total === 'number' && total > 0 ? String(Math.floor(total)) : '';
 }
 
 export function downloadsUrl(config = analyticsConfig) {
@@ -21,27 +20,65 @@ export function downloadsUrl(config = analyticsConfig) {
   return ev ? ev.replace(/\/event$/, '/downloads') : '';
 }
 
-export async function showDownloadCount(doc = document, fetchFn = fetch, config = analyticsConfig) {
+export async function fetchTotal(fetchFn = fetch, config = analyticsConfig) {
   const url = downloadsUrl(config);
-  const rows = doc.querySelectorAll('.dl3');
-  if (!url || !rows.length) return '';
-  let total = null;
+  if (!url) return null;
   try {
     const r = await fetchFn(url, {credentials: 'omit'});
-    if (r.ok) total = (await r.json()).total;
-  } catch { return ''; }
-  const text = countText(total, doc.documentElement.lang);
-  if (!text) return '';
-  const number = text.match(/^\S+/)[0];
-  rows.forEach(row => {
-    const p = doc.createElement('p');
-    p.className = 'dl-count';
-    const strong = doc.createElement('strong');
-    strong.textContent = number;
-    p.append(strong, text.slice(number.length));
-    row.after(p);
-  });
-  return text;
+    return r.ok ? (await r.json()).total : null;
+  } catch { return null; }
 }
 
-if (typeof window !== 'undefined') showDownloadCount();
+// Flip each tile through random digits, then settle them left to right.
+function flip(tiles, digits, win) {
+  const reduce = win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { tiles.forEach((t, i) => { t.textContent = digits[i]; }); return; }
+  let tick = 0;
+  const timer = win.setInterval(() => {
+    tick += 1;
+    tiles.forEach((t, i) => {
+      if (tick >= 8 + i * 3) { t.textContent = digits[i]; t.classList.remove('flipping'); return; }
+      t.textContent = String(Math.floor(Math.random() * 10));
+      t.classList.add('flipping');
+    });
+    if (tick >= 8 + tiles.length * 3) win.clearInterval(timer);
+  }, 70);
+}
+
+export async function showDownloadBoard(doc = document, win = window, fetchFn = fetch, config = analyticsConfig) {
+  const button = doc.querySelector('.topbar .btn-primary');
+  if (!button) return '';
+  const digits = digitsOf(await fetchTotal(fetchFn, config));
+  if (!digits) return '';
+  const wrap = doc.createElement('span');
+  wrap.className = 'dl-board-wrap';
+  button.replaceWith(wrap);
+  wrap.append(button);
+  const board = doc.createElement('span');
+  board.className = 'dl-board';
+  board.setAttribute('aria-label', `${digits} ${labelFor(doc.documentElement.lang)}`);
+  const tiles = [...digits].map(() => {
+    const t = doc.createElement('span');
+    t.className = 'tile';
+    t.setAttribute('aria-hidden', 'true');
+    t.textContent = '0';
+    return t;
+  });
+  const label = doc.createElement('span');
+  label.className = 'dl-board-label';
+  label.setAttribute('aria-hidden', 'true');
+  label.textContent = labelFor(doc.documentElement.lang);
+  const row = doc.createElement('span');
+  row.className = 'tiles';
+  row.append(...tiles);
+  board.append(row, label);
+  wrap.append(board);
+  // the board belongs to the top of the page: it hides once the page scrolls
+  const onScroll = () => board.classList.toggle('away', win.scrollY > 40);
+  win.addEventListener('scroll', onScroll, {passive: true});
+  onScroll();
+  flip(tiles, digits, win);
+  return digits;
+}
+
+if (typeof window !== 'undefined') showDownloadBoard();
