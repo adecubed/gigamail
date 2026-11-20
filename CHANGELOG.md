@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Star on the GitHub button.** The GitHub button in the site's top bar
+  shows a star before the logo.
 - **Download total on the site.** Under the Download button in the top bar,
   a light-blue departure-board counter shows how many times GigaMail was downloaded
   (desktop app and PyPI together), updated as new downloads arrive.

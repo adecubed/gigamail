@@ -1,5 +1,6 @@
 // The website's counter (docs/business/analytics.js): download clicks send
-// one 'download' event with the installer's kind, and nothing else.
+// one 'download' event with the installer's kind, plus where the visit came
+// from and the kind of device; other clicks send nothing.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -47,7 +48,12 @@ test('a click on an installer sends one download event, a click elsewhere nothin
   doc.querySelector('#d span').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
   doc.querySelector('#o').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
   assert.equal(sent.length, 1);
-  assert.deepEqual(sent[0].body, { type: 'download', site: 'gigamail', text: 'linux-deb' });
+  const { type, site, text, device, os } = sent[0].body;
+  assert.deepEqual({ type, site, text }, { type: 'download', site: 'gigamail', text: 'linux-deb' });
+  assert.ok(['desktop', 'mobile', 'tablet'].includes(device), device);
+  assert.ok(typeof os === 'string' && os.length > 0, os);
+  assert.deepEqual(Object.keys(sent[0].body).sort(),
+    ['device', 'os', 'referrer', 'site', 'text', 'type', 'utm_campaign', 'utm_source']);
 });
 
 test('no event with Do Not Track, or off the production site', async () => {

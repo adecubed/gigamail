@@ -470,3 +470,4 @@ section#contact { padding-bottom: 8px; }
 .dl-board .tile { position: relative; display: inline-block; width: 17px; height: 24px; line-height: 24px; text-align: center; border-radius: 3px; background: #dcebfd; color: #1d4f91; font: 700 15px/24px ui-monospace, "SF Mono", Menlo, Consolas, monospace; box-shadow: inset 0 -1px 0 rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.08); overflow: hidden; }
 .dl-board .tile::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.08); }
 .dl-board .tile.flipping { color: #3b6fb6; }
+.topbar .btn-ghost .gh-star { width: 16px; height: 16px; fill: #f5b301; margin-right: -2px; }
