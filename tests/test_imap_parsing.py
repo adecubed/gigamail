@@ -61,3 +61,30 @@ def test_decode_header_rfc2047_normale():
 def test_decode_header_none_e_vuoto():
     assert imap_client._decode_header(None) == ""
     assert imap_client._decode_header("") == ""
+
+
+def _single_part(content_type: str, body: str) -> email.message.Message:
+    raw = (
+        "From: Mario Rossi <mario.rossi@example.com>\r\n"
+        "To: dest@example.com\r\n"
+        "Subject: Ricevuta\r\n"
+        f"Content-Type: {content_type}; charset=utf-8\r\n"
+        "\r\n" + body + "\r\n"
+    )
+    return email.message_from_string(raw)
+
+
+def test_single_html_part_without_html_tag_is_html():
+    """A single text/html part that starts with <div> (no <html>, no
+    doctype) is HTML: read as text, the console showed its raw markup."""
+    body = '<div dir="ltr"><p>Buongiorno,</p><p>la sua mail e\' pervenuta.</p></div>'
+    content, kind = imap_client._get_body(_single_part("text/html", body))
+    assert kind == "html"
+    assert content == body
+
+
+def test_single_plain_part_with_angle_brackets_stays_text():
+    body = "Scrivere a <mario.rossi@example.com> per info."
+    content, kind = imap_client._get_body(_single_part("text/plain", body))
+    assert kind == "text"
+    assert content == body

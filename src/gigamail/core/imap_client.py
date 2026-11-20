@@ -197,7 +197,11 @@ def _get_body(msg):
         payload = msg.get_payload(decode=True)
         charset = msg.get_content_charset() or "utf-8"
         raw = _safe_decode(payload, charset).strip() if payload else ""
-        if "<html" in raw.lower() or "<!doctype" in raw.lower():
+        # The Content-Type says what the body is. Many mailers send a single
+        # text/html part that starts with <div>, with no <html> or doctype:
+        # read as plain text, the console showed its raw markup.
+        if (msg.get_content_type() == "text/html"
+                or "<html" in raw.lower() or "<!doctype" in raw.lower()):
             html_body = raw
         else:
             plain_body = raw

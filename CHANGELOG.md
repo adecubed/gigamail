@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- **Email checker: clearer page for search.** The title, description and
+  FAQ now use the words people search with ("phishing email checker",
+  "is this email a scam", "how to spot a phishing email").
+- **Email checker: known bad sites and popular look-alikes.** Senders and
+  links are looked up in public lists of phishing and malware sites
+  (Phishing.Database, curben's phishing filter, URLhaus) and compared with
+  the 10,000 most visited sites (Tranco): popular sites are no longer
+  called look-alikes, and imitations of any of them are spotted
+  (paypa1.com, wikipedla.org). A daily workflow rebuilds the lists on the
+  `checker-data` branch; the page fetches only the hashed pieces it needs,
+  so no name leaves the browser. Credits and privacy policy say so.
+  URLhaus is read from curben's list built from it, or from abuse.ch's
+  list of online URLs: its old host file is gone.
+- **Email checker: check a single file.** Drop or open any file, not only
+  a saved mail: a PDF, a Word or Excel file, a zip is checked on its own,
+  as an attachment, with its own verdict. A saved mail (.eml) is still
+  checked whole, attachments included.
+- **Site: free email checker.** gigamail.ai/email-check.html: paste an
+  email and see its phishing signs (sender and Reply-To, SPF/DKIM/DMARC,
+  links that open another address, pressure words, risky attachments) and
+  any hidden text an AI agent would read (white on white, zero size, off
+  screen, clipped, comments). It spots look-alike domains of the brands
+  phishing imitates most (paypa1.com, micros0ft-support.com,
+  paypal.com.example.net) and checks attachments for what they really
+  are: programs disguised as documents, double extensions, Office macros
+  and remote templates, PDFs with JavaScript, password-asking web pages,
+  archives hiding programs or locked with a password. A section and a
+  note under every result say what it can get wrong: false alarms on
+  unknown senders, mailing services and forwarded mail, and scams it
+  misses (new sites, brands it does not list, text in images). Paste the message or open its .eml file
+  (Gmail: Download message). It runs in the browser: the mail is not
+  uploaded, and its remote images are blocked. A pink "Email check" link
+  after Security in the top menu of every page leads to it.
+- **IMAP: HTML mails with a single part show as HTML.** A mail made of one
+  `text/html` part that starts with `<div>`, with no `<html>` tag or
+  doctype, was read as plain text, and the console showed its raw markup.
+  The part's Content-Type now decides.
 - **The agent can search the internet, when you approve.** A new tool,
   `web_search` (44 tools in all), for the questions that are not in the
   mail or in your files. The agent writes one question; you see it word
