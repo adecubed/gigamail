@@ -735,6 +735,19 @@ def test_run_web_works_in_a_fresh_empty_folder_removed_afterwards(web_agent, mon
 
 
 @pytest.mark.parametrize("agent_id", ["claude", "codex"])
+def test_a_web_run_is_never_given_more_than_its_timeout(web_agent, monkeypatch, agent_id):
+    """A clock that has not moved between the start and the launch: with
+    this value (clock + 120) - clock rounds to 120.00000000000003."""
+    web_agent(agent_id)
+    stuck = 179.7964259
+    assert (stuck + 120) - stuck > 120
+    monkeypatch.setattr(agent_bridge, "_clock", lambda: stuck)
+    seen = _spy_spawn(monkeypatch)
+    agent_bridge.run_web("What is the title of the page at example.com?")
+    assert seen["timeout"] == 120
+
+
+@pytest.mark.parametrize("agent_id", ["claude", "codex"])
 def test_run_web_removes_the_folder_when_the_spawn_fails(web_agent, monkeypatch, agent_id):
     web_agent(agent_id)
     seen = _spy_spawn(monkeypatch, fail=RuntimeError("boom"))

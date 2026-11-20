@@ -943,7 +943,9 @@ def _launch_and_read(cfg, cmd, spec, da_stdin, out_file, timeout, run_id,
         left = deadline - _clock()
         if left <= 0:
             raise subprocess.TimeoutExpired(cmd, timeout)
-        return left
+        # never more than the whole timeout: (clock + timeout) - clock can
+        # round a hair above it when the clock has not moved
+        return min(left, timeout)
     exe = cmd[0]
     if not _found(exe):
         # Le CLI si aggiornano da sole e cancellano la cartella della
