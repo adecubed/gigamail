@@ -50,11 +50,24 @@ export function landing(config=analyticsConfig, win=window, doc=document){
  }catch{}
  return here;
 }
+// A visit is the arrival: the first page opened from outside the site, or
+// from a link with utm tags. A further page of the site in the same tab, or
+// a reload, is a 'pagina', so one person reading three pages is one visit.
+export function isArrival(config=analyticsConfig, win=window, doc=document){
+ try{
+  const nav=win.performance&&win.performance.getEntriesByType&&win.performance.getEntriesByType('navigation')[0];
+  if(nav&&nav.type==='reload')return false;
+ }catch{}
+ let referrer='';try{referrer=doc.referrer?new URL(doc.referrer).hostname:'';}catch{}
+ let tagged=false;try{tagged=!!new URL(win.location.href).searchParams.get('utm_source');}catch{}
+ return tagged || !config.productionHosts.includes(referrer);
+}
 let visitTracked=false;
 export function trackVisit(config=analyticsConfig, win=window, doc=document){
  if(visitTracked)return false;visitTracked=true;
+ const arrival=isArrival(config,win,doc);
  const country=(win.navigator.language||'').slice(0,5);   // regione approssimata dalla lingua del browser
- return track('visita',{...landing(config,win,doc), ...deviceInfo(win.navigator), country},config,win);
+ return track(arrival?'visita':'pagina',{...landing(config,win,doc), ...deviceInfo(win.navigator), country},config,win);
 }
 // Beacon Cloudflare Web Analytics, facoltativo: parte solo con un token valido.
 export function installAnalytics(config, win=window, doc=document){
