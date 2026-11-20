@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Site stats: visits are arrivals.** A visit is now counted once, on the
+  first page someone opens; further pages and reloads count as pages viewed.
 - **Site stats: source and device.** The visit counter of gigamail.ai now
   also sends where a visit came from (the linking site or its utm tags) and
   the kind of device and system, for visits and download clicks. The

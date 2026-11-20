@@ -95,3 +95,20 @@ def test_nothing_is_sent_with_do_not_track():
       return an.track('visita', {}, config, win) || win.sent.length;
     """)
     assert out == 0
+
+
+@pytest.mark.parametrize("href, referrer, reload, expected", [
+    ("https://gigamail.ai/", "https://www.reddit.com/", False, "visita"),
+    ("https://gigamail.ai/", "", False, "visita"),
+    ("https://gigamail.ai/install.html", "https://gigamail.ai/", False, "pagina"),
+    ("https://gigamail.ai/?utm_source=reddit", "https://gigamail.ai/", False, "visita"),
+    ("https://gigamail.ai/", "https://www.reddit.com/", True, "pagina"),
+])
+def test_only_the_arrival_is_a_visit(href, referrer, reload, expected):
+    out = _run(f"""
+      const win = fakeWindow({json.dumps(href)});
+      win.performance = {{getEntriesByType: () => [{{type: {json.dumps('reload' if reload else 'navigate')}}}]}};
+      an.trackVisit(config, win, {{referrer: {json.dumps(referrer)}}});
+      return win.sent[0].type;
+    """)
+    assert out == expected
