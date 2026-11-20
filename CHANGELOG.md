@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Download total on the site.** Under the download buttons the site
+  shows how many times GigaMail was downloaded, desktop app and PyPI
+  together, updated as new downloads arrive.
 - **Site stats: visits are arrivals.** A visit is now counted once, on the
   first page someone opens; further pages and reloads count as pages viewed.
 - **Site stats: source and device.** The visit counter of gigamail.ai now

@@ -463,3 +463,4 @@ section#contact { padding-bottom: 8px; }
 :root[data-theme="dark"] .os-mac { background: #2e2650; color: #e2d8ff; border-color: #44397a; }
 :root[data-theme="dark"] .os-linux { background: #43301a; color: #ffe1bd; border-color: #654827; }
 .final .dl3 { justify-content: center; }
+.dl-count { margin: 8px 0 0; font-size: .85rem; color: var(--gm-muted, #6b7280); }
