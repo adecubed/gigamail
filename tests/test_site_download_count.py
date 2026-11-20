@@ -17,7 +17,8 @@ function fakeDoc(lang, rows) {
   const added = [];
   return {added, documentElement: {lang},
     querySelectorAll: () => Array.from({length: rows}, () => ({after: p => added.push(p.textContent)})),
-    createElement: () => ({})};
+    createElement: () => ({textContent: '', append(...parts) {
+      this.textContent = parts.map(x => typeof x === 'string' ? x : x.textContent).join(''); }})};
 }
 const reply = body => () => Promise.resolve({ok: true, json: () => Promise.resolve(body)});
 """

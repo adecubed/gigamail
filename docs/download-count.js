@@ -32,10 +32,13 @@ export async function showDownloadCount(doc = document, fetchFn = fetch, config 
   } catch { return ''; }
   const text = countText(total, doc.documentElement.lang);
   if (!text) return '';
+  const number = text.match(/^\S+/)[0];
   rows.forEach(row => {
     const p = doc.createElement('p');
     p.className = 'dl-count';
-    p.textContent = text;
+    const strong = doc.createElement('strong');
+    strong.textContent = number;
+    p.append(strong, text.slice(number.length));
     row.after(p);
   });
   return text;
