@@ -161,9 +161,13 @@
   request does.</p>
   <p>gigamail.ai counts its visits with a small counter of our own. When
   you open a page over HTTPS on gigamail.ai, the page sends one event to our
-  server with three things: that a visit happened, the domain of the site
-  you came from, and your browser's language code (which we read as an
-  approximate region). It sets no cookies, uses no local storage, and
+  server with: that a visit happened, the domain of the site you came from
+  and any campaign tag in the link (such as utm_source=reddit), the kind of
+  device (desktop, phone or tablet) and its system (such as Windows or iOS),
+  and your browser's language code. Clicking a download link sends the same,
+  with which installer it was. To count a download for the site you came
+  from, the page keeps that site and tag in the tab's session storage, which
+  the browser clears when you close the tab. It sets no cookies, and
   carries no identifier of you or your device, so it cannot recognise you
   on a later visit. If your browser sends Do Not Track or Global Privacy
   Control, nothing is sent at all. Our server is hosted by Render; like any

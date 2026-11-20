@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Site stats: source and device.** The visit counter of gigamail.ai now
+  also sends where a visit came from (the linking site or its utm tags) and
+  the kind of device and system, for visits and download clicks. The
+  privacy page says so.
 - **Email checker: clearer page for search.** The title, description and
   FAQ now use the words people search with ("phishing email checker",
   "is this email a scam", "how to spot a phishing email").

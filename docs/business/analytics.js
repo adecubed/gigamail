@@ -17,12 +17,44 @@ export function track(type, extra, config=analyticsConfig, win=window){
  try{win.fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),keepalive:true}).catch(()=>{});}catch{return false;}
  return true;
 }
+// Kind of device and system, from the user agent: a short name each,
+// nothing that tells one visitor from another.
+export function deviceInfo(nav){
+ const ua=(nav&&nav.userAgent)||'';
+ const touch=((nav&&nav.maxTouchPoints)||0)>1;
+ let os='other';
+ if(/iPhone|iPad|iPod/i.test(ua))os='ios';
+ else if(/Android/i.test(ua))os='android';
+ else if(/CrOS/i.test(ua))os='chromeos';
+ else if(/Windows/i.test(ua))os='windows';
+ else if(/Macintosh|Mac OS X/i.test(ua))os=touch?'ios':'mac';   // iPadOS says Macintosh
+ else if(/Linux/i.test(ua))os='linux';
+ let device='desktop';
+ if(os==='ios')device=/iPhone|iPod/i.test(ua)?'mobile':'tablet';
+ else if(os==='android')device=/Mobile/i.test(ua)?'mobile':'tablet';
+ return {device, os};
+}
+// Where this visit came from: the utm tags of the address, else the site
+// that linked here. Moving between pages of gigamail.ai keeps the source
+// of the page the visitor landed on, for that tab only (sessionStorage),
+// so a download click two pages later still counts for that source.
+const LANDING_KEY='gigamail-landing';
+export function landing(config=analyticsConfig, win=window, doc=document){
+ let params;try{params=new URL(win.location.href).searchParams;}catch{params=new URLSearchParams('');}
+ let referrer='';try{referrer=doc.referrer?new URL(doc.referrer).hostname:'';}catch{}
+ const here={referrer, utm_source:(params.get('utm_source')||'').slice(0,40), utm_campaign:(params.get('utm_campaign')||'').slice(0,40)};
+ const inside=config.productionHosts.includes(referrer);
+ try{
+  if(inside && !here.utm_source){const saved=JSON.parse(win.sessionStorage.getItem(LANDING_KEY)||'null');if(saved)return saved;}
+  else win.sessionStorage.setItem(LANDING_KEY,JSON.stringify(here));
+ }catch{}
+ return here;
+}
 let visitTracked=false;
 export function trackVisit(config=analyticsConfig, win=window, doc=document){
  if(visitTracked)return false;visitTracked=true;
- let referrer='';try{referrer=doc.referrer?new URL(doc.referrer).hostname:'';}catch{}
  const country=(win.navigator.language||'').slice(0,5);   // regione approssimata dalla lingua del browser
- return track('visita',{referrer, country},config,win);
+ return track('visita',{...landing(config,win,doc), ...deviceInfo(win.navigator), country},config,win);
 }
 // Beacon Cloudflare Web Analytics, facoltativo: parte solo con un token valido.
 export function installAnalytics(config, win=window, doc=document){
@@ -54,9 +86,11 @@ export function trackDownloads(config=analyticsConfig, win=window, doc=document)
  doc.addEventListener('click',(e)=>{
   const a=e.target&&e.target.closest?e.target.closest('a[href]'):null;
   const kind=a?downloadKind(a.href):'';
-  if(kind)track('download',{text:kind},config,win);
+  if(kind)track('download',{text:kind, ...landing(config,win,doc), ...deviceInfo(win.navigator)},config,win);
  },true);
 }
-trackVisit();
-trackDownloads();
-installAnalytics(analyticsConfig);
+if(typeof window!=='undefined'){
+ trackVisit();
+ trackDownloads();
+ installAnalytics(analyticsConfig);
+}
