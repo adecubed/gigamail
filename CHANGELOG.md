@@ -6,7 +6,9 @@
   shows a star before the logo.
 - **Download total on the site.** Under the Download button in the top bar,
   a light-blue departure-board counter shows how many times GigaMail was downloaded
-  (desktop app and PyPI together), updated as new downloads arrive.
+  (desktop app and PyPI together). It moves while the page is open: a
+  click on an installer adds one at once, and new downloads flip in every
+  minute.
 - **Site stats: visits are arrivals.** A visit is now counted once, on the
   first page someone opens; further pages and reloads count as pages viewed.
 - **Site stats: source and device.** The visit counter of gigamail.ai now
