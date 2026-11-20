@@ -463,3 +463,10 @@ section#contact { padding-bottom: 8px; }
 :root[data-theme="dark"] .os-mac { background: #2e2650; color: #e2d8ff; border-color: #44397a; }
 :root[data-theme="dark"] .os-linux { background: #43301a; color: #ffe1bd; border-color: #654827; }
 .final .dl3 { justify-content: center; }
+.dl-board-wrap { position: relative; display: inline-flex; }
+.dl-board { position: absolute; top: calc(100% + 8px); right: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; pointer-events: none; transition: opacity .25s, transform .25s; }
+.dl-board.away { opacity: 0; transform: translateY(-6px); }
+.dl-board .tiles { display: flex; gap: 2px; }
+.dl-board .tile { position: relative; display: inline-block; width: 17px; height: 24px; line-height: 24px; text-align: center; border-radius: 3px; background: #dcebfd; color: #1d4f91; font: 700 15px/24px ui-monospace, "SF Mono", Menlo, Consolas, monospace; box-shadow: inset 0 -1px 0 rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.08); overflow: hidden; }
+.dl-board .tile::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.08); }
+.dl-board .tile.flipping { color: #3b6fb6; }
