@@ -1,7 +1,8 @@
 // Download total under the Download button of the top bar, drawn as a
 // station departure board: the digits flip until they land on the number.
 // The total (GitHub release downloads plus all-time PyPI downloads) comes
-// from the same backend as the visit counter (GET /downloads). Nothing is
+// from the same backend as the visit counter (GET /downloads). The board
+// shows digits only; screen readers hear "13632 downloads". Nothing is
 // shown until the number is known.
 import {analyticsConfig} from './business/analytics-config.js';
 
@@ -64,14 +65,10 @@ export async function showDownloadBoard(doc = document, win = window, fetchFn = 
     t.textContent = '0';
     return t;
   });
-  const label = doc.createElement('span');
-  label.className = 'dl-board-label';
-  label.setAttribute('aria-hidden', 'true');
-  label.textContent = labelFor(doc.documentElement.lang);
   const row = doc.createElement('span');
   row.className = 'tiles';
   row.append(...tiles);
-  board.append(row, label);
+  board.append(row);
   wrap.append(board);
   // the board belongs to the top of the page: it hides once the page scrolls
   const onScroll = () => board.classList.toggle('away', win.scrollY > 40);

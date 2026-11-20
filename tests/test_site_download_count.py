@@ -54,11 +54,11 @@ def test_board_under_the_download_button():
       const {doc, button} = fakePage('it');
       const shown = await dc.showDownloadBoard(doc, WIN, reply({total: 13632}), CONFIG);
       const wrap = button.replacedBy, board = wrap.children[1];
-      const [tiles, label] = board.children;
+      const [tiles] = board.children;
       return [shown, wrap.children[0] === button, board.attrs['aria-label'],
-              tiles.children.map(t => t.textContent).join(''), label.textContent];
+              tiles.children.map(t => t.textContent).join(''), board.children.length];
     """)
-    assert out == ["13632", True, "13632 download", "13632", "download"]
+    assert out == ["13632", True, "13632 download", "13632", 1]
 
 
 @pytest.mark.parametrize("fetch", [
