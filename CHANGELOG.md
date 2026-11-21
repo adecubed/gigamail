@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Send to my computer.** On a phone or tablet, where GigaMail cannot be
+  installed, the site's download buttons become one "Send to my computer"
+  button: it opens the phone's share sheet with the link (or copies it), so
+  the visitor can install from their computer later.
 - **The accounts key is protected on macOS and Linux too.** The key that
   encrypts saved accounts and PGP secret keys was DPAPI-protected on
   Windows, but on macOS and Linux it sat in clear in `.accounts.key` in
