@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The accounts key is protected on macOS and Linux too.** The key that
+  encrypts saved accounts and PGP secret keys was DPAPI-protected on
+  Windows, but on macOS and Linux it sat in clear in `.accounts.key` in
+  the data folder, with default permissions: copying the folder was
+  enough to decrypt everything. It now goes to the Keychain on macOS and
+  to the Secret Service on Linux (new dependency: `keyring`, not on
+  Windows); an existing key is moved there on first start and the file
+  removed. Where Linux has no Secret Service the file stays, now
+  readable only by its owner (0600). If the key is in the keyring and the
+  keyring cannot be read, GigaMail stops with an error instead of making
+  a new key. SECURITY.md says which protection each system gets.
 - **Star on the GitHub button.** The GitHub button in the site's top bar
   shows a star before the logo.
 - **Download total on the site.** Under the Download button in the top bar,

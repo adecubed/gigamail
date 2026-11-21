@@ -822,8 +822,13 @@ and attachments travel inside the encrypted part ("protected headers").
 
 - **Keys.** One key per sending address, generated on first use. The
   secret key is stored in `.pgp_keys.db` encrypted with the accounts'
-  Fernet key, which on Windows is DPAPI-protected: copying the data folder
-  to another machine does not give the key away. Correspondents' public
+  Fernet key. That key is DPAPI-protected on Windows, kept in the Keychain
+  on macOS and in the Secret Service (GNOME Keyring, KWallet) on Linux:
+  copying the data folder to another machine does not give the key away.
+  Where Linux has no Secret Service (a server, a container, an SSH
+  session) the key stays in `.accounts.key`, readable only by its owner
+  (0600): there, whoever can read the data folder as that user can read
+  the key. Correspondents' public
   keys come from the `Autocrypt:` header of their mail, only when its
   `addr` is the From address, and only the public half is kept.
 - **Fail-closed.** Asked to encrypt and unable to (no key for a
