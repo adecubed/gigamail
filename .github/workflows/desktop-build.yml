@@ -99,6 +99,11 @@ jobs:
         shell: pwsh
         run: |
           $ver = (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          # A Codex folder, as on a computer with Codex or the ChatGPT app:
+          # the installer must write GigaMail's entry there (checked below).
+          # A folder of its own, so the later steps start without it.
+          $env:CODEX_HOME = Join-Path $env:RUNNER_TEMP "codex-home"
+          New-Item -ItemType Directory -Force -Path $env:CODEX_HOME | Out-Null
           Start-Process -Wait -FilePath "console/dist/GigaMail Setup $ver.exe" -ArgumentList "/S"
           # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
           # Program Files is where an "all users" install would go.
@@ -112,6 +117,17 @@ jobs:
             }
           }
           Write-Host "install OK: $dir"
+
+      - name: The installer connected Codex, with no console started
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          $cfg = Join-Path $env:RUNNER_TEMP "codex-home\config.toml"
+          if (-not (Test-Path $cfg)) { throw "the installer wrote no $cfg" }
+          Get-Content $cfg
+          $python = (Join-Path $dir "resources\python\python.exe").Replace('\', '\\')
+          if (-not (Select-String -Path $cfg -SimpleMatch -Quiet -Pattern "command = `"$python`"")) { throw "the entry does not start this installation's Python" }
+          if (-not (Select-String -Path $cfg -SimpleMatch -Quiet -Pattern '[mcp_servers.gigamail]')) { throw "no gigamail server in config.toml" }
 
       - name: gigamail-server is on the user's PATH and answers by name
         shell: pwsh

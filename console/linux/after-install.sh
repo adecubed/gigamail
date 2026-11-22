@@ -72,3 +72,16 @@ for cmd in gigamail gigamail-server; do
     echo "GigaMail: $link exists and is not ours, left as it is; the bundled CLI is $target"
   fi
 done
+
+# -- GigaMail: Codex and the ChatGPT desktop app, for every user ----------
+# The GigaMail plugin from the OpenAI Plugins Directory brings the skill
+# only. Codex reads /etc/codex/config.toml under each user's own
+# config.toml: an entry there gives the plugin its server on this machine
+# before anyone has opened GigaMail, and whether Codex is installed now or
+# later. Only the gigamail entry is written; one that starts another
+# installation is left alone (gigamail.core.codex_config). Never fails the
+# installation.
+PYTHONPATH='/opt/${sanitizedProductName}/resources/gigamail/src' PYTHONNOUSERSITE=1 \
+  '/opt/${sanitizedProductName}/resources/python/bin/python3' -s -X utf8 \
+  -m gigamail.core.codex_config system-connect '/opt/${sanitizedProductName}/resources/bin/gigamail-server' \
+  || echo "GigaMail: Codex entry not written; the app writes one for you when it starts"

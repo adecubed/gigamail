@@ -38,8 +38,19 @@
   Pop $1
 !macroend
 
+; A per-user install also connects Codex and the ChatGPT desktop app, as the
+; console does when it starts (gigamail.core.codex_config, at-install): the
+; GigaMail entry in the user's config.toml when Codex is on this computer
+; or the GigaMail plugin is installed. Not for an "all users" install, which
+; runs as an administrator who may be another person. The command never
+; fails the installer.
 !macro customInstall
   !insertmacro _gigamailUserPath add
+  ${if} $installMode != "all"
+    nsExec::ExecToStack '"$INSTDIR\resources\python\python.exe" -m gigamail.core.codex_config at-install'
+    Pop $0
+    Pop $1
+  ${endIf}
 !macroend
 
 !macro customUnInstall

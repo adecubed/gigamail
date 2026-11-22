@@ -19,6 +19,16 @@ that needs one ("user cancelled MCP tool call"). Codex's own prompt adds
 nothing here: GigaMail's tools that send, delete or write the calendar stay
 two-phase on the server, and only a human approval in GigaMail runs them.
 
+The installers write an entry too, so that the plugin finds its server on
+a computer where the console has not started since Codex or the plugin
+arrived. The Windows installer, for a per-user install, does what the
+console does at its start (`at-install`). The Linux .deb, which runs as
+root and belongs to every user of the machine, writes Codex's system file
+/etc/codex/config.toml (`system-connect`): Codex reads it under the user's
+own config.toml, so an entry the console or the user writes later wins.
+That entry names the installed gigamail-server and no data folder: each
+user's server finds their own.
+
 Only the [mcp_servers.gigamail] table and its sub-tables are touched. The
 new file is parsed before it is written: if anything outside our entry
 would change, nothing is written. The previous file is kept next to it as
@@ -39,6 +49,10 @@ except ModuleNotFoundError:  # Python 3.10: same parser, as a package
         tomllib = None
 
 NAME = "gigamail"
+SYSTEM_FILE = Path("/etc/codex/config.toml")
+# What a system-wide entry lets through from the user's environment: where
+# their data is, when they moved it.
+SYSTEM_ENV_VARS = ["GIGAMAIL_ROOT", "ADE_ROOT"]
 _HEADER = re.compile(r'^\s*\[\s*mcp_servers\s*\.\s*(?:gigamail|"gigamail")\s*(?:\.[^\]]*)?\]\s*(?:#.*)?$')
 _ANY_HEADER = re.compile(r"^\s*\[")
 
@@ -70,12 +84,16 @@ def _q(value: str) -> str:
 
 def _block(entry: dict) -> str:
     args = ", ".join(_q(a) for a in entry["args"])
-    env = "".join(f"{k} = {_q(v)}\n" for k, v in entry["env"].items())
-    return (f"[mcp_servers.{NAME}]\n"
-            f"command = {_q(entry['command'])}\n"
-            f"args = [{args}]\n"
-            f"default_tools_approval_mode = {_q(entry['default_tools_approval_mode'])}\n\n"
-            f"[mcp_servers.{NAME}.env]\n{env}")
+    out = (f"[mcp_servers.{NAME}]\n"
+           f"command = {_q(entry['command'])}\n"
+           f"args = [{args}]\n")
+    if entry.get("env_vars"):
+        out += f"env_vars = [{', '.join(_q(v) for v in entry['env_vars'])}]\n"
+    out += f"default_tools_approval_mode = {_q(entry['default_tools_approval_mode'])}\n"
+    if entry.get("env"):
+        env = "".join(f"{k} = {_q(v)}\n" for k, v in entry["env"].items())
+        out += f"\n[mcp_servers.{NAME}.env]\n{env}"
+    return out
 
 
 def _without_entry(text: str) -> str:
@@ -176,8 +194,9 @@ def codex_present() -> bool:
 
 
 def _once_marker() -> Path:
-    from gigamail.core.data_paths import app_root
-    return app_root() / ".codex_connected_at_start"
+    """In Codex's own folder, not in GigaMail's data: one GigaMail can serve
+    several Codex profiles (CODEX_HOME), and each must get its entry."""
+    return config_path() / ".gigamail_connected_at_start"
 
 
 def connect_at_start() -> str:
@@ -213,16 +232,14 @@ def connect_at_start() -> str:
     return result
 
 
-def connect() -> dict:
-    """Write (or replace) our entry. Raises ValueError, writing nothing, when
-    the result would change anything else in the file."""
-    path = _file()
+def _write_entry(path: Path, want: dict, matches) -> None:
+    """Write (or replace) the gigamail entry in `path`. Raises ValueError,
+    writing nothing, when the result would change anything else in the file."""
     old = path.read_text(encoding="utf-8") if path.exists() else ""
     before = _parse(old) if old.strip() else {}
     base = _without_entry(old)
     if base and not base.endswith("\n"):
         base += "\n"
-    want = desired()
     new = base + ("\n" if base.strip() else "") + _block(want)
     try:
         after = _parse(new)
@@ -232,7 +249,7 @@ def connect() -> dict:
             f"safely ({type(e).__name__}). Remove that entry and try again.") from e
     if _strip_ours(after) != _strip_ours(before):
         raise ValueError(f"editing {path} would change other settings: nothing written")
-    if not _matches((after.get("mcp_servers") or {}).get(NAME) or {}, want):
+    if not matches((after.get("mcp_servers") or {}).get(NAME) or {}, want):
         raise ValueError(f"the gigamail entry in {path} did not come out as expected: nothing written")
     path.parent.mkdir(parents=True, exist_ok=True)
     if old:
@@ -241,4 +258,73 @@ def connect() -> dict:
     with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
         f.write(new)
     os.replace(tmp, path)
+
+
+def connect() -> dict:
+    """Write (or replace) our entry in the user's config.toml. Raises
+    ValueError, writing nothing, when the result would change anything else
+    in the file."""
+    _write_entry(_file(), desired(), _matches)
     return status()
+
+
+def system_desired(command: str) -> dict:
+    return {
+        "command": command,
+        "args": [],
+        "env_vars": list(SYSTEM_ENV_VARS),
+        "default_tools_approval_mode": "approve",
+    }
+
+
+def _system_matches(current: dict, want: dict) -> bool:
+    return (current.get("command") == want["command"]
+            and list(current.get("args") or []) == want["args"]
+            and list(current.get("env_vars") or []) == want["env_vars"]
+            and current.get("default_tools_approval_mode") == want["default_tools_approval_mode"])
+
+
+def connect_system(command: str, path: Path | None = None) -> str:
+    """Write the machine-wide entry that starts `command`, the installed
+    gigamail-server, for every user: run as root by the .deb's postinst.
+
+    Written whether or not Codex is installed: the file is ready when it
+    arrives. A gigamail entry that starts something else was put there by
+    an administrator and is left alone. The file is made readable by
+    everyone, as a system configuration must be (a temporary file is born
+    private). Returns what happened, for the installer's output."""
+    path = path or SYSTEM_FILE
+    want = system_desired(command)
+    if path.exists():
+        try:
+            current = (_parse(path.read_text(encoding="utf-8")).get("mcp_servers") or {}).get(NAME)
+        except Exception as e:
+            return f"{path} unreadable, left alone: {type(e).__name__}: {e}"
+        if isinstance(current, dict):
+            if current.get("command") != command:
+                return "entry points to another GigaMail: left alone"
+            if _system_matches(current, want):
+                return "already connected"
+    _write_entry(path, want, _system_matches)
+    os.chmod(path, 0o644)
+    return f"connected in {path}"
+
+
+def main(argv: list[str]) -> int:
+    """For the installers. Never fails them: a Codex entry that could not be
+    written is said and left to the console's start."""
+    try:
+        if argv == ["at-install"]:
+            print(f"Codex: {connect_at_start()}")
+        elif len(argv) == 2 and argv[0] == "system-connect":
+            print(f"Codex: {connect_system(argv[1])}")
+        else:
+            print("usage: python -m gigamail.core.codex_config at-install | system-connect <gigamail-server path>")
+            return 2
+    except Exception as e:
+        print(f"Codex: entry not written: {type(e).__name__}: {e}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

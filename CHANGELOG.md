@@ -12,6 +12,17 @@
   once: an entry you remove by hand stays removed (the Connect button and
   installing the plugin write it again). An entry pointing to another
   installation is left alone, as before. Windows, macOS and Linux.
+- **Windows and the Linux .deb: the installer connects Codex too.** A
+  per-user Windows install does at the end what the console does when it
+  starts, so the entry is there before GigaMail is opened. The .deb, which
+  is installed for every user of the machine, writes the entry in Codex's
+  system file `/etc/codex/config.toml`, whether Codex is installed already
+  or arrives later; your own `config.toml` still wins over it, and removing
+  the package removes the entry. Only the `gigamail` entry is written, and
+  one that points to another installation is left alone. The macOS app and
+  the AppImage have no installer: there the console writes it at its first
+  start. You still add your mailbox in GigaMail (or with `gigamail login`)
+  before the agent has any mail to read.
 
 - **Windows: `gigamail` and `gigamail-server` are on PATH after
   installing.** The installer adds one folder with those two commands

@@ -8,6 +8,8 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const nsh = fs.readFileSync(path.join(root, 'installer', 'installer.nsh'), 'utf8');
 const ps1 = fs.readFileSync(path.join(root, 'installer', 'stop_backend.ps1'), 'utf8');
+const debInstall = fs.readFileSync(path.join(root, 'linux', 'after-install.sh'), 'utf8');
+const debRemove = fs.readFileSync(path.join(root, 'linux', 'after-remove.sh'), 'utf8');
 const pathPs1 = fs.readFileSync(path.join(root, 'installer', 'user_path.ps1'), 'utf8');
 
 test('electron-builder includes the hook script', () => {
@@ -75,4 +77,19 @@ test('Path is edited in the registry unexpanded, keeping its kind and every othe
 test('an update also renames the PATH launchers, so a client restart cannot hold them', () => {
   assert.match(ps1, /resources\\bin\\gigamail-server\.exe/);
   assert.match(ps1, /resources\\bin\\gigamail\.exe/);
+});
+
+// The plugin from the OpenAI Plugins Directory brings the skill only: the
+// installers write the server entry, so it works before the console has
+// started with Codex or the plugin on the computer.
+test('a per-user Windows install connects Codex as the console does at its start', () => {
+  assert.match(nsh, /\$\{if\} \$installMode != "all"\s+nsExec::ExecToStack '"\$INSTDIR\\resources\\python\\python\.exe" -m gigamail\.core\.codex_config at-install'/);
+});
+
+test('the .deb writes the system-wide Codex entry and removes only its own', () => {
+  assert.match(debInstall, /-m gigamail\.core\.codex_config system-connect '\/opt\/\$\{sanitizedProductName\}\/resources\/bin\/gigamail-server'/);
+  // never fails the installation
+  assert.match(debInstall, /system-connect [^\n]*\\\n\s+\|\| echo /);
+  assert.match(debRemove, /grep -qF 'command = "\/opt\/\$\{sanitizedProductName\}\/resources\/bin\/gigamail-server"' "\$codex_cfg"/);
+  assert.match(debRemove, /rmdir \/etc\/codex 2>\/dev\/null \|\| true/);
 });

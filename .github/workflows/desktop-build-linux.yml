@@ -155,6 +155,20 @@ jobs:
           printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             | HOME="$RUNNER_TEMP/cli-home" timeout 60 gigamail-server | head -1 | grep -q '"serverInfo"' && echo "gigamail-server answers initialize"
 
+      - name: The .deb connected Codex for every user, with no console started
+        run: |
+          cat /etc/codex/config.toml
+          test "$(stat -c %a /etc/codex/config.toml)" = 644 || { echo "::error::/etc/codex/config.toml is not readable by every user"; exit 1; }
+          /opt/GigaMail/resources/python/bin/python3 - <<'PY'
+          import os, tomllib
+          entry = tomllib.load(open("/etc/codex/config.toml", "rb"))["mcp_servers"]["gigamail"]
+          assert entry["command"] == "/opt/GigaMail/resources/bin/gigamail-server", entry
+          assert os.access(entry["command"], os.X_OK), "the command of the entry does not run"
+          assert entry["args"] == [] and "env" not in entry, entry
+          print("system entry OK")
+          PY
+          test ! -e /root/.ade || { echo "::error::the installer created a data folder for root"; exit 1; }
+
       - name: The installed app starts sandboxed with the default restriction (fresh profile, embedded backend, onboarding)
         working-directory: console
         env:
@@ -186,6 +200,13 @@ jobs:
         run: |
           ver=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' ../pyproject.toml | head -1)
           GIGAMAIL_APPIMAGE="$PWD/dist/GigaMail-$ver-x86_64.AppImage" xvfb-run -a npm run test:appimage
+
+      - name: Removing the .deb takes the Codex entry and the commands with it
+        run: |
+          pkg=$(dpkg-query -S /opt/GigaMail/gigamail-console | cut -d: -f1)
+          sudo apt-get remove -y -qq "$pkg"
+          test ! -e /etc/codex/config.toml || { cat /etc/codex/config.toml; echo "::error::the Codex entry outlived the package"; exit 1; }
+          test ! -e /usr/bin/gigamail-server || { echo "::error::/usr/bin/gigamail-server outlived the package"; exit 1; }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

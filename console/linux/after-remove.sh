@@ -32,3 +32,22 @@ for cmd in gigamail gigamail-server; do
     rm -f "$link"
   fi
 done
+
+# -- GigaMail: the Codex entry of after-install, only if it is still ours --
+# The bundled Python is gone by now: plain text tools. From the
+# [mcp_servers.gigamail] header to the next table header, as
+# codex_config._without_entry does. An upgrade runs this too, and the new
+# version's after-install writes the entry again.
+codex_cfg=/etc/codex/config.toml
+if [ -f "$codex_cfg" ] && grep -qF 'command = "/opt/${sanitizedProductName}/resources/bin/gigamail-server"' "$codex_cfg"; then
+  codex_tmp="$(mktemp)" && awk '
+    /^[[:space:]]*\[[[:space:]]*mcp_servers[[:space:]]*\.[[:space:]]*("gigamail"|gigamail)[[:space:]]*(\.[^]]*)?\]/ { skip = 1; next }
+    skip && /^[[:space:]]*\[/ { skip = 0 }
+    !skip { print }
+  ' "$codex_cfg" > "$codex_tmp" && cat "$codex_tmp" > "$codex_cfg"
+  rm -f "$codex_tmp"
+  if ! grep -q '[^[:space:]]' "$codex_cfg"; then
+    rm -f "$codex_cfg" "$codex_cfg.gigamail-bak"
+    rmdir /etc/codex 2>/dev/null || true
+  fi
+fi
