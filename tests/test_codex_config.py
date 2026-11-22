@@ -181,3 +181,52 @@ def test_connect_for_plugin_leaves_another_installation_alone(codex_home):
     (codex_home / "config.toml").write_text(original, encoding="utf-8")
     assert codex_config.connect_for_plugin() == "entry points to another GigaMail: left alone"
     assert (codex_home / "config.toml").read_text(encoding="utf-8") == original
+
+
+def test_at_start_without_codex_nothing_is_created(codex_home):
+    assert codex_config.connect_at_start() == "no Codex"
+    assert not codex_home.exists()
+
+
+def test_at_start_with_codex_and_no_plugin_the_entry_is_written(codex_home):
+    """GigaMail first, the plugin later: the entry is already there when the
+    plugin arrives, and nobody has to open the console again."""
+    codex_home.mkdir()
+    (codex_home / "config.toml").write_text('model = "gpt-5"\n', encoding="utf-8")
+    assert codex_config.connect_at_start() == "connected (Codex found, no plugin yet)"
+    cfg = _cfg(codex_home)
+    assert cfg["model"] == "gpt-5"
+    assert cfg["mcp_servers"]["gigamail"]["command"] == sys.executable
+
+
+def test_at_start_an_entry_removed_by_hand_stays_removed(codex_home):
+    codex_home.mkdir()
+    assert codex_config.connect_at_start().startswith("connected")
+    (codex_home / "config.toml").write_text("", encoding="utf-8")
+    assert codex_config.connect_at_start() == "no plugin, entry already offered once"
+    assert (codex_home / "config.toml").read_text(encoding="utf-8") == ""
+    # installing the plugin is asking for the tools again
+    _install_plugin(codex_home)
+    assert codex_config.connect_at_start() == "connected"
+
+
+def test_at_start_another_installation_is_left_alone(codex_home):
+    codex_home.mkdir()
+    original = '[mcp_servers.gigamail]\ncommand = "/home/me/venv/bin/gigamail-server"\n'
+    (codex_home / "config.toml").write_text(original, encoding="utf-8")
+    assert codex_config.connect_at_start() == "entry points to another GigaMail: left alone"
+    assert (codex_home / "config.toml").read_text(encoding="utf-8") == original
+
+
+def test_at_start_an_unreadable_file_is_tried_again_next_time(codex_home):
+    codex_home.mkdir()
+    (codex_home / "config.toml").write_text("this is [not toml\n", encoding="utf-8")
+    assert codex_config.connect_at_start().startswith("config.toml unreadable")
+    (codex_home / "config.toml").write_text("", encoding="utf-8")
+    assert codex_config.connect_at_start().startswith("connected")
+
+
+def test_at_start_with_the_plugin_it_behaves_as_before(codex_home):
+    _install_plugin(codex_home)
+    assert codex_config.connect_at_start() == "connected"
+    assert codex_config.connect_at_start() == "already connected"

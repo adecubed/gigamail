@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Codex and ChatGPT: connected even when the plugin comes later.** When
+  the console starts and finds Codex or the ChatGPT desktop app on the
+  computer, it writes the GigaMail server entry in Codex's `config.toml`
+  even if the GigaMail plugin is not installed yet. Before, it wrote it
+  only when the plugin was already there: someone who had GigaMail and
+  then installed the plugin from the OpenAI Plugins Directory got no tools
+  until they opened the console again. Without the plugin this happens
+  once: an entry you remove by hand stays removed (the Connect button and
+  installing the plugin write it again). An entry pointing to another
+  installation is left alone, as before. Windows, macOS and Linux.
+
 - **Windows: `gigamail` and `gigamail-server` are on PATH after
   installing.** The installer adds one folder with those two commands
   (`resources\bin`, on the app's own Python) to your user PATH, or to the

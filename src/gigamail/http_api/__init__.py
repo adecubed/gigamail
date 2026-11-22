@@ -153,11 +153,12 @@ def main() -> None:
     completion.warm_up()
     from .rules import start_watch_guard
     start_watch_guard()
-    # A user who installed the GigaMail plugin in Codex gets the server entry
-    # that makes it work, without looking for the Connect button.
+    # A user with Codex or the ChatGPT desktop app gets the server entry that
+    # makes the GigaMail plugin work, whether the plugin is there already or
+    # is installed later, without looking for the Connect button.
     try:
         from gigamail.core import codex_config
-        print(f"[console] Codex plugin: {codex_config.connect_for_plugin()}", flush=True)
+        print(f"[console] Codex: {codex_config.connect_at_start()}", flush=True)
     except Exception as e:
-        print(f"[console] Codex plugin: entry not written: {type(e).__name__}: {e}", flush=True)
+        print(f"[console] Codex: entry not written: {type(e).__name__}: {e}", flush=True)
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")

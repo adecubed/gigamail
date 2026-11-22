@@ -169,6 +169,50 @@ def connect_for_plugin() -> str:
     return "connected"
 
 
+def codex_present() -> bool:
+    """Whether this user has Codex or the ChatGPT desktop app: both keep
+    their settings in $CODEX_HOME, and neither works without it."""
+    return config_path().is_dir()
+
+
+def _once_marker() -> Path:
+    from gigamail.core.data_paths import app_root
+    return app_root() / ".codex_connected_at_start"
+
+
+def connect_at_start() -> str:
+    """What the console does about Codex when it starts.
+
+    With the GigaMail plugin installed: connect_for_plugin(), at every
+    start. Without it, when Codex is on this computer and config.toml has
+    no gigamail server: write our entry, once. Somebody who installed
+    GigaMail first and adds the plugin later, the common order for a user
+    who finds it in the OpenAI Plugins Directory, then has the tools without
+    coming back to the console: when they last opened it there was no
+    plugin to see. Once, because an entry the user later removes by hand
+    must stay removed; the Connect button and installing the plugin still
+    write it. Returns what happened, for the log."""
+    if plugin_installed():
+        return connect_for_plugin()
+    if not codex_present():
+        return "no Codex"
+    marker = _once_marker()
+    if marker.exists():
+        return "no plugin, entry already offered once"
+    st = status()
+    if st["error"]:
+        return f"config.toml unreadable: {st['error']}"
+    if st["connected"]:
+        result = "already connected"
+    elif st["entry"]:
+        result = "entry points to another GigaMail: left alone"
+    else:
+        connect()
+        result = "connected (Codex found, no plugin yet)"
+    marker.write_text("", encoding="utf-8")
+    return result
+
+
 def connect() -> dict:
     """Write (or replace) our entry. Raises ValueError, writing nothing, when
     the result would change anything else in the file."""
