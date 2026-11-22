@@ -1,0 +1,65 @@
+/* Mail City, metro map. The map keeps its paper colours in dark mode too:
+   it is a drawing on the page, like a photo. */
+.mc-hero { padding: 34px 0 18px; }
+.mc-hero h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.8rem); line-height: 1.1; letter-spacing: -0.02em; }
+.mc-hero .lede { margin: 12px 0 0; }
+
+.mc-frame { position: relative; height: clamp(460px, 72vh, 760px); border-radius: 18px; overflow: hidden; background: #efe7d6; border: 1px solid var(--gm-line); }
+.mc-frame svg#mc-map { width: 100%; height: 100%; display: block; }
+.mc-stage { position: absolute; inset: 0; perspective: 900px; pointer-events: none; }
+.mc-lift { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; overflow: visible; }
+#mc-cards g { cursor: pointer; outline: none; }
+#mc-cards g:focus-visible > rect:first-child { stroke: #e0409a; stroke-width: 4; }
+
+.mc-ticker { position: absolute; top: 12px; left: 12px; background: #1d1d1b; color: #f2c14e; border-radius: 10px; padding: 8px 12px; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-width: 200px; }
+.mc-ticker[hidden] { display: none; }
+.mc-ticker #mc-line { color: #cfc7b4; font-size: 11px; }
+.mc-ticker .cur { animation: mc-blink 1s steps(1) infinite; }
+@keyframes mc-blink { 50% { opacity: 0; } }
+
+.mc-legend { position: absolute; right: 12px; bottom: 12px; background: #fffbef; color: #3d4836; border-radius: 10px; padding: 9px 12px; font-size: 12px; line-height: 1.75; opacity: 0; transition: opacity .6s; pointer-events: none; }
+.mc-legend.on { opacity: 1; }
+.mc-legend span { display: inline-block; width: 18px; height: 5px; border-radius: 3px; margin-right: 7px; vertical-align: 2px; }
+
+.mc-start { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(239, 231, 214, .88); overflow-y: auto; z-index: 2; }
+.mc-start[hidden] { display: none; }
+.mc-start-box { width: min(420px, 100%); }
+.mc-start .kick { font: 600 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .16em; color: #8a7a5c; }
+.mc-start h2 { margin: 6px 0 12px; font-size: 1.5rem; color: #1d1d1b; }
+#mc-choices { display: flex; flex-direction: column; gap: 7px; }
+#mc-choices button { display: flex; align-items: center; gap: 11px; text-align: left; background: #fffbef; color: #1d1d1b; border: 1.5px solid #3d4836; border-radius: 12px; padding: 9px 13px; font: inherit; font-size: .95rem; font-weight: 600; cursor: pointer; transition: transform .15s; }
+#mc-choices button:hover { transform: translateY(-2px); }
+#mc-choices button small { display: block; font-weight: 400; font-size: .8rem; color: #6d6656; }
+#mc-choices i { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+
+.mc-controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+.mc-controls .btn { padding: 9px 14px; }
+#mc-play { width: 44px; justify-content: center; padding: 9px 0; }
+#mc-play svg { width: 16px; height: 16px; fill: currentColor; }
+
+.mc-info { margin: 16px 0 0; padding: 20px 22px; min-height: 140px; }
+.mc-info h2 { margin: 0 0 8px; font-size: 1.3rem; }
+.mc-info p { margin: 10px 0 0; color: var(--gm-muted); max-width: 52rem; }
+.mc-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600; margin-right: 12px; }
+.mc-chip i { width: 10px; height: 10px; border-radius: 50%; }
+.mc-note { font-size: .8rem; color: var(--gm-muted); margin: 10px 0 0; }
+
+.mc-get { padding: 44px 0 8px; }
+.mc-get h2, .mc-contact h2 { margin: 0 0 8px; font-size: 1.6rem; }
+.mc-get .dl3 { margin: 18px 0 10px; }
+.mc-get .dl3 .btn { padding: 14px 24px; font-size: 1.02rem; }
+.mc-contact { padding: 30px 0 50px; }
+.mc-contact ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+.mc-contact li a { font-weight: 600; }
+.mc-contact li span { color: var(--gm-muted); }
+
+@media (max-width: 560px) {
+  .mc-hero { padding-top: 22px; }
+  .mc-ticker { min-width: 0; font-size: 11px; }
+  .mc-legend { font-size: 11px; padding: 7px 9px; }
+  .mc-hero { padding-bottom: 12px; }
+  .mc-start h2 { font-size: 1.3rem; margin-bottom: 10px; }
+  #mc-choices { gap: 6px; }
+  #mc-choices button { padding: 9px 11px; font-size: .92rem; }
+  #mc-choices button small { display: none; }
+}

@@ -40,7 +40,7 @@ Key facts:
 
 ## Optional
 
-- [Mail City](https://gigamail.ai/mail-city.html): interactive 3D tour of a mail's journey through GigaMail
+- [Mail City](https://gigamail.ai/mail-city.html): interactive metro map of a mail's journey through GigaMail: approval, context, privacy, autopilot and a hostile mail
 - [Privacy policy](https://gigamail.ai/privacy.html)
 - [Terms of service](https://gigamail.ai/terms.html)
 - [Italian home](https://gigamail.ai/it.html) and [Chinese home](https://gigamail.ai/zh.html)

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Website: Mail City is now a metro map.** The 3D world is replaced by a
+  map with five lines, one per thing a visitor may want to do: answer a
+  client, search mail and files, keep data private, let it work alone, try
+  to trick it. A train rides the chosen line, the card of each stop lifts
+  as it arrives, and the stop is explained under the map. Interchanges
+  join the lines where features meet (local archive, registered
+  documents, approval, delivery). Download buttons and contacts at the
+  bottom; English and Italian.
 - **Send to my computer.** On a phone or tablet, where GigaMail cannot be
   installed, the site's download buttons become one "Send to my computer"
   button: it opens the phone's share sheet with the link (or copies it), so
