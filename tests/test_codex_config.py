@@ -297,3 +297,27 @@ def test_the_installers_command_never_fails_them(codex_home, capsys):
     (codex_home / "config.toml").mkdir(parents=True)
     assert codex_config.main(["at-install"]) == 0
     assert codex_config.main(["system-connect"]) == 2
+
+
+def test_a_file_closed_to_other_users_stays_closed_and_so_does_its_copy(codex_home, tmp_path):
+    """A config.toml can hold other servers' keys. Neither the user's file
+    nor an administrator's system file may come back readable by everyone,
+    and the .gigamail-bak copy holds the same text."""
+    if sys.platform == "win32":
+        return
+    codex_home.mkdir()
+    secret = '[mcp_servers.other.env]\nAPI_KEY = "example-key"\n'
+    for path, write in ((codex_home / "config.toml", codex_config.connect),
+                        (tmp_path / "etc.toml", lambda: codex_config.connect_system(SERVER, tmp_path / "etc.toml"))):
+        path.write_text(secret, encoding="utf-8")
+        path.chmod(0o600)
+        write()
+        bak = path.with_name(path.name + ".gigamail-bak")
+        assert path.stat().st_mode & 0o777 == 0o600
+        assert bak.stat().st_mode & 0o777 == 0o600
+        assert bak.read_text(encoding="utf-8") == secret
+        # a copy left readable by an earlier write is closed too
+        bak.chmod(0o644)
+        path.write_text(secret, encoding="utf-8")
+        write()
+        assert bak.stat().st_mode & 0o777 == 0o600

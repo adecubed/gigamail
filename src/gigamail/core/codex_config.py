@@ -234,8 +234,13 @@ def connect_at_start() -> str:
 
 def _write_entry(path: Path, want: dict, matches) -> None:
     """Write (or replace) the gigamail entry in `path`. Raises ValueError,
-    writing nothing, when the result would change anything else in the file."""
+    writing nothing, when the result would change anything else in the file.
+
+    The file keeps the permissions it had, and so does the copy kept next
+    to it: a config.toml can hold other servers' keys, and one its owner
+    closed to other users must not come back readable by them."""
     old = path.read_text(encoding="utf-8") if path.exists() else ""
+    mode = (path.stat().st_mode & 0o777) if path.exists() else None
     before = _parse(old) if old.strip() else {}
     base = _without_entry(old)
     if base and not base.endswith("\n"):
@@ -253,10 +258,16 @@ def _write_entry(path: Path, want: dict, matches) -> None:
         raise ValueError(f"the gigamail entry in {path} did not come out as expected: nothing written")
     path.parent.mkdir(parents=True, exist_ok=True)
     if old:
-        Path(str(path) + ".gigamail-bak").write_text(old, encoding="utf-8")
+        bak = str(path) + ".gigamail-bak"
+        fd = os.open(bak, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        os.chmod(bak, mode)  # a copy left by an earlier write keeps its old mode otherwise
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(old)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".config.", suffix=".toml")
     with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
         f.write(new)
+    if mode is not None:
+        os.chmod(tmp, mode)
     os.replace(tmp, path)
 
 
@@ -290,9 +301,10 @@ def connect_system(command: str, path: Path | None = None) -> str:
 
     Written whether or not Codex is installed: the file is ready when it
     arrives. A gigamail entry that starts something else was put there by
-    an administrator and is left alone. The file is made readable by
+    an administrator and is left alone. A file this creates is readable by
     everyone, as a system configuration must be (a temporary file is born
-    private). Returns what happened, for the installer's output."""
+    private); one that was already there keeps its permissions. Returns
+    what happened, for the installer's output."""
     path = path or SYSTEM_FILE
     want = system_desired(command)
     if path.exists():
@@ -305,8 +317,10 @@ def connect_system(command: str, path: Path | None = None) -> str:
                 return "entry points to another GigaMail: left alone"
             if _system_matches(current, want):
                 return "already connected"
+    created = not path.exists()
     _write_entry(path, want, _system_matches)
-    os.chmod(path, 0o644)
+    if created:
+        os.chmod(path, 0o644)
     return f"connected in {path}"
 
 
