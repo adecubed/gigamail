@@ -87,6 +87,72 @@ const svg = $('mc-map'), frame = $('mc-frame'), stage = $('mc-stage');
 const P = { y: $('Ly'), g: $('Lg'), r: $('Lr'), b: $('Lb'), p: $('Lp') };
 const FULL = [-20, 20, 1640, 1000];
 
+// The city under the lines: countryside around, a town just larger than
+// the network, a river with green banks, parks and a few garden squares.
+// Seeded, so every visitor gets the same town.
+function drawCity() {
+  const city = $('mc-city');
+  let seed = 7;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const inPoly = (x, y, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const pts = a => a.map(p => p.join(',')).join(' ');
+
+  // Countryside: fields in a few greens.
+  el('rect', { x: -2000, y: -1500, width: 5600, height: 4200, fill: '#dfe2c4' }, city);
+  for (let i = 0; i < 70; i++) {
+    const x = -900 + rnd() * 3400, y = -700 + rnd() * 2500, w = 120 + rnd() * 220, h = 80 + rnd() * 160;
+    el('rect', { x, y, width: w, height: h, rx: 6, fill: pick(['#d6dcb6', '#e6e5c9', '#d2d9b0', '#e2ddbd']), transform: `rotate(${(rnd() * 30 - 15).toFixed(1)} ${x} ${y})` }, city);
+  }
+  const TOWN = [[-90, 10], [300, -40], [700, -15], [1100, -45], [1500, -5], [1700, 80], [1730, 500], [1700, 900], [1570, 1090], [1100, 1080], [600, 1100], [150, 1070], [-90, 990], [-120, 500]];
+  el('polygon', { points: pts(TOWN), fill: '#f4eedf', stroke: '#e8dfc8', 'stroke-width': 18, 'stroke-linejoin': 'round' }, city);
+
+  // River: green banks, then water.
+  const RIVER = 'M1230 -400 C1190 0 1250 160 1215 330 S1180 620 1250 760 S1330 960 1150 1030 S700 1050 420 1035 S60 1070 -500 1110';
+  el('path', { d: RIVER, fill: 'none', stroke: '#cfe0b2', 'stroke-width': 96, 'stroke-linecap': 'round' }, city);
+  const water = el('path', { d: RIVER, fill: 'none', stroke: '#a7cbdf', 'stroke-width': 44, 'stroke-linecap': 'round' }, city);
+  const wl = water.getTotalLength(), riverPts = [];
+  for (let l = 0; l <= wl; l += 18) riverPts.push(water.getPointAtLength(l));
+  const nearRiver = (x, y, d) => riverPts.some(q => (q.x - x) ** 2 + (q.y - y) ** 2 < d * d);
+
+  // Parks.
+  const PARKS = [
+    [[680, 560], [800, 560], [930, 440], [930, 345], [830, 245], [680, 285]],
+    [[-40, 90], [190, 80], [230, 200], [60, 250], [-60, 190]],
+    [[1440, 760], [1640, 740], [1660, 930], [1500, 960]],
+    [[20, 860], [230, 850], [250, 960], [40, 980]],
+    [[1180, 380], [1300, 380], [1300, 470], [1180, 470]]
+  ];
+  for (const p of PARKS) el('polygon', { points: pts(p), fill: '#cfe3b8', stroke: '#c2d9a8', 'stroke-width': 4, 'stroke-linejoin': 'round' }, city);
+
+  // Blocks: uneven streets, a wider avenue every few columns.
+  const blocks = el('g', {}, city);
+  const cols = [], rows = [];
+  for (let x = -140, i = 0; x < 1780; i++) { const w = pick([44, 52, 60, 70]); cols.push([x, w]); x += w + (i % 5 === 4 ? 16 : 7); }
+  for (let y = -80, i = 0; y < 1140; i++) { const h = pick([30, 36, 44]); rows.push([y, h]); y += h + (i % 6 === 5 ? 16 : 7); }
+  for (const [x, w] of cols) for (const [y, h] of rows) {
+    const cx = x + w / 2, cy = y + h / 2;
+    if (!inPoly(cx, cy, TOWN) || nearRiver(cx, cy, 52) || PARKS.some(p => inPoly(cx, cy, p))) continue;
+    const r = rnd();
+    if (r < .035) { el('rect', { x, y, width: w, height: h, rx: 4, fill: '#d3e5bd' }, blocks); continue; }
+    const fill = pick(['#e6dcc6', '#e2d7bf', '#e9e0cc', '#ddd2ba']);
+    if (r > .7 && w > 50) {
+      const s = w * (.4 + rnd() * .2);
+      el('rect', { x, y, width: s - 2, height: h, rx: 2, fill }, blocks);
+      el('rect', { x: x + s + 1, y, width: w - s - 1, height: h, rx: 2, fill: pick(['#e6dcc6', '#e2d7bf', '#ddd2ba']) }, blocks);
+    } else el('rect', { x, y, width: w, height: h, rx: 2, fill }, blocks);
+  }
+  // A diagonal boulevard across town.
+  el('path', { d: 'M-60 340 L420 40', stroke: '#f4eedf', 'stroke-width': 16, fill: 'none' }, city);
+  el('path', { d: 'M1000 1060 L1560 660', stroke: '#f4eedf', 'stroke-width': 16, fill: 'none' }, city);
+
+  // White casing under the lines, like a printed metro map.
+  const lines = $('mc-network'), casing = el('g', { fill: 'none', stroke: '#fffdf6', 'stroke-width': 15, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  for (const p of lines.querySelectorAll('path')) el('path', { d: p.getAttribute('d') }, casing);
+  lines.parentNode.insertBefore(casing, lines);
+}
+drawCity();
+
 function nearest(p, x, y) {
   let best = 0, bd = Infinity; const len = p.getTotalLength();
   for (let l = 0; l <= len; l += 2) { const q = p.getPointAtLength(l), d = (q.x - x) ** 2 + (q.y - y) ** 2; if (d < bd) { bd = d; best = l; } }

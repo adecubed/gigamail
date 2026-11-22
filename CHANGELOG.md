@@ -10,6 +10,11 @@
   join the lines where features meet (local archive, registered
   documents, approval, delivery). Download buttons and contacts at the
   bottom; English and Italian.
+- **Website: Mail City gets a town.** The map now sits on a small city
+  just larger than the network, with countryside around, a river with
+  green banks, more parks and garden squares, and white casing under the
+  lines. Fixes the "Change line" button, whose id clashed with the line
+  group.
 - **Send to my computer.** On a phone or tablet, where GigaMail cannot be
   installed, the site's download buttons become one "Send to my computer"
   button: it opens the phone's share sheet with the link (or copies it), so

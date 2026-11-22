@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
 <link rel="stylesheet" href="./home.css?v=37">
 <link rel="stylesheet" href="./pages.css?v=1">
-<link rel="stylesheet" href="./metro.css?v=2">
+<link rel="stylesheet" href="./metro.css?v=3">
 <script type="module" src="/business/analytics.js"></script>
 <script type="module" src="/download-count.js"></script>
 </head>
@@ -66,21 +66,18 @@
 <section class="wrap" aria-label="Mail City metro map">
   <div class="mc-frame" id="mc-frame">
     <svg id="mc-map" viewBox="-20 20 1640 1000" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mail City metro map">
-      <defs><pattern id="mc-blk" width="40" height="30" patternUnits="userSpaceOnUse"><rect x="3" y="3" width="34" height="24" rx="2" fill="#e5dcc8"/></pattern></defs>
-      <rect x="-1600" y="-1200" width="4800" height="3600" fill="url(#mc-blk)"/>
-      <path d="M1640 -1200 C1600 100 1700 500 1630 2400 L3200 2400 L3200 -1200Z" fill="#bcd6e3"/>
-      <path d="M680 560 L800 560 L930 440 L930 345 L830 245 L680 285Z" fill="#cfe3b8"/>
+      <g id="mc-city"></g>
       <g font-family="Poppins, Arial, sans-serif" font-size="13" letter-spacing="5" fill="#a89a7c">
         <text x="20" y="455">INBOX ROW</text>
         <text x="700" y="470" fill="#86a36b" font-size="14">THE PARK</text>
         <text x="360" y="70">CHECKPOINT HILL</text>
         <text x="160" y="330">QUARANTINE</text>
-        <text x="300" y="1005">ARCHIVE AVENUE</text>
+        <text x="30" y="985">ARCHIVE AVENUE</text>
         <text x="1000" y="980">PRIVATE QUARTER</text>
       </g>
       <path d="M1110 330 L840 200" fill="none" stroke="#2f9a5c" stroke-width="3" stroke-dasharray="8 7"/>
       <text x="1000" y="250" font-size="12" fill="#2f7a4c" font-family="Poppins, Arial, sans-serif" font-style="italic" transform="rotate(25 1000 250)">outside the rule → you</text>
-      <g fill="none" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
+      <g id="mc-network" fill="none" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
         <path id="Lp" stroke="#8a5cc2" d="M100 624 L280 624 L280 832 L580 832 L650 902 L850 902 L920 832 L990 902 L1400 902 L1400 68 L840 68"/>
         <path id="Lb" stroke="#2f6fc0" d="M460 612 L460 820 L1330 820 L1330 200 L840 200"/>
         <path id="Lg" stroke="#2f9a5c" d="M100 612 L826 612 L966 472 L1110 328 L1110 80 L840 80"/>
@@ -152,6 +149,6 @@
     <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
   </div>
 </footer>
-<script type="module" src="./metro.js?v=2"></script>
+<script type="module" src="./metro.js?v=3"></script>
 </body>
 </html>
