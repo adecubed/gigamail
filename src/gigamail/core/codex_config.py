@@ -10,7 +10,8 @@ configuration and carries GigaMail's server on its command line.) Typing `codex 
 not something a desktop user should have to do, so the console writes it.
 
 The entry starts this installation's Python with -m gigamail.server
-(gigamail-server is on no desktop user's PATH) and sets GIGAMAIL_ROOT to the
+(gigamail-server is on PATH only where an installer puts it, Windows and
+the .deb; the full path works on every install) and sets GIGAMAIL_ROOT to the
 console's data folder, so server and console share accounts and approvals.
 default_tools_approval_mode = "approve": `codex exec`, which the console's
 agent bar runs, cannot ask for a confirmation and cancels every tool call
@@ -150,8 +151,8 @@ def connect_for_plugin() -> str:
 
     The plugin from the OpenAI Plugins Directory brings only the skill, and
     the one from the repository marketplace starts `gigamail-server`, which
-    is on no desktop user's PATH: either way Codex has no GigaMail tools
-    until something writes the entry, and installing the plugin is the user
+    macOS, AppImage and older Windows installs do not have on PATH: either
+    way Codex has no GigaMail tools until something writes the entry, and installing the plugin is the user
     asking for them. An entry that is already there, ours or another
     installation's (a pip install, a hand-written one), is left alone.
     Returns what happened, for the log."""

@@ -45,3 +45,32 @@ def test_trampoline_runs_the_python_next_to_the_script(tmp_path):
     assert rs.main(str(tmp_path)) == 0
     out = subprocess.run([str(script), "a", "b c"], capture_output=True, text=True, timeout=30)
     assert out.stdout.strip() == "ran ['a', 'b c']"
+
+
+def test_path_launchers_reach_the_bundled_python_from_resources_bin(tmp_path):
+    """The copies the installer puts on PATH live in resources\\bin, one
+    folder away from resources\\python: their shebang names that path, and
+    only the two documented commands are copied (not pip, not the rest)."""
+    scripts = tmp_path / "python-embedded" / "Scripts"
+    scripts.mkdir(parents=True)
+    for name in ("gigamail.exe", "gigamail-server.exe", "gigamail-console-api.exe", "pip.exe"):
+        (scripts / name).write_bytes(STUB + rs.WIN_SHEBANG + b"\n" + ZIP + name.encode())
+    out = tmp_path / "win-bin"
+    assert rs.write_path_launchers(str(tmp_path / "python-embedded"), str(out)) == ["gigamail.exe", "gigamail-server.exe"]
+    assert sorted(p.name for p in out.iterdir()) == ["gigamail-server.exe", "gigamail.exe"]
+    assert (out / "gigamail-server.exe").read_bytes() == (
+        STUB + b"#!<launcher_dir>\\..\\python\\python.exe\n" + ZIP + b"gigamail-server.exe")
+    # the launchers in Scripts keep their own shebang
+    assert (scripts / "gigamail-server.exe").read_bytes().startswith(STUB + rs.WIN_SHEBANG + b"\n")
+
+
+def test_path_launchers_fail_loudly_when_a_command_is_not_a_launcher(tmp_path):
+    scripts = tmp_path / "python-embedded" / "Scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "gigamail.exe").write_bytes(STUB + b"no archive here")
+    try:
+        rs.write_path_launchers(str(tmp_path / "python-embedded"), str(tmp_path / "win-bin"))
+    except ValueError as e:
+        assert "gigamail.exe" in str(e)
+    else:
+        raise AssertionError("an empty folder would have gone on PATH")

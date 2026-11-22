@@ -14,6 +14,8 @@ POST_DRAFTS.md
 # Interprete Python che l'installer della console impacchetta: si rigenera
 # con lo script di preparazione, pesa centinaia di MB, non va versionato.
 console/python-embedded/
+# The two PATH launchers prepare-python.ps1 derives from it (resources\bin).
+console/win-bin/
 console/e2e-electron.log
 
 # Claude Code: file locali della sessione (launch.json, settings.local.json, worktree)

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Windows: `gigamail` and `gigamail-server` are on PATH after
+  installing.** The installer adds one folder with those two commands
+  (`resources\bin`, on the app's own Python) to your user PATH, or to the
+  machine's for an "all users" install, and the uninstaller removes it. A
+  program that starts the server by name now finds the desktop app: the
+  Codex and Claude Code plugins from the repository marketplace, and
+  `codex mcp add gigamail -- gigamail-server` for the plugin from the
+  OpenAI Plugins Directory, which brings the skill only. Before, those
+  worked only with a `pip install`, or after the console had written its
+  own path into the client's configuration. The Linux .deb already did
+  this; macOS and the AppImage have no installer and still rely on the
+  console. Programs already open see the new PATH after a restart. The
+  rest of your PATH is left as it was, variables such as `%USERPROFILE%`
+  included.
+
 - **Website: Mail City is now a metro map.** The 3D world is replaced by a
   map with five lines, one per thing a visitor may want to do: answer a
   client, search mail and files, keep data private, let it work alone, try

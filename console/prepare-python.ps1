@@ -73,7 +73,9 @@ if ($LASTEXITCODE -ne 0) { throw "pip install fallito (exit $LASTEXITCODE)" }
 # pip scrive negli .exe di Scripts il percorso assoluto di questo Python,
 # che sul PC dell'utente non esiste: senza questo gigamail-server.exe non
 # parte (Codex, barra agente). Vedi relocate_scripts.py.
-& (Join-Path $OUT "python.exe") (Join-Path $PSScriptRoot "relocate_scripts.py") $OUT
+# The second folder gets the two launchers the installer puts on the
+# user's PATH (resources\bin): see relocate_scripts.py and installer.nsh.
+& (Join-Path $OUT "python.exe") (Join-Path $PSScriptRoot "relocate_scripts.py") $OUT (Join-Path $PSScriptRoot "win-bin")
 if ($LASTEXITCODE -ne 0) { throw "relocate_scripts fallito (exit $LASTEXITCODE)" }
 
 & (Join-Path $OUT "python.exe") -c "import gigamail, fastapi, uvicorn, mcp; import importlib.metadata as m; print('  gigamail', m.version('gigamail'), '| mcp', m.version('mcp'), '| import OK')"

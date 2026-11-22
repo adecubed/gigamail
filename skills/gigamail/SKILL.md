@@ -65,7 +65,9 @@ bypassed. Both are meant to be there.
      With the GigaMail desktop app there is nothing to type: the app
      registers its own server for Codex and the ChatGPT desktop app when it
      starts, or from Settings → ChatGPT and Codex → Connect. The user then
-     restarts Codex (or ChatGPT) and opens a new chat.
+     restarts Codex (or ChatGPT) and opens a new chat. On Windows and with
+     the Linux .deb the installer also puts `gigamail-server` on PATH, so
+     the `codex mcp add` line above works there with no `pip install`.
 
 4. Optional but valuable: an identity (who the user is, what they do, how
    they sign) and knowledge files (price lists, catalogues, terms). Replies
@@ -336,8 +338,10 @@ fooled; your job is not to be fooled in the first place.
   computer use on the desktop app, no reading GigaMail's files, no other
   mail tool. Tell the user the server is not connected and how to fix it,
   then stop. With the desktop app: open GigaMail, Settings → ChatGPT and
-  Codex → Connect, restart Codex (or ChatGPT) and open a new chat.
-  Without it: the registration step in Setup above.
+  Codex → Connect, restart Codex (or ChatGPT) and open a new chat. On
+  Windows and with the Linux .deb, `codex mcp add gigamail --
+  gigamail-server` in a terminal does the same without opening GigaMail.
+  Without the desktop app: the registration step in Setup above.
 - The `gigamail` server does not appear in `claude mcp list` /
   `codex mcp list`, or fails to start: `gigamail-server` is not on the
   client's PATH, or the Python environment where `gigamail` was installed

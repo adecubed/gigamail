@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const nsh = fs.readFileSync(path.join(root, 'installer', 'installer.nsh'), 'utf8');
 const ps1 = fs.readFileSync(path.join(root, 'installer', 'stop_backend.ps1'), 'utf8');
+const pathPs1 = fs.readFileSync(path.join(root, 'installer', 'user_path.ps1'), 'utf8');
 
 test('electron-builder includes the hook script', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -36,4 +37,42 @@ test('every process from the install folder and the GigaMail backend on the port
   assert.match(ps1, /CommandLine -like '\*gigamail\.http_api\*'/);
   assert.match(ps1, /Stop-Process -Id \$id -Force/);
   assert.doesNotMatch(ps1, /taskkill|\/IM python/i);
+});
+
+// MCP clients start `gigamail-server` by name (the Codex and Claude Code
+// plugins, `codex mcp add gigamail -- gigamail-server`): the installer puts
+// the folder with the two launchers on PATH, so a desktop user does not
+// have to open the console for that name to resolve.
+test('the installer puts resources\\bin on PATH and the uninstaller takes it off', () => {
+  assert.match(nsh, /!macro customInstall\b[\s\S]*?_gigamailUserPath add/);
+  assert.match(nsh, /!macro customUnInstall\b[\s\S]*?_gigamailUserPath remove/);
+  assert.match(nsh, /File \/oname=\$PLUGINSDIR\\user_path\.ps1 "\$\{PROJECT_DIR\}\\installer\\user_path\.ps1"/);
+  assert.match(nsh, /-File "\$PLUGINSDIR\\user_path\.ps1" \$\{ACTION\} "\$INSTDIR\\resources\\bin" \$installMode/);
+});
+
+test('the Windows build ships the PATH launchers as resources\\bin, outside app.asar', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.deepEqual(pkg.build.win.extraResources, [{ from: 'win-bin', to: 'bin' }]);
+  assert.ok(pkg.build.files.includes('!win-bin/**'));
+  const prepare = fs.readFileSync(path.join(root, 'prepare-python.ps1'), 'utf8');
+  assert.match(prepare, /relocate_scripts\.py"\) \$OUT \(Join-Path \$PSScriptRoot "win-bin"\)/);
+});
+
+test('Path is edited in the registry unexpanded, keeping its kind and every other entry', () => {
+  // SetEnvironmentVariable('Path', ...) would write %USERPROFILE%-style
+  // entries back expanded: it is used only for the change broadcast
+  assert.doesNotMatch(pathPs1, /SetEnvironmentVariable\('Path'/i);
+  assert.match(pathPs1, /DoNotExpandEnvironmentNames/);
+  assert.match(pathPs1, /GetValueKind\('Path'\)/);
+  assert.match(pathPs1, /SetValue\('Path', \(\$others -join ';'\), \$kind\)/);
+  // adding twice changes nothing; the comparison ignores case and a trailing backslash
+  assert.match(pathPs1, /TrimEnd\('\\'\) -ine \$want/);
+  assert.match(pathPs1, /if \(\$present\) \{ return \$false \}/);
+  // PowerShell 5 reads a script without a BOM as ANSI: ASCII only
+  assert.ok([...pathPs1].every((c) => c.charCodeAt(0) < 128));
+});
+
+test('an update also renames the PATH launchers, so a client restart cannot hold them', () => {
+  assert.match(ps1, /resources\\bin\\gigamail-server\.exe/);
+  assert.match(ps1, /resources\\bin\\gigamail\.exe/);
 });

@@ -1,6 +1,6 @@
 // The MCP config the onboarding asks the user to copy (mcp_snippets.js):
 // it must start the server with the backend's own Python, since
-// gigamail-server is on no desktop user's PATH.
+// gigamail-server is not on every desktop user's PATH (macOS, AppImage).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

@@ -17,7 +17,8 @@
 # folder (the app, the backend, the watcher, the MCP server, their
 # launchers), and whatever listens on the console port that was started
 # as the GigaMail backend from any folder; 2) rename python.exe and the
-# gigamail-server launcher to *.updating, so an MCP client's automatic
+# gigamail-server launchers (Scripts and the PATH copies in resources\bin)
+# to *.updating, so an MCP client's automatic
 # restart fails until the new files are in place (Windows allows renaming
 # a running executable; the old files are moved away by the uninstaller
 # anyway). Any other program on the machine is left alone.
@@ -46,7 +47,8 @@ if ($ids.Count) { Wait-Process -Id $ids -Timeout 15 }
 
 # Nothing from this folder may start again until the new files are there.
 foreach ($exe in @('resources\python\python.exe', 'resources\python\pythonw.exe',
-                   'resources\python\Scripts\gigamail-server.exe')) {
+                   'resources\python\Scripts\gigamail-server.exe',
+                   'resources\bin\gigamail-server.exe', 'resources\bin\gigamail.exe')) {
   $path = Join-Path $root $exe
   if (Test-Path -LiteralPath $path) {
     Remove-Item -LiteralPath ($path + '.updating') -Force
