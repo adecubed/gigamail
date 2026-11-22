@@ -62,7 +62,8 @@
       "!afterpack.js",
       "!relocate_scripts.py",
       "!mac/**",
-      "!linux/**"
+      "!linux/**",
+      "!win-bin/**"
     ],
     "extraResources": [
       {
@@ -92,6 +93,12 @@
         }
       ],
       "icon": "../docs/brand/gigamail.ico",
+      "extraResources": [
+        {
+          "from": "win-bin",
+          "to": "bin"
+        }
+      ],
       "signtoolOptions": {
         "sign": "./sign.js",
         "signingHashAlgorithms": [

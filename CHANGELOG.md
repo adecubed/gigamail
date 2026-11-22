@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- **Codex and ChatGPT: connected even when the plugin comes later.** When
+  the console starts and finds Codex or the ChatGPT desktop app on the
+  computer, it writes the GigaMail server entry in Codex's `config.toml`
+  even if the GigaMail plugin is not installed yet. Before, it wrote it
+  only when the plugin was already there: someone who had GigaMail and
+  then installed the plugin from the OpenAI Plugins Directory got no tools
+  until they opened the console again. Without the plugin this happens
+  once: an entry you remove by hand stays removed (the Connect button and
+  installing the plugin write it again). An entry pointing to another
+  installation is left alone, as before. Windows, macOS and Linux.
+- **Windows and the Linux .deb: the installer connects Codex too.** A
+  per-user Windows install does at the end what the console does when it
+  starts, so the entry is there before GigaMail is opened. The .deb, which
+  is installed for every user of the machine, writes the entry in Codex's
+  system file `/etc/codex/config.toml`, whether Codex is installed already
+  or arrives later; your own `config.toml` still wins over it, and removing
+  the package removes the entry. Only the `gigamail` entry is written, and
+  one that points to another installation is left alone. The macOS app and
+  the AppImage have no installer: there the console writes it at its first
+  start. You still add your mailbox in GigaMail (or with `gigamail login`)
+  before the agent has any mail to read.
+
+- **Windows: `gigamail` and `gigamail-server` are on PATH after
+  installing.** The installer adds one folder with those two commands
+  (`resources\bin`, on the app's own Python) to your user PATH, or to the
+  machine's for an "all users" install, and the uninstaller removes it. A
+  program that starts the server by name now finds the desktop app: the
+  Codex and Claude Code plugins from the repository marketplace, and
+  `codex mcp add gigamail -- gigamail-server` for the plugin from the
+  OpenAI Plugins Directory, which brings the skill only. Before, those
+  worked only with a `pip install`, or after the console had written its
+  own path into the client's configuration. The Linux .deb already did
+  this; macOS and the AppImage have no installer and still rely on the
+  console. Programs already open see the new PATH after a restart. The
+  rest of your PATH is left as it was, variables such as `%USERPROFILE%`
+  included.
+
 - **Website: Mail City is now a metro map.** The 3D world is replaced by a
   map with five lines, one per thing a visitor may want to do: answer a
   client, search mail and files, keep data private, let it work alone, try

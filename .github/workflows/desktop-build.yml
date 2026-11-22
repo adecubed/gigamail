@@ -99,6 +99,11 @@ jobs:
         shell: pwsh
         run: |
           $ver = (Select-String -Path pyproject.toml -Pattern '^version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          # A Codex folder, as on a computer with Codex or the ChatGPT app:
+          # the installer must write GigaMail's entry there (checked below).
+          # A folder of its own, so the later steps start without it.
+          $env:CODEX_HOME = Join-Path $env:RUNNER_TEMP "codex-home"
+          New-Item -ItemType Directory -Force -Path $env:CODEX_HOME | Out-Null
           Start-Process -Wait -FilePath "console/dist/GigaMail Setup $ver.exe" -ArgumentList "/S"
           # Per-user install (no administrator): %LOCALAPPDATA%\Programs.
           # Program Files is where an "all users" install would go.
@@ -112,6 +117,52 @@ jobs:
             }
           }
           Write-Host "install OK: $dir"
+
+      - name: The installer connected Codex, with no console started
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          $cfg = Join-Path $env:RUNNER_TEMP "codex-home\config.toml"
+          if (-not (Test-Path $cfg)) { throw "the installer wrote no $cfg" }
+          Get-Content $cfg
+          $python = (Join-Path $dir "resources\python\python.exe").Replace('\', '\\')
+          if (-not (Select-String -Path $cfg -SimpleMatch -Quiet -Pattern "command = `"$python`"")) { throw "the entry does not start this installation's Python" }
+          if (-not (Select-String -Path $cfg -SimpleMatch -Quiet -Pattern '[mcp_servers.gigamail]')) { throw "no gigamail server in config.toml" }
+
+      - name: gigamail-server is on the user's PATH and answers by name
+        shell: pwsh
+        # What the Codex and Claude Code plugins do: start `gigamail-server`
+        # by name, with no shell, on the PATH a new program gets. No console
+        # has run on this profile yet.
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\GigaMail"
+          if (-not (Test-Path $dir)) { $dir = Join-Path $env:ProgramFiles "GigaMail" }
+          $bin = Join-Path $dir "resources\bin"
+          $names = (Get-ChildItem $bin).Name -join ','
+          if ($names -ne 'gigamail-server.exe,gigamail.exe') { throw "resources\bin holds: $names" }
+          $raw = (Get-Item HKCU:\Environment).GetValue('Path', '', 'DoNotExpandEnvironmentNames')
+          $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          if ((($raw + ';' + $machine) -split ';') -notcontains $bin) { throw "not on PATH: $bin`nuser Path: $raw" }
+          $env:Path = $machine + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+          $found = (Get-Command gigamail-server -CommandType Application | Select-Object -First 1).Source
+          if ($found -ne (Join-Path $bin 'gigamail-server.exe')) { throw "gigamail-server resolves to '$found'" }
+          $env:GIGAMAIL_ROOT = Join-Path $env:RUNNER_TEMP "path-root"
+          $in = Join-Path $env:RUNNER_TEMP "init.json"
+          $out = Join-Path $env:RUNNER_TEMP "init.out"
+          $err = Join-Path $env:RUNNER_TEMP "init.err"
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' | Set-Content -Path $in -Encoding ascii
+          $p = Start-Process -FilePath "gigamail-server" -RedirectStandardInput $in -RedirectStandardOutput $out -RedirectStandardError $err -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(90000)) { $p.Kill(); Get-Content $err -Tail 30; throw "gigamail-server did not exit after its input ended" }
+          if (-not (Select-String -Path $out -Pattern '"serverInfo"' -Quiet)) {
+            Get-Content $out -Tail 20; Get-Content $err -Tail 30
+            throw "gigamail-server did not answer initialize"
+          }
+          Write-Host "gigamail-server answers initialize from $found"
+          gigamail approvals --help | Select-String -Pattern "pin" -Quiet | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "gigamail (CLI) on PATH failed" }
+          # once, not once per install
+          $count = @(($raw -split ';') | Where-Object { $_ -eq $bin }).Count
+          if ($count -gt 1) { throw "PATH names $bin $count times" }
 
       - name: L'app installata parte (profilo vergine, backend embedded, onboarding)
         shell: pwsh
@@ -165,6 +216,8 @@ jobs:
           $exe = Join-Path $dir "GigaMail.exe"
           for ($i = 0; $i -lt 60 -and (Test-Path $exe); $i++) { Start-Sleep 1 }
           if (Test-Path $exe) { throw "GigaMail.exe ancora presente dopo l'uninstall" }
+          $raw = (Get-Item HKCU:\Environment).GetValue('Path', '', 'DoNotExpandEnvironmentNames')
+          if (($raw -split ';') -contains (Join-Path $dir "resources\bin")) { throw "the uninstaller left resources\bin on PATH: $raw" }
           Write-Host "uninstall OK"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

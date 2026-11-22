@@ -181,3 +181,143 @@ def test_connect_for_plugin_leaves_another_installation_alone(codex_home):
     (codex_home / "config.toml").write_text(original, encoding="utf-8")
     assert codex_config.connect_for_plugin() == "entry points to another GigaMail: left alone"
     assert (codex_home / "config.toml").read_text(encoding="utf-8") == original
+
+
+def test_at_start_without_codex_nothing_is_created(codex_home):
+    assert codex_config.connect_at_start() == "no Codex"
+    assert not codex_home.exists()
+
+
+def test_at_start_with_codex_and_no_plugin_the_entry_is_written(codex_home):
+    """GigaMail first, the plugin later: the entry is already there when the
+    plugin arrives, and nobody has to open the console again."""
+    codex_home.mkdir()
+    (codex_home / "config.toml").write_text('model = "gpt-5"\n', encoding="utf-8")
+    assert codex_config.connect_at_start() == "connected (Codex found, no plugin yet)"
+    cfg = _cfg(codex_home)
+    assert cfg["model"] == "gpt-5"
+    assert cfg["mcp_servers"]["gigamail"]["command"] == sys.executable
+
+
+def test_at_start_an_entry_removed_by_hand_stays_removed(codex_home):
+    codex_home.mkdir()
+    assert codex_config.connect_at_start().startswith("connected")
+    (codex_home / "config.toml").write_text("", encoding="utf-8")
+    assert codex_config.connect_at_start() == "no plugin, entry already offered once"
+    assert (codex_home / "config.toml").read_text(encoding="utf-8") == ""
+    # installing the plugin is asking for the tools again
+    _install_plugin(codex_home)
+    assert codex_config.connect_at_start() == "connected"
+
+
+def test_at_start_another_installation_is_left_alone(codex_home):
+    codex_home.mkdir()
+    original = '[mcp_servers.gigamail]\ncommand = "/home/me/venv/bin/gigamail-server"\n'
+    (codex_home / "config.toml").write_text(original, encoding="utf-8")
+    assert codex_config.connect_at_start() == "entry points to another GigaMail: left alone"
+    assert (codex_home / "config.toml").read_text(encoding="utf-8") == original
+
+
+def test_at_start_an_unreadable_file_is_tried_again_next_time(codex_home):
+    codex_home.mkdir()
+    (codex_home / "config.toml").write_text("this is [not toml\n", encoding="utf-8")
+    assert codex_config.connect_at_start().startswith("config.toml unreadable")
+    (codex_home / "config.toml").write_text("", encoding="utf-8")
+    assert codex_config.connect_at_start().startswith("connected")
+
+
+def test_at_start_with_the_plugin_it_behaves_as_before(codex_home):
+    _install_plugin(codex_home)
+    assert codex_config.connect_at_start() == "connected"
+    assert codex_config.connect_at_start() == "already connected"
+
+
+def test_two_codex_profiles_on_the_same_gigamail_data_both_get_the_entry(tmp_path, monkeypatch):
+    """The once-marker lives in each Codex folder: kept with GigaMail's data
+    it made the second profile look already offered."""
+    monkeypatch.setenv("GIGAMAIL_ROOT", str(tmp_path / "ade"))
+    for name in ("work", "personal"):
+        home = tmp_path / name
+        home.mkdir()
+        monkeypatch.setenv("CODEX_HOME", str(home))
+        assert codex_config.connect_at_start().startswith("connected")
+        assert _cfg(home)["mcp_servers"]["gigamail"]["command"] == sys.executable
+    assert not list((tmp_path / "ade").glob(".codex*"))
+
+
+SERVER = "/opt/GigaMail/resources/bin/gigamail-server"
+
+
+def test_system_entry_names_the_installed_server_and_nobodys_data_folder(tmp_path):
+    """The .deb's postinst, as root, for every user: no GIGAMAIL_ROOT of the
+    installing account, the two variables let through instead."""
+    etc = tmp_path / "etc" / "codex" / "config.toml"
+    assert codex_config.connect_system(SERVER, etc) == f"connected in {etc}"
+    entry = tomllib.loads(etc.read_text(encoding="utf-8"))["mcp_servers"]["gigamail"]
+    assert entry == {"command": SERVER, "args": [], "env_vars": ["GIGAMAIL_ROOT", "ADE_ROOT"],
+                     "default_tools_approval_mode": "approve"}
+    if sys.platform != "win32":
+        assert etc.stat().st_mode & 0o777 == 0o644
+    assert codex_config.connect_system(SERVER, etc) == "already connected"
+
+
+def test_system_entry_keeps_the_administrators_settings(tmp_path):
+    etc = tmp_path / "config.toml"
+    etc.write_text('model = "gpt-5"\n\n[mcp_servers.other]\ncommand = "other-server"\n', encoding="utf-8")
+    assert codex_config.connect_system(SERVER, etc).startswith("connected")
+    cfg = tomllib.loads(etc.read_text(encoding="utf-8"))
+    assert cfg["model"] == "gpt-5"
+    assert cfg["mcp_servers"]["other"] == {"command": "other-server"}
+    assert cfg["mcp_servers"]["gigamail"]["command"] == SERVER
+
+
+def test_system_entry_of_another_installation_is_left_alone(tmp_path):
+    etc = tmp_path / "config.toml"
+    original = '[mcp_servers.gigamail]\ncommand = "/usr/local/bin/gigamail-server"\n'
+    etc.write_text(original, encoding="utf-8")
+    assert codex_config.connect_system(SERVER, etc) == "entry points to another GigaMail: left alone"
+    assert etc.read_text(encoding="utf-8") == original
+
+
+def test_system_file_it_cannot_read_is_left_alone(tmp_path):
+    etc = tmp_path / "config.toml"
+    etc.write_text("this is [not toml\n", encoding="utf-8")
+    assert "unreadable, left alone" in codex_config.connect_system(SERVER, etc)
+    assert etc.read_text(encoding="utf-8") == "this is [not toml\n"
+
+
+def test_the_installers_command_never_fails_them(codex_home, capsys):
+    codex_home.mkdir()
+    assert codex_config.main(["at-install"]) == 0
+    assert "connected" in capsys.readouterr().out
+    assert _cfg(codex_home)["mcp_servers"]["gigamail"]["command"] == sys.executable
+    # a config.toml that is a folder: said, not raised
+    import shutil
+    shutil.rmtree(codex_home)
+    (codex_home / "config.toml").mkdir(parents=True)
+    assert codex_config.main(["at-install"]) == 0
+    assert codex_config.main(["system-connect"]) == 2
+
+
+def test_a_file_closed_to_other_users_stays_closed_and_so_does_its_copy(codex_home, tmp_path):
+    """A config.toml can hold other servers' keys. Neither the user's file
+    nor an administrator's system file may come back readable by everyone,
+    and the .gigamail-bak copy holds the same text."""
+    if sys.platform == "win32":
+        return
+    codex_home.mkdir()
+    secret = '[mcp_servers.other.env]\nAPI_KEY = "example-key"\n'
+    for path, write in ((codex_home / "config.toml", codex_config.connect),
+                        (tmp_path / "etc.toml", lambda: codex_config.connect_system(SERVER, tmp_path / "etc.toml"))):
+        path.write_text(secret, encoding="utf-8")
+        path.chmod(0o600)
+        write()
+        bak = path.with_name(path.name + ".gigamail-bak")
+        assert path.stat().st_mode & 0o777 == 0o600
+        assert bak.stat().st_mode & 0o777 == 0o600
+        assert bak.read_text(encoding="utf-8") == secret
+        # a copy left readable by an earlier write is closed too
+        bak.chmod(0o644)
+        path.write_text(secret, encoding="utf-8")
+        write()
+        assert bak.stat().st_mode & 0o777 == 0o600
