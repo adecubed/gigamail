@@ -1427,6 +1427,28 @@ def cmd_check(args) -> int:
     return onboarding_check.main(argv)
 
 
+def cmd_remote_key(_args) -> int:
+    """Make the key `gigamail-server --http` asks every request for. Shown
+    once: only its SHA-256 is kept. A previous key stops working at the
+    server's next start."""
+    from gigamail import policy, remote_http
+    key = remote_http.new_key()
+    it = policy.user_lang() == "it"
+    print(key)
+    print()
+    if it:
+        print("Questa e' la chiave del server remoto: la vedi solo ora, GigaMail ne conserva")
+        print(f"solo l'impronta ({remote_http.key_file()}).")
+        print("Mettila nel client come intestazione  Authorization: Bearer <chiave>.")
+        print("Una chiave precedente smette di valere al prossimo avvio di gigamail-server --http.")
+    else:
+        print("This is the remote server's key: it is shown only now, GigaMail keeps only")
+        print(f"its fingerprint ({remote_http.key_file()}).")
+        print("Give it to the client as the header  Authorization: Bearer <key>.")
+        print("A previous key stops working at the next start of gigamail-server --http.")
+    return 0
+
+
 def cmd_extensions_list(args) -> int:
     from gigamail.core import extensions
     accese = extensions.enabled_names()
@@ -1832,6 +1854,12 @@ def main(argv=None) -> int:
     p_chk.add_argument("--account-id", type=int, default=None)
     p_chk.add_argument("--timeout", type=int, default=600)
     p_chk.set_defaults(fn=cmd_check)
+
+    p_remote = sub.add_parser(
+        "remote", help="gigamail-server --http: the server reached from another computer")
+    remote_sub = p_remote.add_subparsers(dest="subcommand", required=True)
+    remote_sub.add_parser(
+        "key", help="make the key every request must carry (shown once)").set_defaults(fn=cmd_remote_key)
 
     p_ext = sub.add_parser(
         "extensions", help="funzioni opzionali e verticali (appointments, real_estate...)")

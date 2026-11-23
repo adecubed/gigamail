@@ -193,6 +193,10 @@ as a skill: install it from there, then register the server with
 `codex mcp add gigamail -- gigamail-server` (the server comes from `pip`,
 as above).
 
+Want GigaMail on a server that is always on, used from Codex or Claude
+Code on your PC? See [REMOTE_SERVER.md](REMOTE_SERVER.md) (first step, for
+developers).
+
 Using **OpenClaw** or **Hermes**? Verified configs in
 [INTEGRATIONS.md](INTEGRATIONS.md).
 

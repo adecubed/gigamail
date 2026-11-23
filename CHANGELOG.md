@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **GigaMail on a server, used from your PC (first step, for developers).**
+  `gigamail-server --http` serves the same tools over MCP's Streamable
+  HTTP, so GigaMail can run on a machine that is always on and be used
+  from Codex or Claude Code on another computer. Off unless asked for:
+  with no option the server is stdio, as before. Reading mail needs no
+  approval, so on a network the question is who can reach the server: it
+  does not start without a key (`gigamail remote key`, shown once, only
+  its SHA-256 is kept), every request must carry it, and it listens on
+  127.0.0.1 unless you say that TLS is done in front of it
+  (`--behind-proxy`); a public name forwarded by a proxy is declared with
+  `--allowed-host`. Mailboxes are added and requests approved from the
+  server's terminal or from Telegram. Not there yet: OAuth, per-client
+  keys, an approval page, the console connecting to a remote GigaMail.
+  Setup and limits in [REMOTE_SERVER.md](REMOTE_SERVER.md).
+
 - **Codex and ChatGPT: connected even when the plugin comes later.** When
   the console starts and finds Codex or the ChatGPT desktop app on the
   computer, it writes the GigaMail server entry in Codex's `config.toml`

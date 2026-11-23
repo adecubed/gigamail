@@ -780,6 +780,26 @@ What this does not stop, stated plainly:
   body. The text stays untrusted data, and the gates on sending stay where
   they are.
 
+## The server over HTTP
+
+`gigamail-server --http` (off by default, see
+[REMOTE_SERVER.md](REMOTE_SERVER.md)) serves the tools to an agent on
+another computer. The approval gate is unchanged: a dangerous tool returns
+an inert `request_id` to any caller. What a network address changes is who
+can read, since reading needs no approval. The server therefore refuses to
+start without a key, and answers 401 to any request that does not carry it
+in `Authorization: Bearer`, before the request reaches the MCP server. Only
+the key's SHA-256 is stored. It speaks plain HTTP and refuses to listen
+outside loopback unless told that TLS is done in front of it.
+
+Declared limits: one key for the whole server, with no per-client keys,
+expiry or read budget; whoever holds the key reads everything the server
+can read. On a server with no desktop session the key that encrypts the
+accounts is a file next to the data (no DPAPI, Keychain or Secret Service
+there), so the protection of the stored credentials is the protection of
+the machine. The key is checked in constant time; failed attempts are not
+rate-limited, which a 256-bit random key does not need.
+
 ## The desktop console
 
 The desktop app (Windows since 0.3, macOS since 0.5.1, Linux since 0.6.7)

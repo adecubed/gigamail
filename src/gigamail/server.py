@@ -1815,11 +1815,51 @@ def _announce_update() -> None:
         low.instructions = (low.instructions or "") + notice
 
 
-def main() -> None:
+def _parse_args(argv):
+    import argparse
+
+    from gigamail import remote_http
+    parser = argparse.ArgumentParser(
+        prog="gigamail-server", allow_abbrev=False,
+        description="GigaMail MCP server. With no option it speaks stdio to the client that "
+                    "started it. --http serves the same tools over HTTP to an agent on another "
+                    "computer: it needs a key (`gigamail remote key`) and TLS in front of it.")
+    parser.add_argument("--http", action="store_true",
+                        help="serve MCP over HTTP (Streamable HTTP) instead of stdio")
+    parser.add_argument("--host", default=remote_http.DEFAULT_HOST,
+                        help="address to listen on with --http (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=remote_http.DEFAULT_PORT,
+                        help=f"port to listen on with --http (default: {remote_http.DEFAULT_PORT})")
+    parser.add_argument("--behind-proxy", action="store_true",
+                        help="TLS is done before requests get here: allows --host other than loopback")
+    parser.add_argument("--allowed-host", action="append", default=[], metavar="NAME",
+                        help="public name a proxy forwards in the Host header (repeatable)")
+    # Until now the server took no option and ignored whatever a client put
+    # on its command line: stdio must keep starting whatever is there. With
+    # --http a word it does not know is an error, not something to guess.
+    args, unknown = parser.parse_known_args(argv)
+    if args.http and unknown:
+        parser.error("unrecognized arguments: " + " ".join(unknown))
+    return args
+
+
+def main(argv=None) -> None:
+    args = _parse_args(_sys.argv[1:] if argv is None else argv)
+    if args.http:
+        from gigamail import remote_http
+        try:
+            # before anything else: a refusal must not depend on the update check
+            remote_http.check(args.host, args.behind_proxy)
+        except remote_http.RefusedToServe as e:
+            print(str(e), file=_sys.stderr)
+            raise SystemExit(2) from None
     try:
         _announce_update()
     except Exception:
         pass  # a failed check must never keep the server from starting
+    if args.http:
+        remote_http.serve(mcp, args.host, args.port, args.behind_proxy, args.allowed_host)
+        return
     mcp.run()  # stdio
 
 
