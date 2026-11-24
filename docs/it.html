@@ -36,6 +36,7 @@
 <script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
 <script type="module" src="/business/analytics.js"></script>
 <script type="module" src="/download-count.js"></script>
+<script type="module" src="/menu.js"></script>
 <script type="module" src="/send-to-computer.js"></script>
 <script type="module" src="/home-demo.js"></script>
 </head>
@@ -50,7 +51,6 @@
       <a href="./security-it.html#gate">Controllo</a>
       <a href="#install">Installazione</a>
       <a href="#faq">Domande</a>
-      <a href="./changelog-it.html">Novità</a>
       <a href="./security-it.html">Sicurezza</a>
       <a href="./email-check.html" style="color:var(--gm-pink);font-weight:600">Controlla email</a>
     </nav>
@@ -63,7 +63,7 @@
 
 <main>
 
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero hero-center" aria-labelledby="hero-title">
   <div class="wrap">
     <div>
       <p class="kicker">App desktop, gratis per sempre</p>
@@ -74,15 +74,8 @@
         <span class="alt"><a href="./install-it.html#step-get">Mac Intel, AppImage, impronte SHA-256</a></span>
         <span class="alt">Sviluppatore? <a href="#setup-mcp">Collega via MCP</a></span>
       </div>
+      <ul class="agents" aria-label="Agenti"><li class="tone-4"><img src="./brand/works/claude.svg" alt="" width="22" height="22" loading="lazy">Claude Code</li><li class="tone-5"><img src="./brand/works/claude.svg" alt="" width="22" height="22" loading="lazy">Claude Desktop</li><li class="tone-6"><img src="./brand/works/openai.svg" alt="" width="22" height="22" loading="lazy">Codex</li><li class="tone-1"><img src="./brand/works/openclaw.svg" alt="" width="22" height="22" loading="lazy">OpenClaw</li><li class="tone-2"><img src="./brand/works/hermes.png" alt="" width="22" height="22" loading="lazy">Hermes</li><li class="tone-3"><img src="./brand/works/googlegemini.svg" alt="" width="22" height="22" loading="lazy">Antigravity</li><li class="any">Qualsiasi client MCP</li></ul>
     </div>
-  </div>
-</section>
-
-<section id="works" class="works" aria-labelledby="works-title">
-  <div class="wrap">
-    <h2 class="kicker" id="works-title">Funziona con</h2>
-    <div class="works-row"><span>Provider email</span><ul><li class="tone-1"><img src="./brand/works/microsoft.svg" alt="" width="22" height="22" loading="lazy">Microsoft 365</li><li class="tone-2"><img src="./brand/works/microsoftoutlook.svg" alt="" width="22" height="22" loading="lazy">Outlook.com</li><li class="tone-3"><img src="./brand/works/gmail.svg" alt="" width="22" height="22" loading="lazy">Gmail</li><li class="tone-4"><img src="./brand/works/icloud.svg" alt="" width="22" height="22" loading="lazy">iCloud Mail</li><li class="tone-5"><img src="./brand/works/aruba.png" alt="" width="22" height="22" loading="lazy">Aruba</li><li class="tone-6"><img src="./brand/works/libero.svg" alt="" width="22" height="22" loading="lazy">Libero</li><li class="tone-1"><img src="./brand/works/yahoo.svg" alt="" width="22" height="22" loading="lazy">Yahoo Mail</li><li class="tone-2"><img src="./brand/works/fastmail.svg" alt="" width="22" height="22" loading="lazy">Fastmail</li><li class="tone-3"><img src="./brand/works/aol.svg" alt="" width="22" height="22" loading="lazy">AOL Mail</li><li class="tone-4"><img src="./brand/works/xfinity.png" alt="" width="22" height="22" loading="lazy">Xfinity</li><li class="tone-5"><img src="./brand/works/gmx.svg" alt="" width="22" height="22" loading="lazy">GMX</li><li class="tone-6"><img src="./brand/works/webdotde.svg" alt="" width="22" height="22" loading="lazy">WEB.DE</li><li class="any">Qualsiasi server IMAP</li></ul></div>
-    <div class="works-row"><span>Agenti</span><ul><li class="tone-4"><img src="./brand/works/claude.svg" alt="" width="22" height="22" loading="lazy">Claude Code</li><li class="tone-5"><img src="./brand/works/claude.svg" alt="" width="22" height="22" loading="lazy">Claude Desktop</li><li class="tone-6"><img src="./brand/works/openai.svg" alt="" width="22" height="22" loading="lazy">Codex</li><li class="tone-1"><img src="./brand/works/openclaw.svg" alt="" width="22" height="22" loading="lazy">OpenClaw</li><li class="tone-2"><img src="./brand/works/hermes.png" alt="" width="22" height="22" loading="lazy">Hermes</li><li class="tone-3"><img src="./brand/works/googlegemini.svg" alt="" width="22" height="22" loading="lazy">Antigravity</li><li class="any">Qualsiasi client MCP</li></ul></div>
   </div>
 </section>
 
@@ -106,6 +99,13 @@
         <span>Nessun account, nessun abbonamento</span>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="works" class="works" aria-labelledby="works-title">
+  <div class="wrap">
+    <h2 class="kicker" id="works-title">Funziona con</h2>
+    <div class="works-row"><span>Provider email</span><ul><li class="tone-1"><img src="./brand/works/microsoft.svg" alt="" width="22" height="22" loading="lazy">Microsoft 365</li><li class="tone-2"><img src="./brand/works/microsoftoutlook.svg" alt="" width="22" height="22" loading="lazy">Outlook.com</li><li class="tone-3"><img src="./brand/works/gmail.svg" alt="" width="22" height="22" loading="lazy">Gmail</li><li class="tone-4"><img src="./brand/works/icloud.svg" alt="" width="22" height="22" loading="lazy">iCloud Mail</li><li class="tone-5"><img src="./brand/works/aruba.png" alt="" width="22" height="22" loading="lazy">Aruba</li><li class="tone-6"><img src="./brand/works/libero.svg" alt="" width="22" height="22" loading="lazy">Libero</li><li class="tone-1"><img src="./brand/works/yahoo.svg" alt="" width="22" height="22" loading="lazy">Yahoo Mail</li><li class="tone-2"><img src="./brand/works/fastmail.svg" alt="" width="22" height="22" loading="lazy">Fastmail</li><li class="tone-3"><img src="./brand/works/aol.svg" alt="" width="22" height="22" loading="lazy">AOL Mail</li><li class="tone-4"><img src="./brand/works/xfinity.png" alt="" width="22" height="22" loading="lazy">Xfinity</li><li class="tone-5"><img src="./brand/works/gmx.svg" alt="" width="22" height="22" loading="lazy">GMX</li><li class="tone-6"><img src="./brand/works/webdotde.svg" alt="" width="22" height="22" loading="lazy">WEB.DE</li><li class="any">Qualsiasi server IMAP</li></ul></div>
   </div>
 </section>
 
@@ -266,22 +266,14 @@
 </main>
 
 <footer>
-  <div class="wrap">
-    <span>GigaMail — Adecubed — AGPL-3.0</span>
-    <a href="./privacy.html">Privacy Policy</a>
-    <a href="./terms.html">Termini di servizio</a>
-    <a href="./security-it.html">Sicurezza</a>
-    <a href="./credits.html">Crediti del codice</a>
-    <a href="./changelog-it.html">Novità</a>
-    <a href="./mail-city-it.html">Mail City</a>
-    <a href="./mcp-map-it.html">Mappa MCP</a>
-    <a href="./gigamail-vs-agentmail-it.html">GigaMail vs AgentMail</a>
-    <a href="./gigamail-vs-composio-it.html">GigaMail vs Composio</a>
-    <a href="./gigamail-vs-copilot-it.html">GigaMail vs Copilot</a>
-    <span class="spacer"></span>
-    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
-    <a href="./" hreflang="en" lang="en">English</a>
-    <a href="./zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  <div class="wrap foot">
+    <div class="foot-cols">
+      <div class="foot-col"><p class="foot-h">Prodotto</p><a href="./security-it.html">Sicurezza</a><a href="./changelog-it.html">Novità</a><a href="./mail-city-it.html">Mail City</a><a href="./mcp-map-it.html">Mappa MCP</a></div>
+      <div class="foot-col"><p class="foot-h">Confronti</p><a href="./gigamail-vs-agentmail-it.html">GigaMail vs AgentMail</a><a href="./gigamail-vs-composio-it.html">GigaMail vs Composio</a><a href="./gigamail-vs-copilot-it.html">GigaMail vs Copilot</a></div>
+      <div class="foot-col"><p class="foot-h">Note legali</p><a href="./privacy.html">Privacy Policy</a><a href="./terms.html">Termini di servizio</a><a href="./credits.html">Crediti del codice</a></div>
+      <div class="foot-col"><p class="foot-h">Contatti</p><a href="mailto:founder@adecubed.com">founder@adecubed.com</a><a href="./" hreflang="en" lang="en">English</a><a href="./zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a></div>
+    </div>
+    <p class="foot-base">GigaMail — Adecubed — AGPL-3.0</p>
   </div>
 </footer>
 

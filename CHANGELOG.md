@@ -10,7 +10,15 @@
   and the free slots, the draft waits for the OK and is sent. It plays
   only while on screen and stands still with reduced motion. The
   animation that was on the home page moved to the top of the demos on
-  the features page. Antigravity joined the agents under "Works with".
+  the features page, where the demos explain how it finds documents.
+  The hero is centred, with the downloads and the agents (Antigravity
+  added) right under the title.
+- **Site: a Menu button on narrow screens.** Below 1240 px the section
+  links did not fit in the top bar and were simply hidden, phones
+  included; a Menu button next to the logo now opens them as a list.
+  "What's new" moved from the top bar to the footer.
+- **Site: the footer in columns** (product, resources, compare, legal,
+  contact) on every page, in each page's language.
 
 - **GigaMail on a server, used from your PC (first step, for developers).**
   `gigamail-server --http` serves the same tools over MCP's Streamable
