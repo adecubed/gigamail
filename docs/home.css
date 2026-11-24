@@ -478,3 +478,91 @@ section#contact { padding-bottom: 8px; }
 .send-computer .btn::before { content: ""; width: 18px; height: 18px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12' rx='2'/%3E%3Cpath d='M8 20h8M12 16v4'/%3E%3C/svg%3E") center/contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12' rx='2'/%3E%3Cpath d='M8 20h8M12 16v4'/%3E%3C/svg%3E") center/contain no-repeat; }
 .send-note { margin: 0; font-size: .88rem; color: var(--gm-ink); opacity: .75; }
 .send-updates { font-size: .88rem; font-weight: 600; }
+
+/* Home live demo (home-demo.js): one email, the facts the agent finds, the
+   draft waiting for the OK, then sent. data-phase on .demo drives it. */
+.demo { display: flex; flex-wrap: wrap; padding: 0; overflow: hidden; margin: 0; }
+.demo-list { flex: 1 1 280px; background: var(--gm-card2); border-right: 1px solid var(--gm-line); }
+.demo-head { padding: 14px 18px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gm-muted); border-bottom: 1px solid var(--gm-line); }
+.demo-mail { display: grid; gap: 3px; padding: 14px 16px; border-bottom: 1px solid var(--gm-line); border-left: 4px solid transparent; }
+.demo-mail.on { background: var(--gm-card); border-left-color: var(--gm-pink); }
+.demo-mail b { font-size: 0.9rem; display: flex; gap: 8px; align-items: center; }
+.demo-mail b span { margin-left: auto; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: var(--gm-fill); color: var(--gm-muted); }
+.demo-mail strong { font-size: 0.84rem; }
+.demo-mail small { font-size: 0.78rem; color: var(--gm-muted); }
+.demo-open { flex: 999 1 400px; min-width: 0; padding: 22px 24px; display: grid; gap: 14px; align-content: start; min-height: 430px; }
+.demo-subj { font-size: 1.1rem; font-weight: 700; }
+.demo-from { font-size: 0.82rem; color: var(--gm-muted); margin-top: 2px; }
+.demo-k { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gm-pink); }
+.demo-reading { font-size: 0.84rem; font-weight: 600; color: var(--gm-pink); }
+.demo-work, .demo-draft { border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; }
+.demo-work { background: var(--gm-card2); border: 1px solid var(--gm-line); }
+.demo-draft { background: var(--gm-tint); border: 1px solid var(--gm-tint-line); }
+.demo-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.demo-facts li { display: flex; justify-content: space-between; gap: 12px; font-size: 0.84rem; opacity: 0; transform: translateY(4px); transition: opacity .3s ease, transform .3s ease; }
+.demo-facts li.on { opacity: 1; transform: none; }
+.demo-facts li i { font-style: normal; font-size: 0.64rem; font-weight: 700; color: var(--gm-pink); margin-right: 6px; }
+.demo-facts .free { color: var(--gm-green); }
+.demo-facts .busy { color: var(--gm-muted); text-decoration: line-through; }
+.demo-draft p:not(.demo-k) { font-size: 0.92rem; }
+.demo-draft em { font-style: normal; font-weight: 700; color: var(--gm-pink-dn); }
+.demo-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.demo-btns span { padding: 10px 18px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; background: var(--gm-card); border: 1px solid var(--gm-line); }
+.demo-btns span:first-child { background: var(--gm-pink); color: #fff; border-color: var(--gm-pink); }
+.demo-done { padding: 12px 16px; border-radius: 14px; font-weight: 700; font-size: 0.9rem; background: var(--gm-green-bg); color: var(--gm-green); }
+.demo-done::before { content: "\2713\00a0"; }
+.demo .s-done, .demo[data-phase="draft"] .s-search, .demo[data-phase="sent"] .s-search { display: none; }
+.demo[data-phase="draft"] .s-done, .demo[data-phase="sent"] .s-done { display: inline; }
+.demo:not([data-phase="mail"]) .demo-reading,
+.demo[data-phase="mail"] .demo-work,
+.demo[data-phase="mail"] .demo-draft, .demo[data-phase="search"] .demo-draft,
+.demo:not([data-phase="sent"]) .demo-done,
+.demo[data-phase="sent"] .demo-btns { display: none; }
+@media (max-width: 700px) { .demo-list { border-right: 0; border-bottom: 1px solid var(--gm-line); } .demo-open { min-height: 470px; } }
+.feature-banner { margin-bottom: 24px; }
+
+/* Home hero, centred and plain: title, line, downloads, the agents. */
+.hero-center { text-align: center; padding: 64px 0 28px; }
+.hero-center .wrap > div { display: flex; flex-direction: column; align-items: center; }
+.hero-center h1 { max-width: 900px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.08; font-size: clamp(2.1rem, 5vw, 3.6rem); }
+.hero-center h1.words em { background: none; animation: none; }
+.hero-center .lede { max-width: 680px; margin: 20px auto 28px; font-size: 1.15rem; }
+.hero-center .hero-actions { justify-content: center; }
+.hero-center .dl3 { justify-content: center; }
+.hero-center .dl3 .btn { min-width: 150px; justify-content: center; }
+.hero-center .dl3 .os-win, .hero-center .dl3 .os-mac { background: var(--gm-pink); color: #fff; border-color: var(--gm-pink); box-shadow: 0 8px 22px rgba(var(--gm-accent-rgb), .28); }
+.hero-center .dl3 .os-linux { background: var(--gm-card); color: var(--gm-pink-dn); border-color: var(--gm-tint-line); }
+.agents { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.agents li { display: inline-flex; align-items: center; gap: 8px; padding: 7px 15px 7px 8px; border-radius: 999px; background: var(--gm-card); border: 1px solid var(--gm-line); font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
+.agents li img { width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 6px; background: #fff; object-fit: contain; }
+.agents li.any { padding-left: 15px; background: var(--gm-tint); border-color: var(--gm-tint-line); color: var(--gm-pink-dn); }
+.hero-center + .showcase .trust { justify-content: center; }
+@media (max-width: 860px) { .hero-center { padding-top: 32px; } }
+
+/* Footer in columns: product, resources, compare, legal, contact. */
+footer .wrap.foot { display: block; }
+.foot-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 24px 28px; padding-top: 28px; border-top: 1px solid var(--gm-line); }
+.foot-col { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.foot-h { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gm-ink); margin-bottom: 2px; }
+.foot-base { margin-top: 28px; font-size: 0.82rem; }
+@media (max-width: 480px) { .foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Menu button (menu.js): the section links as a list under the bar when
+   they do not fit in it. */
+.menu-btn { display: none; align-items: center; gap: 6px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--gm-ink); background: var(--gm-card); border: 1px solid var(--gm-line); border-radius: 999px; padding: 8px 12px; min-height: 40px; cursor: pointer; }
+.menu-btn:hover, .menu-btn[aria-expanded="true"] { border-color: var(--gm-tint-line); color: var(--gm-pink); }
+@media (max-width: 1240px) {
+  .topbar .wrap { position: relative; }
+  .menu-btn { display: inline-flex; }
+  .topbar .brand { order: -2; }
+  .topbar .btn-ghost { order: -1; }
+  .topbar.menu-open .topnav { display: flex; flex-direction: column; gap: 2px; position: absolute; top: calc(100% + 10px); right: 16px; min-width: 220px; margin: 0; padding: 8px; background: var(--gm-card); border: 1px solid var(--gm-line); border-radius: 16px; box-shadow: var(--gm-shadow); }
+  .topbar.menu-open .topnav a { padding: 11px 14px; font-size: 0.95rem; }
+}
+@media (max-width: 480px) {
+  .menu-btn { padding: 8px 10px; }
+  .menu-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+/* On a phone the language links leave the bar (they are in the footer) so
+   the logo, the menu, GitHub and Download fit. */
+@media (max-width: 480px) { .topbar .lang { display: none; } }

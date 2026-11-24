@@ -31,10 +31,11 @@
 <meta name="twitter:image" content="https://gigamail.ai/social-card-it.png?v=3">
 <meta name="twitter:image:alt" content="Logo GigaMail: il tuo agente dentro la tua casella.">
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
-<link rel="stylesheet" href="./home.css?v=37">
+<link rel="stylesheet" href="./home.css?v=38">
 <script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
 <script type="module" src="/business/analytics.js"></script>
 <script type="module" src="/download-count.js"></script>
+<script type="module" src="/menu.js"></script>
 <script type="module" src="/send-to-computer.js"></script>
 </head>
 <body>
@@ -48,7 +49,6 @@
       <a href="./security-it.html#gate">Controllo</a>
       <a href="./it.html#install">Installazione</a>
       <a href="./it.html#faq">Domande</a>
-      <a href="./changelog-it.html">Novità</a>
       <a href="./security-it.html">Sicurezza</a>
       <a href="./email-check.html" style="color:var(--gm-pink);font-weight:600">Controlla email</a>
     </nav>
@@ -76,6 +76,11 @@
       <p class="kicker">Una mail, dall’inizio alla fine</p>
       <h2 id="demo-title">Un cliente chiede un preventivo e un appuntamento.</h2>
       <p class="lede">Ecco cosa succede tra l’arrivo della mail e la partenza della tua risposta.</p>
+    </div>
+    <div class="card hero-video feature-banner">
+      <video id="hero-clip" autoplay muted loop playsinline preload="metadata" poster="./brand/gigamail-banner-poster.jpg" aria-label="Animazione GigaMail: arriva una mail, l’agente cerca tra i tuoi documenti, prepara la risposta e ti chiede di approvare">
+        <source src="./brand/gigamail-banner.mp4" type="video/mp4">
+      </video>
     </div>
     <div class="story">
       <ol>
@@ -175,22 +180,14 @@
 </main>
 
 <footer>
-  <div class="wrap">
-    <span>GigaMail — Adecubed — AGPL-3.0</span>
-    <a href="./privacy.html">Privacy Policy</a>
-    <a href="./terms.html">Termini di servizio</a>
-    <a href="./security-it.html">Sicurezza</a>
-    <a href="./credits.html">Crediti del codice</a>
-    <a href="./changelog-it.html">Novità</a>
-    <a href="./mail-city-it.html">Mail City</a>
-    <a href="./mcp-map-it.html">Mappa MCP</a>
-    <a href="./gigamail-vs-agentmail-it.html">GigaMail vs AgentMail</a>
-    <a href="./gigamail-vs-composio-it.html">GigaMail vs Composio</a>
-    <a href="./gigamail-vs-copilot-it.html">GigaMail vs Copilot</a>
-    <span class="spacer"></span>
-    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
-    <a href="./features.html" hreflang="en" lang="en">English</a>
-    <a href="./features-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  <div class="wrap foot">
+    <div class="foot-cols">
+      <div class="foot-col"><p class="foot-h">Prodotto</p><a href="./security-it.html">Sicurezza</a><a href="./changelog-it.html">Novità</a><a href="./mail-city-it.html">Mail City</a><a href="./mcp-map-it.html">Mappa MCP</a></div>
+      <div class="foot-col"><p class="foot-h">Confronti</p><a href="./gigamail-vs-agentmail-it.html">GigaMail vs AgentMail</a><a href="./gigamail-vs-composio-it.html">GigaMail vs Composio</a><a href="./gigamail-vs-copilot-it.html">GigaMail vs Copilot</a></div>
+      <div class="foot-col"><p class="foot-h">Note legali</p><a href="./privacy.html">Privacy Policy</a><a href="./terms.html">Termini di servizio</a><a href="./credits.html">Crediti del codice</a></div>
+      <div class="foot-col"><p class="foot-h">Contatti</p><a href="mailto:founder@adecubed.com">founder@adecubed.com</a><a href="./features.html" hreflang="en" lang="en">English</a><a href="./features-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a></div>
+    </div>
+    <p class="foot-base">© 2026 GigaMail — Nerine Srl</p>
   </div>
 </footer>
 

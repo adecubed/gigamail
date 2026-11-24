@@ -31,10 +31,11 @@
 <meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
 <meta name="twitter:image:alt" content="GigaMail logo: your agent inside your mailbox.">
 <link rel="stylesheet" href="./fonts/poppins.css?v=1">
-<link rel="stylesheet" href="./home.css?v=37">
+<link rel="stylesheet" href="./home.css?v=38">
 <script>if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){document.documentElement.classList.add('js-fx');setTimeout(function(){var t=document.querySelector('.hero h1');if(!t||!t.classList.contains('words'))document.documentElement.classList.remove('js-fx');},2500);}</script>
 <script type="module" src="/business/analytics.js"></script>
 <script type="module" src="/download-count.js"></script>
+<script type="module" src="/menu.js"></script>
 <script type="module" src="/send-to-computer.js"></script>
 </head>
 <body>
@@ -48,7 +49,6 @@
       <a href="./security.html#gate">Control</a>
       <a href="./#install">Install</a>
       <a href="./#faq">FAQ</a>
-      <a href="./changelog.html">What's new</a>
       <a href="./security.html">Security</a>
       <a href="./email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
     </nav>
@@ -76,6 +76,11 @@
       <p class="kicker">One mail, start to finish</p>
       <h2 id="demo-title">A client asks for a quote and a meeting.</h2>
       <p class="lede">This is what happens between the mail arriving and your reply leaving.</p>
+    </div>
+    <div class="card hero-video feature-banner">
+      <video id="hero-clip" autoplay muted loop playsinline preload="metadata" poster="./brand/gigamail-banner-poster.jpg" aria-label="GigaMail animation: a mail arrives, the agent searches your documents, drafts the reply and asks you to approve">
+        <source src="./brand/gigamail-banner.mp4" type="video/mp4">
+      </video>
     </div>
     <div class="story">
       <ol>
@@ -175,24 +180,15 @@
 </main>
 
 <footer>
-  <div class="wrap">
-    <span>GigaMail — Adecubed — AGPL-3.0</span>
-    <a href="./privacy.html">Privacy Policy</a>
-    <a href="./terms.html">Terms of Service</a>
-    <a href="./security.html">Security</a>
-    <a href="./credits.html">Code credits</a>
-    <a href="./changelog.html">What's new</a>
-    <a href="./blog/">Blog</a>
-    <a href="./mail-city.html">Mail City</a>
-    <a href="./email-check.html">Email checker</a>
-    <a href="./mcp-map.html">MCP map</a>
-    <a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
-    <a href="./gigamail-vs-composio.html">GigaMail vs Composio</a>
-    <a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a>
-    <span class="spacer"></span>
-    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
-    <a href="./features-it.html" hreflang="it" lang="it">Italiano</a>
-    <a href="./features-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  <div class="wrap foot">
+    <div class="foot-cols">
+      <div class="foot-col"><p class="foot-h">Product</p><a href="./security.html">Security</a><a href="./changelog.html">What's new</a><a href="./mail-city.html">Mail City</a><a href="./mcp-map.html">MCP map</a></div>
+      <div class="foot-col"><p class="foot-h">Resources</p><a href="./blog/">Blog</a><a href="./email-check.html">Email checker</a></div>
+      <div class="foot-col"><p class="foot-h">Compare</p><a href="./gigamail-vs-agentmail.html">GigaMail vs AgentMail</a><a href="./gigamail-vs-composio.html">GigaMail vs Composio</a><a href="./gigamail-vs-copilot.html">GigaMail vs Copilot</a></div>
+      <div class="foot-col"><p class="foot-h">Legal</p><a href="./privacy.html">Privacy Policy</a><a href="./terms.html">Terms of Service</a><a href="./credits.html">Code credits</a></div>
+      <div class="foot-col"><p class="foot-h">Contact</p><a href="mailto:founder@adecubed.com">founder@adecubed.com</a><a href="./features-it.html" hreflang="it" lang="it">Italiano</a><a href="./features-zh.html" hreflang="zh-Hans" lang="zh-Hans">中文</a></div>
+    </div>
+    <p class="foot-base">© 2026 GigaMail — Nerine Srl</p>
   </div>
 </footer>
 

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Site: the home page opens with what GigaMail does, and shows it.** The
+  title now says the result ("Email replies ready to send, with your
+  documents and your calendar"), with a line naming Claude and ChatGPT,
+  in English, Italian and Chinese. Under it a live demo plays by itself:
+  an email asks for a price and a call, the agent finds the price list
+  and the free slots, the draft waits for the OK and is sent. It plays
+  only while on screen and stands still with reduced motion. The
+  animation that was on the home page moved to the top of the demos on
+  the features page, where the demos explain how it finds documents.
+  The hero is centred, with the downloads and the agents (Antigravity
+  added) right under the title.
+- **Site: a Menu button on narrow screens.** Below 1240 px the section
+  links did not fit in the top bar and were simply hidden, phones
+  included; a Menu button next to the logo now opens them as a list.
+  "What's new" moved from the top bar to the footer.
+- **Site: the footer in columns** (product, resources, compare, legal,
+  contact) on every page, in each page's language.
+
 - **GigaMail on a server, used from your PC (first step, for developers).**
   `gigamail-server --http` serves the same tools over MCP's Streamable
   HTTP, so GigaMail can run on a machine that is always on and be used
