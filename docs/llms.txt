@@ -38,6 +38,11 @@ Key facts:
 
 - [Email checker](https://gigamail.ai/email-check.html): paste an email to see its phishing signs, look-alike domains, dangerous attachments and any hidden text an AI agent would read; runs in the browser, nothing is uploaded
 
+## Articles
+
+- [Blog](https://gigamail.ai/blog/): notes from building GigaMail, one problem per article
+- [Hiding invisible text from an email agent withheld 28% of real mail](https://gigamail.ai/blog/hidden-text.html): why the agent reads only what a person sees, what that cost on a real mailbox, and how it came down to 6%
+
 ## Optional
 
 - [Mail City](https://gigamail.ai/mail-city.html): interactive metro map of a mail's journey through GigaMail: approval, context, privacy, autopilot and a hostile mail

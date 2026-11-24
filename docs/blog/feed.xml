@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>GigaMail blog</title>
+  <link>https://gigamail.ai/blog/</link>
+  <atom:link href="https://gigamail.ai/blog/feed.xml" rel="self" type="application/rss+xml"/>
+  <description>Notes from building an email agent you can trust: one problem per article, with the numbers.</description>
+  <language>en</language>
+  <!-- newest first -->
+  <item>
+    <title>Hiding invisible text from an email agent withheld 28% of real mail</title>
+    <link>https://gigamail.ai/blog/hidden-text.html</link>
+    <guid isPermaLink="true">https://gigamail.ai/blog/hidden-text.html</guid>
+    <pubDate>Tue, 24 Nov 2026 09:00:00 +0000</pubDate>
+    <description>An email can say one thing to you and another to your AI agent. We made the agent read only what a person sees, and more than one HTML mail in four went missing. What was in the way, and how it came down to 6%.</description>
+  </item>
+</channel>
+</rss>

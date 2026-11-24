@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaMail blog: notes from building an email agent you can trust</title>
+<meta name="description" content="What we learn while building GigaMail: how an AI agent reads mail, where it can be fooled, what we changed and what it cost. One problem per article, with the numbers.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/blog/">
+<link rel="alternate" type="application/rss+xml" title="GigaMail blog" href="https://gigamail.ai/blog/feed.xml">
+<link rel="icon" href="../brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="../brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="../brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/blog/">
+<meta property="og:title" content="GigaMail blog: notes from building an email agent you can trust">
+<meta property="og:description" content="How an AI agent reads mail, where it can be fooled, what we changed and what it cost. One problem per article, with the numbers.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GigaMail blog: notes from building an email agent you can trust">
+<meta name="twitter:description" content="How an AI agent reads mail, where it can be fooled, what we changed and what it cost. One problem per article, with the numbers.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Blog", "@id": "https://gigamail.ai/blog/#blog", "url": "https://gigamail.ai/blog/", "name": "GigaMail blog", "description": "What we learn while building GigaMail: how an AI agent reads mail, where it can be fooled, what we changed and what it cost.", "inLanguage": "en", "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="../fonts/poppins.css?v=1">
+<link rel="stylesheet" href="../home.css?v=37">
+<link rel="stylesheet" href="../pages.css?v=1">
+<style>
+.blog .wrap.narrow { max-width: 760px; }
+.blog .posts { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.blog .posts a { display: block; padding: 20px 22px; text-decoration: none; color: inherit; transition: transform .15s ease, border-color .15s ease; }
+.blog .posts a:hover, .blog .posts a:focus-visible { transform: translateY(-2px); border-color: var(--gm-pink); }
+.blog .posts time { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gm-pink); }
+.blog .posts h2 { font-size: 1.25rem; line-height: 1.3; margin: 6px 0 6px; }
+.blog .posts p { color: var(--gm-muted); font-size: 0.95rem; line-height: 1.6; margin: 0; }
+.blog .feed { margin-top: 18px; font-size: 0.9rem; }
+@media (prefers-reduced-motion: reduce) { .blog .posts a { transition: none; } .blog .posts a:hover { transform: none; } }
+</style>
+<script type="module" src="/business/analytics.js"></script>
+<script type="module" src="/download-count.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="GigaMail home"><img src="../brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="../features.html">What it does</a>
+      <a href="../security.html#gate">Approval</a>
+      <a href="../#install">Install</a>
+      <a href="../mcp-map.html">MCP map</a>
+      <a href="../gigamail-vs-agentmail.html">vs AgentMail</a>
+      <a href="../security.html">Security</a>
+      <a href="../email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg class="gh-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="../#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage blog">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker">Blog</p>
+    <h1 id="t">Notes from building an email agent <em>you can trust.</em></h1>
+    <p class="lede">One problem per article: what went wrong, what we changed, what it cost. With the numbers, and with what it still does not solve.</p>
+  </div>
+</section>
+<section aria-label="Articles"><div class="wrap narrow">
+  <ul class="posts">
+    <!-- newest first; add the same entry to feed.xml, ../sitemap.xml and ../llms.txt -->
+    <li><a class="card" href="./hidden-text.html">
+      <time datetime="2026-11-24">24 November 2026</time>
+      <h2>Hiding invisible text from an email agent withheld 28% of real mail</h2>
+      <p>An email can say one thing to you and another to your AI agent. We made the agent read only what a person sees, and more than one HTML mail in four went missing. What was in the way, and how it came down to 6%.</p>
+    </a></li>
+  </ul>
+  <p class="muted feed">New articles by <a href="./feed.xml">RSS</a>.</p>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="../privacy.html">Privacy Policy</a>
+    <a href="../terms.html">Terms of Service</a>
+    <a href="../credits.html">Code credits</a>
+    <a href="../mcp-map.html">MCP map</a>
+    <a href="../gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="../gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="../gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="../changelog.html">What's new</a>
+    <a href="./">Blog</a>
+    <a href="../mail-city.html">Mail City</a>
+    <a href="../email-check.html">Email checker</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+  </div>
+</footer>
+</body>
+</html>
