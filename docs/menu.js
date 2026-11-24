@@ -1,6 +1,6 @@
 // The top bar's sections on narrow screens. Below 1240 px the links in
 // .topnav do not fit and are hidden (home.css), so a Menu button next to
-// the logo opens them as a list under the bar. The button is added here,
+// Download opens them as a list under the bar. The button is added here,
 // so a page without scripts keeps the bar as it was.
 
 const LABELS = { en: 'Menu', it: 'Menu', zh: '菜单' };
@@ -33,8 +33,10 @@ export function addMenu(doc) {
     if (e.key === 'Escape' && bar.classList.contains('menu-open')) { set(false); btn.focus(); }
   });
   doc.addEventListener('click', (e) => { if (!bar.contains(e.target)) set(false); });
-  const brand = bar.querySelector('.brand');
-  if (brand) brand.after(btn); else nav.before(btn);
+  // Right of GitHub, just before Download; on narrow screens home.css moves
+  // GitHub next to the logo.
+  const download = bar.querySelector('.btn-primary');
+  if (download) download.before(btn); else nav.before(btn);
   return btn;
 }
 

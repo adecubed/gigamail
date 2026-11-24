@@ -554,7 +554,9 @@ footer .wrap.foot { display: block; }
 @media (max-width: 1240px) {
   .topbar .wrap { position: relative; }
   .menu-btn { display: inline-flex; }
-  .topbar.menu-open .topnav { display: flex; flex-direction: column; gap: 2px; position: absolute; top: calc(100% + 10px); left: 16px; min-width: 220px; margin: 0; padding: 8px; background: var(--gm-card); border: 1px solid var(--gm-line); border-radius: 16px; box-shadow: var(--gm-shadow); }
+  .topbar .brand { order: -2; }
+  .topbar .btn-ghost { order: -1; }
+  .topbar.menu-open .topnav { display: flex; flex-direction: column; gap: 2px; position: absolute; top: calc(100% + 10px); right: 16px; min-width: 220px; margin: 0; padding: 8px; background: var(--gm-card); border: 1px solid var(--gm-line); border-radius: 16px; box-shadow: var(--gm-shadow); }
   .topbar.menu-open .topnav a { padding: 11px 14px; font-size: 0.95rem; }
 }
 @media (max-width: 480px) {

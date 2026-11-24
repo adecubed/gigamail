@@ -11,7 +11,8 @@ const MODULE = 'file://' + path.join(__dirname, '..', '..', 'docs', 'menu.js');
 function page(lang = 'en') {
   const dom = new JSDOM(`<!doctype html><html lang="${lang}"><body>`
     + '<header class="topbar"><div class="wrap"><a class="brand" href="/">GigaMail</a>'
-    + '<nav class="topnav"><a href="./features.html">Features</a><a href="#faq">FAQ</a></nav></div></header>'
+    + '<nav class="topnav"><a href="./features.html">Features</a><a href="#faq">FAQ</a></nav>'
+    + '<a class="btn btn-ghost" href="https://github.com/">GitHub</a><a class="btn btn-primary" href="#install">Download</a></div></header>'
     + '<main><p id="out">text</p></main></body></html>');
   return dom.window.document;
 }
@@ -25,12 +26,12 @@ test('labels follow the page language', async () => {
   assert.deepEqual(['en', 'it', 'zh-Hans', 'fr', ''].map(labelFor), ['Menu', 'Menu', '菜单', 'Menu', 'Menu']);
 });
 
-test('the button sits after the logo and opens and closes the links', async () => {
+test('the button sits just before Download and opens and closes the links', async () => {
   const { addMenu } = await load();
   const doc = page('zh-Hans');
   const btn = addMenu(doc);
   const bar = doc.querySelector('.topbar');
-  assert.equal(doc.querySelector('.brand').nextElementSibling, btn);
+  assert.equal(doc.querySelector('.btn-primary').previousElementSibling, btn);
   assert.equal(btn.textContent, '菜单');
   assert.equal(btn.getAttribute('aria-controls'), doc.querySelector('.topnav').id);
   btn.click();
