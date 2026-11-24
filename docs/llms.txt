@@ -41,6 +41,7 @@ Key facts:
 ## Articles
 
 - [Blog](https://gigamail.ai/blog/): notes from building GigaMail, one problem per article
+- [A link preview sent data out before anyone approved the draft](https://gigamail.ai/blog/telegram-link-preview.html): why an approval step can leak by itself through a link preview, and the one-line fix
 - [Hiding invisible text from an email agent withheld 28% of real mail](https://gigamail.ai/blog/hidden-text.html): why the agent reads only what a person sees, what that cost on a real mailbox, and how it came down to 6%
 
 ## Optional

