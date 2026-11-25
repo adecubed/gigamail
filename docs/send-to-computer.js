@@ -84,6 +84,9 @@ export function install(doc = document, win = window, config = analyticsConfig) 
       box.append(link);
     }
     row.hidden = true;
+    // The lines next to the buttons (Intel Mac and checksums, connecting
+    // via MCP) are for whoever installs now, so they go on a phone too.
+    if (row.parentElement) row.parentElement.querySelectorAll(':scope > .alt').forEach(alt => { alt.hidden = true; });
     row.after(box);
   });
   return rows.length;

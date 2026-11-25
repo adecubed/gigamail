@@ -13,7 +13,8 @@ const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)';
 
 function page(ua, lang = 'en', nav = {}) {
   const dom = new JSDOM(`<!doctype html><html lang="${lang}"><body>`
-    + '<div class="dl3"><a class="btn" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe">Windows</a></div>'
+    + '<div class="hero-actions"><div class="dl3"><a class="btn" href="https://github.com/adecubed/gigamail/releases/latest/download/GigaMail-Setup.exe">Windows</a></div>'
+    + '<span class="alt"><a href="./install.html#step-get">Intel Mac</a></span><span class="alt">Developer? <a href="#setup-mcp">MCP</a></span></div>'
     + '<div class="dl3"><a class="btn" href="#">macOS</a></div><section id="updates"></section></body></html>',
   { url: 'https://gigamail.ai/' });
   const win = dom.window;
@@ -36,6 +37,7 @@ test('on a computer the download buttons stay', async () => {
   assert.equal(install(doc, win, CONFIG), 0);
   assert.equal(doc.querySelectorAll('.send-computer').length, 0);
   assert.equal(doc.querySelectorAll('.dl3[hidden]').length, 0);
+  assert.equal(doc.querySelectorAll('.alt[hidden]').length, 0);
 });
 
 test('on a phone every row becomes one Send to my computer button', async () => {
@@ -47,6 +49,7 @@ test('on a phone every row becomes one Send to my computer button', async () => 
   assert.equal(boxes.length, 2);
   assert.equal(boxes[0].querySelector('button').textContent, 'Mandalo al mio computer');
   assert.equal(boxes[0].querySelector('a.send-updates').getAttribute('href'), '#updates');
+  assert.equal(doc.querySelectorAll('.alt[hidden]').length, 2, 'the installer and MCP lines go too');
 });
 
 test('sharing sends the link and counts one send_link', async () => {
