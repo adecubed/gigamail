@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Site: colour only on the download buttons.** The mail providers under
+  "Works with", the feature cards and the FAQ are now plain cards and
+  pills like the agents in the hero, in light and dark mode; the pastel
+  colours stay on the download buttons. On phones, "Send to my computer"
+  is centred under the centred title.
+
 - **Site: the home page opens with what GigaMail does, and shows it.** The
   title now says the result ("Email replies ready to send, with your
   documents and your calendar"), with a line naming Claude and ChatGPT,
