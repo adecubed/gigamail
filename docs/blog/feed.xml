@@ -8,6 +8,13 @@
   <language>en</language>
   <!-- newest first -->
   <item>
+    <title>A link preview sent data out before anyone approved the draft</title>
+    <link>https://gigamail.ai/blog/telegram-link-preview.html</link>
+    <guid isPermaLink="true">https://gigamail.ai/blog/telegram-link-preview.html</guid>
+    <pubDate>Wed, 25 Nov 2026 09:00:00 +0000</pubDate>
+    <description>An approval step can leak on its own. Telegram opens the first link of a message to build a preview, so a draft with data in a link sent it out before anyone tapped approve. What changed in GigaMail 0.6.7.</description>
+  </item>
+  <item>
     <title>Hiding invisible text from an email agent withheld 28% of real mail</title>
     <link>https://gigamail.ai/blog/hidden-text.html</link>
     <guid isPermaLink="true">https://gigamail.ai/blog/hidden-text.html</guid>
