@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Site: What's new lists 0.6.8**, in English and Italian: encrypted mail
+  (beta), Edit in place and Save in the approval window, saving drafts,
+  printing, mail in columns reaching the agent, update notices for
+  installs used only from Codex or Claude.
+- **Site: the Blog in every footer**, Italian and Chinese pages included.
+
 - **Site: colour only on the download buttons.** The mail providers under
   "Works with", the feature cards and the FAQ are now plain cards and
   pills like the agents in the hero, in light and dark mode; the pastel
