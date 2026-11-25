@@ -188,27 +188,18 @@ section.showcase { padding: 10px 0 30px; }
 @media (max-width: 560px) { .try { padding-left: 0; } .try-label { width: 5.2rem; } .try-bar { gap: 6px; } .try-bar .try-btn { padding: 7px 7px; font-size: .8rem; } }
 /* Downloads right under the exchange. */
 .ask-box + .hero-actions { margin-top: 4px; }
-/* Works with: mailboxes and agents, one pastel per name. */
+/* Works with: the mail providers, as plain pills like the agents in the
+   hero. Colour is kept for the download buttons. */
 section.works { padding: 6px 0 20px; }
 .works h2.kicker { margin-bottom: 12px; line-height: inherit; }
 .works-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gm-line); }
 .works-row > span { font-size: 0.82rem; font-weight: 600; color: var(--gm-muted); }
 .works-row ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.works-row li { padding: 7px 14px; border-radius: 999px; border: 1px solid; font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
-.works-row li:not(.any) { display: inline-flex; align-items: center; gap: 8px; padding-left: 7px; }
-/* Brand marks sit on a white tile, so they read the same on every pastel and in dark mode. */
+.works-row li { padding: 7px 15px; border-radius: 999px; border: 1px solid var(--gm-line); background: var(--gm-card); color: var(--gm-ink); font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+.works-row li:not(.any) { display: inline-flex; align-items: center; gap: 8px; padding-left: 8px; }
+/* Brand marks sit on a white tile, so they read the same in dark mode. */
 .works-row li img { width: 22px; height: 22px; padding: 3px; box-sizing: border-box; border-radius: 6px; background: #fff; object-fit: contain; }
-.works-row .tone-1 { background: #dcecff; color: #1d4f8f; border-color: #bcd8fb; }
-.works-row .tone-2 { background: #ebe3fb; color: #503494; border-color: #d6c8f5; }
-.works-row .tone-3 { background: #ffe8cc; color: #8a4b0a; border-color: #f8d2a4; }
-.works-row .tone-4 { background: #dff3e3; color: #1f6b3a; border-color: #bfe3c8; }
-.works-row .tone-5 { background: #fde2ee; color: #a01f63; border-color: #f6c3da; }
-.works-row .tone-6 { background: #d9f2f1; color: #0f6660; border-color: #b5e2df; }
-.works-row .any { background: transparent; color: var(--gm-muted); border: 1px dashed var(--gm-tint-line); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .works-row li:not(.any) { background: color-mix(in srgb, currentColor 16%, transparent); border-color: color-mix(in srgb, currentColor 34%, transparent); filter: brightness(1.9) saturate(.8); }
-}
-:root[data-theme="dark"] .works-row li:not(.any) { background: color-mix(in srgb, currentColor 16%, transparent); border-color: color-mix(in srgb, currentColor 34%, transparent); filter: brightness(1.9) saturate(.8); }
+.works-row .any { background: var(--gm-tint); border-color: var(--gm-tint-line); color: var(--gm-pink-dn); }
 @media (max-width: 700px) { .works-row { grid-template-columns: 1fr; gap: 8px; } .works-row li { padding: 6px 12px; font-size: 0.82rem; } }
 
 /* Story steps typed one after the other (home.js). */
@@ -257,35 +248,13 @@ section { padding: 44px 0; }
 .feature .ico svg { width: 20px; height: 20px; }
 .feature p { color: var(--gm-muted); font-size: 0.94rem; }
 
-/* Feature cards in colour: one pastel per card, title and text in a deeper
-   shade of it. --fc is the card's colour as r,g,b; --fc-ink mixes it toward
-   the page's ink (dark on light, light on dark) so the text stays readable. */
-#features .grid-4 > .feature:nth-child(1) { --fc: 224,64,154; }
-#features .grid-4 > .feature:nth-child(2) { --fc: 139,92,246; }
-#features .grid-4 > .feature:nth-child(3) { --fc: 59,130,246; }
-#features .grid-4 > .feature:nth-child(4) { --fc: 14,165,164; }
-#features .grid-4 > .feature:nth-child(5) { --fc: 34,163,90; }
-#features .grid-4 > .feature:nth-child(6) { --fc: 217,138,0; }
-#features .grid-4 > .feature:nth-child(7) { --fc: 240,90,79; }
-#features .grid-4 > .feature:nth-child(8) { --fc: 91,91,214; }
-#features .feature {
-  --fc-mix: black; --fc-text: #3a3a44;
-  background: rgba(var(--fc), 0.08); border-color: rgba(var(--fc), 0.25);
-  transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s, border-color .22s;
-}
-#features .feature .ico { background: rgba(var(--fc), 0.16); border-color: rgba(var(--fc), 0.35); color: rgb(var(--fc));
-  transition: background .22s, color .22s, transform .22s; }
-#features .feature h3 { color: color-mix(in srgb, rgb(var(--fc)) 78%, var(--fc-mix)); }
-#features .feature p { color: color-mix(in srgb, rgb(var(--fc)) 45%, var(--fc-text)); }
-:root[data-theme="dark"] #features .feature { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) #features .feature { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
-}
-/* With a mouse: the card lifts and its icon fills in. */
+/* Feature cards: plain cards, the icon in the accent; with a mouse the
+   card lifts and its icon fills in. */
+#features .feature { transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s, border-color .22s; }
+#features .feature .ico { transition: background .22s, color .22s, transform .22s; }
 @media (hover: hover) {
-  #features .feature:hover { transform: translateY(-6px) scale(1.02); border-color: rgb(var(--fc));
-    box-shadow: 0 18px 40px rgba(var(--fc), 0.22); }
-  #features .feature:hover .ico { background: rgb(var(--fc)); color: #fff; transform: rotate(-6deg) scale(1.08); }
+  #features .feature:hover { transform: translateY(-6px) scale(1.02); border-color: var(--gm-tint-line); box-shadow: var(--gm-shadow); }
+  #features .feature:hover .ico { background: var(--gm-pink); color: #fff; transform: rotate(-6deg) scale(1.08); }
 }
 /* On a phone there is no hover: the cards rise in one after the other as
    they scroll into view (home.js adds .in-view). The rise uses `translate`,
@@ -364,27 +333,10 @@ pre .c { color: #8a93ad; }
 .faq summary::after { content: "+"; color: var(--gm-pink); font-weight: 700; font-size: 1.2rem; line-height: 1; }
 .faq details[open] summary::after { content: "–"; }
 .faq details p { color: var(--gm-muted); padding: 0 0 18px; font-size: 0.95rem; }
-/* FAQ in colour, like the feature cards: each question its own pastel,
-   question and answer in a deeper shade of it, the +/– in the full colour. */
-.faq > details:nth-child(8n+1) { --fc: 224,64,154; }
-.faq > details:nth-child(8n+2) { --fc: 139,92,246; }
-.faq > details:nth-child(8n+3) { --fc: 59,130,246; }
-.faq > details:nth-child(8n+4) { --fc: 14,165,164; }
-.faq > details:nth-child(8n+5) { --fc: 34,163,90; }
-.faq > details:nth-child(8n+6) { --fc: 217,138,0; }
-.faq > details:nth-child(8n+7) { --fc: 240,90,79; }
-.faq > details:nth-child(8n+8) { --fc: 91,91,214; }
-.faq details { --fc-mix: black; --fc-text: #3a3a44; background: rgba(var(--fc), 0.08); border-color: rgba(var(--fc), 0.25);
-  transition: border-color .22s, box-shadow .22s; }
-.faq summary { color: color-mix(in srgb, rgb(var(--fc)) 78%, var(--fc-mix)); }
-.faq summary::after { color: rgb(var(--fc)); }
-.faq details p { color: color-mix(in srgb, rgb(var(--fc)) 45%, var(--fc-text)); }
-.faq details[open] { border-color: rgba(var(--fc), 0.55); }
-@media (hover: hover) { .faq details:hover { border-color: rgb(var(--fc)); box-shadow: 0 10px 26px rgba(var(--fc), 0.16); } }
-:root[data-theme="dark"] .faq details { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .faq details { --fc-mix: white; --fc-text: #c9cde0; background: rgba(var(--fc), 0.12); border-color: rgba(var(--fc), 0.32); }
-}
+/* FAQ: plain cards like the rest; the open one keeps an accent border. */
+.faq details { transition: border-color .22s, box-shadow .22s; }
+.faq details[open] { border-color: var(--gm-tint-line); }
+@media (hover: hover) { .faq details:hover { border-color: var(--gm-tint-line); box-shadow: var(--gm-shadow); } }
 
 /* open-source strip */
 .strip { padding: 22px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -442,12 +394,6 @@ section#contact { padding-bottom: 8px; }
 .paths .who { font-size: .9rem; color: var(--gm-muted); }
 .paths pre { margin: 4px 0 0; font-size: .85rem; }
 .paths .actions { margin-top: auto; padding-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: .92rem; }
-.trustgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 980px) { .trustgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .trustgrid { grid-template-columns: 1fr; } }
-.trustgrid a { padding: 16px 18px; text-decoration: none; color: inherit; display: block; }
-.trustgrid strong { display: block; }
-.trustgrid span { color: var(--gm-muted); font-size: .88rem; }
 .final { text-align: center; padding: 34px 20px; }
 .final .hero-actions { justify-content: center; }
 .dl3 { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -566,3 +512,6 @@ footer .wrap.foot { display: block; }
 /* On a phone the language links leave the bar (they are in the footer) so
    the logo, the menu, GitHub and Download fit. */
 @media (max-width: 480px) { .topbar .lang { display: none; } }
+
+/* Send to my computer, centred under the centred hero. */
+.hero-center .send-computer { align-items: center; text-align: center; }

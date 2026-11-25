@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Site: colour only on the download buttons.** The mail providers under
+  "Works with", the feature cards and the FAQ are now plain cards and
+  pills like the agents in the hero, in light and dark mode; the pastel
+  colours stay on the download buttons. On phones, "Send to my computer"
+  is centred under the centred title, and the lines meant for installing
+  (Intel Mac and checksums, connecting via MCP) are hidden there. The "Built for trust" block on the
+  home page is gone: its links are already in the top bar and the footer.
+
 - **Site: the home page opens with what GigaMail does, and shows it.** The
   title now says the result ("Email replies ready to send, with your
   documents and your calendar"), with a line naming Claude and ChatGPT,
