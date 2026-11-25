@@ -394,12 +394,6 @@ section#contact { padding-bottom: 8px; }
 .paths .who { font-size: .9rem; color: var(--gm-muted); }
 .paths pre { margin: 4px 0 0; font-size: .85rem; }
 .paths .actions { margin-top: auto; padding-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: .92rem; }
-.trustgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 980px) { .trustgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .trustgrid { grid-template-columns: 1fr; } }
-.trustgrid a { padding: 16px 18px; text-decoration: none; color: inherit; display: block; }
-.trustgrid strong { display: block; }
-.trustgrid span { color: var(--gm-muted); font-size: .88rem; }
 .final { text-align: center; padding: 34px 20px; }
 .final .hero-actions { justify-content: center; }
 .dl3 { display: flex; gap: 8px; flex-wrap: wrap; }
