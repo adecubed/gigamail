@@ -909,7 +909,11 @@ What it does not protect:
   2.4.8). In the other direction, mail that GnuPG 2.4 encrypts with its
   newer AEAD mode (OCB) cannot be read by GigaMail; this can matter for a
   key made with GnuPG and restored into GigaMail, when a correspondent
-  using GnuPG writes to it. Thunderbird has not been tried.
+  using GnuPG writes to it. GnuPG built on libgcrypt 1.12.0 (Ubuntu 26.04)
+  imports the backup and signs with it, but in our tests fails to decrypt
+  with it and answers "Bad passphrase" to the right one; the same GnuPG
+  on libgcrypt 1.11 decrypts. This matches a libgcrypt bug reported as
+  fixed in 1.12.1. Thunderbird has not been tried.
 - **Expired keys.** A restored key that has expired is kept, but GigaMail
   cannot decrypt with it while it is expired. The keys GigaMail generates
   do not expire.

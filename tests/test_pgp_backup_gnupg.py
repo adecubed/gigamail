@@ -49,6 +49,14 @@ def _clear_mail():
 
 TIMEOUT = 60
 
+# GnuPG on libgcrypt 1.12.0 (the Ubuntu 26.04 runners) signs with an imported
+# key but fails to decrypt with its Curve25519 subkey, answering "Bad
+# passphrase" to the right one. Seen in CI on our backup, where the same
+# tests pass on libgcrypt 1.11; other projects report the same on keys GnuPG
+# made itself, as a libgcrypt bug (GnuPG T8094) fixed in 1.12.1. Only that
+# version, and only that answer, is set aside.
+BROKEN_LIBGCRYPT = "1.12.0"
+
 # GnuPG 2.4 encrypts to a key that advertises OCB with the AEAD packet of
 # the draft, which the library refuses to read. Keys made for these tests
 # advertise no AEAD, so a mail to them is a plain MDC-protected message,
@@ -109,6 +117,8 @@ class Gnupg:
         out = self.gpg("--version").stdout.decode("utf-8", "replace")
         m = re.search(r"gpg \(GnuPG[^)]*\) (\d+)\.(\d+)", out)
         self.version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+        m = re.search(r"libgcrypt (\d+\.\d+\.\d+)", out)
+        self.libgcrypt = m.group(1) if m else ""
 
     def run(self, program, *args, input=None):
         return subprocess.run([program, *args], input=input, env=self.env,
@@ -135,6 +145,14 @@ class Gnupg:
         """What gpg decrypts; when it does not, the failure carries what gpg
         said, so a red CI names the reason."""
         done = self.decrypt(cipher, passphrase)
+        said = done.stderr.decode("utf-8", "replace")
+        if (done.returncode != 0 and self.libgcrypt == BROKEN_LIBGCRYPT
+                and ("Bad passphrase" in said or "Bad secret key" in said)):
+            # Not a missing GnuPG, so a skip even where GnuPG is required:
+            # the other systems in CI measure this step.
+            pytest.skip("libgcrypt " + BROKEN_LIBGCRYPT + " cannot reliably use "
+                        "an imported Curve25519 secret key (GnuPG T8094): "
+                        "decryption by GnuPG is not measured on this system")
         assert done.returncode == 0, (
             self.gpg("--version").stdout.decode("utf-8", "replace")[:80]
             + "\n" + done.stderr.decode("utf-8", "replace"))
