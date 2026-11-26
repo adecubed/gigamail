@@ -131,6 +131,15 @@ class Gnupg:
     def decrypt(self, cipher, passphrase):
         return self._with_passphrase(passphrase, "--decrypt", data=cipher)
 
+    def plaintext(self, cipher, passphrase):
+        """What gpg decrypts; when it does not, the failure carries what gpg
+        said, so a red CI names the reason."""
+        done = self.decrypt(cipher, passphrase)
+        assert done.returncode == 0, (
+            self.gpg("--version").stdout.decode("utf-8", "replace")[:80]
+            + "\n" + done.stderr.decode("utf-8", "replace"))
+        return done.stdout
+
     def clearsign(self, data, user, passphrase):
         return self._with_passphrase(passphrase, "--local-user", user,
                                      "--clearsign", "--output", "-", data=data)
@@ -229,7 +238,7 @@ def test_gnupg_imports_the_backup_and_needs_the_passphrase(gnupg, tmp_path):
     assert _fpr(key).upper() in listing.upper()
 
     cipher = gnupg.encrypt_to(ME, b"hello")
-    assert gnupg.decrypt(cipher, PASSPHRASE).stdout == b"hello"
+    assert gnupg.plaintext(cipher, PASSPHRASE) == b"hello"
     gnupg.forget_passphrases()
     assert gnupg.decrypt(cipher, "wrong passphrase").returncode != 0
 
@@ -251,7 +260,40 @@ def test_gnupg_non_ascii_passphrase(gnupg, tmp_path):
     pgp_backup.export_backup(backup, phrase)
     assert gnupg.gpg("--import", str(backup)).returncode == 0
     cipher = gnupg.encrypt_to(ME, b"hello")
-    assert gnupg.decrypt(cipher, phrase).stdout == b"hello"
+    assert gnupg.plaintext(cipher, phrase) == b"hello"
+
+
+def test_gnupg_decrypts_with_a_gigamail_key_imported_unprotected(gnupg, tmp_path):
+    """Control for the tests above: the same key without our protection.
+    When this one fails too, GnuPG cannot use the key itself and the
+    passphrase protection is not the cause."""
+    key = pgp.own_key(ME)
+    plain = tmp_path / "plain.pgp"
+    plain.write_bytes(bytes(key))
+    done = gnupg.gpg("--import", str(plain))
+    assert done.returncode == 0, done.stderr
+    cipher = gnupg.encrypt_to(ME, b"hello")
+    assert gnupg.plaintext(cipher, "") == b"hello"
+
+
+def test_gnupg_reads_back_its_own_protected_export(gnupg, tmp_path):
+    """Control with no GigaMail code in it: a curve key GnuPG made and
+    exported with a passphrase, imported into another GnuPG home the way a
+    backup is (in batch, still protected), then used to decrypt."""
+    made = gnupg.generate(ME, "ed25519", PASSPHRASE)
+    if made.returncode != 0:
+        _unavailable("GnuPG cannot generate ed25519 here: "
+                     + made.stderr.decode("utf-8", "replace")[:200])
+    exported = tmp_path / "from-gnupg.asc"
+    exported.write_bytes(gnupg.export_secret(ME, PASSPHRASE))
+    other = Gnupg(gnupg.exe, tempfile.mkdtemp(prefix="gm"))
+    try:
+        done = other.gpg("--import", str(exported))
+        assert done.returncode == 0, done.stderr
+        cipher = other.encrypt_to(ME, b"hello")
+        assert other.plaintext(cipher, PASSPHRASE) == b"hello"
+    finally:
+        other.close()
 
 
 @pytest.mark.parametrize("algo,passphrase", [("ed25519", PASSPHRASE),
