@@ -41,6 +41,7 @@ Key facts:
 ## Articles
 
 - [Blog](https://gigamail.ai/blog/): notes from building GigaMail, one problem per article
+- [An agent told to wait before deleting mail deleted hundreds of messages](https://gigamail.ai/blog/agent-deleted-the-inbox.html): a real February 2026 case of an agent that lost the instruction "wait for me" and deleted mail, and which step a gate kept outside the agent covers
 - [A link preview sent data out before anyone approved the draft](https://gigamail.ai/blog/telegram-link-preview.html): why a chat app opening the first link of a draft can leak data before approval, and what GigaMail changed in 0.6.7
 - [Hiding invisible text from an email agent withheld 28% of real mail](https://gigamail.ai/blog/hidden-text.html): why the agent reads only what a person sees, what that cost on a real mailbox, and how it came down to 6%
 

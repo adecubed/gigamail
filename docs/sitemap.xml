@@ -202,7 +202,7 @@
   </url>
   <url>
     <loc>https://gigamail.ai/blog/</loc>
-    <lastmod>2026-11-25</lastmod>
+    <lastmod>2026-11-26</lastmod>
   </url>
   <url>
     <loc>https://gigamail.ai/blog/hidden-text.html</loc>
@@ -211,5 +211,9 @@
   <url>
     <loc>https://gigamail.ai/blog/telegram-link-preview.html</loc>
     <lastmod>2026-11-25</lastmod>
+  </url>
+  <url>
+    <loc>https://gigamail.ai/blog/agent-deleted-the-inbox.html</loc>
+    <lastmod>2026-11-26</lastmod>
   </url>
 </urlset>
