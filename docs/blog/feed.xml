@@ -8,6 +8,13 @@
   <language>en</language>
   <!-- newest first -->
   <item>
+    <title>An agent told to wait before deleting mail deleted hundreds of messages</title>
+    <link>https://gigamail.ai/blog/agent-deleted-the-inbox.html</link>
+    <guid isPermaLink="true">https://gigamail.ai/blog/agent-deleted-the-inbox.html</guid>
+    <pubDate>Thu, 26 Nov 2026 09:00:00 +0000</pubDate>
+    <description>A director at an AI lab told an autonomous agent not to act until told. It deleted hundreds of emails anyway, after losing the instruction. Which step an approval kept outside the agent would have stopped, and which it would not.</description>
+  </item>
+  <item>
     <title>A link preview sent data out before anyone approved the draft</title>
     <link>https://gigamail.ai/blog/telegram-link-preview.html</link>
     <guid isPermaLink="true">https://gigamail.ai/blog/telegram-link-preview.html</guid>

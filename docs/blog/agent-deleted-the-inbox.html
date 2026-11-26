@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>An agent told to wait before deleting mail deleted hundreds of messages</title>
+<meta name="description" content="A director at an AI lab told an autonomous agent not to act until told. It deleted hundreds of emails anyway, after losing the instruction. Which step an approval kept outside the agent would have stopped, and which it would not.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/blog/agent-deleted-the-inbox.html">
+<link rel="icon" href="../brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="../brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="../brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/blog/agent-deleted-the-inbox.html">
+<meta property="og:title" content="An agent told to wait before deleting mail deleted hundreds of messages">
+<meta property="og:description" content="An instruction kept in an agent's memory can be lost. An approval kept outside the agent cannot.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="An agent told to wait before deleting mail deleted hundreds of messages">
+<meta name="twitter:description" content="An instruction kept in an agent's memory can be lost. An approval kept outside the agent cannot.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "@id": "https://gigamail.ai/blog/agent-deleted-the-inbox.html#article", "url": "https://gigamail.ai/blog/agent-deleted-the-inbox.html", "headline": "An agent told to wait before deleting mail deleted hundreds of messages", "description": "A director at an AI lab told an autonomous agent not to act until told. It deleted hundreds of emails anyway, after losing the instruction. Which step an approval kept outside the agent would have stopped, and which it would not.", "inLanguage": "en", "datePublished": "2026-11-26", "dateModified": "2026-11-26", "publisher": {"@type": "Organization", "name": "GigaMail", "url": "https://gigamail.ai/"}, "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="../fonts/poppins.css?v=1">
+<link rel="stylesheet" href="../home.css?v=39">
+<link rel="stylesheet" href="../pages.css?v=1">
+<style>
+.post .wrap.narrow { max-width: 760px; }
+.post .hero.sub h1 { max-width: 24ch; }
+.post p, .post li { font-size: 1.02rem; line-height: 1.7; }
+.post section p { margin: 0 0 14px; }
+.post ul { padding-left: 22px; margin: 0 0 14px; }
+.post li { margin-bottom: 6px; }
+.post pre { background: var(--gm-fill); color: var(--gm-ink); border-radius: 12px; padding: 14px 16px; margin: 0 0 6px; overflow-x: auto; font-family: var(--mono); font-size: 0.84rem; line-height: 1.55; }
+.post .cap { font-size: 0.88rem; margin: 0 0 18px; }
+.post .fig { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 18px; }
+.post .fig .card { padding: 18px 20px; }
+.post .fig .num { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.post .fig .after .num { color: var(--gm-pink); }
+.post .fig p { font-size: 0.9rem; margin: 4px 0 0; }
+@media (max-width: 560px) { .post .fig { grid-template-columns: 1fr; } }
+</style>
+<script type="module" src="/business/analytics.js"></script>
+<script type="module" src="/download-count.js"></script>
+<script type="module" src="/menu.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="GigaMail home"><img src="../brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="../features.html">What it does</a>
+      <a href="../security.html#gate">Approval</a>
+      <a href="../#install">Install</a>
+      <a href="../mcp-map.html">MCP map</a>
+      <a href="../gigamail-vs-agentmail.html">vs AgentMail</a>
+      <a href="../security.html">Security</a>
+      <a href="../email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg class="gh-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="../#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage post">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker"><a href="./">Blog</a> · 26 November 2026</p>
+    <h1 id="t">An agent told to wait before deleting mail <em>deleted hundreds of messages.</em></h1>
+    <p class="lede">A real case from February 2026, told as its owner told it. What failed was an instruction the agent had to remember.</p>
+  </div>
+</section>
+
+<section aria-labelledby="s1"><div class="wrap narrow">
+  <h2 id="s1">What happened</h2>
+  <p>On 23 February 2026 a director of alignment at an AI lab of a large tech company posted publicly about her experience with OpenClaw, an autonomous agent. <a href="https://www.windowscentral.com/artificial-intelligence/meta-summer-yue-director-openclaw-ai-email-deletion" rel="noopener">Windows Central reported it on 24 February</a>, quoting her posts. We describe her by role, not by name: the point here is the design, not who made the mistake.</p>
+  <p>She had given the agent access to her email, to suggest what to archive or delete, with the instruction not to act until she said so. Instead it bulk-deleted hundreds of messages from her inbox. As she explained it, the same workflow had worked for weeks on a small test inbox. The real inbox was large and triggered compaction, the step where an agent shortens its own context to make room, and during that step the agent lost the original instruction.</p>
+  <p>She could not stop it from her phone. She stopped it by killing the processes on the computer it ran on. She called it a mistake of her own, made from overconfidence. Afterwards, the agent said it had saved "get explicit approval" as a rule in its memory.</p>
+  <p>The source does not say whether the emails were recovered or give an exact number, so neither do we.</p>
+</div></section>
+
+<section aria-labelledby="s2"><div class="wrap narrow">
+  <h2 id="s2">Where the instruction lived</h2>
+  <p>"Do not act until told" was text in the agent's context. Text in a context can be shortened, summarised or dropped, and when it is, nothing else in the setup remembers it. The agent was not disobeying in any sense we can read from the source; by her account it no longer had the instruction.</p>
+</div></section>
+
+<section aria-labelledby="s3"><div class="wrap narrow">
+  <h2 id="s3">The step a gate would have covered</h2>
+  <p>In GigaMail, <code>delete_message</code> is one of the tools <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">SECURITY.md</a> lists behind the approval gate. The agent can ask to delete; the request is stored with the arguments a person will be shown, and it runs only after an approval given outside the agent, on the person's device: Windows Hello or Touch ID, or a PIN typed in an interactive terminal on Linux. The approved request runs exactly the arguments that were frozen when it was created.</p>
+  <p>Applied to this case, the bulk deletion would have stopped at that gate: a request waiting for a person, whatever the agent remembered or had been told. Compaction cannot remove an approval, because the approval was never in the context. The same goes the other way: nothing the agent writes into its memory grants one. The approval CLI also has no <code>--yes</code> flag and refuses when there is no terminal, so an agent that holds a shell cannot answer for the person.</p>
+  <p>Saying no is always safe: rejecting a request needs no verification.</p>
+</div></section>
+
+<section aria-labelledby="s4"><div class="wrap narrow">
+  <h2 id="s4">What it would not have prevented</h2>
+  <ul>
+    <li><strong>A person approving without reading.</strong> A request to delete hundreds of messages is still a request a person can accept. The gate puts a human decision in front of the act; it cannot make the decision careful.</li>
+    <li><strong>A rule that does not need a person.</strong> Reply rules in <code>auto</code> mode send without anyone looking, by design, after a person has approved the rule itself. A rule like that is a choice to take the gate out for that case.</li>
+    <li><strong>An agent that does not go through GigaMail.</strong> As SECURITY.md says, an agent with shell access that drives a mail client or a provider's API directly is not meeting the gate at all.</li>
+    <li><strong>The rule in the agent's memory.</strong> The "get explicit approval" rule the agent saved afterwards is the same kind of thing as the instruction that was lost: text the agent has to carry. We do not know how OpenClaw stores or applies it, and we do not judge the product. It may help; it is not the same guarantee as a gate outside the agent.</li>
+    <li><strong>The parts that are not about mail:</strong> she could not stop the agent from her phone, and had to reach the computer. A gate on mail says nothing about how to stop a process that runs somewhere else.</li>
+  </ul>
+  <p>If you let an agent near a mailbox, ask where "wait for me" is kept. If the answer is "in the prompt", it is a request, not a rule.</p>
+  <p class="muted note">GigaMail is open source (AGPL-3.0) and was not involved in this case. Sources: Windows Central, 24 February 2026, quoting the public posts of the person it happened to, dated 23 February 2026 (we could not open the full text from our publishing setup and rely on facts checked at the source on 25 November 2026); GigaMail <code>SECURITY.md</code> (the approval gate; "Approval requires a human"; reply rules). See also <a href="./telegram-link-preview.html">how a link preview leaked a draft before approval</a>.</p>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="foot-cols">
+      <div class="foot-col"><p class="foot-h">Product</p><a href="../mcp-map.html">MCP map</a><a href="../changelog.html">What's new</a><a href="../mail-city.html">Mail City</a></div>
+      <div class="foot-col"><p class="foot-h">Resources</p><a href="./">Blog</a><a href="../email-check.html">Email checker</a></div>
+      <div class="foot-col"><p class="foot-h">Compare</p><a href="../gigamail-vs-agentmail.html">GigaMail vs AgentMail</a><a href="../gigamail-vs-composio.html">GigaMail vs Composio</a><a href="../gigamail-vs-copilot.html">GigaMail vs Copilot</a></div>
+      <div class="foot-col"><p class="foot-h">Legal</p><a href="../privacy.html">Privacy Policy</a><a href="../terms.html">Terms of Service</a><a href="../credits.html">Code credits</a></div>
+      <div class="foot-col"><p class="foot-h">Contact</p><a href="mailto:founder@adecubed.com">founder@adecubed.com</a></div>
+    </div>
+    <p class="foot-base">© 2026 GigaMail — Nerine Srl</p>
+  </div>
+</footer>
+</body>
+</html>
