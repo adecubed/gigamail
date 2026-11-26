@@ -45,7 +45,18 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[all,dev]"
+      - name: GnuPG (backup interoperability tests)
+        # The key backup tests run the real gpg program, and a missing gpg
+        # is a failure on every runner: Ubuntu installs it if absent,
+        # Windows has the one that ships with Git. Both are needed: the
+        # Ubuntu 26.04 image has libgcrypt 1.12.0, on which gpg cannot
+        # decrypt with an imported Curve25519 key, so that step is measured
+        # on Windows only (see BROKEN_LIBGCRYPT in the tests).
+        if: matrix.os == 'ubuntu-latest'
+        run: gpg --version || sudo apt-get install -y gnupg
       - name: Test suite
+        env:
+          GIGAMAIL_REQUIRE_GNUPG: '1'
         run: pytest -q
         # I test DPAPI si auto-skippano su Linux; tutto il resto gira
         # su entrambi gli OS senza rete ne' credenziali.

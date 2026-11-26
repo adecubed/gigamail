@@ -98,7 +98,9 @@ sees it (see below).
   accounts, signed and encrypted, subject included. Keys travel by
   themselves (Autocrypt), so after one ordinary exchange the "Encrypt"
   button works with GigaMail, Thunderbird or Delta Chat. A mail asked to
-  be encrypted is never sent in clear
+  be encrypted is never sent in clear. The key can be backed up to a
+  passphrase-protected file and restored (`gigamail pgp backup`,
+  `gigamail pgp restore`)
 
 ## Quick start
 
@@ -460,7 +462,9 @@ da segnaposto prima che l'agente li veda (vedi sotto).
   IMAP/SMTP, firmata e cifrata, oggetto compreso. Le chiavi viaggiano da
   sole (Autocrypt): dopo un normale scambio di mail il pulsante «Cifra»
   funziona con GigaMail, Thunderbird o Delta Chat. Una mail che hai chiesto
-  di cifrare non parte mai in chiaro
+  di cifrare non parte mai in chiaro. La chiave si può salvare in un file
+  protetto da passphrase e ripristinare (`gigamail pgp backup`,
+  `gigamail pgp restore`)
 
 ## Setup rapido
 
@@ -785,7 +789,9 @@ titolare del copyright.
   发件人、收件人和附件名保持明文
 - **加密邮件（OpenPGP，测试版）**：IMAP/SMTP 账户之间端到端加密并签名，主题
   也在其中。密钥自动交换（Autocrypt）：正常往来一封邮件之后，"加密"按钮即可
-  用于 GigaMail、Thunderbird 或 Delta Chat。要求加密的邮件绝不会以明文发出
+  用于 GigaMail、Thunderbird 或 Delta Chat。要求加密的邮件绝不会以明文发出。
+  密钥可以备份到受口令保护的文件并恢复（`gigamail pgp backup`、
+  `gigamail pgp restore`）
 
 ## 快速开始
 

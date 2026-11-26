@@ -851,6 +851,22 @@ and attachments travel inside the encrypted part ("protected headers").
   the key. Correspondents' public
   keys come from the `Autocrypt:` header of their mail, only when its
   `addr` is the From address, and only the public half is kept.
+- **Key backup.** `gigamail pgp backup` writes the keys (the active one
+  and any retired ones) to a standard OpenPGP secret-key file protected
+  by a passphrase the user types at the PC (at least 12 characters;
+  AES-256, iterated and salted SHA-256). It asks for the operating
+  system's verification first, and no MCP tool or HTTP route exports or
+  imports a key, so the agent cannot reach it. The file is checked before
+  the command reports success; it is the standard OpenPGP format for a
+  passphrase-protected secret key. It was checked with GnuPG 2.4 (GnuPG
+  imports it; a key made and exported by GnuPG is restored by GigaMail)
+  and has not been tried with Thunderbird. `gigamail pgp restore` asks
+  for the same verification. A key it replaces is not deleted: it stays,
+  for opening old mail only, and never signs. The passphrase cannot be
+  recovered. The protection is as strong as the passphrase, because the
+  standard key derivation is not memory-hard; the file is as sensitive as
+  the key, so keep it where you would keep the key. The backup is a
+  command for now, not yet a button in the desktop app.
 - **Fail-closed.** Asked to encrypt and unable to (no key for a
   recipient, a Bcc recipient, a Microsoft or demo account, the library
   missing), the send stops with the reason. A mail the user asked to
@@ -884,8 +900,23 @@ What it does not protect:
   safe as the rest of the mail on this machine and no more: anyone with
   this Windows account reads it. Search finds it from then on.
 - **Losing the key.** Mail not opened yet when the key is lost cannot be
-  opened again, and neither can the copies left on the server. There is no
-  export or backup of the key yet.
+  opened again, and neither can the copies left on the server. A backup
+  made beforehand (see "Key backup") is the way out; without one, the mail
+  is gone.
+- **Reading it with other programs.** Mail between two GigaMail users is
+  written in the newest OpenPGP packet format. It opens in GigaMail, but
+  GnuPG 2.4 cannot read it, even holding the key (checked with GnuPG
+  2.4.8). In the other direction, mail that GnuPG 2.4 encrypts with its
+  newer AEAD mode (OCB) cannot be read by GigaMail; this can matter for a
+  key made with GnuPG and restored into GigaMail, when a correspondent
+  using GnuPG writes to it. GnuPG built on libgcrypt 1.12.0 (Ubuntu 26.04)
+  imports the backup and signs with it, but in our tests fails to decrypt
+  with it and answers "Bad passphrase" to the right one; the same GnuPG
+  on libgcrypt 1.11 decrypts. This matches a libgcrypt bug reported as
+  fixed in 1.12.1. Thunderbird has not been tried.
+- **Expired keys.** A restored key that has expired is kept, but GigaMail
+  cannot decrypt with it while it is expired. The keys GigaMail generates
+  do not expire.
 
 ## How we test this ourselves
 

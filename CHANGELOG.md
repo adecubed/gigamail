@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Back up and restore your encryption key.** `gigamail pgp backup`
+  writes your OpenPGP keys to a file protected by a passphrase you choose
+  (at least 12 characters), and `gigamail pgp restore` brings them back on
+  another installation, so encrypted mail stays readable when a computer
+  is lost. Both ask for the operating system's verification at the PC and
+  are out of the agent's reach; `gigamail pgp list` shows the keys. A key
+  replaced by a restore is kept for opening old mail and never signs. The
+  file is in the standard OpenPGP format for a passphrase-protected secret
+  key, checked with GnuPG 2.4 and not yet tried with Thunderbird. Limits:
+  the passphrase cannot be recovered and is the whole protection; GnuPG 2.4
+  cannot read mail exchanged between two GigaMail users; GigaMail cannot
+  read mail that GnuPG encrypts with its newer mode (OCB); a restored key
+  that has expired is kept but cannot decrypt; and it is a command for now,
+  not yet a button in the desktop app. See SECURITY.md.
+- **Encrypted mail written by GnuPG without a signature now opens.**
+  Before, such a mail failed to open.
+
 - **Site: What's new lists 0.6.8**, in English and Italian: encrypted mail
   (beta), Edit in place and Save in the approval window, saving drafts,
   printing, mail in columns reaching the agent, update notices for
