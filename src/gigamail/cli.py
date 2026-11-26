@@ -18,7 +18,10 @@ Comandi:
 """
 import argparse
 import getpass
+import os
 import sys
+import time
+from pathlib import Path
 
 from gigamail.core import accounts as _core_accounts  # noqa: F401
 
@@ -1523,6 +1526,137 @@ def cmd_extensions_disable(args) -> int:
     return 0
 
 
+def _pgp_audit(tool: str, path: str, fingerprints, outcome: str, detail: str = "") -> None:
+    """One audit line for a key backup or restore: the file name only, never
+    the folder, never the passphrase."""
+    from gigamail import policy
+    policy.audit(tool, {"file": os.path.basename(path),
+                        "fingerprints": list(fingerprints)}, outcome, detail=detail)
+
+
+def _pgp_verify(reason: str):
+    """None when the user is verified; otherwise the exit code to return."""
+    from gigamail import consent
+    try:
+        ok = consent.require_human(reason)
+    except consent.ConsentUnavailable as e:
+        print(_tr(f"Impossibile da CLI: {e}", f"Not possible from the CLI: {e}"))
+        return 2
+    if not ok:
+        print(_tr("Verifica non superata o annullata: nulla e' cambiato.",
+                  "Verification failed or cancelled: nothing has changed."))
+        return 1
+    return None
+
+
+def cmd_pgp_list(_args) -> int:
+    """One line per own key; needs no verification and prints no secret."""
+    from gigamail.core import pgp
+    keys = pgp.list_own_keys()
+    if not keys:
+        print(_tr("Nessuna chiave di cifratura.", "No encryption keys."))
+        return 0
+    for k in keys:
+        created = time.strftime("%Y-%m-%d", time.localtime(k["created_at"]))
+        state = _tr({"active": "attiva", "retired": "ritirata"}.get(k["state"], k["state"]),
+                    k["state"])
+        print(f"{k['address']}  {k['fingerprint']}  {created}  {state}")
+    return 0
+
+
+def cmd_pgp_backup(args) -> int:
+    """Write every own key (or those of one address) to a file protected by a
+    passphrase typed here. Only the verified user can do it, and nothing of it
+    is reachable by the agent."""
+    from gigamail.core import pgp, pgp_backup
+    wanted = pgp.normalize(args.address) if args.address else None
+    keys = [k for k in pgp.list_own_keys() if wanted is None or k["address"] == wanted]
+    if not keys:
+        print(_tr("Nessuna chiave da salvare.", "There is no key to back up."))
+        return 1
+    out = os.path.abspath(args.out or time.strftime("gigamail-key-backup-%Y-%m-%d.asc"))
+    if os.path.exists(out) and not args.force:
+        print(_tr("Il file esiste gia': usa --force per sovrascriverlo.",
+                  "The file already exists: use --force to overwrite it."))
+        return 1
+    rc = _pgp_verify(_tr("GigaMail: copia di sicurezza della chiave di cifratura",
+                         "GigaMail: back up the encryption key"))
+    if rc is not None:
+        return rc
+    try:
+        passphrase = getpass.getpass(_tr(
+            "Passphrase della copia (min. 12 caratteri, non viene mostrata): ",
+            "Backup passphrase (at least 12 characters, not shown): "))
+        if len(passphrase) < pgp_backup.MIN_PASSPHRASE:
+            print(_tr(f"La passphrase deve avere almeno {pgp_backup.MIN_PASSPHRASE} "
+                      "caratteri: nulla e' stato scritto.",
+                      f"The passphrase must have at least {pgp_backup.MIN_PASSPHRASE} "
+                      "characters: nothing was written."))
+            return 1
+        again = getpass.getpass(_tr("Ripetila: ", "Repeat it: "))
+    except (KeyboardInterrupt, EOFError):
+        print(_tr("Annullato: nulla e' stato scritto.", "Cancelled: nothing was written."))
+        return 1
+    if passphrase != again:
+        print(_tr("Le due passphrase sono diverse: nulla e' stato scritto.",
+                  "The two passphrases differ: nothing was written."))
+        return 1
+    try:
+        written = pgp_backup.export_backup(Path(out), passphrase, address=wanted,
+                                           force=args.force)
+    except pgp.PgpError as e:
+        print(e.text())
+        _pgp_audit("pgp_backup", out, [], "error", detail=str(e))
+        return 1
+    _pgp_audit("pgp_backup", out, [w["fingerprint"] for w in written], "ok")
+    print(_tr("Copia scritta in: ", "Backup written to: ") + out)
+    for w in written:
+        print(f"  {w['address']}  {w['fingerprint']}")
+    print(_tr("La passphrase non si puo' recuperare: senza, la copia e' inutilizzabile.",
+              "The passphrase cannot be recovered: without it the backup is unusable."))
+    return 0
+
+
+def cmd_pgp_restore(args) -> int:
+    """Install the keys of a backup file. Every key is checked first; a key
+    already held, or one that does not pass, is reported and left alone."""
+    from gigamail.core import pgp, pgp_backup
+    path = os.path.abspath(args.file)
+    rc = _pgp_verify(_tr("GigaMail: ripristino della chiave di cifratura da una copia",
+                         "GigaMail: restore the encryption key from a backup"))
+    if rc is not None:
+        return rc
+    try:
+        try:
+            results = pgp_backup.import_backup(Path(path))
+        except pgp_backup.PassphraseRequired:
+            passphrase = getpass.getpass(_tr(
+                "Passphrase della copia (non viene mostrata): ",
+                "Backup passphrase (not shown): "))
+            results = pgp_backup.import_backup(Path(path), passphrase)
+    except (KeyboardInterrupt, EOFError):
+        print(_tr("Annullato: nulla e' cambiato.", "Cancelled: nothing has changed."))
+        return 1
+    except pgp.PgpError as e:
+        print(e.text())
+        _pgp_audit("pgp_restore", path, [], "error", detail=str(e))
+        return 1
+    words = {"active": _tr("attiva", "active"), "retired": _tr("ritirata", "retired"),
+             "present": _tr("gia' presente", "already held"),
+             "refused": _tr("rifiutata", "refused")}
+    for r in results:
+        address = r["address"] or _tr("(senza indirizzo)", "(no address)")
+        line = f"{address}  {r['fingerprint']}  {words.get(r['outcome'], r['outcome'])}"
+        print(line + (f": {r['reason']}" if r["reason"] else ""))
+    kept = [r for r in results if r["outcome"] != "refused"]
+    fingerprints = sorted({r["fingerprint"] for r in kept})
+    if not kept:
+        _pgp_audit("pgp_restore", path, [], "error", detail="every key refused")
+        return 1
+    _pgp_audit("pgp_restore", path, fingerprints, "ok")
+    return 0
+
+
 def cmd_archive_sync(args) -> int:
     """Primo caricamento o riallineamento: gira finche' non ha finito."""
     from gigamail.core import accounts as core_accounts
@@ -1903,6 +2037,29 @@ def main(argv=None) -> int:
         fn=cmd_zoom_test)
     zoom_sub.add_parser("remove", help="toglie le credenziali").set_defaults(
         fn=cmd_zoom_remove)
+
+    p_pgp = sub.add_parser("pgp", help=_tr(
+        "chiavi di cifratura OpenPGP: elenco, copia di sicurezza, ripristino",
+        "OpenPGP encryption keys: list, backup, restore"))
+    pgp_sub = p_pgp.add_subparsers(dest="subcommand", required=True)
+    pgp_sub.add_parser("list", help=_tr(
+        "elenca le chiavi (nessuna verifica)",
+        "list the keys (no verification)")).set_defaults(fn=cmd_pgp_list)
+    p_pgb = pgp_sub.add_parser("backup", help=_tr(
+        "salva le chiavi in un file protetto da passphrase",
+        "save the keys to a passphrase-protected file"))
+    p_pgb.add_argument("--address", help=_tr("solo le chiavi di questo indirizzo",
+                                             "only the keys of this address"))
+    p_pgb.add_argument("--out", help=_tr(
+        "file di destinazione (default: gigamail-key-backup-AAAA-MM-GG.asc)",
+        "destination file (default: gigamail-key-backup-YYYY-MM-DD.asc)"))
+    p_pgb.add_argument("--force", action="store_true", help=_tr(
+        "sovrascrive il file se esiste", "overwrite the file if it exists"))
+    p_pgb.set_defaults(fn=cmd_pgp_backup)
+    p_pgr = pgp_sub.add_parser("restore", help=_tr(
+        "ripristina le chiavi da una copia", "restore the keys from a backup"))
+    p_pgr.add_argument("file")
+    p_pgr.set_defaults(fn=cmd_pgp_restore)
 
     p_ds = sub.add_parser(
         "desktop-setup",

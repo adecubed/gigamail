@@ -116,6 +116,12 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         address TEXT PRIMARY KEY, keydata BLOB NOT NULL,
         fingerprint TEXT NOT NULL, prefer_encrypt TEXT NOT NULL DEFAULT '',
         last_seen REAL NOT NULL)""")
+    # Keys that were active once: kept so mail written for them still opens.
+    # Never used to sign, to encrypt or in the Autocrypt header.
+    conn.execute("""CREATE TABLE IF NOT EXISTS retired_keys (
+        address TEXT NOT NULL, fingerprint TEXT NOT NULL,
+        secret_enc TEXT NOT NULL, created_at REAL NOT NULL,
+        retired_at REAL NOT NULL, PRIMARY KEY (address, fingerprint))""")
 
 
 def _protect(data: bytes) -> str:
@@ -155,15 +161,117 @@ def own_key(address: str, create: bool = True):
 
 
 def _own_keys() -> List[Tuple[str, object]]:
+    """Every secret key of ours, for opening mail: the active ones first,
+    then the retired ones. Signing and encrypting go through `own_key`."""
     p = _lib()
     with _db() as conn:
         rows = conn.execute("SELECT address, secret_enc FROM own_keys").fetchall()
+        rows += conn.execute("SELECT address, secret_enc FROM retired_keys"
+                             " ORDER BY address, created_at").fetchall()
     return [(a, p.Tsk.from_bytes(_unprotect(s))) for a, s in rows]
 
 
 def own_fingerprint(address: str) -> Optional[str]:
     tsk = own_key(address, create=False)
     return tsk.extract_certificate().fingerprint if tsk else None
+
+
+def _stored_keys(conn: sqlite3.Connection, address: Optional[str] = None):
+    """(address, state, fingerprint, created_at, secret_enc) of every own
+    key: by address, the active one first, then the retired by age."""
+    where, args = ("WHERE address=?", (normalize(address),)) if address else ("", ())
+    rows = [(a, "active", f, c, s) for a, s, f, c in conn.execute(
+        f"SELECT address, secret_enc, fingerprint, created_at FROM own_keys {where}",
+        args)]
+    rows += [(a, "retired", f, c, s) for a, s, f, c in conn.execute(
+        f"SELECT address, secret_enc, fingerprint, created_at FROM retired_keys {where}",
+        args)]
+    rank = {"active": 0, "retired": 1}
+    return sorted(rows, key=lambda r: (r[0], rank[r[1]], r[3]))
+
+
+def list_own_keys() -> List[Dict]:
+    """The keys we hold, active and retired, without generating any."""
+    with _db() as conn:
+        rows = _stored_keys(conn)
+    return [{"address": a, "fingerprint": f, "created_at": c, "state": st}
+            for a, st, f, c, _s in rows]
+
+
+def own_key_bytes(address: Optional[str] = None) -> List[Tuple[str, str, bytes]]:
+    """(address, state, unprotected key bytes) of every key we hold, or of
+    one address; for a backup. Never generates a key."""
+    with _db() as conn:
+        rows = _stored_keys(conn, address)
+    return [(a, st, _unprotect(s)) for a, st, _f, _c, s in rows]
+
+
+def _key_created_at(key: bytes) -> float:
+    """When the key was made, read from its first (primary) key packet;
+    now when that cannot be read."""
+    try:
+        from .pgp_backup import read_packets
+        for tag, body, _raw in read_packets(key):
+            if tag in (5, 6) and body[0] == 4:
+                return float(int.from_bytes(body[1:5], "big"))
+            break
+    except Exception:
+        pass
+    return time.time()
+
+
+def install_keys(entries: List[Dict]) -> List[Dict]:
+    """Put restored keys into the store, in one transaction.
+
+    entries: {"address", "key" (unprotected bytes), "may_be_active"}, in file
+    order. Per address, the first entry becomes the active key when it may,
+    and the key it displaces is retired, not deleted; every other new key is
+    kept retired, for decrypting only. A key already held, active or
+    retired, changes nothing. Returns {"address", "fingerprint", "outcome"}
+    per entry, outcome "active", "retired" or "present"."""
+    p = _lib()
+    out: List[Dict] = []
+    seen = set()
+    with _db() as conn:
+        for entry in entries:
+            addr = normalize(entry["address"])
+            raw = bytes(entry["key"])
+            fpr = p.Tsk.from_bytes(raw).extract_certificate().fingerprint
+            first = addr not in seen
+            seen.add(addr)
+            held = conn.execute(
+                "SELECT 1 FROM own_keys WHERE address=? AND fingerprint=?"
+                " UNION SELECT 1 FROM retired_keys WHERE address=? AND fingerprint=?",
+                (addr, fpr, addr, fpr)).fetchone()
+            if held:
+                outcome = "present"
+            else:
+                created = _key_created_at(raw)
+                if first and entry.get("may_be_active"):
+                    displaced = conn.execute(
+                        "SELECT secret_enc, fingerprint, created_at FROM own_keys"
+                        " WHERE address=?", (addr,)).fetchone()
+                    if displaced:
+                        conn.execute(
+                            "INSERT INTO retired_keys(address, fingerprint,"
+                            " secret_enc, created_at, retired_at)"
+                            " VALUES (?,?,?,?,?)",
+                            (addr, displaced[1], displaced[0], displaced[2],
+                             time.time()))
+                    conn.execute(
+                        "INSERT OR REPLACE INTO own_keys(address, secret_enc,"
+                        " fingerprint, created_at) VALUES (?,?,?,?)",
+                        (addr, _protect(raw), fpr, created))
+                    outcome = "active"
+                else:
+                    conn.execute(
+                        "INSERT INTO retired_keys(address, fingerprint,"
+                        " secret_enc, created_at, retired_at)"
+                        " VALUES (?,?,?,?,?)",
+                        (addr, fpr, _protect(raw), created, time.time()))
+                    outcome = "retired"
+            out.append({"address": addr, "fingerprint": fpr, "outcome": outcome})
+    return out
 
 
 def autocrypt_header(address: str) -> str:
@@ -425,8 +533,12 @@ def open_message(msg: Message, account_address: str = "") -> Tuple[Message, Opti
             # signature it cannot check: unsigned, or signed by a key we
             # have not met (a platform that sends no Autocrypt header). The
             # mail is ours to read; it opens without a verified signature,
-            # and the badge says so.
-            if "signature verification failed" not in str(e).lower():
+            # and the badge says so. A message with no signature at all
+            # (most mail from other OpenPGP programs) is refused with
+            # "Unexpected message structure" instead.
+            reason = str(e).lower()
+            if ("signature verification failed" not in reason
+                    and "unexpected message structure" not in reason):
                 continue
             try:
                 decrypted = p.decrypt(bytes=data, decryptor=tsk.decryptor())
