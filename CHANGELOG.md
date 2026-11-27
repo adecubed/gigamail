@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- **A correspondent's changed encryption key waits for your decision.**
+  When a correspondent who already has a key sends a different one, the
+  new key is held and the known key stays in use. Nothing is encrypted to
+  that address until you decide: a mail that was to be encrypted fails with
+  the reason and never leaves in clear, for you, the agent and rules alike
+  (a reply to a mail that arrived encrypted is always encrypted, so an
+  automatic reply stops too; a reply you write in the console to such a
+  mail is sent encrypted or not at all, unless you switch encryption off).
+  Reading is not affected: the badge says when a mail is signed with
+  a new key not accepted yet, a key you refused, or the previous key, and
+  a mail from a sender with a pending key shows "Review and decide"; the
+  main window shows "New keys to accept". The decision window shows both
+  fingerprints and offers Accept the new key, Keep the old one or Later.
+  Only a person decides: a click in the console, or at the terminal
+  `gigamail pgp accept <address>` or `gigamail pgp keep <address>` after
+  the operating system's verification; `gigamail pgp peers` lists the
+  correspondents' keys and what is waiting. No MCP tool can decide, and
+  every decision is in the audit trail. Fingerprints are also shown without
+  any change pending: the signer's under the badge, and yours and each
+  recipient's in the compose and reply windows. You are told once when a
+  new key arrives and once when a send stops because of it (desktop
+  notification, and Telegram when configured; Telegram only tells). Keys
+  already known are kept as accepted, so the upgrade asks nothing. Limits:
+  the first key of a correspondent is accepted on trust; a correspondent
+  with two installations and two keys is asked about at every switch;
+  there is no "verified" mark; two GigaMail installations on one mailbox
+  with different own keys are not handled; the console screens were tested
+  with unit tests, not yet by hand in the running app. See SECURITY.md.
 - **Back up and restore your encryption key.** `gigamail pgp backup`
   writes your OpenPGP keys to a file protected by a passphrase you choose
   (at least 12 characters), and `gigamail pgp restore` brings them back on

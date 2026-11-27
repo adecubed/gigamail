@@ -136,7 +136,10 @@ def test_a_date_in_the_future_does_not_pin_a_key(monkeypatch, peer):
     new = pysequoia.Tsk.generate(user_id=f"<{PEER}>")
     monkeypatch.setattr(pgp.time, "time", lambda: arrived + 2 * day)
     pgp.learn_autocrypt(_mail_from_peer(new, date="Fri, 13 Nov 2026 10:00:00 +0100"))
-    assert pgp.peer_cert(PEER).fingerprint == new.extract_certificate().fingerprint
+    # The real mail is not ignored as "older": its key is now waiting for the
+    # user's decision (a changed key no longer replaces the known one).
+    assert (pgp.peer_key_info(PEER)["held"]["fingerprint"]
+            == new.extract_certificate().fingerprint)
 
 
 def test_own_secret_key_is_not_stored_in_clear():

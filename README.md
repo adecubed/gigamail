@@ -100,7 +100,11 @@ sees it (see below).
   button works with GigaMail, Thunderbird or Delta Chat. A mail asked to
   be encrypted is never sent in clear. The key can be backed up to a
   passphrase-protected file and restored (`gigamail pgp backup`,
-  `gigamail pgp restore`)
+  `gigamail pgp restore`). If a correspondent's key changes, the new key
+  waits for your decision and nothing is encrypted to that address until
+  you accept it or keep the old one, at the PC (`gigamail pgp peers`,
+  `gigamail pgp accept <address>`, `gigamail pgp keep <address>`); the
+  agent cannot decide
 
 ## Quick start
 
@@ -464,7 +468,11 @@ da segnaposto prima che l'agente li veda (vedi sotto).
   funziona con GigaMail, Thunderbird o Delta Chat. Una mail che hai chiesto
   di cifrare non parte mai in chiaro. La chiave si può salvare in un file
   protetto da passphrase e ripristinare (`gigamail pgp backup`,
-  `gigamail pgp restore`)
+  `gigamail pgp restore`). Se la chiave di un corrispondente cambia, la
+  nuova chiave aspetta la tua decisione e a quell'indirizzo non si cifra
+  nulla finché non la accetti o tieni la vecchia, dal PC (`gigamail pgp
+  peers`, `gigamail pgp accept <indirizzo>`, `gigamail pgp keep
+  <indirizzo>`); l'agente non può decidere
 
 ## Setup rapido
 
@@ -791,7 +799,10 @@ titolare del copyright.
   也在其中。密钥自动交换（Autocrypt）：正常往来一封邮件之后，"加密"按钮即可
   用于 GigaMail、Thunderbird 或 Delta Chat。要求加密的邮件绝不会以明文发出。
   密钥可以备份到受口令保护的文件并恢复（`gigamail pgp backup`、
-  `gigamail pgp restore`）
+  `gigamail pgp restore`）。如果联系人的密钥发生变化，新密钥会等待你的决定，
+  在你接受新密钥或保留旧密钥之前，发往该地址的邮件都不会加密，决定须在电脑上
+  作出（`gigamail pgp peers`、`gigamail pgp accept <地址>`、
+  `gigamail pgp keep <地址>`）；代理无法代你决定
 
 ## 快速开始
 

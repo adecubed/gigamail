@@ -267,8 +267,26 @@
     if (!enc.decrypted) {
       return { tone: 'bad', text: T('enc_cannot_open', 'Mail cifrata: nessuna tua chiave può aprirla') };
     }
+    // A key that is not the accepted one never reads as "signed by":
+    // pending and refused keys offer the decision, a replaced one says so.
+    if (enc.signature_valid && enc.signer_key === 'pending') {
+      return { tone: 'warn', decide: enc.signer,
+        text: T('enc_signed_pending', 'Cifrata · firmata con una chiave nuova, non ancora accettata') };
+    }
+    if (enc.signature_valid && enc.signer_key === 'refused') {
+      return { tone: 'warn', decide: enc.signer,
+        text: T('enc_signed_refused', 'Cifrata · firmata con una chiave che hai rifiutato') };
+    }
+    if (enc.signature_valid && enc.signer_key === 'replaced') {
+      return { tone: 'warn', text: fillText(T('enc_signed_replaced',
+        'Cifrata · firmata con la chiave precedente di {address}'), { address: enc.signer || '' }) };
+    }
     if (enc.signature_valid && enc.signer_matches_from) {
-      return { tone: 'ok', text: `${T('enc_opened_signed', 'Cifrata · firmata da')} ${enc.signer}` };
+      const label = { tone: 'ok', text: `${T('enc_opened_signed', 'Cifrata · firmata da')} ${enc.signer}` };
+      if (enc.signer_key === 'accepted' && enc.signer_fingerprint) {
+        label.fingerprint = formatFingerprint(enc.signer_fingerprint);
+      }
+      return label;
     }
     if (enc.signature_valid && enc.signer) {
       return { tone: 'warn', text: `${T('enc_signed_other', 'Cifrata · firmata da un altro indirizzo:')} ${enc.signer}` };
@@ -276,16 +294,59 @@
     return { tone: 'warn', text: T('enc_opened_unsigned', 'Cifrata · mittente non verificato') };
   }
 
+  /** An OpenPGP fingerprint as people compare it: upper case, groups of
+   * four separated by a space. '' for an empty one. */
+  function formatFingerprint(fpr) {
+    const s = String(fpr || '').replace(/\s+/g, '').toUpperCase();
+    return s ? s.match(/.{1,4}/g).join(' ') : '';
+  }
+
+  // {name} placeholders filled with a function, so a '$' in an address is
+  // not read as a replacement pattern.
+  function fillText(s, vars) {
+    return String(s).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+  }
+
+  // For attribute values: escapes quotes too, whatever the page's esc does.
+  function attr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  const LINK_STYLE = 'font:inherit;font-weight:600;background:none;border:none;padding:0;margin-left:6px;'
+    + 'color:inherit;text-decoration:underline;cursor:pointer';
+
+  // The "Review and decide" link; the page listens for clicks on [data-key-change].
+  function decideLinkHtml(address, T, esc) {
+    return `<button type="button" class="mail-key-change-link" data-key-change="${attr(address)}" style="${LINK_STYLE}">${esc(T('kc_review', 'Vedi e decidi'))}</button>`;
+  }
+
   /** The same line as HTML; esc escapes text. Empty for a clear mail. */
   function encryptionBadgeHtml(enc, T, esc) {
+    T = T || ((k, it) => it);
     const label = encryptionLabel(enc, T);
     if (!label) return '';
     const colors = { ok: '#1f7a3a', warn: '#9a6400', bad: '#b3261e' };
-    return `<div class="mail-encryption mail-encryption-${label.tone}" style="font-size:11.5px;margin-top:3px;color:${colors[label.tone]}">🔒 ${esc(label.text)}</div>`;
+    const link = label.decide ? decideLinkHtml(label.decide, T, esc) : '';
+    const fpr = label.fingerprint
+      ? `<div class="mail-encryption-fpr" style="font-size:10.5px;margin-top:1px;opacity:0.75;font-family:monospace">${esc(label.fingerprint)}</div>`
+      : '';
+    return `<div class="mail-encryption mail-encryption-${label.tone}" style="font-size:11.5px;margin-top:3px;color:${colors[label.tone]}">🔒 ${esc(label.text)}${link}${fpr}</div>`;
+  }
+
+  /** The line under the sender of a mail whose sender has a new key that
+   * waits for the user (msg.key_change, clear mail included). '' otherwise. */
+  function keyChangeHtml(keyChange, T, esc) {
+    T = T || ((k, it) => it);
+    if (!keyChange || !keyChange.address) return '';
+    const text = fillText(T('kc_sender_line', '{address} ha una chiave di cifratura nuova, non ancora accettata'),
+      { address: keyChange.address });
+    return `<div class="mail-key-change" style="font-size:11.5px;margin-top:3px;color:#9a6400">⚠ ${esc(text)}${decideLinkHtml(keyChange.address, T, esc)}</div>`;
   }
 
   const MailRender = { sanitizeHtml, renderMailHtml, matchAttachment, htmlToText, BLANK_GIF, IFRAME_CSP,
-    shouldMarkRead, markReadTarget, markReadUrl, printableHtml, encryptionLabel, encryptionBadgeHtml };
+    shouldMarkRead, markReadTarget, markReadUrl, printableHtml, encryptionLabel, encryptionBadgeHtml,
+    formatFingerprint, keyChangeHtml };
   if (typeof window !== 'undefined') window.MailRender = MailRender;
   if (typeof module !== 'undefined' && module.exports) module.exports = MailRender;
 })();

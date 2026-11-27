@@ -1191,6 +1191,63 @@ def _notify_now(request_id: str, tool: str, preview: Dict[str, Any],
     return fired
 
 
+def notify_plain(text: str) -> bool:
+    """Tell the user something on the channels approvals use (desktop
+    notification, Telegram when configured, the generic notify command),
+    with no approval id, no buttons and no actions: a notice, not a request.
+    True when at least one channel went out. Never raises, never blocks."""
+    text = str(text or "")
+    fired = False
+    try:
+        from gigamail.core import desktop_notify
+        if desktop_notify.notify("GigaMail", text):
+            fired = True
+    except Exception:
+        pass
+
+    try:
+        from gigamail.core import telegram_channel
+        tg = telegram_channel.channel()
+        if tg:
+            import threading
+            body = telegram_channel.Telegram.safe_html(text)
+
+            def _send_tg():
+                try:
+                    tg.send(body, html=True)
+                except Exception:
+                    pass  # best-effort, as the other channels
+
+            threading.Thread(target=_send_tg, daemon=False).start()
+            fired = True
+    except Exception:
+        pass
+
+    try:
+        cmd = _notify_command()
+        if cmd:
+            import subprocess
+            import threading
+            argv = [c.replace("{request_id}", "").replace("{tool}", "notice")
+                     .replace("{summary}", text).replace("{message}", text)
+                    for c in cmd]
+
+            def _run():
+                try:
+                    subprocess.run(argv, timeout=30, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+
+            # Not a daemon, for the same reason as in _notify_now: a short
+            # process must not kill the command halfway.
+            threading.Thread(target=_run, daemon=False).start()
+            fired = True
+    except Exception:
+        pass
+    return fired
+
+
 # Diniego ESPLICITO quando lo store delle approvazioni non e' raggiungibile.
 #
 # Perche' non basta lasciar propagare l'eccezione (r/mcp, ranbuman, 2026-08-21):

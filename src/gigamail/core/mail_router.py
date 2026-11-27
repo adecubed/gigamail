@@ -100,6 +100,11 @@ def _normalize_send_result(result) -> Dict:
         # id/errore) — finisce nell'audit accanto al payload approvato
         if result.get('provider_result') is not None:
             out['provider_result'] = result['provider_result']
+        # Why a send was stopped before anything left, for callers that
+        # tell it apart from a failure (a new key waiting for the user).
+        if result.get('blocked'):
+            out['blocked'] = result['blocked']
+            out['blocked_addresses'] = list(result.get('blocked_addresses') or [])
         return out
     ok = bool(result)
     return {
@@ -162,7 +167,31 @@ def get_messages(
         top=top,
         skip=skip,
     )
+def _sender_address(msg: Dict) -> str:
+    from_field = msg.get('from', {})
+    if isinstance(from_field, dict):
+        addr = from_field.get('emailAddress', {}).get('address', '')
+        return addr or from_field.get('address', '')
+    return str(from_field)
+
+
 def get_message(account_id=None, message_id: str = '', folder: str = '') -> Dict:
+    """The message, with `key_change` ({address, fingerprint}) when its
+    sender has a key waiting for the user's decision (see _read_message)."""
+    m = _read_message(account_id, message_id, folder)
+    try:
+        if m:
+            from . import pgp
+            change = pgp.key_change_for(_sender_address(m))
+            if change:
+                m['key_change'] = change
+    except Exception as e:
+        logging.getLogger("gigamail.mail_router").info(
+            "key change not looked up: %s", e)
+    return m
+
+
+def _read_message(account_id=None, message_id: str = '', folder: str = '') -> Dict:
     """Dal server; e se il server non ce l'ha piu', dall'archivio.
 
     Un id "arch-..." viene dalla ricerca nell'archivio e si legge solo li'.
@@ -361,7 +390,7 @@ def _send_backend(
     # (mail_guard) non dipende da questo.
     extra = {"Auto-Submitted": "auto-replied",
              "X-Auto-Response-Suppress": "All"} if auto_submitted else None
-    return _normalize_send_result(imap.send_message(
+    result = _normalize_send_result(imap.send_message(
         smtp_host,
         smtp_port,
         email_addr,
@@ -379,6 +408,15 @@ def _send_backend(
         extra_headers=extra,
         encrypt=encrypt,
     ))
+    if result.get('blocked') == 'key_changed':
+        # Tell the user once; whatever happens to the notice, the result is
+        # the one the provider gave.
+        try:
+            from . import pgp
+            pgp.note_blocked_send(result.get('blocked_addresses') or [])
+        except Exception:
+            pass
+    return result
 def encryption_status(account_id=None, recipients: list = None) -> Dict:
     """Can a mail from this account be encrypted for these recipients?
     {available, can_encrypt, missing, own_fingerprint, reason}. Only
@@ -395,7 +433,8 @@ def encryption_status(account_id=None, recipients: list = None) -> Dict:
                 'reason': 'account'}
     out = pgp.status(a.get('email', ''), recips)
     out['reason'] = None if out['can_encrypt'] else (
-        'library' if not out['available'] else 'keys')
+        'library' if not out['available'] else
+        'key_changed' if out['pending'] else 'keys')
     return out
 
 

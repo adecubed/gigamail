@@ -89,6 +89,8 @@
   const GMDialog = {
     confirm: (text, opts) => show(text, opts),
     alert: (text, opts) => show(text, { ...(opts || {}), alertOnly: true }),
+    // for a box built elsewhere with the same classes (key_change_dialog.js)
+    ensureStyle,
   };
   if (typeof window !== 'undefined') {
     window.GMDialog = GMDialog;

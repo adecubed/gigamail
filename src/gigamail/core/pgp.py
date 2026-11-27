@@ -63,6 +63,17 @@ class PgpError(Exception):
         return say(self.it, self.en)
 
 
+class KeyChangePending(PgpError):
+    """A recipient's key changed and the user has not decided yet: nothing
+    must be encrypted for them, so nothing is sent."""
+
+    def __init__(self, addresses: List[str]):
+        self.addresses = list(addresses)
+        who = ", ".join(self.addresses)
+        super().__init__(f"{who} ha una chiave nuova da accettare",
+                         f"{who} has a new key waiting to be accepted")
+
+
 def say(it: str, en: str) -> str:
     """User-facing text in the user's language."""
     from gigamail import policy
@@ -93,16 +104,22 @@ def normalize(address: str) -> str:
 # ── store ───────────────────────────────────────────────────────────
 
 @contextmanager
-def _db() -> Iterator[sqlite3.Connection]:
+def _db(write: bool = False) -> Iterator[sqlite3.Connection]:
     """One transaction on the key store, and the file closed afterwards.
 
     `with sqlite3.connect(...)` only commits: the connection stays open
     until it is garbage collected, and on Windows an open file cannot be
-    deleted or replaced."""
+    deleted or replaced.
+
+    With `write`, the transaction starts before the first read (BEGIN
+    IMMEDIATE), so a read-then-write sequence cannot interleave with another
+    process doing the same: the busy timeout makes them take turns."""
     conn = sqlite3.connect(str(db_path(DB_NAME)), timeout=10)
     try:
         with conn:
             _create_tables(conn)
+            if write:
+                conn.execute("BEGIN IMMEDIATE")
             yield conn
     finally:
         conn.close()
@@ -116,6 +133,27 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         address TEXT PRIMARY KEY, keydata BLOB NOT NULL,
         fingerprint TEXT NOT NULL, prefer_encrypt TEXT NOT NULL DEFAULT '',
         last_seen REAL NOT NULL)""")
+    if "first_seen" not in {r[1] for r in conn.execute("PRAGMA table_info(peer_keys)")}:
+        try:
+            conn.execute("ALTER TABLE peer_keys ADD COLUMN"
+                         " first_seen REAL NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            # Fine when another process added the column first; any other
+            # failure leaves it missing, and must not be hidden.
+            if "first_seen" not in {
+                    r[1] for r in conn.execute("PRAGMA table_info(peer_keys)")}:
+                raise
+    # A key a correspondent started to use that the user has not accepted
+    # ('pending'), refused ('refused'), or that used to be the accepted one
+    # ('replaced': kept only to check signatures, never to encrypt).
+    conn.execute("""CREATE TABLE IF NOT EXISTS held_peer_keys (
+        address TEXT NOT NULL, fingerprint TEXT NOT NULL,
+        keydata BLOB NOT NULL, prefer_encrypt TEXT NOT NULL DEFAULT '',
+        state TEXT NOT NULL,
+        first_seen REAL NOT NULL, last_seen REAL NOT NULL,
+        decided_at REAL,
+        told INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (address, fingerprint))""")
     # Keys that were active once: kept so mail written for them still opens.
     # Never used to sign, to encrypt or in the Autocrypt header.
     conn.execute("""CREATE TABLE IF NOT EXISTS retired_keys (
@@ -325,20 +363,208 @@ def learn_autocrypt(msg: Message) -> Optional[str]:
         # bytes(cert) is the public half only, whatever the header carried.
         keydata = bytes(cert)
         seen = _mail_time(msg)
-        with _db() as conn:
-            row = conn.execute("SELECT fingerprint, last_seen FROM peer_keys"
-                               " WHERE address=?", (sender,)).fetchone()
-            if row and row[1] > seen:
-                return None
-            if row and row[0] != cert.fingerprint:
-                logger.warning("OpenPGP key of a correspondent changed")
-            conn.execute(
-                "INSERT OR REPLACE INTO peer_keys(address, keydata, fingerprint,"
-                " prefer_encrypt, last_seen) VALUES (?,?,?,?,?)",
-                (sender, keydata, cert.fingerprint,
-                 attrs.get("prefer-encrypt", ""), seen))
-        return sender
+        prefer = attrs.get("prefer-encrypt", "")
+        fpr = cert.fingerprint
+        stored, tell = _store_peer_key(sender, keydata, fpr, seen, prefer)
+        if tell:
+            _tell_arrival(sender, fpr)
+        return stored
     return None
+
+
+def _store_peer_key(sender: str, keydata: bytes, fpr: str, seen: float,
+                    prefer: str) -> Tuple[Optional[str], bool]:
+    """One Autocrypt key against the store, in one write transaction.
+    Returns (what learn_autocrypt returns, whether the key is a pending one
+    the user may have to be told about)."""
+    with _db(write=True) as conn:
+        # One of our own addresses is not a correspondent.
+        if conn.execute("SELECT 1 FROM own_keys WHERE address=?",
+                        (sender,)).fetchone():
+            return None, False
+        row = conn.execute(
+            "SELECT fingerprint, last_seen FROM peer_keys WHERE address=?",
+            (sender,)).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO peer_keys(address, keydata, fingerprint,"
+                " prefer_encrypt, last_seen, first_seen) VALUES (?,?,?,?,?,?)",
+                (sender, keydata, fpr, prefer, seen, seen))
+            return sender, False
+        if row[1] > seen:
+            return None, False
+        if row[0].lower() == fpr.lower():
+            conn.execute(
+                "UPDATE peer_keys SET keydata=?, prefer_encrypt=?,"
+                " last_seen=? WHERE address=?",
+                (keydata, prefer, seen, sender))
+            return sender, False
+        # Another key than the accepted one: it waits for the user.
+        held = conn.execute(
+            "SELECT state, decided_at FROM held_peer_keys"
+            " WHERE address=? AND lower(fingerprint)=?",
+            (sender, fpr.lower())).fetchone()
+        if held and held[0] == "replaced" and held[1] is not None and seen <= held[1]:
+            # A mail written before the user accepted the other key: reading it
+            # again must not undo that decision.
+            return None, False
+        if held and held[0] in ("pending", "refused"):
+            conn.execute(
+                "UPDATE held_peer_keys SET last_seen=max(last_seen, ?)"
+                " WHERE address=? AND lower(fingerprint)=?",
+                (seen, sender, fpr.lower()))
+            # A pending row never told (an older version stored it) is told now.
+            return None, held[0] == "pending"
+        other = conn.execute(
+            "SELECT last_seen FROM held_peer_keys"
+            " WHERE address=? AND state='pending'", (sender,)).fetchone()
+        if other and other[0] >= seen:
+            return None, False  # a newer (or as new) pending key is already waiting
+        conn.execute("DELETE FROM held_peer_keys"
+                     " WHERE address=? AND state='pending'", (sender,))
+        if held:  # a 'replaced' key coming back
+            conn.execute(
+                "UPDATE held_peer_keys SET keydata=?, prefer_encrypt=?,"
+                " state='pending', first_seen=?, last_seen=max(last_seen, ?),"
+                " decided_at=NULL, told=0"
+                " WHERE address=? AND lower(fingerprint)=?",
+                (keydata, prefer, seen, seen, sender, fpr.lower()))
+        else:
+            conn.execute(
+                "INSERT INTO held_peer_keys(address, fingerprint, keydata,"
+                " prefer_encrypt, state, first_seen, last_seen)"
+                " VALUES (?,?,?,?,'pending',?,?)",
+                (sender, fpr, keydata, prefer, seen, seen))
+        logger.warning("OpenPGP key of a correspondent changed: waiting")
+        return None, True
+
+
+# Bits of held_peer_keys.told: which notices were sent for that key.
+TOLD_ARRIVAL = 1
+TOLD_STOPPED_SEND = 2
+
+
+def _claim_notice(address: str, fingerprint: Optional[str], bit: int) -> bool:
+    """Set `bit` of `told` on a pending row, in a write transaction of its own
+    that is committed when this returns. True for the one caller whose
+    UPDATE changed the row: only that caller sends the notice, which makes it
+    once per key across processes. `fingerprint` None means the pending row of
+    the address, whichever key it is."""
+    sql = ("UPDATE held_peer_keys SET told = told | ?"
+           " WHERE address=? AND state='pending' AND told & ? = 0")
+    args: list = [bit, address, bit]
+    if fingerprint is not None:
+        sql += " AND lower(fingerprint)=?"
+        args.append(fingerprint.lower())
+    with _db(write=True) as conn:
+        return conn.execute(sql, args).rowcount == 1
+
+
+def _send_notice(it: str, en: str) -> None:
+    try:
+        from gigamail import policy
+        policy.notify_plain(say(it, en))
+    except Exception as e:
+        logger.info("could not tell the user about a key change: %s", e)
+
+
+def _tell_arrival(address: str, fingerprint: str) -> None:
+    """The first notice: a correspondent has a new key waiting. Never raises:
+    reading mail goes on whatever happens to the notice. The bit is set first,
+    so a notice that fails is not retried."""
+    try:
+        if not _claim_notice(address, fingerprint, TOLD_ARRIVAL):
+            return
+    except Exception as e:
+        logger.info("could not record a key change notice: %s", e)
+        return
+    _send_notice(
+        f"GigaMail: {address} ha una chiave di cifratura nuova. Finché non decidi, "
+        "le mail cifrate per questo indirizzo non partono. "
+        "Apri GigaMail sul PC per vederla.",
+        f"GigaMail: {address} has a new encryption key. Until you decide, "
+        "encrypted mail to this address is not sent. "
+        "Open GigaMail on the PC to see it.")
+
+
+def note_blocked_send(addresses: Iterable[str]) -> None:
+    """A send stopped because of a pending key: tell the user, once per key,
+    for each address that has one. Never raises."""
+    seen = set()
+    for raw in addresses or []:
+        try:
+            addr = normalize(raw)
+            if not addr or addr in seen:
+                continue
+            seen.add(addr)
+            if not _claim_notice(addr, None, TOLD_STOPPED_SEND):
+                continue
+        except Exception as e:
+            logger.info("could not record a stopped send notice: %s", e)
+            continue
+        _send_notice(
+            f"GigaMail: una mail cifrata per {addr} non è partita: ha una chiave "
+            "nuova da accettare. Apri GigaMail sul PC.",
+            f"GigaMail: an encrypted mail to {addr} was not sent: there is a new "
+            "key to accept. Open GigaMail on the PC.")
+
+
+def _key_dict(fingerprint: str, first_seen: float, last_seen: float) -> Dict:
+    return {"fingerprint": fingerprint,
+            "first_seen": first_seen or last_seen, "last_seen": last_seen}
+
+
+def _info(conn: sqlite3.Connection, address: str) -> Dict:
+    if conn.execute("SELECT 1 FROM own_keys WHERE address=?",
+                    (address,)).fetchone():
+        return {"address": address, "known": None, "held": None}
+    row = conn.execute(
+        "SELECT fingerprint, first_seen, last_seen FROM peer_keys"
+        " WHERE address=?", (address,)).fetchone()
+    held = conn.execute(
+        "SELECT fingerprint, first_seen, last_seen, state FROM held_peer_keys"
+        " WHERE address=? AND state='pending'", (address,)).fetchone()
+    if held is None:
+        held = conn.execute(
+            "SELECT fingerprint, first_seen, last_seen, state FROM held_peer_keys"
+            " WHERE address=? AND state='refused'"
+            " ORDER BY decided_at DESC, last_seen DESC LIMIT 1",
+            (address,)).fetchone()
+    return {"address": address,
+            "known": _key_dict(*row) if row else None,
+            "held": ({**_key_dict(*held[:3]), "state": held[3]}
+                     if held else None)}
+
+
+def peer_key_info(address: str) -> Dict:
+    """What is known about a correspondent's key: the accepted one, and the
+    pending one (or else the most recently refused one)."""
+    addr = normalize(address)
+    with _db() as conn:
+        return _info(conn, addr)
+
+
+def _reported(infos: List[Dict]) -> List[Dict]:
+    """Without the entries that have nothing to show: an own address, whose
+    rows an older version may have left in the store."""
+    return [i for i in infos if i["known"] is not None or i["held"] is not None]
+
+
+def pending_changes() -> List[Dict]:
+    """`peer_key_info` of every address with a key waiting for a decision."""
+    with _db() as conn:
+        addrs = [r[0] for r in conn.execute(
+            "SELECT address FROM held_peer_keys WHERE state='pending'"
+            " ORDER BY address")]
+        return _reported([_info(conn, a) for a in addrs])
+
+
+def list_peer_keys() -> List[Dict]:
+    """`peer_key_info` of every address that has an accepted key."""
+    with _db() as conn:
+        addrs = [r[0] for r in conn.execute(
+            "SELECT address FROM peer_keys ORDER BY address")]
+        return _reported([_info(conn, a) for a in addrs])
 
 
 def _mail_time(msg: Message) -> float:
@@ -363,16 +589,27 @@ def peer_cert(address: str):
 
 
 def import_peer_key(address: str, keydata: bytes) -> str:
-    """Store a correspondent's public key by hand (armored or binary).
-    Only the public half is kept. Returns its fingerprint."""
+    """Store a correspondent's public key by hand (armored or binary), as the
+    accepted one. Only the public half is kept. Returns its fingerprint."""
     addr = normalize(address)
     cert = _lib().Cert.from_bytes(keydata)
-    with _db() as conn:
+    fpr = cert.fingerprint
+    now = time.time()
+    with _db(write=True) as conn:
+        row = conn.execute(
+            "SELECT fingerprint, first_seen, last_seen FROM peer_keys"
+            " WHERE address=?", (addr,)).fetchone()
+        first = now
+        if row and row[0].lower() == fpr.lower():
+            first = row[1] or row[2]  # the same key: known since then
         conn.execute(
             "INSERT OR REPLACE INTO peer_keys(address, keydata, fingerprint,"
-            " prefer_encrypt, last_seen) VALUES (?,?,?,?,?)",
-            (addr, bytes(cert), cert.fingerprint, "", time.time()))
-    return cert.fingerprint
+            " prefer_encrypt, last_seen, first_seen) VALUES (?,?,?,?,?,?)",
+            (addr, bytes(cert), fpr, "", now, first))
+        conn.execute("DELETE FROM held_peer_keys"
+                     " WHERE address=? AND lower(fingerprint)=?",
+                     (addr, fpr.lower()))
+    return fpr
 
 
 def missing_keys(recipients: Iterable[str]) -> List[str]:
@@ -380,27 +617,103 @@ def missing_keys(recipients: Iterable[str]) -> List[str]:
     out = []
     for r in recipients:
         addr = normalize(r)
-        if addr and peer_cert(addr) is None and own_key(addr, create=False) is None:
+        if addr and own_key(addr, create=False) is None and peer_cert(addr) is None:
             out.append(addr)
     return out
+
+
+def held_changes(recipients: Iterable[str]) -> List[str]:
+    """The recipients whose key has a change waiting for the user's decision:
+    normalized, each once, in the order given. An address of ours never has
+    one."""
+    addrs = list(dict.fromkeys(a for a in map(normalize, recipients) if a))
+    if not addrs:
+        return []
+    with _db() as conn:
+        return [a for a in addrs
+                if (_info(conn, a)["held"] or {}).get("state") == "pending"]
 
 
 def status(sender: str, recipients: Iterable[str]) -> Dict:
     """What the compose window needs before offering "Encrypt"."""
     recips = [normalize(r) for r in recipients if normalize(r)]
     if not available():
-        return {"available": False, "can_encrypt": False, "missing": recips}
+        return {"available": False, "can_encrypt": False, "missing": recips,
+                "pending": [], "peers": []}
     missing = missing_keys(recips)
-    return {"available": True, "can_encrypt": bool(recips) and not missing,
-            "missing": missing, "own_fingerprint": own_fingerprint(sender)}
+    pending, peers = [], []
+    with _db() as conn:
+        for a in dict.fromkeys(recips):
+            info = _info(conn, a)
+            known, held = info["known"], info["held"]
+            if held and held["state"] == "pending":
+                pending.append({
+                    "address": a, "known": known,
+                    "held": {"fingerprint": held["fingerprint"],
+                             "first_seen": held["first_seen"]}})
+            if known:
+                peers.append({"address": a, "fingerprint": known["fingerprint"]})
+    return {"available": True,
+            "can_encrypt": bool(recips) and not missing and not pending,
+            "missing": missing, "pending": pending, "peers": peers,
+            "own_fingerprint": own_fingerprint(sender)}
+
+
+def decide_change(address: str, fingerprint: str, accept: bool) -> Dict:
+    """The user's decision about a key held for `address`: accept it (it
+    becomes the key in use; the one it replaces is kept to check signatures
+    only) or keep the old one (the held key is marked refused). One
+    transaction. `fingerprint` must be the held key the person was shown,
+    pending or refused: another one is an error, so a key that arrived in
+    between is never accepted unseen. Returns {address, outcome, accepted,
+    other}: `accepted` is the key now in use, `other` the one that lost."""
+    addr = normalize(address)
+    want = "".join(str(fingerprint or "").split()).lower()
+    now = time.time()
+    with _db(write=True) as conn:
+        held = conn.execute(
+            "SELECT fingerprint, keydata, prefer_encrypt, first_seen, last_seen"
+            " FROM held_peer_keys WHERE address=? AND lower(fingerprint)=?"
+            " AND state IN ('pending', 'refused')", (addr, want)).fetchone()
+        if held is None or not want:
+            raise PgpError(
+                "Questa non è più la chiave in attesa: riapri e ricontrolla.",
+                "This is no longer the key that is waiting: open it again"
+                " and check.")
+        known = conn.execute(
+            "SELECT fingerprint, keydata, prefer_encrypt, first_seen, last_seen"
+            " FROM peer_keys WHERE address=?", (addr,)).fetchone()
+        if not accept:
+            conn.execute(
+                "UPDATE held_peer_keys SET state='refused', decided_at=?"
+                " WHERE address=? AND fingerprint=?", (now, addr, held[0]))
+            return {"address": addr, "outcome": "kept",
+                    "accepted": known[0] if known else "", "other": held[0]}
+        if known:
+            conn.execute(
+                "INSERT OR REPLACE INTO held_peer_keys(address, fingerprint,"
+                " keydata, prefer_encrypt, state, first_seen, last_seen,"
+                " decided_at) VALUES (?,?,?,?,'replaced',?,?,?)",
+                (addr, known[0], known[1], known[2],
+                 known[3] or known[4], known[4], now))
+        conn.execute(
+            "INSERT OR REPLACE INTO peer_keys(address, keydata, fingerprint,"
+            " prefer_encrypt, last_seen, first_seen) VALUES (?,?,?,?,?,?)",
+            (addr, held[1], held[0], held[2], held[4], held[3]))
+        conn.execute("DELETE FROM held_peer_keys WHERE address=?"
+                     " AND fingerprint=? AND state IN ('pending', 'refused')",
+                     (addr, held[0]))
+        return {"address": addr, "outcome": "accepted", "accepted": held[0],
+                "other": known[0] if known else ""}
 
 
 def _cert_for(address: str):
-    cert = peer_cert(address)
-    if cert is not None:
-        return cert
+    # An address of ours is encrypted for with our own key, whatever a
+    # peer_keys row may hold.
     tsk = own_key(address, create=False)
-    return tsk.extract_certificate() if tsk else None
+    if tsk is not None:
+        return tsk.extract_certificate()
+    return peer_cert(address)
 
 
 # ── encrypt ─────────────────────────────────────────────────────────
@@ -419,6 +732,9 @@ def encrypt_message(msg: Message, sender: str, recipients: Iterable[str]) -> Mes
         who = ", ".join(missing)
         raise PgpError(f"nessuna chiave di cifratura per {who}",
                        f"no encryption key for {who}")
+    waiting = held_changes(recips)
+    if waiting:
+        raise KeyChangePending(waiting)
     tsk = own_key(sender)
     certs = [_cert_for(r) for r in recips]
     fingerprints = set()
@@ -497,7 +813,9 @@ def open_message(msg: Message, account_address: str = "") -> Tuple[Message, Opti
     learned in both cases.
 
     info: {encrypted, decrypted, signed, signature_valid, signer,
-           signer_matches_from, error}"""
+           signer_matches_from, signer_fingerprint, signer_key, error}
+    signer_key says whose key signed: 'own', 'accepted', or a held one
+    ('pending', 'refused', 'replaced'); None when unsigned or unknown."""
     try:
         learn_autocrypt(msg)
     except Exception as e:
@@ -506,7 +824,8 @@ def open_message(msg: Message, account_address: str = "") -> Tuple[Message, Opti
         return msg, None
     info: Dict = {"encrypted": True, "decrypted": False, "signed": False,
                   "signature_valid": False, "signer": None,
-                  "signer_matches_from": False, "error": None}
+                  "signer_matches_from": False, "signer_fingerprint": None,
+                  "signer_key": None, "error": None}
     if not available():
         info["error"] = "OpenPGP library not installed"
         return msg, info
@@ -555,14 +874,16 @@ def open_message(msg: Message, account_address: str = "") -> Tuple[Message, Opti
     if sigs:
         info["signed"] = info["signature_valid"] = True
         fpr = str(sigs[0].certificate).lower()
-        signer = _address_of(fpr, keys)
-        info["signer"] = signer
         # Against the From the reader is shown, which is the protected one
         # from inside the encryption: checked against the outer From, a
         # correspondent could sign a mail that names someone else as its
         # sender and still get "signed by" under that name.
-        info["signer_matches_from"] = bool(
-            signer and signer == normalize(str(opened.get("From", ""))))
+        # The fingerprint is kept even when no table knows it yet: the
+        # archive can resolve it once the key is learned.
+        info["signer_fingerprint"] = fpr
+        info["signer"], info["signer_key"] = _signer_of(fpr)
+        info["signer_matches_from"] = _matches_from(
+            info["signer"], info["signer_key"], str(opened.get("From", "")))
     return opened, info
 
 
@@ -580,23 +901,93 @@ def open_raw(raw: bytes, account_address: str = "") -> Tuple[bytes, Optional[Dic
     return raw, info
 
 
-def _all_peer_certs() -> list:
+def _certs_of(keydatas, what: str) -> list:
+    """The certificates in these key bytes; one that does not parse is
+    skipped, so one damaged key cannot stop all reading."""
     p = _lib()
-    with _db() as conn:
-        rows = conn.execute("SELECT keydata FROM peer_keys").fetchall()
-    return [p.Cert.from_bytes(r[0]) for r in rows]
+    certs = []
+    for keydata in keydatas:
+        try:
+            certs.append(p.Cert.from_bytes(keydata))
+        except Exception as e:
+            logger.warning("a %s key in the store cannot be read, skipped: %s", what, e)
+    return certs
 
 
-def _address_of(fingerprint: str, keys) -> Optional[str]:
+def _all_peer_certs() -> list:
+    """Every correspondent key that can verify a signature: the accepted
+    ones and the held ones of any state."""
     with _db() as conn:
+        accepted = [r[0] for r in conn.execute("SELECT keydata FROM peer_keys")]
+        held = [r[0] for r in conn.execute("SELECT keydata FROM held_peer_keys")]
+    return _certs_of(accepted, "peer") + _certs_of(held, "held")
+
+
+_HELD_RANK = {"pending": 0, "refused": 1, "replaced": 2}
+
+
+def _signer_of(fingerprint: str) -> Tuple[Optional[str], Optional[str]]:
+    """(address, signer_key) of the key with this fingerprint: our own keys
+    first, then the accepted ones, then the held ones. (None, None) when we
+    do not know it."""
+    fpr = str(fingerprint or "").lower()
+    with _db() as conn:
+        for addr, _state, f, _c, _s in _stored_keys(conn):
+            if str(f).lower() == fpr:
+                return addr, "own"
         row = conn.execute("SELECT address FROM peer_keys WHERE lower(fingerprint)=?",
-                           (fingerprint,)).fetchone()
-    if row:
-        return row[0]
-    for addr, tsk in keys:
-        if tsk.extract_certificate().fingerprint.lower() == fingerprint:
-            return addr
-    return None
+                           (fpr,)).fetchone()
+        if row:
+            return row[0], "accepted"
+        rows = conn.execute(
+            "SELECT address, state FROM held_peer_keys WHERE lower(fingerprint)=?"
+            " ORDER BY last_seen DESC", (fpr,)).fetchall()
+    rows.sort(key=lambda r: _HELD_RANK.get(r[1], 9))
+    return (rows[0][0], rows[0][1]) if rows else (None, None)
+
+
+def _matches_from(signer, kind, from_address: str) -> bool:
+    return bool(kind in ("own", "accepted") and signer
+                and signer == normalize(from_address))
+
+
+def resolve_signer(info, from_address: str):
+    """`info` with signer, signer_key and signer_matches_from worked out from
+    the key store as it is now, for info that carries a `signer_fingerprint`
+    the store knows; anything else comes back unchanged (a mail kept
+    decrypted keeps what it said when its key is no longer in the store).
+    Only our own and the accepted keys can match the From: a key the user has
+    not accepted never shows as "signed by". Never raises."""
+    try:
+        if not isinstance(info, dict) or not info.get("signer_fingerprint"):
+            return info
+        if not db_path(DB_NAME).exists():
+            return info   # nothing to look in, and reading must not create it
+        signer, kind = _signer_of(info["signer_fingerprint"])
+        if kind is None:
+            return info
+        return {**info, "signer": signer, "signer_key": kind,
+                "signer_matches_from": _matches_from(signer, kind, from_address)}
+    except Exception as e:
+        logger.info("signer not resolved: %s", e)
+        return info
+
+
+def key_change_for(address: str) -> Optional[Dict]:
+    """{address, fingerprint} when the address has a key waiting for the
+    user's decision, else None. Never creates the key store. An address of
+    ours never has one."""
+    addr = normalize(address)
+    if not addr or not db_path(DB_NAME).exists():
+        return None
+    with _db() as conn:
+        if conn.execute("SELECT 1 FROM own_keys WHERE address=?",
+                        (addr,)).fetchone():
+            return None
+        row = conn.execute(
+            "SELECT fingerprint FROM held_peer_keys WHERE address=? AND state='pending'",
+            (addr,)).fetchone()
+    return {"address": addr, "fingerprint": row[0]} if row else None
 
 
 def _restore_headers(outer: Message, inner: Message) -> Message:

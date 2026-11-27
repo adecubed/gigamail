@@ -240,6 +240,69 @@ def encryption_status(to: str = "", cc: str = "", account_id: Optional[int] = No
     return mail_router.encryption_status(account_id or _active_id(), [to, cc])
 
 
+def _key_store_readable() -> bool:
+    """Reading never creates the key store: no library or no file means
+    nothing is known."""
+    from gigamail.core import pgp
+    from gigamail.core.data_paths import db_path
+    return pgp.available() and db_path(pgp.DB_NAME).exists()
+
+
+@router.get("/encryption/peer_key")
+def peer_key(address: str = ""):
+    """The key in use for a correspondent and the one waiting for the user's
+    decision, for the console."""
+    from gigamail.core import pgp
+    if not _key_store_readable():
+        return {"address": pgp.normalize(address), "known": None, "held": None}
+    return pgp.peer_key_info(address)
+
+
+@router.get("/encryption/pending")
+def peer_keys_pending():
+    """Every correspondent whose changed key waits for a decision."""
+    from gigamail.core import pgp
+    if not _key_store_readable():
+        return {"pending": []}
+    return {"pending": pgp.pending_changes()}
+
+
+@router.post("/encryption/peer_key/decide")
+async def decide_peer_key(request: Request):
+    """Accept a correspondent's new key, or keep the old one. Only a click in
+    the console decides: the agent, or a mail it reads, cannot. The click is
+    checked before the body is read or the store is opened, so a caller
+    without it learns nothing from the answer."""
+    if not console_click.is_console_click(request.headers):
+        raise HTTPException(403, "only from the console")
+    from gigamail.core import pgp
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict):
+        raise HTTPException(400, "expected a JSON object")
+    address = pgp.normalize(body.get("address") or "")
+    fingerprint = body.get("fingerprint")
+    accept = body.get("accept")
+    if address.count("@") != 1 or not isinstance(fingerprint, str) \
+            or not isinstance(accept, bool):
+        raise HTTPException(400, "address, fingerprint and accept are needed")
+    if not pgp.available():
+        raise HTTPException(409, pgp.say(
+            "La cifratura OpenPGP non è disponibile su questo computer.",
+            "OpenPGP encryption is not available on this computer."))
+    try:
+        result = pgp.decide_change(address, fingerprint, accept)
+    except pgp.PgpError as e:
+        raise HTTPException(409, e.text()) from e
+    policy.audit("pgp_key_decision",
+                 {"address": result["address"], "accepted": result["accepted"],
+                  "other": result["other"]},
+                 result["outcome"], detail="console click")
+    return result
+
+
 @router.post("/mail/send")
 def send_mail(req: SendRequest, request: Request, account_id: Optional[int] = None):
     args = req.model_dump()
