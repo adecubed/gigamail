@@ -8,6 +8,13 @@
   <language>en</language>
   <!-- newest first -->
   <item>
+    <title>A phishing mail was written for two readers: the person and the AI summary</title>
+    <link>https://gigamail.ai/blog/phishing-two-readers.html</link>
+    <guid isPermaLink="true">https://gigamail.ai/blog/phishing-two-readers.html</guid>
+    <pubDate>Fri, 27 Nov 2026 09:00:00 +0000</pubDate>
+    <description>A security vendor describes a phishing mail with a visible lure for the person and hidden instructions for the assistant that summarises it. What that changes, and what GigaMail's visible-text reading does and does not cover.</description>
+  </item>
+  <item>
     <title>An agent told to wait before deleting mail deleted hundreds of messages</title>
     <link>https://gigamail.ai/blog/agent-deleted-the-inbox.html</link>
     <guid isPermaLink="true">https://gigamail.ai/blog/agent-deleted-the-inbox.html</guid>
