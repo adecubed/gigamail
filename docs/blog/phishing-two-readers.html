@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A phishing mail was written for two readers: the person and the AI summary</title>
+<meta name="description" content="A security vendor describes a phishing mail with a visible lure for the person and hidden instructions for the assistant that summarises it. What that changes, and what GigaMail's visible-text reading does and does not cover.">
+<meta name="theme-color" content="#fcf6fa">
+<link rel="canonical" href="https://gigamail.ai/blog/phishing-two-readers.html">
+<link rel="icon" href="../brand/gigamail.ico?v=2">
+<link rel="icon" type="image/png" sizes="96x96" href="../brand/gigamail-logo-96.png?v=2">
+<link rel="apple-touch-icon" href="../brand/gigamail-logo-256.png?v=2">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="GigaMail">
+<meta property="og:url" content="https://gigamail.ai/blog/phishing-two-readers.html">
+<meta property="og:title" content="A phishing mail was written for two readers: the person and the AI summary">
+<meta property="og:description" content="One mail, two audiences: the person sees a lure, the AI summary is told to call it legitimate.">
+<meta property="og:image" content="https://gigamail.ai/social-card.png?v=3">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A phishing mail was written for two readers: the person and the AI summary">
+<meta name="twitter:description" content="One mail, two audiences: the person sees a lure, the AI summary is told to call it legitimate.">
+<meta name="twitter:image" content="https://gigamail.ai/social-card.png?v=3">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "@id": "https://gigamail.ai/blog/phishing-two-readers.html#article", "url": "https://gigamail.ai/blog/phishing-two-readers.html", "headline": "A phishing mail was written for two readers: the person and the AI summary", "description": "A security vendor describes a phishing mail with a visible lure for the person and hidden instructions for the assistant that summarises it. What that changes, and what GigaMail's visible-text reading does and does not cover.", "inLanguage": "en", "datePublished": "2026-11-27", "dateModified": "2026-11-27", "publisher": {"@type": "Organization", "name": "GigaMail", "url": "https://gigamail.ai/"}, "isPartOf": {"@type": "WebSite", "@id": "https://gigamail.ai/#website", "url": "https://gigamail.ai/", "name": "GigaMail"}, "about": {"@id": "https://gigamail.ai/#software"}}</script>
+<link rel="stylesheet" href="../fonts/poppins.css?v=1">
+<link rel="stylesheet" href="../home.css?v=39">
+<link rel="stylesheet" href="../pages.css?v=1">
+<style>
+.post .wrap.narrow { max-width: 760px; }
+.post .hero.sub h1 { max-width: 24ch; }
+.post p, .post li { font-size: 1.02rem; line-height: 1.7; }
+.post section p { margin: 0 0 14px; }
+.post ul { padding-left: 22px; margin: 0 0 14px; }
+.post li { margin-bottom: 6px; }
+.post pre { background: var(--gm-fill); color: var(--gm-ink); border-radius: 12px; padding: 14px 16px; margin: 0 0 6px; overflow-x: auto; font-family: var(--mono); font-size: 0.84rem; line-height: 1.55; }
+.post .cap { font-size: 0.88rem; margin: 0 0 18px; }
+.post .fig { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 18px; }
+.post .fig .card { padding: 18px 20px; }
+.post .fig .num { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.post .fig .after .num { color: var(--gm-pink); }
+.post .fig p { font-size: 0.9rem; margin: 4px 0 0; }
+@media (max-width: 560px) { .post .fig { grid-template-columns: 1fr; } }
+</style>
+<script type="module" src="/business/analytics.js"></script>
+<script type="module" src="/download-count.js"></script>
+<script type="module" src="/menu.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="GigaMail home"><img src="../brand/gigamail-wordmark.png?v=2" alt="GigaMail" width="136" height="34"></a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="../features.html">What it does</a>
+      <a href="../security.html#gate">Approval</a>
+      <a href="../#install">Install</a>
+      <a href="../mcp-map.html">MCP map</a>
+      <a href="../gigamail-vs-agentmail.html">vs AgentMail</a>
+      <a href="../security.html">Security</a>
+      <a href="../email-check.html" style="color:var(--gm-pink);font-weight:600">Email check</a>
+    </nav>
+    <span class="spacer"></span>
+    <a class="btn btn-ghost" href="https://github.com/adecubed/gigamail" rel="noopener"><svg class="gh-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5-4.7-4.6 6.5-.9z"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg><span class="gh-text">GitHub</span></a>
+    <a class="btn btn-primary" href="../#install">Download</a>
+  </div>
+</header>
+
+<main class="subpage post">
+<section class="hero sub" aria-labelledby="t">
+  <div class="wrap narrow">
+    <p class="kicker"><a href="./">Blog</a> · 27 November 2026</p>
+    <h1 id="t">A phishing mail was written for two readers: <em>the person and the AI summary.</em></h1>
+    <p class="lede">A security vendor describes one message that carries a lure for you and instructions for the assistant that reads your mail.</p>
+  </div>
+</section>
+
+<section aria-labelledby="s1"><div class="wrap narrow">
+  <h2 id="s1">What the vendor reports</h2>
+  <p>Barracuda <a href="https://blog.barracuda.com/2026/10/07/email-attacks-target-both-humans-ai-assistants" rel="noopener">describes a recent phishing campaign</a> in a post whose address is dated 7 October 2026 (the page itself says "Updated: Oct. 6, 2026"). The message has two layers.</p>
+  <p>The first is for the person. A document is attached and protected with a password, and the password is conveniently given in the body of the mail. A person who opens it is led towards credential theft or malware, as the vendor puts it.</p>
+  <p>The second is for the AI assistant. Hidden instructions, invisible to the person, try to make the assistant's summary call the mail legitimate or urgent, or tell it to drop its earlier directions and surface a fake urgent action such as a wire transfer. So even a person who never opens the attachment may read a summary that nudges them towards the link.</p>
+  <p>The post names four ways to hide the text: HTML comments that a mail client never draws; text with a zero-pixel font size, a white colour or hidden outright; instructions in Base64 data, such as an image string that decodes to text; and zero-width Unicode characters mixed into normal text.</p>
+  <p>The post gives no figure for how widespread this is, and neither do we. We also do not know how any given assistant would have reacted to these instructions: the source describes the technique, not a success rate.</p>
+</div></section>
+
+<section aria-labelledby="s2"><div class="wrap narrow">
+  <h2 id="s2">Why it matters if an agent reads your mail</h2>
+  <p>A summary feels like part of your own judgement. If the text feeding it differs from what you see on screen, the assistant can say "this is fine" about a mail whose visible half looks suspicious, and you will hear the assistant first. The attack does not need the assistant to send anything: a changed summary is already a result.</p>
+</div></section>
+
+<section aria-labelledby="s3"><div class="wrap narrow">
+  <h2 id="s3">What GigaMail does about the hidden half</h2>
+  <p>Since v0.6.7, <code>read_message</code> hands the agent the text a person sees, never the HTML. <a href="https://github.com/adecubed/gigamail/blob/main/SECURITY.md" rel="noopener">SECURITY.md</a> lists what the reader treats as hidden, among them <code>display:none</code>, a font of size zero, white text on white, and zero-width characters; when anything was left out, the result says so. Inline styles and style blocks are applied the way a mail client would, and what the reader cannot evaluate is withheld rather than guessed: the agent gets no body for that mail and is told to read it in the console.</p>
+  <p>The withholding has a cost we measured on a real mailbox, told in <a href="./hidden-text.html">our article on hidden text</a>. Where a draft is written, the injection check reads the visible text and what was hidden.</p>
+</div></section>
+
+<section aria-labelledby="s4"><div class="wrap narrow">
+  <h2 id="s4">What it does not cover</h2>
+  <ul>
+    <li><strong>Tricks the reader does not know.</strong> SECURITY.md says it plainly: text a shade off the background, text under an image, text a pixel or two high. The reader narrows the gap between what you see and what the agent reads; it does not close it.</li>
+    <li><strong>Visible text.</strong> The lure the person sees is in the body too. It stays untrusted data, and the gates on sending stay where they are.</li>
+    <li><strong>The person.</strong> A password-protected attachment aimed at a human is not something an agent's reading can fix. GigaMail does not open the file for you or judge it, and nothing here stops a person from opening it.</li>
+    <li><strong>Assistants outside GigaMail.</strong> A summary written by another product, from the raw message, is out of reach of this reader.</li>
+  </ul>
+  <p>The practical question for any assistant that summarises mail is the same as for an agent: which text does it receive, the text on your screen or the whole source?</p>
+  <p class="muted note">GigaMail is open source (AGPL-3.0) and was not involved in this campaign. Sources: Barracuda, "email attacks target both humans and AI assistants", address dated 7 October 2026, updated 6 October 2026 (opened 27 November 2026; it gives no prevalence figures); GigaMail <code>SECURITY.md</code>, "Hidden text".</p>
+</div></section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="foot-cols">
+      <div class="foot-col"><p class="foot-h">Product</p><a href="../mcp-map.html">MCP map</a><a href="../changelog.html">What's new</a><a href="../mail-city.html">Mail City</a></div>
+      <div class="foot-col"><p class="foot-h">Resources</p><a href="./">Blog</a><a href="../email-check.html">Email checker</a></div>
+      <div class="foot-col"><p class="foot-h">Compare</p><a href="../gigamail-vs-agentmail.html">GigaMail vs AgentMail</a><a href="../gigamail-vs-composio.html">GigaMail vs Composio</a><a href="../gigamail-vs-copilot.html">GigaMail vs Copilot</a></div>
+      <div class="foot-col"><p class="foot-h">Legal</p><a href="../privacy.html">Privacy Policy</a><a href="../terms.html">Terms of Service</a><a href="../credits.html">Code credits</a></div>
+      <div class="foot-col"><p class="foot-h">Contact</p><a href="mailto:founder@adecubed.com">founder@adecubed.com</a></div>
+    </div>
+    <p class="foot-base">© 2026 GigaMail — Nerine Srl</p>
+  </div>
+</footer>
+</body>
+</html>
