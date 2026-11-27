@@ -1657,6 +1657,125 @@ def cmd_pgp_restore(args) -> int:
     return 0
 
 
+def _fpr_groups(fingerprint: str) -> str:
+    """A fingerprint as people compare it: upper case, groups of four."""
+    f = "".join(str(fingerprint or "").split()).upper()
+    return " ".join(f[i:i + 4] for i in range(0, len(f), 4))
+
+
+def _local_date(ts) -> str:
+    return time.strftime("%Y-%m-%d", time.localtime(ts)) if ts else "-"
+
+
+def _pgp_library_missing() -> bool:
+    """Say so (in the user's language) when the OpenPGP library is absent."""
+    from gigamail.core import pgp
+    if pgp.available():
+        return False
+    print(_tr("Libreria OpenPGP (pysequoia) non installata.",
+              "OpenPGP library (pysequoia) not installed."))
+    return True
+
+
+def cmd_pgp_peers(_args) -> int:
+    """The correspondents' keys, and the new keys waiting for a decision.
+    Needs no verification; never creates the key store."""
+    from gigamail.core import pgp
+    from gigamail.core.data_paths import db_path
+    if _pgp_library_missing():
+        return 2
+    infos = pgp.list_peer_keys() if db_path(pgp.DB_NAME).exists() else []
+    if not infos:
+        print(_tr("Nessuna chiave di corrispondenti.", "No correspondents' keys."))
+        return 0
+    states = {"pending": _tr("in attesa di decisione", "waiting for a decision"),
+              "refused": _tr("rifiutata", "refused")}
+    for info in infos:
+        known, held = info["known"], info["held"]
+        print(f"{info['address']}  {_fpr_groups(known['fingerprint'])}  "
+              + _tr(f"da {_local_date(known['first_seen'])}, "
+                    f"vista {_local_date(known['last_seen'])}",
+                    f"since {_local_date(known['first_seen'])}, "
+                    f"seen {_local_date(known['last_seen'])}"))
+        if held:
+            print(f"    {states.get(held['state'], held['state'])}: "
+                  f"{_fpr_groups(held['fingerprint'])}  "
+                  + _tr(f"vista {_local_date(held['first_seen'])}",
+                        f"seen {_local_date(held['first_seen'])}"))
+    return 0
+
+
+def _pgp_decide(args, accept: bool) -> int:
+    """Shared by `pgp accept` and `pgp keep`: show both keys, ask the OS
+    verification, then decide about the very key that was shown. The agent
+    has no way here: only the verified user gets to the decision."""
+    from gigamail import policy
+    from gigamail.core import pgp
+    from gigamail.core.data_paths import db_path
+    if _pgp_library_missing():
+        return 2
+    address = pgp.normalize(args.address)
+    # No store, no key: answered without opening it, which would create it.
+    info = (pgp.peer_key_info(address)
+            if address and db_path(pgp.DB_NAME).exists()
+            else {"known": None, "held": None})
+    held = info["held"]
+    if held is not None and not accept and held["state"] != "pending":
+        held = None  # `keep` acts only on a key still waiting
+    if held is None:
+        if not address or (info["known"] is None and info["held"] is None):
+            print(_tr(f"Nessuna chiave nota per {args.address}.",
+                      f"No key is known for {args.address}."))
+        else:
+            print(_tr(f"{address}: nessuna chiave nuova da decidere.",
+                      f"{address}: no new key to decide about."))
+        return 1
+    known = info["known"]
+    print(address)
+    print(_tr("  Chiave in uso:    ", "  Key in use:       ")
+          + (_fpr_groups(known["fingerprint"]) if known else _tr("(nessuna)", "(none)")))
+    print(_tr("  Chiave nuova:     ", "  New key:          ")
+          + _fpr_groups(held["fingerprint"]))
+    if accept:
+        reason = _tr(f"GigaMail: adottare la chiave nuova di {address}",
+                     f"GigaMail: adopt the new key of {address}")
+    else:
+        reason = _tr(f"GigaMail: tenere la chiave in uso di {address}",
+                     f"GigaMail: keep the key in use for {address}")
+    rc = _pgp_verify(reason)
+    if rc is not None:
+        return rc
+    if policy.dry_run_active():
+        # The consent test override answers yes only in dry-run: there it
+        # must decide nothing, or two variables would skip the verification.
+        print(_tr("Simulazione (ADE_MAIL_DRYRUN): nulla e' cambiato.",
+                  "Simulation (ADE_MAIL_DRYRUN): nothing was changed."))
+        return 0
+    try:
+        result = pgp.decide_change(address, held["fingerprint"], accept)
+    except pgp.PgpError as e:
+        print(e.text())
+        return 1
+    policy.audit("pgp_key_decision",
+                 {"address": result["address"], "accepted": result["accepted"],
+                  "other": result["other"]}, result["outcome"], detail="cli")
+    if accept:
+        print(_tr(f"Chiave nuova adottata per {address}.",
+                  f"New key adopted for {address}."))
+    else:
+        print(_tr(f"Chiave in uso mantenuta per {address}: la nuova e' rifiutata.",
+                  f"Key in use kept for {address}: the new one is refused."))
+    return 0
+
+
+def cmd_pgp_accept(args) -> int:
+    return _pgp_decide(args, accept=True)
+
+
+def cmd_pgp_keep(args) -> int:
+    return _pgp_decide(args, accept=False)
+
+
 def cmd_archive_sync(args) -> int:
     """Primo caricamento o riallineamento: gira finche' non ha finito."""
     from gigamail.core import accounts as core_accounts
@@ -2039,8 +2158,9 @@ def main(argv=None) -> int:
         fn=cmd_zoom_remove)
 
     p_pgp = sub.add_parser("pgp", help=_tr(
-        "chiavi di cifratura OpenPGP: elenco, copia di sicurezza, ripristino",
-        "OpenPGP encryption keys: list, backup, restore"))
+        "chiavi di cifratura OpenPGP: elenco, copia di sicurezza, ripristino, "
+        "chiavi dei corrispondenti",
+        "OpenPGP encryption keys: list, backup, restore, correspondents' keys"))
     pgp_sub = p_pgp.add_subparsers(dest="subcommand", required=True)
     pgp_sub.add_parser("list", help=_tr(
         "elenca le chiavi (nessuna verifica)",
@@ -2060,6 +2180,22 @@ def main(argv=None) -> int:
         "ripristina le chiavi da una copia", "restore the keys from a backup"))
     p_pgr.add_argument("file")
     p_pgr.set_defaults(fn=cmd_pgp_restore)
+    pgp_sub.add_parser("peers", help=_tr(
+        "elenca le chiavi dei corrispondenti e quelle nuove in attesa (nessuna verifica)",
+        "list the correspondents' keys and the new ones waiting "
+        "(no verification)")).set_defaults(fn=cmd_pgp_peers)
+    p_pga = pgp_sub.add_parser("accept", help=_tr(
+        "adotta la chiave nuova di un corrispondente (chiede la verifica)",
+        "adopt the new key of a correspondent (asks for verification)"))
+    p_pga.add_argument("address", help=_tr("indirizzo del corrispondente",
+                                           "the correspondent's address"))
+    p_pga.set_defaults(fn=cmd_pgp_accept)
+    p_pgk = pgp_sub.add_parser("keep", help=_tr(
+        "tieni la chiave in uso e rifiuta la nuova (chiede la verifica)",
+        "keep the key in use and refuse the new one (asks for verification)"))
+    p_pgk.add_argument("address", help=_tr("indirizzo del corrispondente",
+                                           "the correspondent's address"))
+    p_pgk.set_defaults(fn=cmd_pgp_keep)
 
     p_ds = sub.add_parser(
         "desktop-setup",

@@ -96,6 +96,7 @@ const MailView = (() => {
           <div class="mail-detail-subject">${esc(msg.subject || T('no_subject','(nessun oggetto)'))}</div>
           <div class="mail-detail-meta">${T('from_label','Da')}: ${esc(senderName)} &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime || msg.sentDateTime))}</div>
           ${window.MailRender ? MailRender.encryptionBadgeHtml(msg.encryption, T, esc) : ''}
+          ${window.MailRender && MailRender.keyChangeHtml ? MailRender.keyChangeHtml(msg.key_change, T, esc) : ''}
           ${(msg.toRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">${T('to_label','A:')} ${addressList(msg.toRecipients)}</div>` : ''}
           ${(msg.ccRecipients||[]).length ? `<div class="mail-detail-meta" style="font-size:11px;opacity:0.7">${T('cc_label','CC:')} ${addressList(msg.ccRecipients)}</div>` : ''}
           <div class="mail-detail-actions">
@@ -177,7 +178,53 @@ function renderMailList(mails) {
       deleteMail(btn.dataset.id, btn.dataset.folder, btn.closest('.mail-item')?.dataset.accountId);
     });
   });
+  refreshKeyChangeLine();
 }
+
+// ── CORRESPONDENTS' NEW KEYS (key_change_dialog.js) ──────────────────────────
+// A line above the mail list while some key waits for the user's decision.
+// A backend that does not answer leaves it hidden and nothing else changes.
+let keyChangePending = [];
+
+async function refreshKeyChangeLine() {
+  const line = document.getElementById('keyChangeLine');
+  if (!line || !window.GMKeyChange) return [];
+  let pending = [];
+  try {
+    const r = await fetch(`${window.GIGAMAIL_API}/encryption/pending`);
+    if (r.ok) pending = ((await r.json()) || {}).pending || [];
+  } catch (_) { pending = []; }
+  keyChangePending = Array.isArray(pending) ? pending.filter((p) => p && p.address) : [];
+  const text = GMKeyChange.pendingLine(keyChangePending.length, T);
+  line.textContent = text;
+  line.hidden = !text;
+  return keyChangePending;
+}
+
+// After a decision the open mail is read again, so its badge follows it.
+function openKeyChange(address, { next = false } = {}) {
+  if (!address || !window.GMKeyChange) return;
+  GMKeyChange.open({
+    api: window.GIGAMAIL_API, address, T,
+    onDone: async (result) => {
+      const pending = await refreshKeyChangeLine();
+      if (result && selectedMailId) openMail(selectedMailId, selectedMailFolder);
+      // From the line: one decision leads to the next key, "Later" stops.
+      if (result && next && pending.length) openKeyChange(pending[0].address, { next: true });
+    },
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const link = e.target && e.target.closest ? e.target.closest('[data-key-change]') : null;
+  if (!link) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openKeyChange(link.getAttribute('data-key-change'));
+});
+document.getElementById('keyChangeLine')?.addEventListener('click', () => {
+  if (keyChangePending.length) openKeyChange(keyChangePending[0].address, { next: true });
+});
 
 async function deleteMail(id, folder, accountId) {
   if (!id) return;

@@ -49,7 +49,8 @@ addressSuggestions(document.getElementById('replyCc'), document.getElementById('
 // encrypted: answering a secret in clear would undo it.
 const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
   button: document.getElementById('btnEncrypt'),
-  status: null,
+  status: document.getElementById('encStatus'),
+  details: document.getElementById('encDetails'),
   api: API,
   getAccountId: () => mailData && mailData.account_id,
   getRecipients: () => ({ to: document.getElementById('replyTo').value.trim(),
@@ -59,6 +60,14 @@ const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
 for (const id of ['replyTo', 'replyCc']) {
   document.getElementById(id).addEventListener('change', () => encryptToggle && encryptToggle.recheck());
 }
+// A recipient's new key: the decision window, then the status again.
+document.addEventListener('click', (e) => {
+  const link = e.target && e.target.closest ? e.target.closest('[data-key-change]') : null;
+  if (!link || !window.GMKeyChange) return;
+  e.preventDefault();
+  GMKeyChange.open({ api: API, address: link.getAttribute('data-key-change'), T,
+    onDone: () => { if (encryptToggle) encryptToggle.recheck(); } });
+});
 
 async function fetchAddressSuggestions(input, box, q) {
   if (!q || q.length < 1) { box.style.display = 'none'; return; }
@@ -479,7 +488,9 @@ async function execSend() {
         reply_to_id:    mailData.id,
         cc:             cc ? [cc] : [],
         attachments:    attachmentsClean,
-        encrypt:        !!(encryptToggle && encryptToggle.isOn()),
+        // true while a key waits too: the server refuses with the reason
+        // rather than send in clear a mail the user asked to encrypt
+        encrypt:        !!(encryptToggle && encryptToggle.wantsEncryption()),
         original_draft: window._lastGeneratedDraft || '',
         instruction:    document.getElementById('instruction')?.value?.trim() || '',
       })

@@ -95,6 +95,13 @@
   #guardBanner .gb-why{color:rgba(0,0,0,0.75);margin-bottom:6px;}
   #guardBanner .gb-quote{font-family:monospace;font-size:10px;padding:6px 8px;background:rgba(0,0,0,0.05);border-radius:6px;color:rgba(0,0,0,0.7);white-space:pre-wrap;}
 
+  /* encryption: why it cannot encrypt, "Review and decide" for a recipient's new key, fingerprints while on */
+  .enc-status{flex-shrink:0;padding:4px 14px 0;font-size:10.5px;font-family:monospace;color:rgba(0,0,0,0.55);}
+  .enc-status:empty{display:none;}
+  .enc-details{flex-shrink:0;padding:4px 14px;font-size:10.5px;font-family:monospace;color:rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:2px;}
+  .enc-details[hidden]{display:none;}
+  .enc-key-change-link{align-self:flex-start;font:inherit;font-family:var(--font);font-weight:600;font-size:11px;background:none;border:none;padding:0;color:#9a6400;text-decoration:underline;cursor:pointer;}
+
   .toolbar{
     padding:8px 12px;flex-shrink:0;border-top:1px solid rgba(0,0,0,0.14);
     background:#f3e6f0;
@@ -159,6 +166,7 @@
 <script src="attachment_guard.js"></script>
 <script src="attachment_drag.js"></script>
 <script src="encrypt_toggle.js"></script>
+<script src="key_change_dialog.js"></script>
 </head>
 <body>
 
@@ -197,6 +205,9 @@
   <div id="guardBanner"></div>
   <div id="suggestedBanner"></div>
 </div>
+
+<div class="enc-status" id="encStatus"></div>
+<div class="enc-details" id="encDetails" hidden></div>
 
 <div class="toolbar">
   <button class="tool-btn" id="btnAttach" data-i18n-title="attach_file" title="Allega file"><span data-icon="paperclip" data-icon-size="16"></span></button>

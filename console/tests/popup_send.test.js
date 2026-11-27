@@ -43,7 +43,7 @@ async function sendPopup(file, response, { followupFails = false, encrypt = fals
     API: 'http://fixture.invalid', accountId: 7, mailData: { account_id: 7, id: '42' },
     attachments: [attachment], followupHours: 24,
     // the Encrypt button (encrypt_toggle.js)
-    encryptToggle: { isOn: () => encrypt },
+    encryptToggle: { isOn: () => encrypt, wantsEncryption: () => encrypt },
     draftId: 'draft:1', draftTimer: 123, mailSent: false,
     sendTimer: null, sendRafId: null,
     setTimeout(fn) { fn(); },

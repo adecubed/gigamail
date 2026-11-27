@@ -847,6 +847,11 @@ def messaggio(riga: Dict[str, Any], raw: bytes) -> Dict[str, Any]:
     sender = (_indirizzi(_h(grezzo, "From")) or [None])[0] if opened else None
     name, address = sender or (riga.get("from_name") or "",
                                riga.get("from_addr") or "")
+    # Stored info is not opened again: its signer is looked up in the key
+    # store as it is now (a key accepted since then counts).
+    if opened:
+        from . import pgp
+        encryption = pgp.resolve_signer(encryption, address)
     return {
         "id": f"{PREFISSO_ID}{riga['id']}",
         "provider_id": riga.get("provider_id") or "",

@@ -884,15 +884,60 @@ and attachments travel inside the encrypted part ("protected headers").
   without that badge. What the decryption found is kept in the archive's
   database, never in a header a sender could write.
 
+A changed key of a correspondent:
+
+- **Held until a person decides.** When mail from a correspondent who
+  already has a key carries a different one, the new key is kept pending
+  and the known key stays in use. Nothing is encrypted to that address
+  until the user decides: a mail that was to be encrypted fails with the
+  reason and never leaves in clear, for the user, the agent and rules
+  alike. A reply to a mail that arrived encrypted is always encrypted, so
+  an automatic reply stops there too; a reply written in the console to
+  such a mail is sent encrypted or not at all, unless the user switches
+  encryption off.
+- **Reading is not affected.** The badge of an encrypted mail says when it
+  is signed with a new key not accepted yet, with a key the user refused,
+  or with the correspondent's previous key. Any mail from a sender with a
+  pending key, clear mail included, shows a line with "Review and decide",
+  and the main window shows "New keys to accept: N".
+- **Only a person decides.** The decision window shows both fingerprints
+  (the known key with the dates it was seen, the new key with its arrival
+  date) and offers "Accept the new key", "Keep the old one" and "Later".
+  "Keep the old one" is remembered, and a refused key can be accepted
+  later. A decision is a click in the console, or in the terminal
+  `gigamail pgp accept <address>` or `gigamail pgp keep <address>` after
+  the operating system's verification (Windows Hello, Touch ID or the
+  local PIN); `gigamail pgp peers` lists the correspondents' keys and what
+  is waiting. No MCP tool and no HTTP call without the console click can
+  decide, and every decision is written to the audit trail.
+- **Fingerprints can be checked without any change pending.** The
+  signer's fingerprint is under the badge of a signed mail; the user's own
+  and each recipient's are in the compose and reply windows when
+  encryption is on.
+- **The user is told.** Once when a new key arrives and once when a send
+  stops because of it: a desktop notification, and Telegram when
+  configured. Telegram only tells; the decision is taken at the PC.
+- **A replaced key never encrypts.** It is kept only to recognise
+  signatures on older mail. The user's own addresses are never learned as
+  correspondents. Keys already known before this was added were kept as
+  accepted, and the upgrade asks nothing.
+- **Still open.** The first key of a correspondent is accepted on trust. A
+  correspondent who uses two installations with two keys is asked about at
+  every switch. There is no "verified" mark for a key compared by hand.
+  Two GigaMail installations on one mailbox with different own keys are
+  not handled. The console screens were tested with unit tests of their
+  logic, not yet by hand in the running app.
+
 What it does not protect:
 
 - **Metadata.** From, To, Cc, date and size stay readable by the
   providers; the outer Subject is "...".
 - **Trust on first use.** Autocrypt takes a correspondent's key from
-  their mail. Someone who can send mail with a forged From before the real
-  correspondent writes, or with a newer date afterwards, can put their own
-  key in place. The key change is logged; fingerprints are not yet shown
-  for checking by hand.
+  their mail, and the first key seen for an address is accepted on trust:
+  someone who can send mail with a forged From before the real
+  correspondent writes can have their own key accepted. After that, a
+  different key for the same correspondent is held, not used (see "A
+  changed key of a correspondent" above).
 - **The local agent.** Once opened, the text is plain on this machine:
   the agent that reads it on the user's behalf sees it like any other
   mail, and so does the AI provider behind that agent.

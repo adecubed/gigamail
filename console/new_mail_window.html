@@ -125,6 +125,10 @@
   .ctx-badge.visible{display:block;}
 
   .status{font-size:10.5px;color:rgba(0,0,0,0.55);font-family:monospace;padding:2px 4px;}
+  /* encryption: "Review and decide" for a recipient's new key, fingerprints while on */
+  .enc-details{flex-shrink:0;padding:4px 14px;font-size:10.5px;font-family:monospace;color:rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:2px;}
+  .enc-details[hidden]{display:none;}
+  .enc-key-change-link{align-self:flex-start;font:inherit;font-family:var(--font);font-weight:600;font-size:11px;background:none;border:none;padding:0;color:#9a6400;text-decoration:underline;cursor:pointer;}
   .autocomplete-box{position:absolute;top:100%;left:0;right:0;z-index:999;background:white;border:1px solid rgba(0,0,0,0.14);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.07);max-height:160px;overflow-y:auto;}
   .autocomplete-box.hidden{display:none;}
   .autocomplete-item{padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--font);color:rgba(0,0,0,0.7);}
@@ -159,6 +163,7 @@
 <script src="attachment_guard.js"></script>
 <script src="attachment_drag.js"></script>
 <script src="encrypt_toggle.js"></script>
+<script src="key_change_dialog.js"></script>
 </head>
 <body>
 
@@ -198,6 +203,8 @@
   <div class="drop-overlay" id="bodyDropOverlay"><span data-icon="paperclip" data-icon-size="16"></span> <span data-i18n="cmp_drop_to_attach">Rilascia per allegare</span></div>
   <div class="attachments" id="attachmentsBox"></div>
 </div>
+
+<div class="enc-details" id="encDetails" hidden></div>
 
 <div class="toolbar">
   <button class="tool-btn" id="btnAttach"><span data-icon="paperclip" data-icon-size="16"></span></button>

@@ -239,6 +239,7 @@ ctxBadge.addEventListener('click', () => {
 const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
   button: document.getElementById('btnEncrypt'),
   status: document.getElementById('status'),
+  details: document.getElementById('encDetails'),
   api: API,
   getAccountId: () => accountId,
   getRecipients: () => ({ to: document.getElementById('mailTo').value.trim(),
@@ -248,6 +249,14 @@ const encryptToggle = window.GMEncryptToggle ? GMEncryptToggle.attach({
 for (const id of ['mailTo', 'mailCc']) {
   document.getElementById(id).addEventListener('change', () => encryptToggle && encryptToggle.recheck());
 }
+// A recipient's new key: the decision window, then the status again.
+document.addEventListener('click', (e) => {
+  const link = e.target && e.target.closest ? e.target.closest('[data-key-change]') : null;
+  if (!link || !window.GMKeyChange) return;
+  e.preventDefault();
+  GMKeyChange.open({ api: API, address: link.getAttribute('data-key-change'), T,
+    onDone: () => { if (encryptToggle) encryptToggle.recheck(); } });
+});
 
 // ── FOLLOW-UP ─────────────────────────────────────────────────────────────────
 const btnFollowup      = document.getElementById('btnFollowup');
@@ -360,7 +369,8 @@ async function execSend() {
     const response = await fetch(url, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({to, subject, body, cc:cc?[cc]:[], bcc:bcc?[bcc]:[], attachments:attachmentsClean,
-                            encrypt: !!(encryptToggle && encryptToggle.isOn())})
+                            // true while a key waits too: refused with the reason, never sent in clear
+                            encrypt: !!(encryptToggle && encryptToggle.wantsEncryption())})
     });
     let result = {};
     try { result = await response.json(); } catch {}

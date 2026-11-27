@@ -1738,10 +1738,15 @@ def send_message(
             msg = pgp.encrypt_message(msg, email_addr,
                                       split_addresses(to) + split_addresses(cc))
         except pgp.PgpError as e:
+            blocked = {}
+            if isinstance(e, pgp.KeyChangePending):
+                blocked = {"blocked": "key_changed",
+                           "blocked_addresses": list(e.addresses)}
             return {"success": False, "provider": "imap", "sent_copy_saved": False,
                     "warning": None,
                     "error": pgp.say(f"Mail non cifrata, quindi non inviata: {e.it}.",
-                                     f"Not encrypted, so not sent: {e.en}.")}
+                                     f"Not encrypted, so not sent: {e.en}."),
+                    **blocked}
     try:
         ctx = ssl.create_default_context()
         if insecure_tls:

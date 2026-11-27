@@ -99,6 +99,7 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
       <div class="mail-subject">${esc(subjectLabel)}</div>
       <div class="mail-from">${window.i18n?window.i18n.t("from_label"):"Da"}: <strong>${esc(senderName)}</strong> &lt;${esc(sender)}&gt; — ${esc(fmtDate(msg.receivedDateTime||msg.sentDateTime))}</div>
       ${window.MailRender ? MailRender.encryptionBadgeHtml(msg.encryption, T, esc) : ''}
+      ${window.MailRender && MailRender.keyChangeHtml ? MailRender.keyChangeHtml(msg.key_change, T, esc) : ''}
       <div class="mail-actions">
         <button class="btn" id="btnAscolta" data-requires="/mail/{message_id}/tts">◉ <span data-i18n="listen_cap">Ascolta</span></button>
         <button class="btn btn-reply" id="btnReply">↩ <span data-i18n="reply_cap">Rispondi</span></button>
@@ -347,6 +348,20 @@ async function loadMail(id, folder, accountId, preloadedMsg = null) {
     app.innerHTML = `<div class="loading">${window.i18n?window.i18n.t("error"):"Errore"}: ${esc(String(e))}</div>`;
   }
 }
+
+// A sender's new key (badge or line under the sender): the decision window,
+// then the mail again so the badge follows the decision.
+document.addEventListener('click', (e) => {
+  const link = e.target && e.target.closest ? e.target.closest('[data-key-change]') : null;
+  if (!link || !window.GMKeyChange) return;
+  e.preventDefault();
+  GMKeyChange.open({
+    api: API, address: link.getAttribute('data-key-change'), T,
+    onDone: (result) => {
+      if (result) loadMail(window._mailId, window._mailFolder, window._mailAccountId);
+    },
+  });
+});
 
 // Bottoni finestra
 document.addEventListener('DOMContentLoaded', () => {
