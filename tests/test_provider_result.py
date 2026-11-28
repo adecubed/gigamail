@@ -167,6 +167,24 @@ def test_local_bridge_audit_says_not_verified(fake_smtp, monkeypatch):
         assert r["provider_result"]["tls_verified"] is False
 
 
+def test_local_bridge_smtp_tries_the_next_loopback_address(fake_smtp, monkeypatch):
+    monkeypatch.setattr(imap_client.socket, "getaddrinfo",
+                        lambda *a, **kw: [(10, 1, 6, "", ("::1", 0, 0, 0)),
+                                          (2, 1, 6, "", ("127.0.0.1", 0))])
+    tried = []
+
+    def ipv4_only(host, port, **kw):
+        tried.append(host)
+        if host != "127.0.0.1":
+            raise ConnectionRefusedError(111, "Connection refused")
+        return _FakeSMTP(host, port, **kw)
+    monkeypatch.setattr(imap_client.smtplib, "SMTP", ipv4_only)
+    r = imap_client.send_message("localhost", 1025, "me@example.com", "pw",
+                                 "a@example.com", "s", "b")
+    assert r["success"] is True
+    assert tried == ["::1", "127.0.0.1"]
+
+
 def test_local_bridge_audit_on_error(fake_smtp, monkeypatch):
     monkeypatch.setattr(imap_client.socket, "getaddrinfo",
                         lambda *a, **kw: [(2, 1, 6, "", ("127.0.0.1", 0))])

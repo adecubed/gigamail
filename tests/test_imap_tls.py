@@ -76,13 +76,13 @@ def test_cli_tls_insecure_chiede_la_verifica(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1", "[::1]"])
 def test_loopback_ip_is_local(host):
-    assert imap_client.loopback_address(host) is not None
+    assert imap_client.loopback_addresses(host)
 
 
 @pytest.mark.parametrize("host", ["imap.example.com", "10.0.0.5", "localhost.example.com",
                                   "bridge.localhost", ""])
 def test_other_hosts_are_not_local(host):
-    assert imap_client.loopback_address(host) is None
+    assert imap_client.loopback_addresses(host) == []
 
 
 def _resolve_to(monkeypatch, *addrs):
@@ -92,9 +92,9 @@ def _resolve_to(monkeypatch, *addrs):
 
 def test_localhost_is_local_only_if_it_resolves_to_loopback(monkeypatch):
     _resolve_to(monkeypatch, "127.0.0.1", "::1")
-    assert imap_client.loopback_address("LOCALHOST") == "127.0.0.1"
+    assert imap_client.loopback_addresses("LOCALHOST") == ["127.0.0.1", "::1"]
     _resolve_to(monkeypatch, "127.0.0.1", "192.0.2.10")
-    assert imap_client.loopback_address("localhost") is None
+    assert imap_client.loopback_addresses("localhost") == []
 
 
 def test_local_context_skips_certificate_check():
@@ -115,14 +115,17 @@ class _FakePlainImap:
         self.starttls_ok = starttls_ok
         self.tls = False
         self.logged_in = False
+        self.capabilities = ("IMAP4REV1",) if starttls_ok is False else ("IMAP4REV1", "STARTTLS")
         _FakePlainImap.instances.append(self)
 
     def starttls(self, ssl_context=None):
         self.ctx = ssl_context
         if self.starttls_ok == "abort":
             raise _FakePlainImap.abort("socket error: EOF")
+        if self.starttls_ok == "refused":
+            raise _FakePlainImap.error("Couldn't establish TLS session")
         if not self.starttls_ok:
-            raise _FakePlainImap.error("STARTTLS not supported by server")
+            raise _FakePlainImap.abort("TLS not supported by server")
         self.tls = True
 
     def socket(self):
@@ -182,6 +185,38 @@ def test_port_143_uses_starttls_directly(monkeypatch, fake_plain):
     monkeypatch.setattr(imap_client.imaplib, "IMAP4_SSL", no_implicit)
     conn = imap_client._connect("imap.example.com", 143, "a@example.com", "x")
     assert conn.tls and conn.logged_in
+
+
+def test_starttls_refused_means_no_login(monkeypatch):
+    _FakePlainImap.instances.clear()
+
+    class _Refuses(_FakePlainImap):
+        def __init__(self, host, port):
+            super().__init__(host, port, starttls_ok="refused")
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4", _Refuses)
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4_SSL", _plain_text_answer)
+    with pytest.raises(imap_client.StartTlsUnavailable):
+        imap_client._connect("mail.example.com", 1143, "a@example.com", "x")
+    assert len(_FakePlainImap.instances) == 1
+    assert not _FakePlainImap.instances[0].logged_in
+
+
+def test_localhost_tries_the_next_loopback_address(monkeypatch, fake_plain):
+    # localhost resolves to ::1 first, the bridge listens only on 127.0.0.1.
+    _resolve_to(monkeypatch, "::1", "127.0.0.1")
+    tried = []
+
+    class _Ipv4Only(_FakePlainImap):
+        def __init__(self, host, port):
+            tried.append(host)
+            if host != "127.0.0.1":
+                raise ConnectionRefusedError(111, "Connection refused")
+            super().__init__(host, port)
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4", _Ipv4Only)
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4_SSL", _plain_text_answer)
+    conn = imap_client._connect("localhost", 1143, "a@example.com", "x")
+    assert conn.host == "127.0.0.1" and conn.logged_in
+    assert tried == ["::1", "127.0.0.1"]
 
 
 def test_no_starttls_means_no_login(monkeypatch):
