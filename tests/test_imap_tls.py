@@ -74,18 +74,33 @@ def test_cli_tls_insecure_chiede_la_verifica(tmp_path, monkeypatch):
         accounts.delete_account(aid)
 
 
-@pytest.mark.parametrize("host", ["localhost", "LOCALHOST", "127.0.0.1", "::1",
-                                  "[::1]", "bridge.localhost"])
-def test_loopback_host_skips_certificate_check(host):
-    # Local bridges (Proton Bridge) use a self-signed certificate and the
-    # traffic never leaves the machine.
-    ctx = imap_client._tls_context(host, 1143, "a@example.com")
+@pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1", "[::1]"])
+def test_loopback_ip_is_local(host):
+    assert imap_client.loopback_address(host) is not None
+
+
+@pytest.mark.parametrize("host", ["imap.example.com", "10.0.0.5", "localhost.example.com",
+                                  "bridge.localhost", ""])
+def test_other_hosts_are_not_local(host):
+    assert imap_client.loopback_address(host) is None
+
+
+def _resolve_to(monkeypatch, *addrs):
+    monkeypatch.setattr(imap_client.socket, "getaddrinfo",
+                        lambda *a, **kw: [(2, 1, 6, "", (a_, 0)) for a_ in addrs])
+
+
+def test_localhost_is_local_only_if_it_resolves_to_loopback(monkeypatch):
+    _resolve_to(monkeypatch, "127.0.0.1", "::1")
+    assert imap_client.loopback_address("LOCALHOST") == "127.0.0.1"
+    _resolve_to(monkeypatch, "127.0.0.1", "192.0.2.10")
+    assert imap_client.loopback_address("localhost") is None
+
+
+def test_local_context_skips_certificate_check():
+    ctx = imap_client._tls_context("localhost", 1143, "a@example.com", local=True)
     assert ctx.verify_mode == ssl.CERT_NONE
-
-
-@pytest.mark.parametrize("host", ["imap.example.com", "10.0.0.5", "localhost.example.com"])
-def test_remote_host_still_verifies_certificate(host):
-    ctx = imap_client._tls_context(host, 1143, "a@example.com")
+    ctx = imap_client._tls_context("imap.example.com", 1143, "a@example.com")
     assert ctx.verify_mode == ssl.CERT_REQUIRED
 
 
@@ -103,6 +118,9 @@ class _FakePlainImap:
         _FakePlainImap.instances.append(self)
 
     def starttls(self, ssl_context=None):
+        self.ctx = ssl_context
+        if self.starttls_ok == "abort":
+            raise _FakePlainImap.abort("socket error: EOF")
         if not self.starttls_ok:
             raise _FakePlainImap.error("STARTTLS not supported by server")
         self.tls = True
@@ -134,9 +152,28 @@ def fake_plain(monkeypatch):
 
 def test_plain_text_answer_upgrades_with_starttls(monkeypatch, fake_plain):
     # Proton Bridge on 1143 speaks STARTTLS, not implicit TLS.
+    _resolve_to(monkeypatch, "127.0.0.1")
     monkeypatch.setattr(imap_client.imaplib, "IMAP4_SSL", _plain_text_answer)
     conn = imap_client._connect("localhost", 1143, "a@example.com", "x")
     assert conn.tls and conn.logged_in
+    # connects to the verified loopback address, not to the name
+    assert conn.host == "127.0.0.1"
+    assert conn.ctx.verify_mode == ssl.CERT_NONE
+
+
+def test_dropped_connection_during_starttls_is_retried(monkeypatch):
+    _FakePlainImap.instances.clear()
+
+    class _Drops(_FakePlainImap):
+        def __init__(self, host, port):
+            super().__init__(host, port, starttls_ok="abort")
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4", _Drops)
+    monkeypatch.setattr(imap_client.imaplib, "IMAP4_SSL", _plain_text_answer)
+    monkeypatch.setattr(imap_client.time, "sleep", lambda s: None)
+    with pytest.raises(ConnectionError) as info:
+        imap_client._connect("imap.example.com", 1143, "a@example.com", "x")
+    assert not isinstance(info.value, imap_client.StartTlsUnavailable)
+    assert len(_FakePlainImap.instances) == imap_client._IMAP_MAX_RETRIES
 
 
 def test_port_143_uses_starttls_directly(monkeypatch, fake_plain):

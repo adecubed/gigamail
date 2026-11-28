@@ -6,6 +6,7 @@ Libero, custom.
 import email
 import email.header
 import imaplib
+import ipaddress
 import logging
 import os
 import re
@@ -225,23 +226,47 @@ def consenti_tls_non_verificato(imap_host: str, imap_port: int, email_addr: str)
                              str(email_addr).lower()))
 
 
-def is_loopback_host(host: str) -> bool:
-    """True for a host that can only be this machine (Proton Bridge and
-    similar local bridges). Their certificate is self-signed and the
-    traffic never leaves the computer, so there is nothing to verify."""
+def loopback_address(host: str) -> Optional[str]:
+    """The loopback address to connect to when `host` can only be this
+    machine, else None.
+
+    Local bridges (Proton Bridge and similar) use a self-signed certificate
+    and the traffic never leaves the computer, so their certificate is not
+    verified. Only loopback IP literals and the name "localhost" qualify,
+    and "localhost" only when every address it resolves to is loopback.
+    The caller connects to the returned address, not to the name, so a
+    different resolution later cannot send an unverified connection to
+    another machine."""
     h = str(host or "").strip().lower().strip("[]")
-    if h == "localhost" or h.endswith(".localhost"):
-        return True
     try:
-        import ipaddress
-        return ipaddress.ip_address(h).is_loopback
+        ip = ipaddress.ip_address(h)
     except ValueError:
-        return False
+        ip = None
+    if ip is not None:
+        return str(ip) if ip.is_loopback else None
+    if h != "localhost":
+        return None
+    try:
+        infos = socket.getaddrinfo(h, None, proto=socket.IPPROTO_TCP)
+    except OSError:
+        return None
+    addrs = [info[4][0] for info in infos]
+    if not addrs:
+        return None
+    for a in addrs:
+        try:
+            if not ipaddress.ip_address(a.split("%", 1)[0]).is_loopback:
+                return None
+        except ValueError:
+            return None
+    return addrs[0]
 
 
-def _tls_context(imap_host: str, imap_port: int, email_addr: str) -> ssl.SSLContext:
+def _tls_context(imap_host: str, imap_port: int, email_addr: str,
+                 local: bool = False) -> ssl.SSLContext:
+    """local: the connection goes to a verified loopback address."""
     ctx = ssl.create_default_context()
-    if is_loopback_host(imap_host) or (str(imap_host).lower(), int(imap_port),
+    if local or (str(imap_host).lower(), int(imap_port),
             str(email_addr).lower()) in _TLS_NON_VERIFICATO:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -256,10 +281,12 @@ def _open_starttls(imap_host: str, imap_port: int, ctx: ssl.SSLContext) -> imapl
     conn = imaplib.IMAP4(imap_host, imap_port)
     try:
         conn.starttls(ssl_context=ctx)
-    except ssl.SSLError:
+    except (ssl.SSLError, imaplib.IMAP4.abort):
+        # A dropped connection is temporary: let _connect retry it.
         _close_conn_safely(conn)
         raise
     except imaplib.IMAP4.error as e:
+        # STARTTLS missing from the capabilities, or refused by the server.
         # No TLS, no login: the password never goes out in clear.
         _close_conn_safely(conn)
         raise StartTlsUnavailable(
@@ -306,7 +333,9 @@ def _connect(
 
     for attempt in range(1, _IMAP_MAX_RETRIES + 1):
         try:
-            ctx = _tls_context(imap_host, imap_port, email_addr)
+            local_addr = loopback_address(imap_host)
+            ctx = _tls_context(imap_host, imap_port, email_addr,
+                               local=local_addr is not None)
 
             # Imposta timeout a livello socket PRIMA della connessione SSL
             # per evitare hang su server lenti o irraggiungibili
@@ -314,7 +343,7 @@ def _connect(
             old_timeout = _socket.getdefaulttimeout()
             _socket.setdefaulttimeout(timeout)
             try:
-                conn = _open_tls(imap_host, imap_port, ctx)
+                conn = _open_tls(local_addr or imap_host, imap_port, ctx)
             finally:
                 _socket.setdefaulttimeout(old_timeout)
 
@@ -1801,9 +1830,13 @@ def send_message(
                     "error": pgp.say(f"Mail non cifrata, quindi non inviata: {e.it}.",
                                      f"Not encrypted, so not sent: {e.en}."),
                     **blocked}
+    # One TLS policy for the connection and for what the audit says.
+    local_addr = loopback_address(smtp_host)
+    tls_verified = not insecure_tls and local_addr is None
+    connect_host = local_addr or smtp_host
     try:
         ctx = ssl.create_default_context()
-        if insecure_tls or is_loopback_host(smtp_host):
+        if not tls_verified:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         def _deliver(server):
@@ -1816,11 +1849,11 @@ def send_message(
                 return e.recipients
 
         if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as server:
+            with smtplib.SMTP_SSL(connect_host, smtp_port, context=ctx) as server:
                 server.login(email_addr, password)
                 refused = _deliver(server)
         else:
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
+            with smtplib.SMTP(connect_host, smtp_port) as server:
                 server.starttls(context=ctx)
                 server.login(email_addr, password)
                 refused = _deliver(server)
@@ -1834,7 +1867,7 @@ def send_message(
             "refused": {k: {"code": v[0], "message": (v[1].decode(errors="replace")
                                                        if isinstance(v[1], bytes) else str(v[1]))}
                         for k, v in refused.items()},
-            "tls_verified": not insecure_tls,
+            "tls_verified": tls_verified,
         }
         if not accepted:
             # Nessuno l'ha ricevuta: niente copia in Inviate, e un errore
@@ -1883,7 +1916,7 @@ def send_message(
             "error": str(e),
             "provider_result": {"provider": "smtp", "requested": len(all_recipients),
                                 "accepted": 0, "error": str(e),
-                                "tls_verified": not insecure_tls},
+                                "tls_verified": tls_verified},
         }
 def delete_message(
     imap_host: str,
