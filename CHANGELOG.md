@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Proton Bridge and other STARTTLS IMAP servers connect.** GigaMail
+  opened every IMAP connection with implicit TLS, so a server that starts
+  in plain text and upgrades with STARTTLS (Proton Bridge on 1143, any
+  server on 143) failed with `WRONG_VERSION_NUMBER`. Port 993 stays
+  implicit TLS, 143 uses STARTTLS, and on other ports a plain-text answer
+  is upgraded with STARTTLS. A server that offers no TLS gets no login:
+  the password never goes out in clear. The certificate of a server on
+  this machine (`localhost`, `127.0.0.1`, `::1`) is not verified, because
+  local bridges use a self-signed one and the traffic never leaves the
+  computer; remote servers are verified as before (#96).
+
 - **A correspondent's changed encryption key waits for your decision.**
   When a correspondent who already has a key sends a different one, the
   new key is held and the known key stays in use. Nothing is encrypted to

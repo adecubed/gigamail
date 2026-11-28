@@ -153,6 +153,51 @@ def test_tls_verificato_di_default_587_starttls(fake_smtp):
     assert inst.starttls_context.verify_mode == ssl.CERT_REQUIRED
 
 
+def test_local_bridge_audit_says_not_verified(fake_smtp, monkeypatch):
+    # The context and the audit follow the same TLS policy.
+    monkeypatch.setattr(imap_client.socket, "getaddrinfo",
+                        lambda *a, **kw: [(2, 1, 6, "", ("127.0.0.1", 0))])
+    for port in (1025, 465):
+        r = imap_client.send_message("localhost", port, "me@example.com", "pw",
+                                     "a@example.com", "s", "b")
+        inst = fake_smtp.instances[-1]
+        ctx = inst.starttls_context or inst.context
+        assert inst.host == "127.0.0.1"
+        assert ctx.verify_mode == ssl.CERT_NONE
+        assert r["provider_result"]["tls_verified"] is False
+
+
+def test_local_bridge_smtp_tries_the_next_loopback_address(fake_smtp, monkeypatch):
+    monkeypatch.setattr(imap_client.socket, "getaddrinfo",
+                        lambda *a, **kw: [(10, 1, 6, "", ("::1", 0, 0, 0)),
+                                          (2, 1, 6, "", ("127.0.0.1", 0))])
+    tried = []
+
+    def ipv4_only(host, port, **kw):
+        tried.append(host)
+        if host != "127.0.0.1":
+            raise ConnectionRefusedError(111, "Connection refused")
+        return _FakeSMTP(host, port, **kw)
+    monkeypatch.setattr(imap_client.smtplib, "SMTP", ipv4_only)
+    r = imap_client.send_message("localhost", 1025, "me@example.com", "pw",
+                                 "a@example.com", "s", "b")
+    assert r["success"] is True
+    assert tried == ["::1", "127.0.0.1"]
+
+
+def test_local_bridge_audit_on_error(fake_smtp, monkeypatch):
+    monkeypatch.setattr(imap_client.socket, "getaddrinfo",
+                        lambda *a, **kw: [(2, 1, 6, "", ("127.0.0.1", 0))])
+
+    def fail_login(self, u, p):
+        raise imap_client.smtplib.SMTPAuthenticationError(535, b"bad")
+    monkeypatch.setattr(_FakeSMTP, "login", fail_login)
+    r = imap_client.send_message("localhost", 1025, "me@example.com", "pw",
+                                 "a@example.com", "s", "b")
+    assert r["success"] is False
+    assert r["provider_result"]["tls_verified"] is False
+
+
 def test_insecure_tls_solo_se_esplicito(fake_smtp):
     _send(insecure_tls=True)
     ctx = fake_smtp.instances[-1].context
