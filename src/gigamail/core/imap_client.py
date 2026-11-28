@@ -225,13 +225,65 @@ def consenti_tls_non_verificato(imap_host: str, imap_port: int, email_addr: str)
                              str(email_addr).lower()))
 
 
+def is_loopback_host(host: str) -> bool:
+    """True for a host that can only be this machine (Proton Bridge and
+    similar local bridges). Their certificate is self-signed and the
+    traffic never leaves the computer, so there is nothing to verify."""
+    h = str(host or "").strip().lower().strip("[]")
+    if h == "localhost" or h.endswith(".localhost"):
+        return True
+    try:
+        import ipaddress
+        return ipaddress.ip_address(h).is_loopback
+    except ValueError:
+        return False
+
+
 def _tls_context(imap_host: str, imap_port: int, email_addr: str) -> ssl.SSLContext:
     ctx = ssl.create_default_context()
-    if (str(imap_host).lower(), int(imap_port),
+    if is_loopback_host(imap_host) or (str(imap_host).lower(), int(imap_port),
             str(email_addr).lower()) in _TLS_NON_VERIFICATO:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     return ctx
+
+
+class StartTlsUnavailable(ConnectionError):
+    """The server speaks plain IMAP and does not offer STARTTLS."""
+
+
+def _open_starttls(imap_host: str, imap_port: int, ctx: ssl.SSLContext) -> imaplib.IMAP4:
+    conn = imaplib.IMAP4(imap_host, imap_port)
+    try:
+        conn.starttls(ssl_context=ctx)
+    except ssl.SSLError:
+        _close_conn_safely(conn)
+        raise
+    except imaplib.IMAP4.error as e:
+        # No TLS, no login: the password never goes out in clear.
+        _close_conn_safely(conn)
+        raise StartTlsUnavailable(
+            f"{imap_host}:{imap_port} does not offer TLS (no STARTTLS): {e}") from e
+    return conn
+
+
+def _open_tls(imap_host: str, imap_port: int, ctx: ssl.SSLContext) -> imaplib.IMAP4:
+    """Open an encrypted IMAP connection before any login.
+
+    993 is implicit TLS and 143 is STARTTLS. On any other port (Proton
+    Bridge uses 1143 with STARTTLS by default) try implicit TLS first and,
+    if the server answers in plain text, upgrade with STARTTLS."""
+    if int(imap_port) == 143:
+        return _open_starttls(imap_host, imap_port, ctx)
+    try:
+        return imaplib.IMAP4_SSL(imap_host, imap_port, ssl_context=ctx)
+    except ssl.SSLCertVerificationError:
+        raise
+    except ssl.SSLError as e:
+        if int(imap_port) == 993 or "WRONG_VERSION_NUMBER" not in str(e).upper():
+            raise
+        _imap_debug_log(f"{imap_host}:{imap_port} answered in plain text, trying STARTTLS")
+        return _open_starttls(imap_host, imap_port, ctx)
 
 
 class CertificatoNonValido(ConnectionError):
@@ -262,7 +314,7 @@ def _connect(
             old_timeout = _socket.getdefaulttimeout()
             _socket.setdefaulttimeout(timeout)
             try:
-                conn = imaplib.IMAP4_SSL(imap_host, imap_port, ssl_context=ctx)
+                conn = _open_tls(imap_host, imap_port, ctx)
             finally:
                 _socket.setdefaulttimeout(old_timeout)
 
@@ -279,6 +331,8 @@ def _connect(
                 f"({e.verify_message or e}). Se il server e' tuo e usa un "
                 f"certificato self-signed: gigamail accounts tls <id> "
                 f"--insecure (chiede Windows Hello / Touch ID / PIN su Linux)") from e
+        except StartTlsUnavailable:
+            raise
         except (TimeoutError, OSError, imaplib.IMAP4.error) as e:
             last_exc = e
             _imap_debug_log(f"_connect attempt {attempt}/{_IMAP_MAX_RETRIES} failed: {e} ({email_addr})")
@@ -364,7 +418,7 @@ def _prune_imap_cache() -> None:
         conn = entry.get("conn")
         if now - last_used > _IMAP_CONN_TTL:
             stale_keys.append(key)
-            _close_conn_safely(conn if isinstance(conn, imaplib.IMAP4_SSL) else None)
+            _close_conn_safely(conn if isinstance(conn, imaplib.IMAP4) else None)
     for key in stale_keys:
         _IMAP_CONN_CACHE.pop(key, None)
 
@@ -387,7 +441,7 @@ def _acquire_connection(
 
 
 def _release_connection(conn_key: Tuple[str, int, str, str], conn: Optional[imaplib.IMAP4_SSL], mark_bad: bool = False) -> None:
-    _close_conn_safely(conn if isinstance(conn, imaplib.IMAP4_SSL) else None)
+    _close_conn_safely(conn if isinstance(conn, imaplib.IMAP4) else None)
 
 
 def _extract_mailbox_name_from_list_line(decoded: str) -> str:
@@ -1749,7 +1803,7 @@ def send_message(
                     **blocked}
     try:
         ctx = ssl.create_default_context()
-        if insecure_tls:
+        if insecure_tls or is_loopback_host(smtp_host):
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         def _deliver(server):
